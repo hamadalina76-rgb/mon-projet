@@ -1,0 +1,23 @@
+// Header Component Styles
+@import 'variables';
+@import 'mixins';
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.user-menu-trigger {
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}

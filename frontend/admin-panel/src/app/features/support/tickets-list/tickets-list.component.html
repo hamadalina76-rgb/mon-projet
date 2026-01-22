@@ -1,0 +1,63 @@
+<!-- Tickets List Component Template -->
+<div class="tickets-list-page">
+  <header class="page-header">
+    <h1>{{ 'support.tickets' | translate }}</h1>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <mat-card class="stat-card" [matBadge]="openCount" matBadgeColor="warn">
+      <mat-icon>inbox</mat-icon>
+      <span>Ouverts</span>
+    </mat-card>
+    <mat-card class="stat-card">
+      <mat-icon>hourglass_empty</mat-icon>
+      <span>En attente</span>
+    </mat-card>
+    <mat-card class="stat-card">
+      <mat-icon>check_circle</mat-icon>
+      <span>Résolus aujourd'hui</span>
+    </mat-card>
+  </div>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <div class="filters-row">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'common.search' | translate }}</mat-label>
+        <input matInput placeholder="ID ticket, sujet..." />
+        <mat-icon matPrefix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'common.status' | translate }}</mat-label>
+        <mat-select [(value)]="statusFilter" (selectionChange)="loadTickets()">
+          <mat-option value="ALL">Tous</mat-option>
+          <mat-option value="OPEN">Ouvert</mat-option>
+          <mat-option value="IN_PROGRESS">En cours</mat-option>
+          <mat-option value="WAITING">En attente</mat-option>
+          <mat-option value="RESOLVED">Résolu</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Priorité</mat-label>
+        <mat-select>
+          <mat-option value="ALL">Toutes</mat-option>
+          <mat-option value="HIGH">Haute</mat-option>
+          <mat-option value="MEDIUM">Moyenne</mat-option>
+          <mat-option value="LOW">Basse</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card>
+
+  <!-- Data Table -->
+  <mat-card class="table-card">
+    <app-data-table
+      [data]="tickets"
+      [columns]="columns"
+      [loading]="loading">
+    </app-data-table>
+  </mat-card>
+</div>

@@ -1,0 +1,110 @@
+<!-- Promotion Form Component Template - Angular 19 -->
+<div class="promotion-form-page">
+  <header class="page-header">
+    <div class="header-left">
+      <button mat-icon-button routerLink="/promotions">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>{{ isEdit() ? 'Modifier promotion' : 'Nouvelle promotion' }}</h1>
+    </div>
+  </header>
+
+  <form [formGroup]="promoForm" (ngSubmit)="onSubmit()">
+    <div class="form-grid">
+      <!-- Basic Info -->
+      <mat-card class="form-card">
+        <h3>Informations de base</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Nom de la promotion</mat-label>
+          <input matInput formControlName="name" placeholder="Ex: Offre de lancement" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Description</mat-label>
+          <textarea matInput formControlName="description" rows="3"></textarea>
+        </mat-form-field>
+
+        <!-- Discount Type -->
+        <div class="discount-section">
+          <label class="section-label">Type de réduction</label>
+          <mat-radio-group formControlName="type" class="radio-group">
+            <mat-radio-button value="percentage">Pourcentage (%)</mat-radio-button>
+            <mat-radio-button value="fixed">Montant fixe (MAD)</mat-radio-button>
+          </mat-radio-group>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Valeur</mat-label>
+            <input matInput type="number" formControlName="value" />
+            <span matSuffix>{{ promoForm.get('type')?.value === 'percentage' ? '%' : 'MAD' }}</span>
+          </mat-form-field>
+        </div>
+
+        <!-- Code -->
+        <div class="code-section">
+          <mat-form-field appearance="outline" class="code-field">
+            <mat-label>Code promo (optionnel)</mat-label>
+            <input matInput formControlName="code" />
+          </mat-form-field>
+          <button mat-stroked-button type="button" (click)="generateCode()">
+            Générer
+          </button>
+        </div>
+      </mat-card>
+
+      <!-- Validity -->
+      <mat-card class="form-card">
+        <h3>Période de validité</h3>
+
+        <div class="date-range">
+          <mat-form-field appearance="outline">
+            <mat-label>Date de début</mat-label>
+            <input matInput [matDatepicker]="startPicker" formControlName="startDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+            <mat-datepicker #startPicker></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Date de fin</mat-label>
+            <input matInput [matDatepicker]="endPicker" formControlName="endDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+            <mat-datepicker #endPicker></mat-datepicker>
+          </mat-form-field>
+        </div>
+      </mat-card>
+
+      <!-- Conditions -->
+      <mat-card class="form-card">
+        <h3>Conditions</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Commande minimum (MAD)</mat-label>
+          <input matInput type="number" formControlName="minOrder" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Nombre max d'utilisations</mat-label>
+          <input matInput type="number" formControlName="maxUses" placeholder="Illimité" />
+        </mat-form-field>
+
+        <mat-slide-toggle formControlName="isActive">
+          Activer immédiatement
+        </mat-slide-toggle>
+      </mat-card>
+    </div>
+
+    <!-- Actions -->
+    <div class="form-actions">
+      <button mat-stroked-button type="button" routerLink="/promotions">
+        Annuler
+      </button>
+      <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+        @if (loading()) {
+          <mat-spinner diameter="20"></mat-spinner>
+        } @else {
+          {{ isEdit() ? 'Enregistrer' : 'Créer promotion' }}
+        }
+      </button>
+    </div>
+  </form>
+</div>

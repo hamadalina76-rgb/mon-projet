@@ -1,0 +1,70 @@
+// Partner Verification Component Styles
+@use '../../../../assets/styles/variables' as v;
+
+.partner-verification-page {
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+}
+
+.verification-content {
+  display: grid;
+  gap: 1rem;
+}
+
+.documents-card {
+  padding: 1rem;
+}
+
+.document-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.document-info {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+
+  mat-icon {
+    color: var(--text-secondary);
+  }
+
+  h4 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .document-date {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+}
+
+.document-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.actions-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}

@@ -1,0 +1,67 @@
+<!-- General Settings Component Template -->
+<div class="general-settings-page">
+  <header class="page-header">
+    <h1>{{ 'settings.general' | translate }}</h1>
+  </header>
+
+  <mat-card class="settings-card">
+    <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()">
+      <!-- Platform Info -->
+      <section class="settings-section">
+        <h3>Informations de la plateforme</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Nom de la plateforme</mat-label>
+          <input matInput formControlName="platformName" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Email de contact</mat-label>
+          <input matInput type="email" formControlName="contactEmail" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Téléphone de contact</mat-label>
+          <input matInput formControlName="contactPhone" />
+        </mat-form-field>
+      </section>
+
+      <!-- Regional Settings -->
+      <section class="settings-section">
+        <h3>Paramètres régionaux</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Langue par défaut</mat-label>
+          <mat-select formControlName="defaultLanguage">
+            <mat-option value="fr">Français</mat-option>
+            <mat-option value="ar">العربية</mat-option>
+            <mat-option value="en">English</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Devise</mat-label>
+          <mat-select formControlName="defaultCurrency">
+            <mat-option value="MAD">MAD - Dirham marocain</mat-option>
+            <mat-option value="EUR">EUR - Euro</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </section>
+
+      <!-- Maintenance -->
+      <section class="settings-section">
+        <h3>Maintenance</h3>
+        <mat-slide-toggle formControlName="maintenanceMode">
+          Mode maintenance
+        </mat-slide-toggle>
+      </section>
+
+      <!-- Actions -->
+      <div class="form-actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="loading">
+          {{ 'common.save' | translate }}
+        </button>
+      </div>
+    </form>
+  </mat-card>
+</div>

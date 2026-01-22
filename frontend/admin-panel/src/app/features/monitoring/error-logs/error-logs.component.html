@@ -1,0 +1,18 @@
+<!-- Error Logs Component Template -->
+<div class="error-logs-page">
+  <header class="page-header">
+    <h1>{{ 'monitoring.errorLogs' | translate }}</h1>
+    <button mat-stroked-button (click)="loadErrors()">
+      <mat-icon>refresh</mat-icon>
+      Actualiser
+    </button>
+  </header>
+
+  <!-- Data Table -->
+  <mat-card class="table-card">
+    <app-data-table
+      [data]="errors"
+      [loading]="loading">
+    </app-data-table>
+  </mat-card>
+</div>

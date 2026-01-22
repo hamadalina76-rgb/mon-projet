@@ -1,0 +1,43 @@
+<!-- Table Component Template - Angular 19 -->
+<div class="table-container">
+  <table mat-table [dataSource]="dataSource" matSort>
+    <!-- Checkbox Column (selectable uses signal accessor) -->
+    @if (selectable()) {
+      <ng-container matColumnDef="select">
+        <th mat-header-cell *matHeaderCellDef>
+          <mat-checkbox
+            (change)="toggleAllRows()"
+            [checked]="selection.hasValue() && isAllSelected()"
+            [indeterminate]="selection.hasValue() && !isAllSelected()">
+          </mat-checkbox>
+        </th>
+        <td mat-cell *matCellDef="let row">
+          <mat-checkbox
+            (click)="$event.stopPropagation()"
+            (change)="selection.toggle(row)"
+            [checked]="selection.isSelected(row)">
+          </mat-checkbox>
+        </td>
+      </ng-container>
+    }
+
+    <!-- Dynamic Columns (Material *ngFor required for matColumnDef) -->
+    <ng-container *ngFor="let column of columns()" [matColumnDef]="column">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>
+        {{ 'table.' + column | translate }}
+      </th>
+      <td mat-cell *matCellDef="let row">{{ row[column] }}</td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns();" 
+        (click)="onRowClick(row)"
+        class="table-row">
+    </tr>
+  </table>
+
+  <mat-paginator 
+    [pageSizeOptions]="[10, 25, 50]"
+    showFirstLastButtons>
+  </mat-paginator>
+</div>

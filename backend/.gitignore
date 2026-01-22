@@ -1,0 +1,148 @@
+# ==================== MAVEN ====================
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ==================== GRADLE ====================
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ==================== INTELLIJ IDEA ====================
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# ==================== ECLIPSE ====================
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# ==================== NETBEANS ====================
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# ==================== VS CODE ====================
+.vscode/
+*.code-workspace
+
+# ==================== OS FILES ====================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ==================== LOGS ====================
+*.log
+logs/
+/log/
+
+# ==================== PACKAGE FILES ====================
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# ==================== VIRTUAL MACHINE CRASH LOGS ====================
+hs_err_pid*
+replay_pid*
+
+# ==================== SPRING BOOT ====================
+spring-boot-*.log
+HELP.md
+
+# ==================== ENVIRONMENT FILES ====================
+.env
+.env.local
+.env.*.local
+*.env
+application-local.yml
+application-local.properties
+application-secret.yml
+application-secret.properties
+
+# ==================== DOCKER ====================
+docker-compose.override.yml
+.docker/
+
+# ==================== SECRETS & CREDENTIALS ====================
+*.pem
+*.key
+*.p12
+*.jks
+secrets/
+credentials/
+firebase-*.json
+google-services.json
+
+# ==================== DATABASE ====================
+*.sql.backup
+*.dump
+/data/
+
+# ==================== TERRAFORM ====================
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+
+# ==================== NODE (if frontend exists) ====================
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ==================== COVERAGE ====================
+coverage/
+*.lcov
+.nyc_output/
+jacoco/
+test-results/
+
+# ==================== TEMP FILES ====================
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# ==================== BACKUP FILES ====================
+*.bak
+*.backup
+*.old
+
+# ==================== GENERATED FILES ====================
+generated/
+generated-sources/
+generated-test-sources/
+
+# ==================== LOMBOK ====================
+.lombok/
+
+# ==================== MISC ====================
+*.class
+*.pyc
+__pycache__/

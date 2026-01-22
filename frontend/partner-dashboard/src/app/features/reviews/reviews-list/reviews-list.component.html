@@ -1,0 +1,53 @@
+<!-- Reviews List Component Template - Angular 19 -->
+<div class="reviews-page">
+  <header class="page-header">
+    <h1>{{ 'reviews.title' | translate }}</h1>
+  </header>
+
+  <!-- Rating Summary -->
+  <app-rating-summary [stats]="stats()"></app-rating-summary>
+
+  <!-- Filters -->
+  <div class="filters-row">
+    <mat-form-field appearance="outline">
+      <mat-label>Filtrer par note</mat-label>
+      <mat-select [value]="filter()" (selectionChange)="onFilterChange($event.value)">
+        <mat-option value="all">Tous les avis</mat-option>
+        <mat-option value="positive">Avis positifs (4-5★)</mat-option>
+        <mat-option value="negative">Avis négatifs (1-2★)</mat-option>
+        <mat-option value="pending">Sans réponse</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  } @else {
+    <!-- Reviews List -->
+    <div class="reviews-list">
+      @for (review of filteredReviews(); track review.id) {
+        <app-review-card
+          [review]="review"
+          (reply)="replyToReview($event.id, $event.reply)">
+        </app-review-card>
+      } @empty {
+        <div class="empty-state">
+          <mat-icon>rate_review</mat-icon>
+          <h3>Aucun avis</h3>
+          <p>Vos avis clients apparaîtront ici</p>
+        </div>
+      }
+    </div>
+
+    <!-- Pagination -->
+    <mat-paginator
+      [length]="totalItems()"
+      [pageSize]="pageSize()"
+      [pageIndex]="currentPage()"
+      [pageSizeOptions]="[10, 25, 50]"
+      (page)="onPageChange($event)">
+    </mat-paginator>
+  }
+</div>

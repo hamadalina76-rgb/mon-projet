@@ -1,0 +1,47 @@
+<!-- Payment Settings Component Template -->
+<div class="payment-settings-page">
+  <header class="page-header">
+    <h1>{{ 'settings.payments' | translate }}</h1>
+  </header>
+
+  <mat-card class="settings-card">
+    <form [formGroup]="paymentForm" (ngSubmit)="saveSettings()">
+      <!-- Commissions -->
+      <section class="settings-section">
+        <h3>Commissions</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Commission plateforme (%)</mat-label>
+          <input matInput type="number" formControlName="platformCommission" />
+          <span matSuffix>%</span>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Part livreur (%)</mat-label>
+          <input matInput type="number" formControlName="courierCommission" />
+          <span matSuffix>%</span>
+        </mat-form-field>
+      </section>
+
+      <!-- Payment Methods -->
+      <section class="settings-section">
+        <h3>Méthodes de paiement</h3>
+
+        <mat-slide-toggle formControlName="cashPaymentEnabled">
+          Paiement en espèces
+        </mat-slide-toggle>
+
+        <mat-slide-toggle formControlName="cardPaymentEnabled">
+          Paiement par carte
+        </mat-slide-toggle>
+      </section>
+
+      <!-- Actions -->
+      <div class="form-actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="loading">
+          {{ 'common.save' | translate }}
+        </button>
+      </div>
+    </form>
+  </mat-card>
+</div>

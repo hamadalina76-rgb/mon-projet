@@ -1,0 +1,79 @@
+<!-- Opening Hours Component Template - Angular 19 -->
+<div class="opening-hours-page">
+  <header class="page-header">
+    <h1>Horaires d'ouverture</h1>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="48"></mat-spinner>
+    </div>
+  } @else {
+    <mat-card class="hours-card">
+      <form [formGroup]="hoursForm" (ngSubmit)="saveOpeningHours()">
+        <div formArrayName="days" class="days-list">
+          @for (dayCtrl of daysArray.controls; track $index; let i = $index) {
+            <div 
+              [formGroupName]="i"
+              class="day-row"
+              [class.closed]="!dayCtrl.get('isOpen')?.value">
+              
+              <div class="day-label">
+                <mat-slide-toggle formControlName="isOpen"></mat-slide-toggle>
+                <span class="day-name">{{ days[i].label }}</span>
+              </div>
+
+              @if (dayCtrl.get('isOpen')?.value) {
+                <div class="day-hours">
+                  <div class="time-group">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Ouverture</mat-label>
+                      <input matInput type="time" formControlName="openTime" />
+                    </mat-form-field>
+                    
+                    <span class="time-separator">à</span>
+                    
+                    <mat-form-field appearance="outline">
+                      <mat-label>Fermeture</mat-label>
+                      <input matInput type="time" formControlName="closeTime" />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="break-group">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Pause début</mat-label>
+                      <input matInput type="time" formControlName="breakStart" />
+                    </mat-form-field>
+                    
+                    <span class="time-separator">à</span>
+                    
+                    <mat-form-field appearance="outline">
+                      <mat-label>Pause fin</mat-label>
+                      <input matInput type="time" formControlName="breakEnd" />
+                    </mat-form-field>
+                  </div>
+
+                  <button mat-icon-button type="button" (click)="copyToAll(i)" matTooltip="Copier à tous les jours">
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                </div>
+              } @else {
+                <span class="closed-label">Fermé</span>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="form-actions">
+          <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+            @if (saving()) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              Enregistrer
+            }
+          </button>
+        </div>
+      </form>
+    </mat-card>
+  }
+</div>

@@ -1,0 +1,128 @@
+{
+  "COMMON": {
+    "SAVE": "Enregistrer",
+    "CANCEL": "Annuler",
+    "DELETE": "Supprimer",
+    "EDIT": "Modifier",
+    "ADD": "Ajouter",
+    "SEARCH": "Rechercher",
+    "FILTER": "Filtrer",
+    "REFRESH": "Actualiser",
+    "LOADING": "Chargement...",
+    "NO_DATA": "Aucune donnée",
+    "CONFIRM": "Confirmer",
+    "BACK": "Retour",
+    "NEXT": "Suivant",
+    "PREVIOUS": "Précédent",
+    "YES": "Oui",
+    "NO": "Non"
+  },
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "subtitle": "Connectez-vous à votre espace partenaire",
+      "submit": "Se connecter"
+    },
+    "email": "Email",
+    "password": "Mot de passe",
+    "rememberMe": "Se souvenir de moi",
+    "forgotPassword": "Mot de passe oublié ?",
+    "submit": "Se connecter",
+    "noAccount": "Pas encore de compte ?"
+  },
+  "validation": {
+    "required": "Ce champ est requis",
+    "email": "Email invalide"
+  },
+  "AUTH": {
+    "LOGIN": "Connexion",
+    "LOGOUT": "Déconnexion",
+    "REGISTER": "Inscription",
+    "EMAIL": "Email",
+    "PASSWORD": "Mot de passe",
+    "CONFIRM_PASSWORD": "Confirmer le mot de passe",
+    "FORGOT_PASSWORD": "Mot de passe oublié ?",
+    "REMEMBER_ME": "Se souvenir de moi",
+    "LOGIN_SUCCESS": "Connexion réussie",
+    "LOGIN_ERROR": "Email ou mot de passe incorrect",
+    "REGISTER_SUCCESS": "Inscription réussie"
+  },
+  "DASHBOARD": {
+    "TITLE": "Tableau de bord",
+    "WELCOME": "Bienvenue",
+    "TODAY_ORDERS": "Commandes aujourd'hui",
+    "TODAY_REVENUE": "Revenus aujourd'hui",
+    "PENDING_ORDERS": "Commandes en attente",
+    "AVERAGE_RATING": "Note moyenne"
+  },
+  "ORDERS": {
+    "TITLE": "Commandes",
+    "ORDER_NUMBER": "N° Commande",
+    "CUSTOMER": "Client",
+    "STATUS": "Statut",
+    "TOTAL": "Total",
+    "DATE": "Date",
+    "PENDING": "En attente",
+    "CONFIRMED": "Confirmée",
+    "PREPARING": "En préparation",
+    "READY": "Prête",
+    "PICKED_UP": "Récupérée",
+    "DELIVERED": "Livrée",
+    "CANCELLED": "Annulée",
+    "ACCEPT": "Accepter",
+    "REJECT": "Rejeter",
+    "MARK_READY": "Marquer prête",
+    "VIEW_DETAILS": "Voir détails"
+  },
+  "MENU": {
+    "TITLE": "Menu",
+    "PRODUCTS": "Produits",
+    "CATEGORIES": "Catégories",
+    "ADD_PRODUCT": "Ajouter un produit",
+    "ADD_CATEGORY": "Ajouter une catégorie",
+    "PRODUCT_NAME": "Nom du produit",
+    "DESCRIPTION": "Description",
+    "PRICE": "Prix",
+    "CATEGORY": "Catégorie",
+    "AVAILABLE": "Disponible",
+    "UNAVAILABLE": "Indisponible"
+  },
+  "ANALYTICS": {
+    "TITLE": "Analytiques",
+    "OVERVIEW": "Vue d'ensemble",
+    "SALES_REPORT": "Rapport des ventes",
+    "REVENUE": "Revenus",
+    "ORDERS_COUNT": "Nombre de commandes",
+    "AVERAGE_ORDER": "Panier moyen"
+  },
+  "REVIEWS": {
+    "TITLE": "Avis clients",
+    "AVERAGE_RATING": "Note moyenne",
+    "TOTAL_REVIEWS": "Total des avis",
+    "REPLY": "Répondre"
+  },
+  "PROMOTIONS": {
+    "TITLE": "Promotions",
+    "ADD_PROMOTION": "Créer une promotion",
+    "CODE": "Code promo",
+    "DISCOUNT": "Réduction",
+    "START_DATE": "Date de début",
+    "END_DATE": "Date de fin",
+    "ACTIVE": "Active",
+    "INACTIVE": "Inactive"
+  },
+  "PROFILE": {
+    "TITLE": "Profil",
+    "BUSINESS_INFO": "Informations commerciales",
+    "OPENING_HOURS": "Horaires d'ouverture",
+    "DELIVERY_ZONES": "Zones de livraison",
+    "SETTINGS": "Paramètres"
+  },
+  "FINANCE": {
+    "TITLE": "Finance",
+    "EARNINGS": "Gains",
+    "PAYOUTS": "Versements",
+    "BALANCE": "Solde",
+    "PENDING_PAYOUT": "Versement en attente"
+  }
+}

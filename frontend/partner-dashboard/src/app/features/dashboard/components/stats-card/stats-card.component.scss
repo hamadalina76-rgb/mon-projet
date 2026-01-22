@@ -1,0 +1,78 @@
+// Stats Card Component Styles
+@use 'assets/styles/variables' as *;
+
+.stats-card {
+  padding: 1.25rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+
+  &.primary .stats-icon {
+    background: var(--primary-light);
+    mat-icon { color: var(--primary); }
+  }
+
+  &.success .stats-icon {
+    background: var(--success-light);
+    mat-icon { color: var(--success); }
+  }
+
+  &.warning .stats-icon {
+    background: var(--warning-light);
+    mat-icon { color: var(--warning); }
+  }
+
+  &.info .stats-icon {
+    background: var(--info-light);
+    mat-icon { color: var(--info); }
+  }
+}
+
+.stats-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stats-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.stats-title {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.stats-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.stats-trend {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+
+  &.positive {
+    color: var(--success);
+  }
+
+  &.negative {
+    color: var(--error);
+  }
+}

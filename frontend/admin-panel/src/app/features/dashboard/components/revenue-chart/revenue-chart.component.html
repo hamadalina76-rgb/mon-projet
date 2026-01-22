@@ -1,0 +1,11 @@
+<!-- Revenue Chart Component Template -->
+<mat-card class="revenue-chart-card">
+  <mat-card-header>
+    <mat-card-title>{{ 'analytics.revenue.title' | translate }}</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <div class="chart-container">
+      <canvas baseChart [data]="chartData" [options]="chartOptions" type="line"></canvas>
+    </div>
+  </mat-card-content>
+</mat-card>

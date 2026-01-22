@@ -1,0 +1,14 @@
+<!-- Orders Chart Component Template - Angular 19 -->
+<div class="chart-container">
+  @if (loading()) {
+    <div class="chart-loading">
+      <mat-spinner diameter="32"></mat-spinner>
+    </div>
+  } @else {
+    <canvas baseChart
+      [type]="chartType"
+      [data]="chartData()"
+      [options]="chartOptions">
+    </canvas>
+  }
+</div>

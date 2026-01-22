@@ -1,0 +1,40 @@
+<!-- Audit Logs Component Template -->
+<div class="audit-logs-page">
+  <header class="page-header">
+    <h1>{{ 'monitoring.auditLogs' | translate }}</h1>
+    <button mat-stroked-button (click)="exportLogs()">
+      <mat-icon>download</mat-icon>
+      Exporter
+    </button>
+  </header>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <div class="filters-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Rechercher</mat-label>
+        <input matInput placeholder="Action, utilisateur..." />
+        <mat-icon matPrefix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Type d'action</mat-label>
+        <mat-select>
+          <mat-option value="ALL">Tous</mat-option>
+          <mat-option value="CREATE">Création</mat-option>
+          <mat-option value="UPDATE">Modification</mat-option>
+          <mat-option value="DELETE">Suppression</mat-option>
+          <mat-option value="LOGIN">Connexion</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card>
+
+  <!-- Data Table -->
+  <mat-card class="table-card">
+    <app-data-table
+      [data]="auditLogs"
+      [loading]="loading">
+    </app-data-table>
+  </mat-card>
+</div>

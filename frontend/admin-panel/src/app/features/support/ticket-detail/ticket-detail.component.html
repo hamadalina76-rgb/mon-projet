@@ -1,0 +1,71 @@
+<!-- Ticket Detail Component Template -->
+<div class="ticket-detail-page">
+  <header class="page-header">
+    <div class="header-left">
+      <button mat-icon-button routerLink="/support/tickets">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="ticket-title">
+        <h1>Ticket #{{ ticket?.ticketNumber }}</h1>
+        <span class="ticket-status" [ngClass]="ticket?.status">{{ ticket?.status }}</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button mat-stroked-button (click)="assignToMe()">
+        <mat-icon>person_add</mat-icon>
+        M'assigner
+      </button>
+      <button mat-flat-button color="primary" (click)="resolveTicket()">
+        <mat-icon>check</mat-icon>
+        Marquer résolu
+      </button>
+    </div>
+  </header>
+
+  <div class="ticket-content" *ngIf="ticket">
+    <div class="main-column">
+      <!-- Conversation -->
+      <mat-card class="conversation-card">
+        <div class="messages-list">
+          <div *ngFor="let message of ticket.messages" 
+               class="message" 
+               [ngClass]="{ 'agent': message.isAgent }">
+            <div class="message-header">
+              <span class="sender">{{ message.sender }}</span>
+              <span class="time">{{ message.createdAt | date:'short' }}</span>
+            </div>
+            <div class="message-content">{{ message.content }}</div>
+          </div>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <!-- Response input -->
+        <div class="response-form">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Répondre</mat-label>
+            <textarea matInput [(ngModel)]="responseMessage" rows="3"></textarea>
+          </mat-form-field>
+          <button mat-flat-button color="primary" (click)="sendResponse()">
+            <mat-icon>send</mat-icon>
+            Envoyer
+          </button>
+        </div>
+      </mat-card>
+    </div>
+
+    <div class="side-column">
+      <!-- Ticket Info -->
+      <mat-card class="info-card">
+        <h3>Informations</h3>
+        <!-- Ticket details -->
+      </mat-card>
+
+      <!-- User Info -->
+      <mat-card class="info-card">
+        <h3>Utilisateur</h3>
+        <!-- User details -->
+      </mat-card>
+    </div>
+  </div>
+</div>

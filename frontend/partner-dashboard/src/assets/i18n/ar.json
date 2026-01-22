@@ -1,0 +1,111 @@
+{
+  "COMMON": {
+    "SAVE": "حفظ",
+    "CANCEL": "إلغاء",
+    "DELETE": "حذف",
+    "EDIT": "تعديل",
+    "ADD": "إضافة",
+    "SEARCH": "بحث",
+    "FILTER": "تصفية",
+    "REFRESH": "تحديث",
+    "LOADING": "جاري التحميل...",
+    "NO_DATA": "لا توجد بيانات",
+    "CONFIRM": "تأكيد",
+    "BACK": "رجوع",
+    "NEXT": "التالي",
+    "PREVIOUS": "السابق",
+    "YES": "نعم",
+    "NO": "لا"
+  },
+  "AUTH": {
+    "LOGIN": "تسجيل الدخول",
+    "LOGOUT": "تسجيل الخروج",
+    "REGISTER": "التسجيل",
+    "EMAIL": "البريد الإلكتروني",
+    "PASSWORD": "كلمة المرور",
+    "CONFIRM_PASSWORD": "تأكيد كلمة المرور",
+    "FORGOT_PASSWORD": "نسيت كلمة المرور؟",
+    "REMEMBER_ME": "تذكرني",
+    "LOGIN_SUCCESS": "تم تسجيل الدخول بنجاح",
+    "LOGIN_ERROR": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+    "REGISTER_SUCCESS": "تم التسجيل بنجاح"
+  },
+  "DASHBOARD": {
+    "TITLE": "لوحة التحكم",
+    "WELCOME": "مرحبا",
+    "TODAY_ORDERS": "طلبات اليوم",
+    "TODAY_REVENUE": "إيرادات اليوم",
+    "PENDING_ORDERS": "الطلبات المعلقة",
+    "AVERAGE_RATING": "متوسط التقييم"
+  },
+  "ORDERS": {
+    "TITLE": "الطلبات",
+    "ORDER_NUMBER": "رقم الطلب",
+    "CUSTOMER": "العميل",
+    "STATUS": "الحالة",
+    "TOTAL": "المجموع",
+    "DATE": "التاريخ",
+    "PENDING": "قيد الانتظار",
+    "CONFIRMED": "مؤكد",
+    "PREPARING": "قيد التحضير",
+    "READY": "جاهز",
+    "PICKED_UP": "تم الاستلام",
+    "DELIVERED": "تم التوصيل",
+    "CANCELLED": "ملغى",
+    "ACCEPT": "قبول",
+    "REJECT": "رفض",
+    "MARK_READY": "تحديد كجاهز",
+    "VIEW_DETAILS": "عرض التفاصيل"
+  },
+  "MENU": {
+    "TITLE": "القائمة",
+    "PRODUCTS": "المنتجات",
+    "CATEGORIES": "الفئات",
+    "ADD_PRODUCT": "إضافة منتج",
+    "ADD_CATEGORY": "إضافة فئة",
+    "PRODUCT_NAME": "اسم المنتج",
+    "DESCRIPTION": "الوصف",
+    "PRICE": "السعر",
+    "CATEGORY": "الفئة",
+    "AVAILABLE": "متاح",
+    "UNAVAILABLE": "غير متاح"
+  },
+  "ANALYTICS": {
+    "TITLE": "التحليلات",
+    "OVERVIEW": "نظرة عامة",
+    "SALES_REPORT": "تقرير المبيعات",
+    "REVENUE": "الإيرادات",
+    "ORDERS_COUNT": "عدد الطلبات",
+    "AVERAGE_ORDER": "متوسط الطلب"
+  },
+  "REVIEWS": {
+    "TITLE": "تقييمات العملاء",
+    "AVERAGE_RATING": "متوسط التقييم",
+    "TOTAL_REVIEWS": "إجمالي التقييمات",
+    "REPLY": "رد"
+  },
+  "PROMOTIONS": {
+    "TITLE": "العروض",
+    "ADD_PROMOTION": "إنشاء عرض",
+    "CODE": "رمز العرض",
+    "DISCOUNT": "الخصم",
+    "START_DATE": "تاريخ البداية",
+    "END_DATE": "تاريخ النهاية",
+    "ACTIVE": "نشط",
+    "INACTIVE": "غير نشط"
+  },
+  "PROFILE": {
+    "TITLE": "الملف الشخصي",
+    "BUSINESS_INFO": "معلومات النشاط التجاري",
+    "OPENING_HOURS": "ساعات العمل",
+    "DELIVERY_ZONES": "مناطق التوصيل",
+    "SETTINGS": "الإعدادات"
+  },
+  "FINANCE": {
+    "TITLE": "المالية",
+    "EARNINGS": "الأرباح",
+    "PAYOUTS": "المدفوعات",
+    "BALANCE": "الرصيد",
+    "PENDING_PAYOUT": "دفعة معلقة"
+  }
+}

@@ -1,0 +1,73 @@
+// Sales Report Component Styles
+@use 'assets/styles/variables' as *;
+
+.sales-report-page {
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+}
+
+.filters-card {
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.filters-form {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+
+  mat-form-field {
+    flex: 0 0 200px;
+  }
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.summary-card {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.summary-label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.summary-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.table-card {
+  padding: 0;
+  overflow: hidden;
+
+  table {
+    width: 100%;
+  }
+}

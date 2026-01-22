@@ -1,0 +1,81 @@
+<!-- Performance Metrics Component Template - Angular 19 -->
+@if (loading()) {
+  <div class="loading-container">
+    <mat-spinner diameter="32"></mat-spinner>
+  </div>
+} @else {
+  <div class="metrics-grid">
+    <!-- Prep Time -->
+    <div class="metric-item">
+      <div class="metric-header">
+        <div class="metric-icon prep-time">
+          <mat-icon>timer</mat-icon>
+        </div>
+        <div class="metric-info">
+          <span class="metric-label">Temps de préparation moyen</span>
+          <span class="metric-value">{{ metrics().avgPrepTime }} min</span>
+        </div>
+      </div>
+      <mat-progress-bar 
+        mode="determinate" 
+        [value]="prepTimeProgress()"
+        [color]="isPrepTimeGood() ? 'primary' : 'warn'">
+      </mat-progress-bar>
+      <span class="metric-target">Objectif: {{ metrics().targetPrepTime }} min</span>
+    </div>
+
+    <!-- Acceptance Rate -->
+    <div class="metric-item">
+      <div class="metric-header">
+        <div class="metric-icon acceptance">
+          <mat-icon>check_circle</mat-icon>
+        </div>
+        <div class="metric-info">
+          <span class="metric-label">Taux d'acceptation</span>
+          <span class="metric-value">{{ metrics().acceptanceRate }}%</span>
+        </div>
+      </div>
+      <mat-progress-bar 
+        mode="determinate" 
+        [value]="metrics().acceptanceRate"
+        color="primary">
+      </mat-progress-bar>
+    </div>
+
+    <!-- Completion Rate -->
+    <div class="metric-item">
+      <div class="metric-header">
+        <div class="metric-icon completion">
+          <mat-icon>task_alt</mat-icon>
+        </div>
+        <div class="metric-info">
+          <span class="metric-label">Taux de complétion</span>
+          <span class="metric-value">{{ metrics().completionRate }}%</span>
+        </div>
+      </div>
+      <mat-progress-bar 
+        mode="determinate" 
+        [value]="metrics().completionRate"
+        color="primary">
+      </mat-progress-bar>
+    </div>
+
+    <!-- Customer Satisfaction -->
+    <div class="metric-item">
+      <div class="metric-header">
+        <div class="metric-icon satisfaction">
+          <mat-icon>sentiment_satisfied</mat-icon>
+        </div>
+        <div class="metric-info">
+          <span class="metric-label">Satisfaction client</span>
+          <span class="metric-value">{{ metrics().customerSatisfaction }}/5</span>
+        </div>
+      </div>
+      <mat-progress-bar 
+        mode="determinate" 
+        [value]="satisfactionProgress()"
+        color="accent">
+      </mat-progress-bar>
+    </div>
+  </div>
+}

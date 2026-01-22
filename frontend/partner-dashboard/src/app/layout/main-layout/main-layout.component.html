@@ -1,0 +1,22 @@
+<!-- src/app/layout/main-layout/main-layout.component.html - Angular 19 -->
+<div class="app-layout">
+  <app-sidebar 
+    [collapsed]="sidebarCollapsed()" 
+    (collapsedChange)="onSidebarToggle($event)">
+  </app-sidebar>
+
+  <div class="main-content" [class.collapsed]="sidebarCollapsed()">
+    <app-header [sidebarCollapsed]="sidebarCollapsed()"></app-header>
+    
+    <main class="page-wrapper">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+
+  @if (loadingService.isLoading()) {
+    <app-loading-spinner 
+      [overlay]="true"
+      message="Chargement...">
+    </app-loading-spinner>
+  }
+</div>

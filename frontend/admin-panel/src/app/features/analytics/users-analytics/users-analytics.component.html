@@ -1,0 +1,42 @@
+<!-- Users Analytics Component Template -->
+<div class="users-analytics-page">
+  <header class="page-header">
+    <h1>{{ 'analytics.users' | translate }}</h1>
+    <div class="header-actions">
+      <mat-button-toggle-group [value]="period">
+        <mat-button-toggle value="week">Semaine</mat-button-toggle>
+        <mat-button-toggle value="month">Mois</mat-button-toggle>
+        <mat-button-toggle value="year">Année</mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+  </header>
+
+  <!-- Stats Cards -->
+  <div class="stats-row">
+    <!-- User stats cards -->
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-grid">
+    <mat-card class="chart-card">
+      <h3>Nouveaux utilisateurs</h3>
+      <div class="chart-container">
+        <!-- Chart component here -->
+      </div>
+    </mat-card>
+
+    <mat-card class="chart-card">
+      <h3>Répartition par type</h3>
+      <div class="chart-container">
+        <!-- Pie chart here -->
+      </div>
+    </mat-card>
+
+    <mat-card class="chart-card">
+      <h3>Rétention utilisateurs</h3>
+      <div class="chart-container">
+        <!-- Chart here -->
+      </div>
+    </mat-card>
+  </div>
+</div>

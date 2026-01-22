@@ -1,0 +1,48 @@
+<!-- Orders List Component Template - Angular 19 -->
+<div class="orders-page">
+  <header class="page-header">
+    <h1>{{ 'orders.title' | translate }}</h1>
+    <button mat-stroked-button (click)="loadOrders()">
+      <mat-icon>refresh</mat-icon>
+      {{ 'common.refresh' | translate }}
+    </button>
+  </header>
+
+  <!-- Status Tabs -->
+  <mat-tab-group (selectedTabChange)="selectedStatus.set(statusTabs()[$event.index].value)">
+    @for (tab of statusTabs(); track tab.value) {
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span [matBadge]="tab.count" matBadgeOverlap="false" [matBadgeHidden]="tab.count === 0">
+            {{ tab.label }}
+          </span>
+        </ng-template>
+      </mat-tab>
+    }
+  </mat-tab-group>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <app-loading-spinner></app-loading-spinner>
+  }
+
+  <!-- Orders Grid -->
+  @if (!loading()) {
+    <div class="orders-grid">
+      @for (order of filteredOrders(); track order.id) {
+        <app-order-card 
+          [order]="order"
+          (confirm)="confirmOrder($event)"
+          (startPreparing)="startPreparing($event)"
+          (markReady)="markReady($event)">
+        </app-order-card>
+      } @empty {
+        <app-empty-state
+          icon="receipt_long"
+          title="Aucune commande"
+          message="Aucune commande dans cette catégorie">
+        </app-empty-state>
+      }
+    </div>
+  }
+</div>

@@ -1,0 +1,21 @@
+// src/app/layout/main-layout/main-layout.component.scss
+@use 'assets/styles/mixins' as *;
+
+.app-layout {
+  min-height: 100vh;
+  background: $background-default;
+}
+
+.main-content {
+  margin-left: $sidebar-width;
+  transition: margin-left $transition-normal;
+
+  &.collapsed {
+    margin-left: $sidebar-collapsed-width;
+  }
+}
+
+.page-wrapper {
+  padding-top: $header-height;
+  min-height: calc(100vh - #{$header-height});
+}

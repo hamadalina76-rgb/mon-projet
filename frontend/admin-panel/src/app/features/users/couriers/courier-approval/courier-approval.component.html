@@ -1,0 +1,46 @@
+<!-- Courier Approval Component Template -->
+<div class="courier-approval-page">
+  <header class="page-header">
+    <div class="header-left">
+      <button mat-icon-button routerLink="/users/couriers">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>Approbation du livreur</h1>
+    </div>
+  </header>
+
+  <div class="approval-content" *ngIf="courier">
+    <!-- Personal Info -->
+    <mat-card class="section-card">
+      <h3>Informations personnelles</h3>
+      <mat-divider></mat-divider>
+      <!-- Personal info fields -->
+    </mat-card>
+
+    <!-- Documents -->
+    <mat-card class="section-card">
+      <h3>Documents</h3>
+      <mat-divider></mat-divider>
+      <!-- Documents grid -->
+    </mat-card>
+
+    <!-- Vehicle Info -->
+    <mat-card class="section-card">
+      <h3>Véhicule</h3>
+      <mat-divider></mat-divider>
+      <!-- Vehicle info -->
+    </mat-card>
+
+    <!-- Actions -->
+    <div class="actions-bar">
+      <button mat-stroked-button color="warn" (click)="rejectCourier()">
+        <mat-icon>close</mat-icon>
+        Rejeter
+      </button>
+      <button mat-flat-button color="primary" (click)="approveCourier()">
+        <mat-icon>check</mat-icon>
+        Approuver
+      </button>
+    </div>
+  </div>
+</div>

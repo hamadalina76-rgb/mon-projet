@@ -1,0 +1,128 @@
+// Ticket Detail Component Styles
+@use '../../../../assets/styles/variables' as v;
+
+.ticket-detail-page {
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .ticket-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    .ticket-status {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      background: var(--bg-secondary);
+
+      &.OPEN { background: var(--error-light); color: var(--error); }
+      &.IN_PROGRESS { background: var(--warning-light); color: var(--warning); }
+      &.RESOLVED { background: var(--success-light); color: var(--success); }
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+}
+
+.ticket-content {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 1.5rem;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.main-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.conversation-card {
+  padding: 1.5rem;
+}
+
+.messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.message {
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  max-width: 80%;
+
+  &.agent {
+    align-self: flex-end;
+    background: var(--primary-light);
+  }
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+
+  .sender {
+    font-weight: 500;
+  }
+
+  .time {
+    color: var(--text-secondary);
+  }
+}
+
+.response-form {
+  padding-top: 1rem;
+
+  .full-width {
+    width: 100%;
+  }
+
+  button {
+    float: right;
+  }
+}
+
+.info-card {
+  padding: 1rem;
+
+  h3 {
+    margin: 0 0 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+}

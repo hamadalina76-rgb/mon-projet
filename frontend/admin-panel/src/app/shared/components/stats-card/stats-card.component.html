@@ -1,0 +1,16 @@
+<!-- Stats Card Component Template -->
+<mat-card class="stats-card" [attr.data-color]="color">
+  <div class="stats-content">
+    <div class="stats-info">
+      <span class="stats-label">{{ label }}</span>
+      <span class="stats-value">{{ value }}</span>
+      <div class="stats-trend" *ngIf="trend" [class.positive]="trend > 0" [class.negative]="trend < 0">
+        <mat-icon>{{ trend > 0 ? 'trending_up' : 'trending_down' }}</mat-icon>
+        <span>{{ trend > 0 ? '+' : '' }}{{ trend }}%</span>
+      </div>
+    </div>
+    <div class="stats-icon">
+      <mat-icon>{{ icon }}</mat-icon>
+    </div>
+  </div>
+</mat-card>

@@ -1,0 +1,74 @@
+<!-- Menu List Component Template - Angular 19 -->
+<div class="menu-page">
+  <header class="page-header">
+    <h1>{{ 'menu.title' | translate }}</h1>
+    <div class="header-actions">
+      <button mat-stroked-button routerLink="categories">
+        <mat-icon>category</mat-icon>
+        Gérer catégories
+      </button>
+      <button mat-flat-button color="primary" routerLink="product/new">
+        <mat-icon>add</mat-icon>
+        Ajouter produit
+      </button>
+    </div>
+  </header>
+
+  <div class="menu-content">
+    <!-- Categories Sidebar -->
+    <div class="categories-sidebar">
+      <h3>Catégories</h3>
+      <div 
+        class="categories-list"
+        cdkDropList
+        (cdkDropListDropped)="onCategoryDrop($event)">
+        @for (category of categories(); track category.id) {
+          <div 
+            class="category-item"
+            [class.selected]="selectedCategoryId() === category.id"
+            (click)="loadProducts(category.id)"
+            cdkDrag>
+            <mat-icon cdkDragHandle>drag_indicator</mat-icon>
+            <span class="category-name">{{ category.name }}</span>
+            <span class="category-count">{{ category.productsCount }}</span>
+          </div>
+        } @empty {
+          <div class="empty-categories">
+            <p>Aucune catégorie</p>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Products Grid -->
+    <div class="products-section">
+      <div class="products-header">
+        <span class="products-count">{{ productsCount() }} produits</span>
+        <mat-slide-toggle 
+          [checked]="showUnavailable()"
+          (change)="showUnavailable.set($event.checked)">
+          Afficher indisponibles
+        </mat-slide-toggle>
+      </div>
+
+      <div class="products-grid">
+        @for (product of filteredProducts(); track product.id) {
+          <app-product-card
+            [product]="product"
+            (edit)="editProduct($event)"
+            (toggleAvailability)="toggleProductAvailability($event)"
+            (delete)="deleteProduct($event)">
+          </app-product-card>
+        } @empty {
+          <div class="empty-products">
+            <mat-icon>inventory_2</mat-icon>
+            <p>Aucun produit dans cette catégorie</p>
+            <button mat-flat-button color="primary" routerLink="product/new">
+              Ajouter un produit
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

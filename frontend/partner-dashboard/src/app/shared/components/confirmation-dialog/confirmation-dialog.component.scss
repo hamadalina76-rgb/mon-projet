@@ -1,0 +1,114 @@
+// src/app/shared/components/confirmation-dialog/confirmation-dialog.component.scss
+@use 'assets/styles/variables' as *;
+
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba($black, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: $z-modal;
+}
+
+.dialog {
+  background: $white;
+  border-radius: $border-radius-lg;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: $shadow-xl;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-lg;
+  border-bottom: 1px solid $gray-200;
+
+  .material-icons {
+    font-size: 24px;
+
+    &.danger {
+      color: $error-color;
+    }
+
+    &.warning {
+      color: $warning-color;
+    }
+
+    &.info {
+      color: $info-color;
+    }
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+}
+
+.dialog-body {
+  padding: $spacing-lg;
+
+  p {
+    margin: 0;
+    color: $text-secondary;
+  }
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-sm;
+  padding: $spacing-md $spacing-lg;
+  border-top: 1px solid $gray-200;
+}
+
+.btn {
+  padding: $spacing-sm $spacing-md;
+  border-radius: $border-radius-md;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+
+  &-secondary {
+    background: $gray-100;
+    color: $text-primary;
+
+    &:hover {
+      background: $gray-200;
+    }
+  }
+
+  &-danger {
+    background: $error-color;
+    color: $white;
+
+    &:hover {
+      background: darken($error-color, 10%);
+    }
+  }
+
+  &-warning {
+    background: $warning-color;
+    color: $text-primary;
+
+    &:hover {
+      background: darken($warning-color, 10%);
+    }
+  }
+
+  &-info {
+    background: $info-color;
+    color: $white;
+
+    &:hover {
+      background: darken($info-color, 10%);
+    }
+  }
+}

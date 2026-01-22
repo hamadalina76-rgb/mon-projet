@@ -1,0 +1,51 @@
+<!-- Partner Detail Component Template -->
+<div class="partner-detail-page">
+  <header class="page-header">
+    <div class="header-left">
+      <button mat-icon-button routerLink="/partners">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>Détails du partenaire</h1>
+    </div>
+    <div class="header-actions">
+      <!-- Action buttons -->
+    </div>
+  </header>
+
+  <div class="partner-content" *ngIf="partner">
+    <!-- Partner info card -->
+    <mat-card class="info-card">
+      <div class="partner-header">
+        <img [src]="partner.logo" alt="Logo" class="partner-logo" />
+        <div class="partner-info">
+          <h2>{{ partner.name }}</h2>
+          <span class="partner-type">{{ partner.type }}</span>
+        </div>
+      </div>
+    </mat-card>
+
+    <!-- Tabs -->
+    <mat-card class="tabs-card">
+      <mat-tab-group>
+        <mat-tab label="Informations">
+          <!-- General info -->
+        </mat-tab>
+        <mat-tab label="Menu / Produits">
+          <!-- Products list -->
+        </mat-tab>
+        <mat-tab label="Commandes">
+          <!-- Orders list -->
+        </mat-tab>
+        <mat-tab label="Documents">
+          <!-- Documents list -->
+        </mat-tab>
+        <mat-tab label="Paiements">
+          <!-- Payment history -->
+        </mat-tab>
+        <mat-tab label="Avis">
+          <!-- Reviews list -->
+        </mat-tab>
+      </mat-tab-group>
+    </mat-card>
+  </div>
+</div>

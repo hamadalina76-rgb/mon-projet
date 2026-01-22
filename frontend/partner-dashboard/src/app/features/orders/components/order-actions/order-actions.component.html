@@ -1,0 +1,37 @@
+<!-- Order Actions Component Template - Angular 19 -->
+<div class="order-actions">
+  <button mat-icon-button [matMenuTriggerFor]="actionsMenu">
+    <mat-icon>more_vert</mat-icon>
+  </button>
+
+  <mat-menu #actionsMenu="matMenu">
+    <button mat-menu-item (click)="print.emit()">
+      <mat-icon>print</mat-icon>
+      <span>Imprimer</span>
+    </button>
+    @if (isPending()) {
+      <button mat-menu-item (click)="cancel.emit()">
+        <mat-icon>cancel</mat-icon>
+        <span>Refuser</span>
+      </button>
+    }
+  </mat-menu>
+
+  @if (isPending()) {
+    <button mat-flat-button color="primary" (click)="confirm.emit()">
+      Accepter
+    </button>
+  }
+
+  @if (isConfirmed()) {
+    <button mat-flat-button color="primary" (click)="startPreparing.emit()">
+      Préparer
+    </button>
+  }
+
+  @if (isPreparing()) {
+    <button mat-flat-button color="primary" (click)="markReady.emit()">
+      Prêt
+    </button>
+  }
+</div>

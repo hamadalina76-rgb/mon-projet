@@ -1,0 +1,32 @@
+// Confirmation Dialog Component Styles
+@import 'variables';
+
+.confirmation-dialog {
+  text-align: center;
+  padding: 1rem;
+}
+
+.dialog-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+}
+
+[data-type='info'] .dialog-icon {
+  background: rgba(79, 70, 229, 0.1);
+  color: #4f46e5;
+}
+
+[data-type='warning'] .dialog-icon {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+[data-type='danger'] .dialog-icon {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}

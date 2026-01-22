@@ -1,0 +1,55 @@
+<!-- Order Card Component Template - Angular 19 -->
+<mat-card class="order-card" [class]="order().status">
+  <div class="card-header">
+    <div class="order-info">
+      <span class="order-number">#{{ order().orderNumber }}</span>
+      <span class="order-time">{{ order().createdAt | timeAgo }}</span>
+    </div>
+    <app-order-status-badge [status]="order().status"></app-order-status-badge>
+  </div>
+
+  <div class="card-body">
+    <div class="customer">
+      <mat-icon>person</mat-icon>
+      <span>{{ order().customer.name }}</span>
+    </div>
+
+    <div class="items-summary">
+      @for (item of order().items.slice(0, 3); track item.productId) {
+        <span>{{ item.quantity }}x {{ item.productName }}</span>
+      }
+      @if (order().items.length > 3) {
+        <span class="more-items">+{{ order().items.length - 3 }} autres</span>
+      }
+    </div>
+
+    <div class="order-total">
+      <span>Total</span>
+      <span class="total-value">{{ order().total | currency:'MAD' }}</span>
+    </div>
+  </div>
+
+  <div class="card-actions">
+    <button mat-stroked-button [routerLink]="['/orders', order().id]">
+      Voir détails
+    </button>
+
+    @if (isPending()) {
+      <button mat-flat-button color="primary" (click)="onConfirm()">
+        Accepter
+      </button>
+    }
+
+    @if (isConfirmed()) {
+      <button mat-flat-button color="primary" (click)="onStartPreparing()">
+        Préparer
+      </button>
+    }
+
+    @if (isPreparing()) {
+      <button mat-flat-button color="primary" (click)="onMarkReady()">
+        Prêt
+      </button>
+    }
+  </div>
+</mat-card>

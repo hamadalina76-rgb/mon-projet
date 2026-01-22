@@ -1,0 +1,58 @@
+<!-- Partners List Component Template -->
+<div class="partners-list-page">
+  <header class="page-header">
+    <h1>{{ 'partners.title' | translate }}</h1>
+    <div class="header-actions">
+      <button mat-stroked-button routerLink="pending">
+        <mat-icon>pending_actions</mat-icon>
+        En attente d'approbation
+      </button>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <!-- Partner stats cards -->
+  </div>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <div class="filters-row">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'common.search' | translate }}</mat-label>
+        <input matInput [(ngModel)]="searchTerm" />
+        <mat-icon matPrefix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Type</mat-label>
+        <mat-select>
+          <mat-option value="ALL">Tous</mat-option>
+          <mat-option value="RESTAURANT">Restaurant</mat-option>
+          <mat-option value="GROCERY">Épicerie</mat-option>
+          <mat-option value="PHARMACY">Pharmacie</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'common.status' | translate }}</mat-label>
+        <mat-select>
+          <mat-option value="ALL">Tous</mat-option>
+          <mat-option value="ACTIVE">Actif</mat-option>
+          <mat-option value="PENDING">En attente</mat-option>
+          <mat-option value="SUSPENDED">Suspendu</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card>
+
+  <!-- Data Table -->
+  <mat-card class="table-card">
+    <app-data-table
+      [data]="partners"
+      [loading]="loading"
+      [totalItems]="totalPartners"
+      [pageSize]="pageSize">
+    </app-data-table>
+  </mat-card>
+</div>

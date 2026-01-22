@@ -1,0 +1,69 @@
+// src/app/layout/auth-layout/auth-layout.component.scss
+@use 'assets/styles/mixins' as *;
+
+.auth-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.auth-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: $spacing-2xl;
+  max-width: 480px;
+  background: $white;
+
+  @include mobile {
+    max-width: 100%;
+    padding: $spacing-lg;
+  }
+}
+
+.auth-brand {
+  text-align: center;
+  margin-bottom: $spacing-2xl;
+
+  .logo-text {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: $primary-color;
+    margin-bottom: $spacing-md;
+  }
+
+  .logo {
+    height: 48px;
+    margin-bottom: $spacing-md;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: $text-primary;
+    margin: 0;
+  }
+}
+
+.auth-content {
+  width: 100%;
+}
+
+.auth-bg {
+  flex: 1;
+  background: url('/assets/images/auth-bg.jpg') center/cover no-repeat;
+  position: relative;
+
+  @include mobile {
+    display: none;
+  }
+
+  .overlay {
+    @include absolute-fill;
+    background: linear-gradient(
+      135deg,
+      rgba($primary-color, 0.9),
+      rgba($secondary-color, 0.9)
+    );
+  }
+}

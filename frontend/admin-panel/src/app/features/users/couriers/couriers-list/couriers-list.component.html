@@ -1,0 +1,48 @@
+<!-- Couriers List Component Template -->
+<div class="couriers-list-page">
+  <header class="page-header">
+    <h1>{{ 'users.couriers.title' | translate }}</h1>
+    <div class="header-actions">
+      <button mat-flat-button color="primary" routerLink="pending">
+        <mat-icon>pending_actions</mat-icon>
+        {{ 'users.couriers.pendingApproval' | translate }}
+      </button>
+    </div>
+  </header>
+
+  <!-- Stats Cards -->
+  <div class="stats-row">
+    <!-- Courier stats -->
+  </div>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <div class="filters-row">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'common.search' | translate }}</mat-label>
+        <input matInput [(ngModel)]="searchTerm" />
+        <mat-icon matPrefix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'common.status' | translate }}</mat-label>
+        <mat-select>
+          <mat-option value="ALL">{{ 'common.all' | translate }}</mat-option>
+          <mat-option value="ONLINE">{{ 'users.couriers.online' | translate }}</mat-option>
+          <mat-option value="OFFLINE">Hors ligne</mat-option>
+          <mat-option value="ON_DELIVERY">{{ 'users.couriers.onDelivery' | translate }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card>
+
+  <!-- Data Table -->
+  <mat-card class="table-card">
+    <app-data-table
+      [data]="couriers"
+      [loading]="loading"
+      [totalItems]="totalCouriers"
+      [pageSize]="pageSize">
+    </app-data-table>
+  </mat-card>
+</div>

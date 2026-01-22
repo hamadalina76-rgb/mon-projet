@@ -1,0 +1,142 @@
+<!-- Order Detail Component Template - Angular 19 -->
+<div class="order-detail-page">
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="48"></mat-spinner>
+    </div>
+  } @else if (order()) {
+    <header class="page-header">
+      <div class="header-left">
+        <button mat-icon-button routerLink="/orders">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <div class="order-title">
+          <h1>Commande #{{ order()?.orderNumber }}</h1>
+          <app-order-status-badge [status]="order()?.status"></app-order-status-badge>
+        </div>
+      </div>
+      <div class="header-actions">
+        @if (order()?.status === 'PENDING') {
+          <button mat-stroked-button color="warn" (click)="cancelOrder()">
+            Refuser
+          </button>
+          <button mat-flat-button color="primary" (click)="confirmOrder()">
+            Accepter
+          </button>
+        }
+        @if (order()?.status === 'CONFIRMED') {
+          <button mat-flat-button color="primary" (click)="startPreparing()">
+            Commencer préparation
+          </button>
+        }
+        @if (order()?.status === 'PREPARING') {
+          <button mat-flat-button color="primary" (click)="markReady()">
+            Marquer prêt
+          </button>
+        }
+      </div>
+    </header>
+
+    <div class="order-content">
+      <div class="content-left">
+        <!-- Order Items -->
+        <mat-card class="items-card">
+          <h3>Articles commandés</h3>
+          <div class="items-list">
+            @for (item of order()?.items; track item.id) {
+              <div class="item-row">
+                <div class="item-quantity">{{ item.quantity }}x</div>
+                <div class="item-details">
+                  <span class="item-name">{{ item.productName }}</span>
+                  @if (item.options?.length) {
+                    <span class="item-options">{{ item.options | json }}</span>
+                  }
+                  @if (item.notes) {
+                    <span class="item-notes">Note: {{ item.notes }}</span>
+                  }
+                </div>
+                <div class="item-price">{{ item.price * item.quantity | currency:'MAD' }}</div>
+              </div>
+            }
+          </div>
+
+          <mat-divider></mat-divider>
+
+          <div class="order-totals">
+            <div class="total-row">
+              <span>Sous-total</span>
+              <span>{{ order()?.subtotal | currency:'MAD' }}</span>
+            </div>
+            <div class="total-row">
+              <span>Frais de livraison</span>
+              <span>{{ order()?.deliveryFee | currency:'MAD' }}</span>
+            </div>
+            <div class="total-row total">
+              <span>Total</span>
+              <span>{{ order()?.total | currency:'MAD' }}</span>
+            </div>
+          </div>
+        </mat-card>
+
+        <!-- Notes -->
+        @if (order()?.notes) {
+          <mat-card class="notes-card">
+            <h3>Notes du client</h3>
+            <p>{{ order()?.notes }}</p>
+          </mat-card>
+        }
+      </div>
+
+      <div class="content-right">
+        <!-- Customer Info -->
+        <mat-card class="info-card">
+          <h3>Client</h3>
+          <div class="info-row">
+            <mat-icon>person</mat-icon>
+            <span>{{ order()?.customer?.name }}</span>
+          </div>
+          <div class="info-row">
+            <mat-icon>phone</mat-icon>
+            <a [href]="'tel:' + order()?.customer?.phone">{{ order()?.customer?.phone }}</a>
+          </div>
+        </mat-card>
+
+        <!-- Payment Info -->
+        <mat-card class="info-card">
+          <h3>Paiement</h3>
+          <div class="info-row">
+            <mat-icon>payment</mat-icon>
+            <span>{{ order()?.paymentMethod }}</span>
+          </div>
+          <div class="info-row">
+            <mat-icon>check_circle</mat-icon>
+            <span>{{ order()?.paymentStatus }}</span>
+          </div>
+        </mat-card>
+
+        <!-- Timeline -->
+        <mat-card class="timeline-card">
+          <h3>Historique</h3>
+          <div class="timeline">
+            <div class="timeline-item">
+              <div class="timeline-dot"></div>
+              <div class="timeline-content">
+                <span class="timeline-label">Commande reçue</span>
+                <span class="timeline-time">{{ order()?.createdAt | date:'HH:mm' }}</span>
+              </div>
+            </div>
+            @if (order()?.confirmedAt) {
+              <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                  <span class="timeline-label">Commande confirmée</span>
+                  <span class="timeline-time">{{ order()?.confirmedAt | date:'HH:mm' }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </mat-card>
+      </div>
+    </div>
+  }
+</div>

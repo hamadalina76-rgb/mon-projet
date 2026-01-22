@@ -1,0 +1,3 @@
+class WebsocketService {
+  void connect() {}
+}

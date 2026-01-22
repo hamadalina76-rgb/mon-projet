@@ -1,0 +1,65 @@
+<!-- src/app/shared/components/header/header.component.html - Angular 19 -->
+<header class="header" [class.collapsed]="sidebarCollapsed()">
+  <div class="header-left">
+    <h1 class="page-title">
+      <ng-content></ng-content>
+    </h1>
+  </div>
+
+  <div class="header-right">
+    <!-- Notifications -->
+    <div class="header-action">
+      <button class="icon-btn" (click)="toggleNotifications()">
+        <span class="material-icons">notifications</span>
+        <span class="notification-badge">3</span>
+      </button>
+
+      @if (showNotifications()) {
+        <div class="dropdown notifications-dropdown">
+          <div class="dropdown-header">
+            <h4>Notifications</h4>
+            <a href="#">Tout marquer comme lu</a>
+          </div>
+          <div class="dropdown-body">
+            <div class="notification-item unread">
+              <span class="material-icons">shopping_bag</span>
+              <div class="notification-content">
+                <p>Nouvelle commande #12345</p>
+                <span class="time">Il y a 2 min</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- User Menu -->
+    <div class="header-action">
+      <button class="user-btn" (click)="toggleUserMenu()">
+        <div class="user-avatar">
+          <span>{{ authService.currentUser()?.firstName?.charAt(0) }}</span>
+        </div>
+        <span class="user-name">{{ authService.currentUser()?.firstName }}</span>
+        <span class="material-icons">expand_more</span>
+      </button>
+
+      @if (showUserMenu()) {
+        <div class="dropdown user-dropdown">
+          <a routerLink="/profile" class="dropdown-item">
+            <span class="material-icons">person</span>
+            Mon profil
+          </a>
+          <a routerLink="/profile/settings" class="dropdown-item">
+            <span class="material-icons">settings</span>
+            Paramètres
+          </a>
+          <hr />
+          <button class="dropdown-item" (click)="logout()">
+            <span class="material-icons">logout</span>
+            Déconnexion
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+</header>

@@ -1,0 +1,80 @@
+<!-- Category Manager Component Template - Angular 19 -->
+<div class="category-manager-page">
+  <header class="page-header">
+    <div class="header-left">
+      <button mat-icon-button routerLink="/menu">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>Gérer les catégories</h1>
+    </div>
+    <button mat-flat-button color="primary" (click)="showAddForm()">
+      <mat-icon>add</mat-icon>
+      Nouvelle catégorie
+    </button>
+  </header>
+
+  <div class="content-grid">
+    <!-- Categories List -->
+    <mat-card class="categories-card">
+      <div 
+        class="categories-list"
+        cdkDropList
+        (cdkDropListDropped)="onDrop($event)">
+        @for (category of categories(); track category.id) {
+          <div class="category-item" cdkDrag>
+            <mat-icon cdkDragHandle class="drag-handle">drag_indicator</mat-icon>
+            <div class="category-info">
+              <span class="category-name">{{ category.name }}</span>
+              <span class="category-count">{{ category.productsCount }} produits</span>
+            </div>
+            <div class="category-actions">
+              <button mat-icon-button (click)="editCategory(category)">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button (click)="deleteCategory(category.id)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+        } @empty {
+          <div class="no-categories">
+            <mat-icon>category</mat-icon>
+            <p>Aucune catégorie</p>
+          </div>
+        }
+      </div>
+    </mat-card>
+
+    <!-- Category Form -->
+    @if (showForm()) {
+      <mat-card class="form-card">
+        <h3>{{ editingId() ? 'Modifier catégorie' : 'Nouvelle catégorie' }}</h3>
+
+        <form [formGroup]="categoryForm" (ngSubmit)="saveCategory()">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Nom de la catégorie</mat-label>
+            <input matInput formControlName="name" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Description (optionnel)</mat-label>
+            <textarea matInput formControlName="description" rows="3"></textarea>
+          </mat-form-field>
+
+          <div class="form-actions">
+            <button mat-stroked-button type="button" (click)="cancel()">
+              Annuler
+            </button>
+            <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+              @if (loading()) {
+                <mat-spinner diameter="20"></mat-spinner>
+              } @else {
+                {{ editingId() ? 'Enregistrer' : 'Créer' }}
+              }
+            </button>
+          </div>
+        </form>
+      </mat-card>
+    }
+  </div>
+</div>

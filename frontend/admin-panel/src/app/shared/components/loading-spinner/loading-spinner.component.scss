@@ -1,0 +1,28 @@
+// Loading Spinner Component Styles
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+
+  &.overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.8);
+    z-index: 1000;
+  }
+
+  &.fullscreen {
+    position: fixed;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 9999;
+  }
+}
+
+.loading-message {
+  color: var(--text-secondary);
+  margin: 0;
+}

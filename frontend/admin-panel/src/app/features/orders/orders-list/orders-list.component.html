@@ -1,0 +1,63 @@
+<!-- Orders List Component Template -->
+<div class="orders-list-page">
+  <header class="page-header">
+    <h1>{{ 'orders.title' | translate }}</h1>
+    <div class="header-actions">
+      <button mat-flat-button color="primary" routerLink="live">
+        <mat-icon>visibility</mat-icon>
+        Commandes en cours
+      </button>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <!-- Order stats cards -->
+  </div>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <div class="filters-row">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'common.search' | translate }}</mat-label>
+        <input matInput [(ngModel)]="searchTerm" placeholder="N° commande, client..." />
+        <mat-icon matPrefix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'common.status' | translate }}</mat-label>
+        <mat-select [(value)]="statusFilter">
+          <mat-option value="ALL">Tous</mat-option>
+          <mat-option value="PENDING">En attente</mat-option>
+          <mat-option value="CONFIRMED">Confirmée</mat-option>
+          <mat-option value="PREPARING">En préparation</mat-option>
+          <mat-option value="READY">Prête</mat-option>
+          <mat-option value="PICKED_UP">Récupérée</mat-option>
+          <mat-option value="DELIVERING">En livraison</mat-option>
+          <mat-option value="DELIVERED">Livrée</mat-option>
+          <mat-option value="CANCELLED">Annulée</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Période</mat-label>
+        <mat-select>
+          <mat-option value="today">Aujourd'hui</mat-option>
+          <mat-option value="week">Cette semaine</mat-option>
+          <mat-option value="month">Ce mois</mat-option>
+          <mat-option value="custom">Personnalisé</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card>
+
+  <!-- Data Table -->
+  <mat-card class="table-card">
+    <app-data-table
+      [data]="orders"
+      [loading]="loading"
+      [totalItems]="totalOrders"
+      [pageSize]="pageSize">
+    </app-data-table>
+  </mat-card>
+</div>

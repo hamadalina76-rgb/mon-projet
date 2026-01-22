@@ -1,0 +1,41 @@
+<!-- Product Card Component Template - Angular 19 -->
+<mat-card class="product-card" [class.unavailable]="!isAvailable()">
+  <div class="product-image">
+    <img [src]="product().image || 'assets/images/placeholder-product.png'" [alt]="product().name" />
+    @if (!isAvailable()) {
+      <div class="availability-badge">
+        Indisponible
+      </div>
+    }
+  </div>
+
+  <div class="product-content">
+    <h4 class="product-name">{{ product().name }}</h4>
+    @if (product().description) {
+      <p class="product-description">{{ product().description }}</p>
+    }
+    <div class="product-price">{{ priceFormatted() }}</div>
+  </div>
+
+  <div class="product-actions">
+    <mat-slide-toggle 
+      [checked]="isAvailable()"
+      (change)="onToggleAvailability()">
+    </mat-slide-toggle>
+
+    <button mat-icon-button [matMenuTriggerFor]="productMenu">
+      <mat-icon>more_vert</mat-icon>
+    </button>
+
+    <mat-menu #productMenu="matMenu">
+      <button mat-menu-item (click)="onEdit()">
+        <mat-icon>edit</mat-icon>
+        <span>Modifier</span>
+      </button>
+      <button mat-menu-item (click)="onDelete()">
+        <mat-icon>delete</mat-icon>
+        <span>Supprimer</span>
+      </button>
+    </mat-menu>
+  </div>
+</mat-card>

@@ -1,0 +1,36 @@
+<!-- Customer Detail Component Template -->
+<div class="customer-detail-page">
+  <header class="page-header">
+    <div class="header-left">
+      <button mat-icon-button routerLink="/users/customers">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>Détails du client</h1>
+    </div>
+    <div class="header-actions">
+      <!-- Action buttons -->
+    </div>
+  </header>
+
+  <div class="customer-content" *ngIf="customer">
+    <!-- Customer info card -->
+    <mat-card class="info-card">
+      <!-- Customer information -->
+    </mat-card>
+
+    <!-- Tabs -->
+    <mat-card class="tabs-card">
+      <mat-tab-group>
+        <mat-tab label="Commandes">
+          <!-- Orders list -->
+        </mat-tab>
+        <mat-tab label="Adresses">
+          <!-- Addresses list -->
+        </mat-tab>
+        <mat-tab label="Historique">
+          <!-- Activity history -->
+        </mat-tab>
+      </mat-tab-group>
+    </mat-card>
+  </div>
+</div>
