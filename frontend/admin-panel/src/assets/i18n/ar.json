@@ -1,0 +1,324 @@
+{
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "confirm": "تأكيد",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "view": "عرض",
+    "search": "بحث",
+    "filter": "تصفية",
+    "export": "تصدير",
+    "import": "استيراد",
+    "refresh": "تحديث",
+    "loading": "جاري التحميل...",
+    "noData": "لا توجد بيانات",
+    "actions": "إجراءات",
+    "status": "الحالة",
+    "date": "التاريخ",
+    "all": "الكل",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "pending": "قيد الانتظار",
+    "approved": "موافق عليه",
+    "rejected": "مرفوض",
+    "yes": "نعم",
+    "no": "لا"
+  },
+  "nav": {
+    "dashboard": "لوحة التحكم",
+    "users": "المستخدمين",
+    "customers": "العملاء",
+    "couriers": "السعاة",
+    "admins": "المسؤولين",
+    "partners": "الشركاء",
+    "orders": "الطلبات",
+    "payments": "المدفوعات",
+    "transactions": "المعاملات",
+    "payouts": "التحويلات",
+    "refunds": "المبالغ المستردة",
+    "promotions": "العروض",
+    "reviews": "التقييمات",
+    "support": "الدعم",
+    "zones": "المناطق",
+    "analytics": "التحليلات",
+    "overview": "نظرة عامة",
+    "revenue": "الإيرادات",
+    "reports": "التقارير",
+    "notifications": "الإشعارات",
+    "settings": "الإعدادات",
+    "monitoring": "المراقبة"
+  },
+  "header": {
+    "systemAlerts": "تنبيهات النظام",
+    "noAlerts": "لا توجد تنبيهات",
+    "notifications": "الإشعارات",
+    "noNotifications": "لا توجد إشعارات",
+    "viewAll": "عرض الكل",
+    "profile": "الملف الشخصي",
+    "settings": "الإعدادات",
+    "logout": "تسجيل الخروج"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "loginButton": "دخول",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "rememberMe": "تذكرني",
+    "invalidCredentials": "بيانات اعتماد غير صالحة",
+    "sessionExpired": "انتهت جلستك، يرجى تسجيل الدخول مرة أخرى"
+  },
+  "dashboard": {
+    "title": "لوحة التحكم",
+    "totalOrders": "إجمالي الطلبات",
+    "totalRevenue": "إجمالي الإيرادات",
+    "activeUsers": "المستخدمين النشطين",
+    "activePartners": "الشركاء النشطين",
+    "activeCouriers": "السعاة النشطين",
+    "pendingApprovals": "الموافقات المعلقة",
+    "recentOrders": "الطلبات الأخيرة",
+    "topPartners": "أفضل الشركاء",
+    "systemHealth": "حالة النظام"
+  },
+  "users": {
+    "title": "إدارة المستخدمين",
+    "customers": {
+      "title": "العملاء",
+      "totalCustomers": "إجمالي العملاء",
+      "newThisMonth": "الجدد هذا الشهر",
+      "activeToday": "النشطين اليوم"
+    },
+    "couriers": {
+      "title": "السعاة",
+      "totalCouriers": "إجمالي السعاة",
+      "online": "متصل",
+      "onDelivery": "في التوصيل",
+      "pendingApproval": "قيد الموافقة"
+    },
+    "admins": {
+      "title": "المسؤولين",
+      "addAdmin": "إضافة مسؤول",
+      "role": "الدور",
+      "permissions": "الصلاحيات",
+      "lastLogin": "آخر دخول"
+    }
+  },
+  "partners": {
+    "title": "إدارة الشركاء",
+    "totalPartners": "إجمالي الشركاء",
+    "pendingApproval": "قيد الموافقة",
+    "verified": "موثقين",
+    "suspended": "معلقين",
+    "detail": {
+      "info": "المعلومات",
+      "menu": "القائمة",
+      "orders": "الطلبات",
+      "reviews": "التقييمات",
+      "finance": "المالية"
+    },
+    "approval": {
+      "title": "موافقة الشريك",
+      "approve": "موافقة",
+      "reject": "رفض",
+      "documents": "المستندات",
+      "verifyInfo": "التحقق من المعلومات"
+    }
+  },
+  "orders": {
+    "title": "إدارة الطلبات",
+    "allOrders": "جميع الطلبات",
+    "disputed": "الطلبات المتنازع عليها",
+    "orderId": "رقم الطلب",
+    "customer": "العميل",
+    "partner": "الشريك",
+    "courier": "الساعي",
+    "total": "المجموع",
+    "status": {
+      "pending": "قيد الانتظار",
+      "confirmed": "مؤكد",
+      "preparing": "قيد التحضير",
+      "ready": "جاهز",
+      "pickedUp": "تم الاستلام",
+      "delivering": "قيد التوصيل",
+      "delivered": "تم التوصيل",
+      "cancelled": "ملغي"
+    }
+  },
+  "payments": {
+    "title": "إدارة المدفوعات",
+    "transactions": {
+      "title": "المعاملات",
+      "amount": "المبلغ",
+      "type": "النوع",
+      "paymentMethod": "طريقة الدفع"
+    },
+    "payouts": {
+      "title": "تحويلات الشركاء",
+      "partner": "الشريك",
+      "amount": "المبلغ",
+      "status": "الحالة",
+      "process": "معالجة"
+    },
+    "refunds": {
+      "title": "المبالغ المستردة",
+      "order": "الطلب",
+      "reason": "السبب",
+      "amount": "المبلغ"
+    },
+    "commission": {
+      "title": "إعدادات العمولة",
+      "rate": "النسبة",
+      "minimumFee": "الحد الأدنى للرسوم"
+    }
+  },
+  "promotions": {
+    "title": "إدارة العروض",
+    "addPromotion": "إضافة عرض",
+    "code": "كود العرض",
+    "discount": "الخصم",
+    "validFrom": "صالح من",
+    "validTo": "صالح حتى",
+    "usageLimit": "حد الاستخدام",
+    "usedCount": "الاستخدامات"
+  },
+  "reviews": {
+    "title": "إدارة التقييمات",
+    "moderation": "الإشراف",
+    "flagged": "المبلغ عنها",
+    "rating": "التقييم",
+    "comment": "التعليق",
+    "author": "الكاتب",
+    "target": "الهدف",
+    "approve": "موافقة",
+    "hide": "إخفاء"
+  },
+  "support": {
+    "title": "دعم العملاء",
+    "tickets": {
+      "title": "التذاكر",
+      "open": "مفتوحة",
+      "inProgress": "قيد المعالجة",
+      "resolved": "محلولة",
+      "priority": "الأولوية"
+    },
+    "chat": {
+      "title": "المحادثة المباشرة",
+      "activeConversations": "المحادثات النشطة"
+    },
+    "faq": {
+      "title": "الأسئلة الشائعة",
+      "addQuestion": "إضافة سؤال"
+    }
+  },
+  "zones": {
+    "title": "إدارة المناطق",
+    "addZone": "إضافة منطقة",
+    "zoneName": "اسم المنطقة",
+    "deliveryFee": "رسوم التوصيل",
+    "minimumOrder": "الحد الأدنى للطلب",
+    "active": "نشطة"
+  },
+  "analytics": {
+    "title": "التحليلات",
+    "overview": {
+      "title": "نظرة عامة",
+      "revenue": "الإيرادات",
+      "orders": "الطلبات",
+      "avgOrderValue": "متوسط قيمة الطلب"
+    },
+    "revenue": {
+      "title": "تحليل الإيرادات",
+      "totalRevenue": "إجمالي الإيرادات",
+      "commissions": "العمولات",
+      "deliveryFees": "رسوم التوصيل"
+    },
+    "users": {
+      "title": "تحليل المستخدمين",
+      "newUsers": "المستخدمين الجدد",
+      "retention": "معدل الاحتفاظ"
+    },
+    "partners": {
+      "title": "أداء الشركاء",
+      "topPerformers": "الأفضل أداءً"
+    },
+    "couriers": {
+      "title": "أداء السعاة",
+      "avgDeliveryTime": "متوسط وقت التوصيل"
+    }
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "send": {
+      "title": "إرسال إشعار",
+      "target": "المستلمين",
+      "title_field": "العنوان",
+      "message": "الرسالة",
+      "sendNow": "إرسال الآن",
+      "schedule": "جدولة"
+    },
+    "history": {
+      "title": "السجل",
+      "sent": "مرسلة",
+      "delivered": "مستلمة",
+      "opened": "مفتوحة"
+    },
+    "templates": {
+      "title": "القوالب",
+      "addTemplate": "إضافة قالب"
+    }
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "general": {
+      "title": "عام",
+      "appName": "اسم التطبيق",
+      "timezone": "المنطقة الزمنية",
+      "currency": "العملة"
+    },
+    "commission": {
+      "title": "العمولة",
+      "partnerRate": "نسبة الشريك",
+      "courierRate": "نسبة الساعي"
+    },
+    "payment": {
+      "title": "الدفع",
+      "enabledMethods": "الطرق المفعلة"
+    },
+    "notifications": {
+      "title": "الإشعارات",
+      "emailEnabled": "البريد مفعل",
+      "pushEnabled": "الإشعارات مفعلة"
+    },
+    "emailTemplates": {
+      "title": "قوالب البريد"
+    }
+  },
+  "monitoring": {
+    "title": "المراقبة",
+    "health": {
+      "title": "حالة الخدمات",
+      "healthy": "سليم",
+      "degraded": "متدهور",
+      "down": "معطل"
+    },
+    "logs": {
+      "title": "سجلات API",
+      "endpoint": "نقطة النهاية",
+      "method": "الطريقة",
+      "responseTime": "وقت الاستجابة"
+    },
+    "errors": {
+      "title": "تتبع الأخطاء",
+      "errorRate": "معدل الأخطاء"
+    }
+  },
+  "errors": {
+    "generic": "حدث خطأ",
+    "network": "خطأ في الاتصال",
+    "unauthorized": "غير مصرح",
+    "forbidden": "الوصول مرفوض",
+    "notFound": "المورد غير موجود",
+    "serverError": "خطأ في الخادم"
+  }
+}

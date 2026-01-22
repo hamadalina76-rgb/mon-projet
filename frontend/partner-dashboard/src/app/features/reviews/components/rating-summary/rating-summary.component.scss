@@ -1,0 +1,85 @@
+// Rating Summary Component Styles
+@use 'assets/styles/variables' as *;
+
+.rating-summary {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 2rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.summary-left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.average-rating {
+  text-align: center;
+}
+
+.rating-value {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rating-stars {
+  display: flex;
+  justify-content: center;
+  margin: 0.5rem 0;
+
+  mat-icon {
+    color: var(--border-color);
+
+    &.filled {
+      color: var(--warning);
+    }
+  }
+}
+
+.total-reviews {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.summary-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.rating-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  .rating-label {
+    width: 16px;
+    font-weight: 500;
+  }
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: var(--warning);
+  }
+
+  mat-progress-bar {
+    flex: 1;
+  }
+
+  .rating-count {
+    width: 40px;
+    text-align: right;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+}

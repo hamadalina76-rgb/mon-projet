@@ -1,0 +1,16 @@
+<!-- Category List Component Template - Angular 19 -->
+<div class="category-list" cdkDropList (cdkDropListDropped)="reorder.emit($event)">
+  @for (category of categories(); track category.id) {
+    <div 
+      class="category-item"
+      [class.selected]="selectedId() === category.id"
+      cdkDrag>
+      <mat-icon cdkDragHandle class="drag-handle">drag_indicator</mat-icon>
+      <span class="category-name" (click)="select.emit(category.id)">{{ category.name }}</span>
+      <span class="category-count">{{ category.productsCount }}</span>
+      <button mat-icon-button (click)="edit.emit(category)">
+        <mat-icon>edit</mat-icon>
+      </button>
+    </div>
+  }
+</div>

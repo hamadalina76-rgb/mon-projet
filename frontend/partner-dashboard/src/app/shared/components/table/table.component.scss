@@ -1,0 +1,29 @@
+// Table Component Styles
+@use 'assets/styles/variables' as *;
+
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+}
+
+.table-row {
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: var(--bg-hover);
+  }
+}
+
+th.mat-header-cell {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+td.mat-cell {
+  color: var(--text-primary);
+}

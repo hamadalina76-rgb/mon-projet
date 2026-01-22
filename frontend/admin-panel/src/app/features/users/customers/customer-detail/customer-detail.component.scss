@@ -1,0 +1,37 @@
+// Customer Detail Component Styles
+@use '../../../../../assets/styles/variables' as v;
+
+.customer-detail-page {
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+}
+
+.customer-content {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.info-card {
+  padding: 1.5rem;
+}
+
+.tabs-card {
+  padding: 1rem;
+}

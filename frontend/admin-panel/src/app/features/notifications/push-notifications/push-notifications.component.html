@@ -1,0 +1,62 @@
+<!-- Push Notifications Component Template -->
+<div class="push-notifications-page">
+  <header class="page-header">
+    <h1>{{ 'notifications.push' | translate }}</h1>
+  </header>
+
+  <div class="content-grid">
+    <!-- Form -->
+    <mat-card class="form-card">
+      <h3>Nouvelle notification</h3>
+
+      <form [formGroup]="notificationForm" (ngSubmit)="sendNotification()">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Titre</mat-label>
+          <input matInput formControlName="title" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Message</mat-label>
+          <textarea matInput formControlName="message" rows="4"></textarea>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Audience cible</mat-label>
+          <mat-select formControlName="targetAudience">
+            <mat-option value="all">Tous les utilisateurs</mat-option>
+            <mat-option value="customers">Clients uniquement</mat-option>
+            <mat-option value="couriers">Livreurs uniquement</mat-option>
+            <mat-option value="partners">Partenaires uniquement</mat-option>
+            <mat-option value="segment">Segment personnalisé</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <div class="form-actions">
+          <button mat-stroked-button type="button">
+            Programmer
+          </button>
+          <button mat-flat-button color="primary" type="submit" [disabled]="loading">
+            <mat-icon>send</mat-icon>
+            Envoyer maintenant
+          </button>
+        </div>
+      </form>
+    </mat-card>
+
+    <!-- Preview -->
+    <mat-card class="preview-card">
+      <h3>Aperçu</h3>
+      <div class="notification-preview">
+        <div class="preview-header">
+          <img src="assets/logo-icon.png" alt="App" class="app-icon" />
+          <span class="app-name">SpeedLine</span>
+          <span class="preview-time">maintenant</span>
+        </div>
+        <div class="preview-content">
+          <span class="preview-title">{{ notificationForm.get('title')?.value || 'Titre de la notification' }}</span>
+          <span class="preview-message">{{ notificationForm.get('message')?.value || 'Message de la notification...' }}</span>
+        </div>
+      </div>
+    </mat-card>
+  </div>
+</div>

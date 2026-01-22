@@ -1,0 +1,91 @@
+<!-- Sales Report Component Template -->
+<div class="sales-report-page">
+  <header class="page-header">
+    <h1>Rapport de ventes</h1>
+    <div class="header-actions">
+      <button mat-stroked-button [matMenuTriggerFor]="exportMenu">
+        <mat-icon>download</mat-icon>
+        Exporter
+      </button>
+      <mat-menu #exportMenu="matMenu">
+        <button mat-menu-item (click)="exportReport('pdf')">PDF</button>
+        <button mat-menu-item (click)="exportReport('csv')">CSV</button>
+        <button mat-menu-item (click)="exportReport('excel')">Excel</button>
+      </mat-menu>
+    </div>
+  </header>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <form [formGroup]="dateRangeForm" class="filters-form">
+      <mat-form-field appearance="outline">
+        <mat-label>Date début</mat-label>
+        <input matInput [matDatepicker]="startPicker" formControlName="startDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+        <mat-datepicker #startPicker></mat-datepicker>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Date fin</mat-label>
+        <input matInput [matDatepicker]="endPicker" formControlName="endDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+        <mat-datepicker #endPicker></mat-datepicker>
+      </mat-form-field>
+
+      <button mat-flat-button color="primary" (click)="generateReport()">
+        Générer
+      </button>
+    </form>
+  </mat-card>
+
+  <!-- Summary -->
+  <div class="summary-grid">
+    <mat-card class="summary-card">
+      <span class="summary-label">Total revenus</span>
+      <span class="summary-value">{{ summary.totalRevenue | currency:'MAD' }}</span>
+    </mat-card>
+    <mat-card class="summary-card">
+      <span class="summary-label">Total commandes</span>
+      <span class="summary-value">{{ summary.totalOrders }}</span>
+    </mat-card>
+    <mat-card class="summary-card">
+      <span class="summary-label">Panier moyen</span>
+      <span class="summary-value">{{ summary.averageOrder | currency:'MAD' }}</span>
+    </mat-card>
+  </div>
+
+  <!-- Report Table -->
+  <mat-card class="table-card">
+    <table mat-table [dataSource]="reportData">
+      <ng-container matColumnDef="date">
+        <th mat-header-cell *matHeaderCellDef>Date</th>
+        <td mat-cell *matCellDef="let row">{{ row.date | date:'shortDate' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="orders">
+        <th mat-header-cell *matHeaderCellDef>Commandes</th>
+        <td mat-cell *matCellDef="let row">{{ row.orders }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="revenue">
+        <th mat-header-cell *matHeaderCellDef>Revenus</th>
+        <td mat-cell *matCellDef="let row">{{ row.revenue | currency:'MAD' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="averageOrder">
+        <th mat-header-cell *matHeaderCellDef>Panier moyen</th>
+        <td mat-cell *matCellDef="let row">{{ row.averageOrder | currency:'MAD' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="topProduct">
+        <th mat-header-cell *matHeaderCellDef>Top produit</th>
+        <td mat-cell *matCellDef="let row">{{ row.topProduct }}</td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <mat-paginator [pageSize]="10" [pageSizeOptions]="[10, 25, 50]"></mat-paginator>
+  </mat-card>
+</div>

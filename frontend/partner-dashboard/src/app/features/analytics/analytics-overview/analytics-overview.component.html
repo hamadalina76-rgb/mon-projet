@@ -1,0 +1,100 @@
+<!-- Analytics Overview Component Template - Angular 19 -->
+<div class="analytics-page">
+  <header class="page-header">
+    <h1>{{ 'analytics.title' | translate }}</h1>
+    <div class="header-actions">
+      <mat-button-toggle-group 
+        [value]="selectedPeriod()" 
+        (change)="onPeriodChange($event.value)">
+        <mat-button-toggle value="today">Aujourd'hui</mat-button-toggle>
+        <mat-button-toggle value="week">Cette semaine</mat-button-toggle>
+        <mat-button-toggle value="month">Ce mois</mat-button-toggle>
+        <mat-button-toggle value="year">Cette année</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      <button mat-stroked-button [matMenuTriggerFor]="exportMenu">
+        <mat-icon>download</mat-icon>
+        Exporter
+      </button>
+      <mat-menu #exportMenu="matMenu">
+        <button mat-menu-item (click)="exportData('pdf')">PDF</button>
+        <button mat-menu-item (click)="exportData('csv')">CSV</button>
+        <button mat-menu-item (click)="exportData('excel')">Excel</button>
+      </mat-menu>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="48"></mat-spinner>
+    </div>
+  } @else {
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <mat-card class="stat-card">
+        <div class="stat-icon revenue">
+          <mat-icon>payments</mat-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ totalRevenue() | currency:'MAD' }}</span>
+          <span class="stat-label">Revenus</span>
+        </div>
+        @if (overview()?.revenueTrend) {
+          <div class="stat-trend" [class.positive]="overview()?.revenueTrend > 0">
+            <mat-icon>{{ overview()?.revenueTrend > 0 ? 'trending_up' : 'trending_down' }}</mat-icon>
+            {{ overview()?.revenueTrend }}%
+          </div>
+        }
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <div class="stat-icon orders">
+          <mat-icon>receipt_long</mat-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ totalOrders() }}</span>
+          <span class="stat-label">Commandes</span>
+        </div>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <div class="stat-icon average">
+          <mat-icon>shopping_cart</mat-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ averageOrderValue() | currency:'MAD' }}</span>
+          <span class="stat-label">Panier moyen</span>
+        </div>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <div class="stat-icon rating">
+          <mat-icon>star</mat-icon>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ overview()?.averageRating | number:'1.1-1' }}</span>
+          <span class="stat-label">Note moyenne</span>
+        </div>
+      </mat-card>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="charts-grid">
+      <mat-card class="chart-card">
+        <h3>Revenus</h3>
+        <app-revenue-chart [period]="selectedPeriod()" [data]="revenueData()"></app-revenue-chart>
+      </mat-card>
+
+      <mat-card class="chart-card">
+        <h3>Commandes</h3>
+        <app-orders-chart [period]="selectedPeriod()"></app-orders-chart>
+      </mat-card>
+    </div>
+
+    <!-- Performance Metrics -->
+    <mat-card class="performance-card">
+      <h3>Indicateurs de performance</h3>
+      <app-performance-metrics [period]="selectedPeriod()"></app-performance-metrics>
+    </mat-card>
+  }
+</div>

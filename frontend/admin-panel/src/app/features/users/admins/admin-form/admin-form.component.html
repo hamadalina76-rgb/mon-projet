@@ -1,0 +1,54 @@
+<!-- Admin Form Component Template -->
+<div class="admin-form-page">
+  <header class="page-header">
+    <div class="header-left">
+      <button mat-icon-button routerLink="/users/admins">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>{{ isEditMode ? 'Modifier administrateur' : 'Nouvel administrateur' }}</h1>
+    </div>
+  </header>
+
+  <mat-card class="form-card">
+    <form [formGroup]="adminForm" (ngSubmit)="onSubmit()">
+      <!-- Name -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Nom complet</mat-label>
+        <input matInput formControlName="name" />
+      </mat-form-field>
+
+      <!-- Email -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{ 'auth.email' | translate }}</mat-label>
+        <input matInput type="email" formControlName="email" />
+      </mat-form-field>
+
+      <!-- Role -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{ 'users.admins.role' | translate }}</mat-label>
+        <mat-select formControlName="role">
+          <mat-option value="SUPER_ADMIN">Super Admin</mat-option>
+          <mat-option value="ADMIN">Admin</mat-option>
+          <mat-option value="MODERATOR">Modérateur</mat-option>
+          <mat-option value="SUPPORT">Support</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Permissions -->
+      <div class="permissions-section">
+        <h3>{{ 'users.admins.permissions' | translate }}</h3>
+        <!-- Permissions checkboxes -->
+      </div>
+
+      <!-- Actions -->
+      <div class="form-actions">
+        <button mat-stroked-button type="button" routerLink="/users/admins">
+          {{ 'common.cancel' | translate }}
+        </button>
+        <button mat-flat-button color="primary" type="submit" [disabled]="loading">
+          {{ 'common.save' | translate }}
+        </button>
+      </div>
+    </form>
+  </mat-card>
+</div>

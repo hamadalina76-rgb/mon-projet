@@ -1,0 +1,23 @@
+// Admins List Component Styles
+@use '../../../../../assets/styles/variables' as v;
+
+.admins-list-page {
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+}
+
+.table-card {
+  overflow: hidden;
+}

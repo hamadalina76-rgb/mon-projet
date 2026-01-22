@@ -1,0 +1,5 @@
+<!-- Loading Spinner Component Template -->
+<div class="loading-container" [class.overlay]="overlay" [class.fullscreen]="fullscreen">
+  <mat-spinner [diameter]="diameter" [color]="color"></mat-spinner>
+  <p class="loading-message" *ngIf="message">{{ message }}</p>
+</div>

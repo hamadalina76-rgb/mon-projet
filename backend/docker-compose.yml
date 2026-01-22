@@ -1,0 +1,462 @@
+version: '3.8'
+
+services:
+  # ==================== INFRASTRUCTURE ====================
+  
+  # Eureka Server - Service Discovery
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    environment:
+      - EUREKA_USER=eureka
+      - EUREKA_PASSWORD=eureka123
+    networks:
+      - speedline-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Config Server - Centralized Configuration
+  config-server:
+    build: ./config-server
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    environment:
+      - EUREKA_SERVER=http://eureka:eureka123@eureka-server:8761/eureka/
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - speedline-network
+
+  # API Gateway
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - EUREKA_SERVER=http://eureka:eureka123@eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    depends_on:
+      - eureka-server
+      - config-server
+      - redis
+    networks:
+      - speedline-network
+
+  # ==================== DATABASES ====================
+
+  # PostgreSQL - Main Database
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_MULTIPLE_DATABASES=speedline_auth,speedline_users,speedline_partners,speedline_orders,speedline_delivery,speedline_payments,speedline_locations,speedline_promotions,speedline_support
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    networks:
+      - speedline-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB - Notifications & Reviews
+  mongodb:
+    image: mongo:7.0
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=mongo
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - speedline-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis - Caching & Rate Limiting
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - speedline-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ClickHouse - Analytics Database
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8
+    container_name: clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    networks:
+      - speedline-network
+
+  # ==================== MESSAGE BROKER ====================
+
+  # Zookeeper - Kafka Dependency
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+    networks:
+      - speedline-network
+
+  # Kafka - Event Streaming
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    depends_on:
+      - zookeeper
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - speedline-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Kafka UI - Management Interface
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8090:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=speedline
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
+    depends_on:
+      - kafka
+    networks:
+      - speedline-network
+
+  # ==================== MICROSERVICES ====================
+
+  # Auth Service
+  auth-service:
+    build: ./services/auth-service
+    container_name: auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER=http://eureka:eureka123@eureka-server:8761/eureka/
+      - DB_URL=jdbc:postgresql://postgres:5432/speedline_auth
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - speedline-network
+
+  # User Service
+  user-service:
+    build: ./services/user-service
+    container_name: user-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER=http://eureka:eureka123@eureka-server:8761/eureka/
+      - DB_URL=jdbc:postgresql://postgres:5432/speedline_users
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    networks:
+      - speedline-network
+
+  # Partner Service
+  partner-service:
+    build: ./services/partner-service
+    container_name: partner-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER=http://eureka:eureka123@eureka-server:8761/eureka/
+      - DB_URL=jdbc:postgresql://postgres:5432/speedline_partners
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - eureka-server
+    networks:
+      - speedline-network
+
+  # Order Service
+  order-service:
+    build: ./services/order-service
+    container_name: order-service
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER=http://eureka:eureka123@eureka-server:8761/eureka/
+      - DB_URL=jdbc:postgresql://postgres:5432/speedline_orders
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - eureka-server
+    networks:
+      - speedline-network
+
+  # Delivery Service
+  delivery-service:
+    build: ./services/delivery-service
+    container_name: delivery-service
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER=http://eureka:eureka123@eureka-server:8761/eureka/
+      - DB_URL=jdbc:postgresql://postgres:5432/speedline_delivery
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - eureka-server
+    networks:
+      - speedline-network
+
+  # Payment Service
+  payment-service:
+    build: ./services/payment-service
+    container_name: payment-service
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER=http://eureka:eureka123@eureka-server:8761/eureka/
+      - DB_URL=jdbc:postgresql://postgres:5432/speedline_payments
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - STRIPE_API_KEY=${STRIPE_API_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    networks:
+      - speedline-network
+
+  # Notification Service
+  notification-service:
+    build: ./services/notification-service
+    container_name: notification-service
+    ports:
+      - "8087:8087"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER=http://eureka:eureka123@eureka-server:8761/eureka/
+      - MONGODB_URI=mongodb://mongo:${MONGO_PASSWORD}@mongodb:27017/speedline_notifications?authSource=admin
+      - FIREBASE_CREDENTIALS=${FIREBASE_CREDENTIALS}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - mongodb
+      - kafka
+      - eureka-server
+    networks:
+      - speedline-network
+
+  # Location Service
+  location-service:
+    build: ./services/location-service
+    container_name: location-service
+    ports:
+      - "8088:8088"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER=http://eureka:eureka123@eureka-server:8761/eureka/
+      - DB_URL=jdbc:postgresql://postgres:5432/speedline_locations
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - MAPBOX_ACCESS_TOKEN=${MAPBOX_ACCESS_TOKEN}
+    depends_on:
+      - postgres
+      - redis
+      - eureka-server
+    networks:
+      - speedline-network
+
+  # Analytics Service
+  analytics-service:
+    build: ./services/analytics-service
+    container_name: analytics-service
+    ports:
+      - "8089:8089"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER=http://eureka:eureka123@eureka-server:8761/eureka/
+      - CLICKHOUSE_URL=jdbc:clickhouse://clickhouse:8123/speedline_analytics
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - clickhouse
+      - redis
+      - kafka
+      - eureka-server
+    networks:
+      - speedline-network
+
+  # Promotion Service
+  promotion-service:
+    build: ./services/promotion-service
+    container_name: promotion-service
+    ports:
+      - "8090:8090"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER=http://eureka:eureka123@eureka-server:8761/eureka/
+      - DB_URL=jdbc:postgresql://postgres:5432/speedline_promotions
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    depends_on:
+      - postgres
+      - redis
+      - eureka-server
+    networks:
+      - speedline-network
+
+  # Review Service
+  review-service:
+    build: ./services/review-service
+    container_name: review-service
+    ports:
+      - "8091:8091"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER=http://eureka:eureka123@eureka-server:8761/eureka/
+      - MONGODB_URI=mongodb://mongo:${MONGO_PASSWORD}@mongodb:27017/speedline_reviews?authSource=admin
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - mongodb
+      - kafka
+      - eureka-server
+    networks:
+      - speedline-network
+
+  # Support Service
+  support-service:
+    build: ./services/support-service
+    container_name: support-service
+    ports:
+      - "8092:8092"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER=http://eureka:eureka123@eureka-server:8761/eureka/
+      - DB_URL=jdbc:postgresql://postgres:5432/speedline_support
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+    depends_on:
+      - postgres
+      - eureka-server
+    networks:
+      - speedline-network
+
+# ==================== NETWORKS ====================
+networks:
+  speedline-network:
+    driver: bridge
+
+# ==================== VOLUMES ====================
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:
+  clickhouse_data:
+  zookeeper_data:
+  kafka_data:

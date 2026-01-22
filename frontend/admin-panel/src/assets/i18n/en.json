@@ -1,0 +1,324 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "refresh": "Refresh",
+    "loading": "Loading...",
+    "noData": "No data",
+    "actions": "Actions",
+    "status": "Status",
+    "date": "Date",
+    "all": "All",
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "users": "Users",
+    "customers": "Customers",
+    "couriers": "Couriers",
+    "admins": "Administrators",
+    "partners": "Partners",
+    "orders": "Orders",
+    "payments": "Payments",
+    "transactions": "Transactions",
+    "payouts": "Payouts",
+    "refunds": "Refunds",
+    "promotions": "Promotions",
+    "reviews": "Reviews",
+    "support": "Support",
+    "zones": "Zones",
+    "analytics": "Analytics",
+    "overview": "Overview",
+    "revenue": "Revenue",
+    "reports": "Reports",
+    "notifications": "Notifications",
+    "settings": "Settings",
+    "monitoring": "Monitoring"
+  },
+  "header": {
+    "systemAlerts": "System Alerts",
+    "noAlerts": "No alerts",
+    "notifications": "Notifications",
+    "noNotifications": "No notifications",
+    "viewAll": "View all",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "auth": {
+    "login": "Login",
+    "email": "Email address",
+    "password": "Password",
+    "loginButton": "Sign in",
+    "forgotPassword": "Forgot password?",
+    "rememberMe": "Remember me",
+    "invalidCredentials": "Invalid credentials",
+    "sessionExpired": "Your session has expired, please sign in again"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "totalOrders": "Total Orders",
+    "totalRevenue": "Total Revenue",
+    "activeUsers": "Active Users",
+    "activePartners": "Active Partners",
+    "activeCouriers": "Active Couriers",
+    "pendingApprovals": "Pending Approvals",
+    "recentOrders": "Recent Orders",
+    "topPartners": "Top Partners",
+    "systemHealth": "System Health"
+  },
+  "users": {
+    "title": "User Management",
+    "customers": {
+      "title": "Customers",
+      "totalCustomers": "Total Customers",
+      "newThisMonth": "New This Month",
+      "activeToday": "Active Today"
+    },
+    "couriers": {
+      "title": "Couriers",
+      "totalCouriers": "Total Couriers",
+      "online": "Online",
+      "onDelivery": "On Delivery",
+      "pendingApproval": "Pending Approval"
+    },
+    "admins": {
+      "title": "Administrators",
+      "addAdmin": "Add Admin",
+      "role": "Role",
+      "permissions": "Permissions",
+      "lastLogin": "Last Login"
+    }
+  },
+  "partners": {
+    "title": "Partner Management",
+    "totalPartners": "Total Partners",
+    "pendingApproval": "Pending Approval",
+    "verified": "Verified",
+    "suspended": "Suspended",
+    "detail": {
+      "info": "Information",
+      "menu": "Menu",
+      "orders": "Orders",
+      "reviews": "Reviews",
+      "finance": "Finance"
+    },
+    "approval": {
+      "title": "Partner Approval",
+      "approve": "Approve",
+      "reject": "Reject",
+      "documents": "Documents",
+      "verifyInfo": "Verify Information"
+    }
+  },
+  "orders": {
+    "title": "Order Management",
+    "allOrders": "All Orders",
+    "disputed": "Disputed Orders",
+    "orderId": "Order #",
+    "customer": "Customer",
+    "partner": "Partner",
+    "courier": "Courier",
+    "total": "Total",
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "pickedUp": "Picked Up",
+      "delivering": "Delivering",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    }
+  },
+  "payments": {
+    "title": "Payment Management",
+    "transactions": {
+      "title": "Transactions",
+      "amount": "Amount",
+      "type": "Type",
+      "paymentMethod": "Payment Method"
+    },
+    "payouts": {
+      "title": "Partner Payouts",
+      "partner": "Partner",
+      "amount": "Amount",
+      "status": "Status",
+      "process": "Process"
+    },
+    "refunds": {
+      "title": "Refunds",
+      "order": "Order",
+      "reason": "Reason",
+      "amount": "Amount"
+    },
+    "commission": {
+      "title": "Commission Settings",
+      "rate": "Rate",
+      "minimumFee": "Minimum Fee"
+    }
+  },
+  "promotions": {
+    "title": "Promotion Management",
+    "addPromotion": "Add Promotion",
+    "code": "Promo Code",
+    "discount": "Discount",
+    "validFrom": "Valid From",
+    "validTo": "Valid Until",
+    "usageLimit": "Usage Limit",
+    "usedCount": "Uses"
+  },
+  "reviews": {
+    "title": "Review Management",
+    "moderation": "Moderation",
+    "flagged": "Flagged",
+    "rating": "Rating",
+    "comment": "Comment",
+    "author": "Author",
+    "target": "Target",
+    "approve": "Approve",
+    "hide": "Hide"
+  },
+  "support": {
+    "title": "Customer Support",
+    "tickets": {
+      "title": "Tickets",
+      "open": "Open",
+      "inProgress": "In Progress",
+      "resolved": "Resolved",
+      "priority": "Priority"
+    },
+    "chat": {
+      "title": "Live Chat",
+      "activeConversations": "Active Conversations"
+    },
+    "faq": {
+      "title": "FAQ",
+      "addQuestion": "Add Question"
+    }
+  },
+  "zones": {
+    "title": "Zone Management",
+    "addZone": "Add Zone",
+    "zoneName": "Zone Name",
+    "deliveryFee": "Delivery Fee",
+    "minimumOrder": "Minimum Order",
+    "active": "Active"
+  },
+  "analytics": {
+    "title": "Analytics",
+    "overview": {
+      "title": "Overview",
+      "revenue": "Revenue",
+      "orders": "Orders",
+      "avgOrderValue": "Avg Order Value"
+    },
+    "revenue": {
+      "title": "Revenue Analysis",
+      "totalRevenue": "Total Revenue",
+      "commissions": "Commissions",
+      "deliveryFees": "Delivery Fees"
+    },
+    "users": {
+      "title": "User Analytics",
+      "newUsers": "New Users",
+      "retention": "Retention Rate"
+    },
+    "partners": {
+      "title": "Partner Performance",
+      "topPerformers": "Top Performers"
+    },
+    "couriers": {
+      "title": "Courier Performance",
+      "avgDeliveryTime": "Avg Delivery Time"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "send": {
+      "title": "Send Notification",
+      "target": "Recipients",
+      "title_field": "Title",
+      "message": "Message",
+      "sendNow": "Send Now",
+      "schedule": "Schedule"
+    },
+    "history": {
+      "title": "History",
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "opened": "Opened"
+    },
+    "templates": {
+      "title": "Templates",
+      "addTemplate": "Add Template"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "general": {
+      "title": "General",
+      "appName": "App Name",
+      "timezone": "Timezone",
+      "currency": "Currency"
+    },
+    "commission": {
+      "title": "Commission",
+      "partnerRate": "Partner Rate",
+      "courierRate": "Courier Rate"
+    },
+    "payment": {
+      "title": "Payment",
+      "enabledMethods": "Enabled Methods"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "emailEnabled": "Emails Enabled",
+      "pushEnabled": "Push Enabled"
+    },
+    "emailTemplates": {
+      "title": "Email Templates"
+    }
+  },
+  "monitoring": {
+    "title": "Monitoring",
+    "health": {
+      "title": "Service Health",
+      "healthy": "Healthy",
+      "degraded": "Degraded",
+      "down": "Down"
+    },
+    "logs": {
+      "title": "API Logs",
+      "endpoint": "Endpoint",
+      "method": "Method",
+      "responseTime": "Response Time"
+    },
+    "errors": {
+      "title": "Error Tracking",
+      "errorRate": "Error Rate"
+    }
+  },
+  "errors": {
+    "generic": "An error occurred",
+    "network": "Connection error",
+    "unauthorized": "Unauthorized",
+    "forbidden": "Access denied",
+    "notFound": "Resource not found",
+    "serverError": "Server error"
+  }
+}

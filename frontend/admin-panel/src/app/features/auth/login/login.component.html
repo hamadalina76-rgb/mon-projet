@@ -1,0 +1,39 @@
+<!-- Login Component Template -->
+<div class="login-container">
+  <mat-card class="login-card">
+    <mat-card-header>
+      <mat-card-title>{{ 'auth.login' | translate }}</mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+        <!-- Email field -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'auth.email' | translate }}</mat-label>
+          <input matInput type="email" formControlName="email" />
+          <mat-icon matPrefix>email</mat-icon>
+        </mat-form-field>
+
+        <!-- Password field -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'auth.password' | translate }}</mat-label>
+          <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" />
+          <mat-icon matPrefix>lock</mat-icon>
+          <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
+            <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+        </mat-form-field>
+
+        <!-- Remember me -->
+        <mat-checkbox formControlName="rememberMe">
+          {{ 'auth.rememberMe' | translate }}
+        </mat-checkbox>
+
+        <!-- Submit button -->
+        <button mat-flat-button color="primary" type="submit" class="full-width submit-btn" [disabled]="loading">
+          {{ 'auth.loginButton' | translate }}
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

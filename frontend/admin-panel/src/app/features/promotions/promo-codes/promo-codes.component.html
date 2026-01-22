@@ -1,0 +1,25 @@
+<!-- Promo Codes Component Template -->
+<div class="promo-codes-page">
+  <header class="page-header">
+    <h1>{{ 'promotions.promoCodes' | translate }}</h1>
+    <div class="header-actions">
+      <button mat-flat-button color="primary" (click)="openCreateDialog()">
+        <mat-icon>add</mat-icon>
+        Nouveau code promo
+      </button>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <!-- Promo code stats -->
+  </div>
+
+  <!-- Data Table -->
+  <mat-card class="table-card">
+    <app-data-table
+      [data]="promoCodes"
+      [loading]="loading">
+    </app-data-table>
+  </mat-card>
+</div>

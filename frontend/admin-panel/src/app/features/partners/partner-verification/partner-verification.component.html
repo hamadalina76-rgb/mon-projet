@@ -1,0 +1,39 @@
+<!-- Partner Verification Component Template -->
+<div class="partner-verification-page">
+  <header class="page-header">
+    <div class="header-left">
+      <button mat-icon-button routerLink="/partners">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>Vérification des documents</h1>
+    </div>
+  </header>
+
+  <div class="verification-content" *ngIf="partner">
+    <!-- Documents list -->
+    <mat-card class="documents-card" *ngFor="let doc of documents">
+      <div class="document-item">
+        <div class="document-info">
+          <mat-icon>description</mat-icon>
+          <div>
+            <h4>{{ doc.type }}</h4>
+            <span class="document-date">Soumis le {{ doc.submittedAt | date }}</span>
+          </div>
+        </div>
+        <div class="document-actions">
+          <button mat-icon-button (click)="viewDocument(doc)">
+            <mat-icon>visibility</mat-icon>
+          </button>
+          <mat-checkbox [(ngModel)]="doc.verified">Vérifié</mat-checkbox>
+        </div>
+      </div>
+    </mat-card>
+
+    <!-- Actions -->
+    <div class="actions-bar">
+      <button mat-flat-button color="primary" (click)="saveVerification()">
+        Enregistrer
+      </button>
+    </div>
+  </div>
+</div>

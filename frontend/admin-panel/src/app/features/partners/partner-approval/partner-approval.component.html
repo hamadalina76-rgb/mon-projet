@@ -1,0 +1,46 @@
+<!-- Partner Approval Component Template -->
+<div class="partner-approval-page">
+  <header class="page-header">
+    <div class="header-left">
+      <button mat-icon-button routerLink="/partners">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>Approbation du partenaire</h1>
+    </div>
+  </header>
+
+  <div class="approval-content" *ngIf="partner">
+    <!-- Business Info -->
+    <mat-card class="section-card">
+      <h3>Informations de l'entreprise</h3>
+      <mat-divider></mat-divider>
+      <!-- Business info fields -->
+    </mat-card>
+
+    <!-- Documents -->
+    <mat-card class="section-card">
+      <h3>Documents légaux</h3>
+      <mat-divider></mat-divider>
+      <!-- Documents grid -->
+    </mat-card>
+
+    <!-- Location -->
+    <mat-card class="section-card">
+      <h3>Localisation</h3>
+      <mat-divider></mat-divider>
+      <!-- Map and address -->
+    </mat-card>
+
+    <!-- Actions -->
+    <div class="actions-bar">
+      <button mat-stroked-button color="warn" (click)="rejectPartner()">
+        <mat-icon>close</mat-icon>
+        Rejeter
+      </button>
+      <button mat-flat-button color="primary" (click)="approvePartner()">
+        <mat-icon>check</mat-icon>
+        Approuver
+      </button>
+    </div>
+  </div>
+</div>

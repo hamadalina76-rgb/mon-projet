@@ -1,0 +1,120 @@
+<!-- Product Form Component Template - Angular 19 -->
+<div class="product-form-page">
+  <header class="page-header">
+    <div class="header-left">
+      <button mat-icon-button routerLink="/menu">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>{{ isEdit() ? 'Modifier produit' : 'Nouveau produit' }}</h1>
+    </div>
+  </header>
+
+  <form [formGroup]="productForm" (ngSubmit)="onSubmit()">
+    <div class="form-content">
+      <div class="form-left">
+        <!-- Basic Info -->
+        <mat-card class="form-card">
+          <h3>Informations de base</h3>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Nom du produit</mat-label>
+            <input matInput formControlName="name" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Description</mat-label>
+            <textarea matInput formControlName="description" rows="3"></textarea>
+          </mat-form-field>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Prix (MAD)</mat-label>
+              <input matInput type="number" formControlName="price" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Catégorie</mat-label>
+              <mat-select formControlName="categoryId">
+                @for (cat of categories(); track cat.id) {
+                  <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Temps de préparation (min)</mat-label>
+            <input matInput type="number" formControlName="prepTime" />
+          </mat-form-field>
+
+          <mat-slide-toggle formControlName="isAvailable">
+            Disponible
+          </mat-slide-toggle>
+        </mat-card>
+
+        <!-- Options -->
+        <mat-card class="form-card">
+          <div class="card-header">
+            <h3>Options & Variantes</h3>
+            <button mat-stroked-button type="button" (click)="addOption()">
+              <mat-icon>add</mat-icon>
+              Ajouter option
+            </button>
+          </div>
+
+          @for (option of optionsArray.controls; track $index; let i = $index) {
+            <div class="option-group">
+              <div class="option-header">
+                <mat-form-field appearance="outline">
+                  <mat-label>Nom de l'option</mat-label>
+                  <input matInput [formControl]="$any(option.get('name'))" placeholder="Ex: Taille" />
+                </mat-form-field>
+                <button mat-icon-button type="button" (click)="removeOption(i)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </div>
+          } @empty {
+            <div class="no-options">
+              <p>Aucune option configurée</p>
+            </div>
+          }
+        </mat-card>
+      </div>
+
+      <div class="form-right">
+        <!-- Image Upload -->
+        <mat-card class="form-card">
+          <h3>Image du produit</h3>
+
+          <div class="image-upload" (click)="fileInput.click()">
+            <input #fileInput type="file" accept="image/*" hidden (change)="onImageSelected($event)" />
+            
+            @if (imagePreview()) {
+              <img [src]="imagePreview()" alt="Preview" class="image-preview" />
+            } @else {
+              <div class="upload-placeholder">
+                <mat-icon>cloud_upload</mat-icon>
+                <span>Cliquez pour uploader</span>
+              </div>
+            }
+          </div>
+        </mat-card>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="form-actions">
+      <button mat-stroked-button type="button" routerLink="/menu">
+        Annuler
+      </button>
+      <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
+        @if (loading()) {
+          <mat-spinner diameter="20"></mat-spinner>
+        } @else {
+          {{ isEdit() ? 'Enregistrer' : 'Créer produit' }}
+        }
+      </button>
+    </div>
+  </form>
+</div>

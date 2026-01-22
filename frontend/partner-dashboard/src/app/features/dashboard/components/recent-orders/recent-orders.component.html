@@ -1,0 +1,20 @@
+<!-- Recent Orders Component Template - Angular 19 -->
+<div class="recent-orders">
+  @for (order of orders(); track order.id) {
+    <div class="order-item" [routerLink]="['/orders', order.id]">
+      <div class="order-info">
+        <span class="order-number">#{{ order.orderNumber }}</span>
+        <span class="order-customer">{{ order.customerName }}</span>
+      </div>
+      <div class="order-meta">
+        <span class="order-status" [ngClass]="order.status">{{ order.status }}</span>
+        <span class="order-time">{{ order.createdAt | timeAgo }}</span>
+      </div>
+    </div>
+  } @empty {
+    <div class="no-orders">
+      <mat-icon>receipt_long</mat-icon>
+      <span>Aucune commande récente</span>
+    </div>
+  }
+</div>

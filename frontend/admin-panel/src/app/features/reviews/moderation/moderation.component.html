@@ -1,0 +1,42 @@
+<!-- Moderation Component Template -->
+<div class="moderation-page">
+  <header class="page-header">
+    <h1>Modération des avis</h1>
+  </header>
+
+  <!-- Reported reviews list -->
+  <div class="reviews-list">
+    <mat-card *ngFor="let review of reportedReviews" class="review-card">
+      <div class="review-header">
+        <div class="user-info">
+          <img [src]="review.user.avatar" alt="Avatar" class="avatar" />
+          <div>
+            <span class="user-name">{{ review.user.name }}</span>
+            <span class="review-date">{{ review.createdAt | date }}</span>
+          </div>
+        </div>
+        <div class="rating">
+          <mat-icon>star</mat-icon>
+          <span>{{ review.rating }}</span>
+        </div>
+      </div>
+      <div class="review-content">
+        <p>{{ review.comment }}</p>
+      </div>
+      <div class="report-reason">
+        <mat-icon>flag</mat-icon>
+        <span>Signalé pour: {{ review.reportReason }}</span>
+      </div>
+      <div class="review-actions">
+        <button mat-stroked-button color="warn" (click)="rejectReview(review.id)">
+          <mat-icon>delete</mat-icon>
+          Supprimer
+        </button>
+        <button mat-flat-button color="primary" (click)="approveReview(review.id)">
+          <mat-icon>check</mat-icon>
+          Approuver
+        </button>
+      </div>
+    </mat-card>
+  </div>
+</div>

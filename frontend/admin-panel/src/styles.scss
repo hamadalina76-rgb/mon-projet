@@ -1,0 +1,213 @@
+/* ==========================================================================
+   SpeedLine Admin Panel - Global Styles
+   ========================================================================== */
+
+@use 'sass:color';
+@use 'assets/styles/variables' as v;
+@use 'assets/styles/mixins' as m;
+@use 'assets/styles/utilities' as u;
+
+/* Reset & Base
+   ========================================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: v.$text-primary;
+  background-color: v.$background-default;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography
+   ========================================================================== */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 500;
+  line-height: 1.2;
+  color: v.$text-primary;
+}
+
+a {
+  color: v.$primary-color;
+  text-decoration: none;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+/* Layout
+   ========================================================================== */
+.container {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 v.$spacing-md;
+}
+
+.page-content {
+  padding: v.$spacing-lg;
+  
+  @include m.mobile {
+    padding: v.$spacing-md;
+  }
+}
+
+/* Cards
+   ========================================================================== */
+.card {
+  background: v.$white;
+  border-radius: v.$border-radius-lg;
+  box-shadow: v.$shadow-sm;
+  padding: v.$spacing-lg;
+  
+  &-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: v.$spacing-md;
+    
+    h3 {
+      font-size: 1.125rem;
+      font-weight: 500;
+    }
+  }
+}
+
+/* Buttons
+   ========================================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: v.$spacing-xs;
+  padding: v.$spacing-sm v.$spacing-md;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  border-radius: v.$border-radius-md;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  &-primary {
+    background: v.$primary-color;
+    color: v.$white;
+    
+    &:hover:not(:disabled) {
+      background: color.adjust(v.$primary-color, $lightness: -10%);
+    }
+  }
+  
+  &-secondary {
+    background: v.$gray-100;
+    color: v.$text-primary;
+    
+    &:hover:not(:disabled) {
+      background: v.$gray-200;
+    }
+  }
+  
+  &-danger {
+    background: v.$error-color;
+    color: v.$white;
+    
+    &:hover:not(:disabled) {
+      background: color.adjust(v.$error-color, $lightness: -10%);
+    }
+  }
+}
+
+/* Tables
+   ========================================================================== */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  
+  th,
+  td {
+    padding: v.$spacing-sm v.$spacing-md;
+    text-align: left;
+    border-bottom: 1px solid v.$gray-200;
+  }
+  
+  th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: v.$text-secondary;
+    background: v.$gray-50;
+  }
+  
+  tr:hover td {
+    background: v.$gray-50;
+  }
+}
+
+/* Status Badges
+   ========================================================================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: v.$border-radius-full;
+  
+  &-active {
+    background: rgba(v.$success-color, 0.1);
+    color: v.$success-color;
+  }
+  
+  &-inactive {
+    background: rgba(v.$gray-500, 0.1);
+    color: v.$gray-500;
+  }
+  
+  &-pending {
+    background: rgba(v.$warning-color, 0.1);
+    color: v.$warning-color;
+  }
+  
+  &-blocked {
+    background: rgba(v.$error-color, 0.1);
+    color: v.$error-color;
+  }
+}
+
+/* Scrollbar
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: v.$gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  background: v.$gray-400;
+  border-radius: 4px;
+  
+  &:hover {
+    background: v.$gray-500;
+  }
+}

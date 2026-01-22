@@ -1,0 +1,11 @@
+<!-- Empty State Component Template -->
+<div class="empty-state">
+  <div class="empty-state-icon">
+    <mat-icon>{{ icon }}</mat-icon>
+  </div>
+  <h3 class="empty-state-title">{{ title | translate }}</h3>
+  <p class="empty-state-description" *ngIf="description">{{ description | translate }}</p>
+  <button mat-flat-button color="primary" *ngIf="actionLabel" (click)="action.emit()">
+    {{ actionLabel | translate }}
+  </button>
+</div>

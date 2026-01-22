@@ -1,0 +1,21 @@
+<!-- Refunds Component Template -->
+<div class="refunds-page">
+  <header class="page-header">
+    <h1>Remboursements</h1>
+  </header>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <div class="filters-row">
+      <!-- Filters -->
+    </div>
+  </mat-card>
+
+  <!-- Data Table -->
+  <mat-card class="table-card">
+    <app-data-table
+      [data]="refunds"
+      [loading]="loading">
+    </app-data-table>
+  </mat-card>
+</div>

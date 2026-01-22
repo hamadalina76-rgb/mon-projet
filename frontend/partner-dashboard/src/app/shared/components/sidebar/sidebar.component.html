@@ -1,0 +1,35 @@
+<!-- src/app/shared/components/sidebar/sidebar.component.html - Angular 19 -->
+<aside class="sidebar" [class.collapsed]="collapsed()">
+  <div class="sidebar-header">
+    @if (!collapsed()) {
+      <img src="assets/images/logo.svg" alt="SpeedLine" class="logo" />
+    } @else {
+      <img src="assets/images/logo-icon.svg" alt="SpeedLine" class="logo-icon" />
+    }
+  </div>
+
+  <nav class="sidebar-nav">
+    @for (item of menuItems; track item.route) {
+      <a
+        [routerLink]="item.route"
+        routerLinkActive="active"
+        class="nav-item"
+        [title]="collapsed() ? item.label : ''"
+      >
+        <span class="material-icons">{{ item.icon }}</span>
+        @if (!collapsed()) {
+          <span class="nav-label">{{ item.label }}</span>
+        }
+        @if (item.badge && !collapsed()) {
+          <span class="badge">{{ item.badge }}</span>
+        }
+      </a>
+    }
+  </nav>
+
+  <button class="collapse-btn" (click)="toggleCollapse()">
+    <span class="material-icons">
+      {{ collapsed() ? 'chevron_right' : 'chevron_left' }}
+    </span>
+  </button>
+</aside>

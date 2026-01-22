@@ -1,0 +1,144 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # Auth Service
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=1
+
+        # User Service
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/**, /api/customers/**, /api/couriers/**, /api/addresses/**
+          filters:
+            - StripPrefix=1
+            - AuthenticationFilter
+
+        # Partner Service
+        - id: partner-service
+          uri: lb://partner-service
+          predicates:
+            - Path=/api/partners/**, /api/products/**, /api/categories/**
+          filters:
+            - StripPrefix=1
+
+        # Order Service
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - StripPrefix=1
+            - AuthenticationFilter
+
+        # Delivery Service
+        - id: delivery-service
+          uri: lb://delivery-service
+          predicates:
+            - Path=/api/deliveries/**
+          filters:
+            - StripPrefix=1
+            - AuthenticationFilter
+
+        # Payment Service
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payments/**, /api/wallets/**, /api/payment-methods/**
+          filters:
+            - StripPrefix=1
+            - AuthenticationFilter
+
+        # Notification Service
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**, /api/push-tokens/**
+          filters:
+            - StripPrefix=1
+            - AuthenticationFilter
+
+        # Location Service
+        - id: location-service
+          uri: lb://location-service
+          predicates:
+            - Path=/api/locations/**, /api/zones/**
+          filters:
+            - StripPrefix=1
+
+        # Analytics Service
+        - id: analytics-service
+          uri: lb://analytics-service
+          predicates:
+            - Path=/api/analytics/**, /api/reports/**
+          filters:
+            - StripPrefix=1
+            - AuthenticationFilter
+
+        # Promotion Service
+        - id: promotion-service
+          uri: lb://promotion-service
+          predicates:
+            - Path=/api/promotions/**
+          filters:
+            - StripPrefix=1
+
+        # Review Service
+        - id: review-service
+          uri: lb://review-service
+          predicates:
+            - Path=/api/reviews/**, /api/ratings/**
+          filters:
+            - StripPrefix=1
+
+        # Support Service
+        - id: support-service
+          uri: lb://support-service
+          predicates:
+            - Path=/api/tickets/**, /api/faq/**
+          filters:
+            - StripPrefix=1
+            - AuthenticationFilter
+
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka:eureka123@localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+jwt:
+  secret: ${JWT_SECRET:speedline-super-secret-key-for-jwt-token-generation-minimum-256-bits}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG

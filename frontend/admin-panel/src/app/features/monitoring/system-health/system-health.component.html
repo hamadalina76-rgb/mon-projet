@@ -1,0 +1,54 @@
+<!-- System Health Component Template -->
+<div class="system-health-page">
+  <header class="page-header">
+    <h1>{{ 'monitoring.systemHealth' | translate }}</h1>
+    <button mat-stroked-button (click)="loadHealth()">
+      <mat-icon>refresh</mat-icon>
+      Actualiser
+    </button>
+  </header>
+
+  <!-- Overall Status -->
+  <mat-card class="status-card" [ngClass]="healthData?.status">
+    <mat-icon>{{ healthData?.status === 'healthy' ? 'check_circle' : 'warning' }}</mat-icon>
+    <div class="status-info">
+      <h2>{{ healthData?.status === 'healthy' ? 'Système opérationnel' : 'Problèmes détectés' }}</h2>
+      <span>Dernière vérification: {{ healthData?.lastCheck | date:'medium' }}</span>
+    </div>
+  </mat-card>
+
+  <!-- Services Status -->
+  <div class="services-grid">
+    <mat-card *ngFor="let service of services" class="service-card">
+      <div class="service-header">
+        <span class="service-name">{{ service.name }}</span>
+        <span class="service-status" [ngClass]="service.status">
+          {{ service.status }}
+        </span>
+      </div>
+      <div class="service-metrics">
+        <div class="metric">
+          <span class="metric-label">Uptime</span>
+          <span class="metric-value">{{ service.uptime }}%</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Latence</span>
+          <span class="metric-value">{{ service.latency }}ms</span>
+        </div>
+      </div>
+      <mat-progress-bar 
+        [mode]="'determinate'" 
+        [value]="service.healthScore"
+        [color]="service.healthScore > 90 ? 'primary' : 'warn'">
+      </mat-progress-bar>
+    </mat-card>
+  </div>
+
+  <!-- Resource Usage -->
+  <mat-card class="resources-card">
+    <h3>Utilisation des ressources</h3>
+    <div class="resources-grid">
+      <!-- CPU, Memory, Storage metrics -->
+    </div>
+  </mat-card>
+</div>

@@ -1,0 +1,59 @@
+<!-- Pricing Config Component Template -->
+<div class="pricing-config-page">
+  <header class="page-header">
+    <div class="header-left">
+      <button mat-icon-button routerLink="/zones">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>Configuration des tarifs</h1>
+    </div>
+  </header>
+
+  <mat-card class="form-card">
+    <form [formGroup]="pricingForm" (ngSubmit)="savePricing()">
+      <!-- Base Pricing -->
+      <section class="form-section">
+        <h3>Tarification de base</h3>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Prix de base (MAD)</mat-label>
+          <input matInput type="number" formControlName="basePrice" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Prix par km (MAD)</mat-label>
+          <input matInput type="number" formControlName="pricePerKm" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Montant minimum (MAD)</mat-label>
+          <input matInput type="number" formControlName="minimumCharge" />
+        </mat-form-field>
+      </section>
+
+      <!-- Surge Pricing -->
+      <section class="form-section">
+        <h3>Tarification dynamique</h3>
+
+        <mat-slide-toggle formControlName="surgeEnabled">
+          Activer la tarification dynamique
+        </mat-slide-toggle>
+
+        <mat-form-field appearance="outline" class="full-width" *ngIf="pricingForm.get('surgeEnabled')?.value">
+          <mat-label>Multiplicateur de surge</mat-label>
+          <input matInput type="number" formControlName="surgeMultiplier" step="0.1" />
+        </mat-form-field>
+      </section>
+
+      <!-- Actions -->
+      <div class="form-actions">
+        <button mat-stroked-button type="button" routerLink="/zones">
+          {{ 'common.cancel' | translate }}
+        </button>
+        <button mat-flat-button color="primary" type="submit" [disabled]="loading">
+          {{ 'common.save' | translate }}
+        </button>
+      </div>
+    </form>
+  </mat-card>
+</div>

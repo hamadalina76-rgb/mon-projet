@@ -1,0 +1,51 @@
+<!-- Live Tracking Component Template -->
+<div class="live-tracking-page">
+  <header class="page-header">
+    <div class="header-left">
+      <button mat-icon-button routerLink="/orders">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>Suivi en temps réel</h1>
+    </div>
+    <div class="live-indicator">
+      <span class="pulse"></span>
+      {{ liveOrders.length }} commandes en cours
+    </div>
+  </header>
+
+  <div class="tracking-content">
+    <!-- Orders sidebar -->
+    <div class="orders-sidebar">
+      <div class="orders-list">
+        <mat-card 
+          *ngFor="let order of liveOrders"
+          class="order-card"
+          [class.selected]="selectedOrder?.id === order.id"
+          (click)="selectOrder(order)">
+          <div class="order-header">
+            <span class="order-number">#{{ order.orderNumber }}</span>
+            <span class="order-status" [ngClass]="order.status">{{ order.status }}</span>
+          </div>
+          <div class="order-info">
+            <span>{{ order.customerName }}</span>
+            <span>{{ order.partnerName }}</span>
+          </div>
+        </mat-card>
+      </div>
+    </div>
+
+    <!-- Map view -->
+    <div class="map-container">
+      <!-- Map component here -->
+      <div class="map-placeholder">
+        <mat-icon>map</mat-icon>
+        <span>Carte de suivi</span>
+      </div>
+    </div>
+
+    <!-- Order details panel -->
+    <div class="details-panel" *ngIf="selectedOrder">
+      <!-- Selected order details -->
+    </div>
+  </div>
+</div>

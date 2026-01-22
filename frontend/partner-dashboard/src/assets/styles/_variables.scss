@@ -1,0 +1,92 @@
+// ==========================================================================
+// SpeedLine Partner Dashboard - Variables
+// ==========================================================================
+
+// Colors - Primary
+$primary-color: #FF6B35;
+$primary-light: #FF8F5E;
+$primary-dark: #E55A2B;
+
+// Colors - Secondary
+$secondary-color: #2D3748;
+$secondary-light: #4A5568;
+$secondary-dark: #1A202C;
+
+// Colors - Status
+$success-color: #48BB78;
+$warning-color: #ECC94B;
+$error-color: #F56565;
+$info-color: #4299E1;
+
+// Colors - Grayscale
+$white: #FFFFFF;
+$gray-50: #F7FAFC;
+$gray-100: #EDF2F7;
+$gray-200: #E2E8F0;
+$gray-300: #CBD5E0;
+$gray-400: #A0AEC0;
+$gray-500: #718096;
+$gray-600: #4A5568;
+$gray-700: #2D3748;
+$gray-800: #1A202C;
+$gray-900: #171923;
+$black: #000000;
+
+// Text Colors
+$text-primary: $gray-800;
+$text-secondary: $gray-600;
+$text-muted: $gray-500;
+
+// Background Colors
+$background-default: $gray-50;
+$background-paper: $white;
+$background-dark: $gray-800;
+
+// Spacing
+$spacing-xs: 0.25rem;  // 4px
+$spacing-sm: 0.5rem;   // 8px
+$spacing-md: 1rem;     // 16px
+$spacing-lg: 1.5rem;   // 24px
+$spacing-xl: 2rem;     // 32px
+$spacing-2xl: 3rem;    // 48px
+
+// Border Radius
+$border-radius-sm: 0.25rem;  // 4px
+$border-radius-md: 0.5rem;   // 8px
+$border-radius-lg: 0.75rem;  // 12px
+$border-radius-xl: 1rem;     // 16px
+$border-radius-full: 9999px;
+
+// Shadows
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+$shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+// Transitions
+$transition-fast: 0.15s ease;
+$transition-normal: 0.3s ease;
+$transition-slow: 0.5s ease;
+
+// Z-Index
+$z-dropdown: 1000;
+$z-sticky: 1020;
+$z-fixed: 1030;
+$z-modal-backdrop: 1040;
+$z-modal: 1050;
+$z-popover: 1060;
+$z-tooltip: 1070;
+$z-toast: 1080;
+
+// Breakpoints
+$breakpoint-mobile: 320px;
+$breakpoint-tablet: 768px;
+$breakpoint-desktop: 1024px;
+$breakpoint-wide: 1440px;
+
+// Sidebar
+$sidebar-width: 260px;
+$sidebar-collapsed-width: 72px;
+
+// Header
+$header-height: 64px;

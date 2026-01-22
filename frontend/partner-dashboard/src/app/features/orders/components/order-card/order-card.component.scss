@@ -1,0 +1,98 @@
+// Order Card Component Styles
+@use 'assets/styles/variables' as *;
+
+.order-card {
+  padding: 1rem;
+
+  &.PENDING {
+    border-left: 4px solid var(--warning);
+  }
+
+  &.CONFIRMED {
+    border-left: 4px solid var(--info);
+  }
+
+  &.PREPARING {
+    border-left: 4px solid var(--primary);
+  }
+
+  &.READY {
+    border-left: 4px solid var(--success);
+  }
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.order-info {
+  display: flex;
+  flex-direction: column;
+
+  .order-number {
+    font-weight: 600;
+    font-size: 1.125rem;
+  }
+
+  .order-time {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+}
+
+.card-body {
+  margin-bottom: 1rem;
+}
+
+.customer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--text-secondary);
+  }
+}
+
+.items-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+
+  .more-items {
+    color: var(--primary);
+  }
+}
+
+.order-total {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 500;
+
+  .total-value {
+    font-size: 1.125rem;
+    color: var(--primary);
+  }
+}
+
+.card-actions {
+  display: flex;
+  gap: 0.5rem;
+
+  button {
+    flex: 1;
+  }
+}

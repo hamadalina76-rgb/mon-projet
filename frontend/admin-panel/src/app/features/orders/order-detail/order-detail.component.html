@@ -1,0 +1,75 @@
+<!-- Order Detail Component Template -->
+<div class="order-detail-page">
+  <header class="page-header">
+    <div class="header-left">
+      <button mat-icon-button routerLink="/orders">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>Commande #{{ order?.orderNumber }}</h1>
+    </div>
+    <div class="header-actions">
+      <button mat-stroked-button color="warn" (click)="cancelOrder()">
+        Annuler
+      </button>
+      <button mat-stroked-button (click)="refundOrder()">
+        Rembourser
+      </button>
+    </div>
+  </header>
+
+  <div class="order-content" *ngIf="order">
+    <div class="main-column">
+      <!-- Order Status -->
+      <mat-card class="status-card">
+        <h3>Statut de la commande</h3>
+        <mat-stepper linear>
+          <mat-step label="Confirmée"></mat-step>
+          <mat-step label="En préparation"></mat-step>
+          <mat-step label="Prête"></mat-step>
+          <mat-step label="En livraison"></mat-step>
+          <mat-step label="Livrée"></mat-step>
+        </mat-stepper>
+      </mat-card>
+
+      <!-- Order Items -->
+      <mat-card class="items-card">
+        <h3>Articles</h3>
+        <mat-divider></mat-divider>
+        <div class="items-list">
+          <!-- Order items -->
+        </div>
+        <mat-divider></mat-divider>
+        <div class="order-total">
+          <span>Total</span>
+          <span class="amount">{{ order.total | currency:'MAD' }}</span>
+        </div>
+      </mat-card>
+    </div>
+
+    <div class="side-column">
+      <!-- Customer Info -->
+      <mat-card class="info-card">
+        <h3>Client</h3>
+        <!-- Customer details -->
+      </mat-card>
+
+      <!-- Partner Info -->
+      <mat-card class="info-card">
+        <h3>Partenaire</h3>
+        <!-- Partner details -->
+      </mat-card>
+
+      <!-- Courier Info -->
+      <mat-card class="info-card">
+        <h3>Livreur</h3>
+        <!-- Courier details -->
+      </mat-card>
+
+      <!-- Delivery Info -->
+      <mat-card class="info-card">
+        <h3>Livraison</h3>
+        <!-- Delivery address and map -->
+      </mat-card>
+    </div>
+  </div>
+</div>

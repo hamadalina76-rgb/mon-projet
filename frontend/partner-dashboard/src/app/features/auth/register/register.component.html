@@ -1,0 +1,124 @@
+<!-- Register Component Template - Angular 19 -->
+<div class="register-container">
+  <mat-card class="register-card">
+    <div class="register-header">
+      <img src="assets/images/logo.png" alt="SpeedLine" class="logo" />
+      <h1>{{ 'auth.register.title' | translate }}</h1>
+      <p>{{ 'auth.register.subtitle' | translate }}</p>
+    </div>
+
+    <mat-stepper orientation="vertical" linear>
+      <!-- Step 1: Account Info -->
+      <mat-step [stepControl]="accountForm">
+        <ng-template matStepLabel>Informations du compte</ng-template>
+        <form [formGroup]="accountForm">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Email</mat-label>
+            <input matInput type="email" formControlName="email" />
+            <mat-icon matPrefix>email</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Mot de passe</mat-label>
+            <input matInput [type]="hidePassword() ? 'password' : 'text'" formControlName="password" />
+            <mat-icon matPrefix>lock</mat-icon>
+            <button mat-icon-button matSuffix type="button" (click)="togglePasswordVisibility()">
+              <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Confirmer le mot de passe</mat-label>
+            <input matInput type="password" formControlName="confirmPassword" />
+            <mat-icon matPrefix>lock</mat-icon>
+          </mat-form-field>
+
+          <div class="step-actions">
+            <button mat-flat-button color="primary" matStepperNext>Suivant</button>
+          </div>
+        </form>
+      </mat-step>
+
+      <!-- Step 2: Business Info -->
+      <mat-step [stepControl]="businessForm">
+        <ng-template matStepLabel>Informations de l'entreprise</ng-template>
+        <form [formGroup]="businessForm">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Nom de l'établissement</mat-label>
+            <input matInput formControlName="businessName" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Type d'établissement</mat-label>
+            <mat-select formControlName="businessType">
+              <mat-option value="restaurant">Restaurant</mat-option>
+              <mat-option value="grocery">Épicerie</mat-option>
+              <mat-option value="pharmacy">Pharmacie</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Téléphone</mat-label>
+            <input matInput formControlName="phone" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Adresse</mat-label>
+            <input matInput formControlName="address" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Ville</mat-label>
+            <input matInput formControlName="city" />
+          </mat-form-field>
+
+          <div class="step-actions">
+            <button mat-stroked-button matStepperPrevious>Précédent</button>
+            <button mat-flat-button color="primary" matStepperNext>Suivant</button>
+          </div>
+        </form>
+      </mat-step>
+
+      <!-- Step 3: Documents -->
+      <mat-step [stepControl]="documentsForm">
+        <ng-template matStepLabel>Documents légaux</ng-template>
+        <form [formGroup]="documentsForm">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>ICE</mat-label>
+            <input matInput formControlName="ice" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>RC</mat-label>
+            <input matInput formControlName="rc" />
+          </mat-form-field>
+
+          @if (errorMessage()) {
+            <div class="error-message">
+              <mat-icon>error</mat-icon>
+              <span>{{ errorMessage() }}</span>
+            </div>
+          }
+
+          <div class="step-actions">
+            <button mat-stroked-button matStepperPrevious>Précédent</button>
+            <button mat-flat-button color="primary" (click)="onSubmit()" [disabled]="loading()">
+              @if (loading()) {
+                <mat-spinner diameter="20"></mat-spinner>
+              } @else {
+                S'inscrire
+              }
+            </button>
+          </div>
+        </form>
+      </mat-step>
+    </mat-stepper>
+
+    <div class="register-footer">
+      <p>
+        Déjà inscrit ?
+        <a routerLink="/auth/login">Se connecter</a>
+      </p>
+    </div>
+  </mat-card>
+</div>

@@ -1,0 +1,20 @@
+<!-- Admin Layout Component Template -->
+<div class="admin-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+  <app-sidebar
+    [collapsed]="sidebarCollapsed"
+    (toggleCollapse)="toggleSidebar()">
+  </app-sidebar>
+
+  <div class="main-content">
+    <app-header
+      [notificationCount]="notificationCount"
+      [alertCount]="alertCount"
+      (toggleSidebar)="toggleSidebar()">
+    </app-header>
+
+    <main class="content-area">
+      <app-loading-spinner *ngIf="loading" [overlay]="true"></app-loading-spinner>
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

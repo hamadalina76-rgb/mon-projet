@@ -1,0 +1,28 @@
+<!-- Rating Summary Component Template - Angular 19 -->
+<mat-card class="rating-summary">
+  <div class="summary-left">
+    <div class="average-rating">
+      <span class="rating-value">{{ averageRating() | number:'1.1-1' }}</span>
+      <div class="rating-stars">
+        @for (isFilled of stars(); track $index) {
+          <mat-icon [class.filled]="isFilled">star</mat-icon>
+        }
+      </div>
+      <span class="total-reviews">{{ totalReviews() }} avis</span>
+    </div>
+  </div>
+
+  <div class="summary-right">
+    @for (rating of [5,4,3,2,1]; track rating) {
+      <div class="rating-bar">
+        <span class="rating-label">{{ rating }}</span>
+        <mat-icon>star</mat-icon>
+        <mat-progress-bar 
+          mode="determinate" 
+          [value]="getRatingPercentage(rating)">
+        </mat-progress-bar>
+        <span class="rating-count">{{ stats()?.distribution?.[rating] || 0 }}</span>
+      </div>
+    }
+  </div>
+</mat-card>

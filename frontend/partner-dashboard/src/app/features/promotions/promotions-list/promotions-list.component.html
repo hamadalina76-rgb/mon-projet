@@ -1,0 +1,98 @@
+<!-- Promotions List Component Template - Angular 19 -->
+<div class="promotions-page">
+  <header class="page-header">
+    <h1>{{ 'promotions.title' | translate }}</h1>
+    <button mat-flat-button color="primary" routerLink="new">
+      <mat-icon>add</mat-icon>
+      Nouvelle promotion
+    </button>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="48"></mat-spinner>
+    </div>
+  } @else {
+    <!-- Promotions Grid -->
+    <div class="promotions-grid">
+      @for (promo of filteredPromotions(); track promo.id) {
+        <mat-card class="promo-card">
+          <div class="promo-header">
+            <div class="promo-type">
+              <mat-icon>{{ promo.type === 'percentage' ? 'percent' : 'attach_money' }}</mat-icon>
+              <span class="promo-value">
+                {{ promo.type === 'percentage' ? promo.value + '%' : (promo.value | currency:'MAD') }}
+              </span>
+            </div>
+            <mat-chip [ngClass]="getStatusClass(promo)">
+              {{ getStatusClass(promo) | titlecase }}
+            </mat-chip>
+          </div>
+
+          <h3 class="promo-name">{{ promo.name }}</h3>
+          <p class="promo-description">{{ promo.description }}</p>
+
+          <div class="promo-details">
+            <div class="detail-row">
+              <mat-icon>event</mat-icon>
+              <span>{{ promo.startDate | date:'shortDate' }} - {{ promo.endDate | date:'shortDate' }}</span>
+            </div>
+            @if (promo.code) {
+              <div class="detail-row">
+                <mat-icon>confirmation_number</mat-icon>
+                <span class="promo-code">{{ promo.code }}</span>
+              </div>
+            }
+            @if (promo.minOrder) {
+              <div class="detail-row">
+                <mat-icon>shopping_cart</mat-icon>
+                <span>Min. {{ promo.minOrder | currency:'MAD' }}</span>
+              </div>
+            }
+          </div>
+
+          <div class="promo-stats">
+            <div class="stat">
+              <span class="stat-value">{{ promo.usageCount || 0 }}</span>
+              <span class="stat-label">Utilisations</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value">{{ promo.revenue || 0 | currency:'MAD' }}</span>
+              <span class="stat-label">Revenus générés</span>
+            </div>
+          </div>
+
+          <div class="promo-actions">
+            <mat-slide-toggle 
+              [checked]="promo.isActive"
+              (change)="togglePromotion(promo.id)">
+            </mat-slide-toggle>
+
+            <button mat-icon-button [matMenuTriggerFor]="promoMenu">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #promoMenu="matMenu">
+              <button mat-menu-item [routerLink]="[promo.id, 'edit']">
+                <mat-icon>edit</mat-icon>
+                <span>Modifier</span>
+              </button>
+              <button mat-menu-item (click)="deletePromotion(promo.id)">
+                <mat-icon>delete</mat-icon>
+                <span>Supprimer</span>
+              </button>
+            </mat-menu>
+          </div>
+        </mat-card>
+      } @empty {
+        <div class="empty-state">
+          <mat-icon>local_offer</mat-icon>
+          <h3>Aucune promotion</h3>
+          <p>Créez des promotions pour attirer plus de clients</p>
+          <button mat-flat-button color="primary" routerLink="new">
+            Créer une promotion
+          </button>
+        </div>
+      }
+    </div>
+  }
+</div>

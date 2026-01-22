@@ -1,0 +1,20 @@
+<!-- Admins List Component Template -->
+<div class="admins-list-page">
+  <header class="page-header">
+    <h1>{{ 'users.admins.title' | translate }}</h1>
+    <div class="header-actions">
+      <button mat-flat-button color="primary" routerLink="new">
+        <mat-icon>add</mat-icon>
+        {{ 'users.admins.addAdmin' | translate }}
+      </button>
+    </div>
+  </header>
+
+  <!-- Data Table -->
+  <mat-card class="table-card">
+    <app-data-table
+      [data]="admins"
+      [loading]="loading">
+    </app-data-table>
+  </mat-card>
+</div>

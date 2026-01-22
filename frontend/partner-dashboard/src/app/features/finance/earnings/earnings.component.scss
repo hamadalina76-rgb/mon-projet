@@ -1,0 +1,134 @@
+// Earnings Component Styles
+@use 'assets/styles/variables' as *;
+
+.earnings-page {
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+
+  h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.summary-card {
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.summary-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.earnings {
+    background: rgba(76, 175, 80, 0.1);
+    color: var(--success);
+  }
+
+  &.pending {
+    background: rgba(255, 152, 0, 0.1);
+    color: var(--warning);
+  }
+
+  &.paid {
+    background: rgba(33, 150, 243, 0.1);
+    color: var(--primary);
+  }
+
+  &.orders {
+    background: rgba(156, 39, 176, 0.1);
+    color: #9c27b0;
+  }
+}
+
+.summary-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.summary-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.chart-card {
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+
+  h3 {
+    margin: 0 0 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .chart-container {
+    height: 300px;
+  }
+}
+
+.table-card {
+  padding: 0;
+  overflow: hidden;
+
+  h3 {
+    margin: 0;
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  table {
+    width: 100%;
+  }
+}
+
+.commission {
+  color: var(--error);
+}
+
+.net {
+  color: var(--success);
+  font-weight: 600;
+}

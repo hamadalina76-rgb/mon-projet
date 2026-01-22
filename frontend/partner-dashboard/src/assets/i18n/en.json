@@ -1,0 +1,127 @@
+{
+  "COMMON": {
+    "SAVE": "Save",
+    "CANCEL": "Cancel",
+    "DELETE": "Delete",
+    "EDIT": "Edit",
+    "ADD": "Add",
+    "SEARCH": "Search",
+    "FILTER": "Filter",
+    "REFRESH": "Refresh",
+    "LOADING": "Loading...",
+    "NO_DATA": "No data",
+    "CONFIRM": "Confirm",
+    "BACK": "Back",
+    "NEXT": "Next",
+    "PREVIOUS": "Previous",
+    "YES": "Yes",
+    "NO": "No"
+  },
+  "auth": {
+    "login": {
+      "title": "Login",
+      "subtitle": "Sign in to your partner dashboard"
+    },
+    "email": "Email",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "submit": "Sign in",
+    "noAccount": "Don't have an account?"
+  },
+  "validation": {
+    "required": "This field is required",
+    "email": "Invalid email"
+  },
+  "AUTH": {
+    "LOGIN": "Login",
+    "LOGOUT": "Logout",
+    "REGISTER": "Register",
+    "EMAIL": "Email",
+    "PASSWORD": "Password",
+    "CONFIRM_PASSWORD": "Confirm password",
+    "FORGOT_PASSWORD": "Forgot password?",
+    "REMEMBER_ME": "Remember me",
+    "LOGIN_SUCCESS": "Login successful",
+    "LOGIN_ERROR": "Invalid email or password",
+    "REGISTER_SUCCESS": "Registration successful"
+  },
+  "DASHBOARD": {
+    "TITLE": "Dashboard",
+    "WELCOME": "Welcome",
+    "TODAY_ORDERS": "Today's orders",
+    "TODAY_REVENUE": "Today's revenue",
+    "PENDING_ORDERS": "Pending orders",
+    "AVERAGE_RATING": "Average rating"
+  },
+  "ORDERS": {
+    "TITLE": "Orders",
+    "ORDER_NUMBER": "Order #",
+    "CUSTOMER": "Customer",
+    "STATUS": "Status",
+    "TOTAL": "Total",
+    "DATE": "Date",
+    "PENDING": "Pending",
+    "CONFIRMED": "Confirmed",
+    "PREPARING": "Preparing",
+    "READY": "Ready",
+    "PICKED_UP": "Picked up",
+    "DELIVERED": "Delivered",
+    "CANCELLED": "Cancelled",
+    "ACCEPT": "Accept",
+    "REJECT": "Reject",
+    "MARK_READY": "Mark as ready",
+    "VIEW_DETAILS": "View details"
+  },
+  "MENU": {
+    "TITLE": "Menu",
+    "PRODUCTS": "Products",
+    "CATEGORIES": "Categories",
+    "ADD_PRODUCT": "Add product",
+    "ADD_CATEGORY": "Add category",
+    "PRODUCT_NAME": "Product name",
+    "DESCRIPTION": "Description",
+    "PRICE": "Price",
+    "CATEGORY": "Category",
+    "AVAILABLE": "Available",
+    "UNAVAILABLE": "Unavailable"
+  },
+  "ANALYTICS": {
+    "TITLE": "Analytics",
+    "OVERVIEW": "Overview",
+    "SALES_REPORT": "Sales report",
+    "REVENUE": "Revenue",
+    "ORDERS_COUNT": "Orders count",
+    "AVERAGE_ORDER": "Average order"
+  },
+  "REVIEWS": {
+    "TITLE": "Customer reviews",
+    "AVERAGE_RATING": "Average rating",
+    "TOTAL_REVIEWS": "Total reviews",
+    "REPLY": "Reply"
+  },
+  "PROMOTIONS": {
+    "TITLE": "Promotions",
+    "ADD_PROMOTION": "Create promotion",
+    "CODE": "Promo code",
+    "DISCOUNT": "Discount",
+    "START_DATE": "Start date",
+    "END_DATE": "End date",
+    "ACTIVE": "Active",
+    "INACTIVE": "Inactive"
+  },
+  "PROFILE": {
+    "TITLE": "Profile",
+    "BUSINESS_INFO": "Business information",
+    "OPENING_HOURS": "Opening hours",
+    "DELIVERY_ZONES": "Delivery zones",
+    "SETTINGS": "Settings"
+  },
+  "FINANCE": {
+    "TITLE": "Finance",
+    "EARNINGS": "Earnings",
+    "PAYOUTS": "Payouts",
+    "BALANCE": "Balance",
+    "PENDING_PAYOUT": "Pending payout"
+  }
+}

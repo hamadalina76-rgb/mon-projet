@@ -1,0 +1,35 @@
+<!-- Orders Analytics Component Template -->
+<div class="orders-analytics-page">
+  <header class="page-header">
+    <h1>{{ 'analytics.orders' | translate }}</h1>
+    <div class="header-actions">
+      <mat-button-toggle-group [value]="period">
+        <mat-button-toggle value="week">Semaine</mat-button-toggle>
+        <mat-button-toggle value="month">Mois</mat-button-toggle>
+        <mat-button-toggle value="year">Année</mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+  </header>
+
+  <!-- Stats Cards -->
+  <div class="stats-row">
+    <!-- Order stats cards -->
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-grid">
+    <mat-card class="chart-card">
+      <h3>Volume des commandes</h3>
+      <div class="chart-container">
+        <!-- Chart component here -->
+      </div>
+    </mat-card>
+
+    <mat-card class="chart-card">
+      <h3>Statuts des commandes</h3>
+      <div class="chart-container">
+        <!-- Chart here -->
+      </div>
+    </mat-card>
+  </div>
+</div>

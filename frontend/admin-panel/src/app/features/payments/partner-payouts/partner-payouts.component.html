@@ -1,0 +1,32 @@
+<!-- Partner Payouts Component Template -->
+<div class="partner-payouts-page">
+  <header class="page-header">
+    <h1>Versements partenaires</h1>
+    <div class="header-actions">
+      <button mat-flat-button color="primary" (click)="processAllPayouts()">
+        <mat-icon>payments</mat-icon>
+        Traiter tous les versements
+      </button>
+    </div>
+  </header>
+
+  <!-- Summary -->
+  <div class="summary-row">
+    <mat-card class="summary-card">
+      <span class="label">Total à verser</span>
+      <span class="value">{{ totalPending | currency:'MAD' }}</span>
+    </mat-card>
+    <mat-card class="summary-card">
+      <span class="label">Partenaires en attente</span>
+      <span class="value">{{ pendingCount }}</span>
+    </mat-card>
+  </div>
+
+  <!-- Data Table -->
+  <mat-card class="table-card">
+    <app-data-table
+      [data]="payouts"
+      [loading]="loading">
+    </app-data-table>
+  </mat-card>
+</div>

@@ -1,0 +1,61 @@
+<!-- Review Card Component Template - Angular 19 -->
+<mat-card class="review-card">
+  <div class="review-header">
+    <div class="customer-info">
+      <div class="customer-avatar">
+        {{ review().customerName?.[0] }}
+      </div>
+      <div class="customer-details">
+        <span class="customer-name">{{ review().customerName }}</span>
+        <span class="review-date">{{ review().createdAt | date:'mediumDate' }}</span>
+      </div>
+    </div>
+    <div class="review-rating">
+      @for (isFilled of stars(); track $index) {
+        <mat-icon [class.filled]="isFilled">star</mat-icon>
+      }
+    </div>
+  </div>
+
+  <p class="review-comment">{{ review().comment }}</p>
+
+  <!-- Ordered Items -->
+  @if (review().items?.length) {
+    <div class="order-items">
+      <span class="items-label">Articles commandés:</span>
+      <span class="items-list">{{ review().items.join(', ') }}</span>
+    </div>
+  }
+
+  <!-- Partner Reply -->
+  @if (hasReply()) {
+    <div class="partner-reply">
+      <div class="reply-header">
+        <mat-icon>reply</mat-icon>
+        <span>Votre réponse</span>
+      </div>
+      <p>{{ review().reply }}</p>
+    </div>
+  } @else {
+    <!-- Reply Section -->
+    <div class="reply-section">
+      @if (!showReplyForm()) {
+        <button mat-stroked-button (click)="showReplyForm.set(true)">
+          <mat-icon>reply</mat-icon>
+          Répondre
+        </button>
+      } @else {
+        <div class="reply-form">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Votre réponse</mat-label>
+            <textarea matInput [value]="replyText()" (input)="updateReplyText($any($event.target).value)" rows="3"></textarea>
+          </mat-form-field>
+          <div class="reply-actions">
+            <button mat-stroked-button (click)="showReplyForm.set(false)">Annuler</button>
+            <button mat-flat-button color="primary" (click)="submitReply()">Envoyer</button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</mat-card>

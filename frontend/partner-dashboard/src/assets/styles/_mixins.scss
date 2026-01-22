@@ -1,0 +1,190 @@
+// ==========================================================================
+// SpeedLine Partner Dashboard - Mixins
+// ==========================================================================
+
+@use 'variables' as *;
+@forward 'variables';
+
+// Responsive Breakpoints
+// ==========================================================================
+
+@mixin mobile {
+  @media (max-width: #{$breakpoint-tablet - 1px}) {
+    @content;
+  }
+}
+
+@mixin tablet {
+  @media (min-width: $breakpoint-tablet) and (max-width: #{$breakpoint-desktop - 1px}) {
+    @content;
+  }
+}
+
+@mixin desktop {
+  @media (min-width: $breakpoint-desktop) {
+    @content;
+  }
+}
+
+@mixin wide {
+  @media (min-width: $breakpoint-wide) {
+    @content;
+  }
+}
+
+@mixin tablet-up {
+  @media (min-width: $breakpoint-tablet) {
+    @content;
+  }
+}
+
+@mixin desktop-up {
+  @media (min-width: $breakpoint-desktop) {
+    @content;
+  }
+}
+
+// Flexbox
+// ==========================================================================
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+// Typography
+// ==========================================================================
+
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin text-ellipsis-multiline($lines: 2) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// Effects
+// ==========================================================================
+
+@mixin card-shadow {
+  box-shadow: $shadow-md;
+  transition: box-shadow $transition-normal;
+  
+  &:hover {
+    box-shadow: $shadow-lg;
+  }
+}
+
+@mixin focus-ring {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba($primary-color, 0.3);
+}
+
+// Scrollbar
+// ==========================================================================
+
+@mixin custom-scrollbar($width: 8px) {
+  &::-webkit-scrollbar {
+    width: $width;
+    height: $width;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: $gray-100;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: $gray-400;
+    border-radius: calc($width / 2);
+    
+    &:hover {
+      background: $gray-500;
+    }
+  }
+}
+
+// Buttons
+// ==========================================================================
+
+@mixin button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-xs;
+  padding: $spacing-sm $spacing-md;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  border-radius: $border-radius-md;
+  cursor: pointer;
+  transition: all $transition-fast;
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+// Inputs
+// ==========================================================================
+
+@mixin input-base {
+  width: 100%;
+  padding: $spacing-sm $spacing-md;
+  font-size: 1rem;
+  border: 1px solid $gray-300;
+  border-radius: $border-radius-md;
+  transition: border-color $transition-fast, box-shadow $transition-fast;
+  
+  &:focus {
+    @include focus-ring;
+    border-color: $primary-color;
+  }
+  
+  &::placeholder {
+    color: $gray-400;
+  }
+}
+
+// Absolute Positioning
+// ==========================================================================
+
+@mixin absolute-fill {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+@mixin absolute-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+// Overlay
+// ==========================================================================
+
+@mixin overlay($opacity: 0.5) {
+  @include absolute-fill;
+  background: rgba($black, $opacity);
+}

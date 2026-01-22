@@ -1,0 +1,92 @@
+// ==========================================================================
+// SpeedLine Admin Panel - Variables
+// ==========================================================================
+
+// Colors - Primary (Admin uses different color scheme)
+$primary-color: #4F46E5;
+$primary-light: #6366F1;
+$primary-dark: #4338CA;
+
+// Colors - Secondary
+$secondary-color: #1E293B;
+$secondary-light: #334155;
+$secondary-dark: #0F172A;
+
+// Colors - Status
+$success-color: #10B981;
+$warning-color: #F59E0B;
+$error-color: #EF4444;
+$info-color: #3B82F6;
+
+// Colors - Grayscale
+$white: #FFFFFF;
+$gray-50: #F8FAFC;
+$gray-100: #F1F5F9;
+$gray-200: #E2E8F0;
+$gray-300: #CBD5E1;
+$gray-400: #94A3B8;
+$gray-500: #64748B;
+$gray-600: #475569;
+$gray-700: #334155;
+$gray-800: #1E293B;
+$gray-900: #0F172A;
+$black: #000000;
+
+// Text Colors
+$text-primary: $gray-900;
+$text-secondary: $gray-600;
+$text-muted: $gray-500;
+
+// Background Colors
+$background-default: $gray-100;
+$background-paper: $white;
+$background-dark: $secondary-color;
+
+// Spacing
+$spacing-xs: 0.25rem;
+$spacing-sm: 0.5rem;
+$spacing-md: 1rem;
+$spacing-lg: 1.5rem;
+$spacing-xl: 2rem;
+$spacing-2xl: 3rem;
+
+// Border Radius
+$border-radius-sm: 0.25rem;
+$border-radius-md: 0.5rem;
+$border-radius-lg: 0.75rem;
+$border-radius-xl: 1rem;
+$border-radius-full: 9999px;
+
+// Shadows
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+$shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+// Transitions
+$transition-fast: 0.15s ease;
+$transition-normal: 0.3s ease;
+$transition-slow: 0.5s ease;
+
+// Z-Index
+$z-dropdown: 1000;
+$z-sticky: 1020;
+$z-fixed: 1030;
+$z-modal-backdrop: 1040;
+$z-modal: 1050;
+$z-popover: 1060;
+$z-tooltip: 1070;
+$z-toast: 1080;
+
+// Breakpoints
+$breakpoint-mobile: 320px;
+$breakpoint-tablet: 768px;
+$breakpoint-desktop: 1024px;
+$breakpoint-wide: 1440px;
+
+// Sidebar
+$sidebar-width: 280px;
+$sidebar-collapsed-width: 72px;
+
+// Header
+$header-height: 64px;

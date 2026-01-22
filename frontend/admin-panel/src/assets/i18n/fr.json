@@ -1,0 +1,324 @@
+{
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "view": "Voir",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "export": "Exporter",
+    "import": "Importer",
+    "refresh": "Actualiser",
+    "loading": "Chargement...",
+    "noData": "Aucune donnée",
+    "actions": "Actions",
+    "status": "Statut",
+    "date": "Date",
+    "all": "Tous",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "pending": "En attente",
+    "approved": "Approuvé",
+    "rejected": "Rejeté",
+    "yes": "Oui",
+    "no": "Non"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "users": "Utilisateurs",
+    "customers": "Clients",
+    "couriers": "Livreurs",
+    "admins": "Administrateurs",
+    "partners": "Partenaires",
+    "orders": "Commandes",
+    "payments": "Paiements",
+    "transactions": "Transactions",
+    "payouts": "Virements",
+    "refunds": "Remboursements",
+    "promotions": "Promotions",
+    "reviews": "Avis",
+    "support": "Support",
+    "zones": "Zones",
+    "analytics": "Analytiques",
+    "overview": "Vue d'ensemble",
+    "revenue": "Revenus",
+    "reports": "Rapports",
+    "notifications": "Notifications",
+    "settings": "Paramètres",
+    "monitoring": "Monitoring"
+  },
+  "header": {
+    "systemAlerts": "Alertes système",
+    "noAlerts": "Aucune alerte",
+    "notifications": "Notifications",
+    "noNotifications": "Aucune notification",
+    "viewAll": "Voir tout",
+    "profile": "Profil",
+    "settings": "Paramètres",
+    "logout": "Déconnexion"
+  },
+  "auth": {
+    "login": "Connexion",
+    "email": "Adresse e-mail",
+    "password": "Mot de passe",
+    "loginButton": "Se connecter",
+    "forgotPassword": "Mot de passe oublié ?",
+    "rememberMe": "Se souvenir de moi",
+    "invalidCredentials": "Identifiants invalides",
+    "sessionExpired": "Votre session a expiré, veuillez vous reconnecter"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "totalOrders": "Commandes totales",
+    "totalRevenue": "Chiffre d'affaires",
+    "activeUsers": "Utilisateurs actifs",
+    "activePartners": "Partenaires actifs",
+    "activeCouriers": "Livreurs actifs",
+    "pendingApprovals": "Approbations en attente",
+    "recentOrders": "Commandes récentes",
+    "topPartners": "Meilleurs partenaires",
+    "systemHealth": "État du système"
+  },
+  "users": {
+    "title": "Gestion des utilisateurs",
+    "customers": {
+      "title": "Clients",
+      "totalCustomers": "Total clients",
+      "newThisMonth": "Nouveaux ce mois",
+      "activeToday": "Actifs aujourd'hui"
+    },
+    "couriers": {
+      "title": "Livreurs",
+      "totalCouriers": "Total livreurs",
+      "online": "En ligne",
+      "onDelivery": "En livraison",
+      "pendingApproval": "En attente d'approbation"
+    },
+    "admins": {
+      "title": "Administrateurs",
+      "addAdmin": "Ajouter un admin",
+      "role": "Rôle",
+      "permissions": "Permissions",
+      "lastLogin": "Dernière connexion"
+    }
+  },
+  "partners": {
+    "title": "Gestion des partenaires",
+    "totalPartners": "Total partenaires",
+    "pendingApproval": "En attente d'approbation",
+    "verified": "Vérifiés",
+    "suspended": "Suspendus",
+    "detail": {
+      "info": "Informations",
+      "menu": "Menu",
+      "orders": "Commandes",
+      "reviews": "Avis",
+      "finance": "Finances"
+    },
+    "approval": {
+      "title": "Approbation du partenaire",
+      "approve": "Approuver",
+      "reject": "Rejeter",
+      "documents": "Documents",
+      "verifyInfo": "Vérifier les informations"
+    }
+  },
+  "orders": {
+    "title": "Gestion des commandes",
+    "allOrders": "Toutes les commandes",
+    "disputed": "Commandes litigieuses",
+    "orderId": "N° commande",
+    "customer": "Client",
+    "partner": "Partenaire",
+    "courier": "Livreur",
+    "total": "Total",
+    "status": {
+      "pending": "En attente",
+      "confirmed": "Confirmée",
+      "preparing": "En préparation",
+      "ready": "Prête",
+      "pickedUp": "Récupérée",
+      "delivering": "En livraison",
+      "delivered": "Livrée",
+      "cancelled": "Annulée"
+    }
+  },
+  "payments": {
+    "title": "Gestion des paiements",
+    "transactions": {
+      "title": "Transactions",
+      "amount": "Montant",
+      "type": "Type",
+      "paymentMethod": "Méthode"
+    },
+    "payouts": {
+      "title": "Virements partenaires",
+      "partner": "Partenaire",
+      "amount": "Montant",
+      "status": "Statut",
+      "process": "Traiter"
+    },
+    "refunds": {
+      "title": "Remboursements",
+      "order": "Commande",
+      "reason": "Motif",
+      "amount": "Montant"
+    },
+    "commission": {
+      "title": "Configuration des commissions",
+      "rate": "Taux",
+      "minimumFee": "Frais minimum"
+    }
+  },
+  "promotions": {
+    "title": "Gestion des promotions",
+    "addPromotion": "Ajouter une promotion",
+    "code": "Code promo",
+    "discount": "Réduction",
+    "validFrom": "Valide du",
+    "validTo": "Valide jusqu'au",
+    "usageLimit": "Limite d'utilisation",
+    "usedCount": "Utilisations"
+  },
+  "reviews": {
+    "title": "Gestion des avis",
+    "moderation": "Modération",
+    "flagged": "Signalés",
+    "rating": "Note",
+    "comment": "Commentaire",
+    "author": "Auteur",
+    "target": "Cible",
+    "approve": "Approuver",
+    "hide": "Masquer"
+  },
+  "support": {
+    "title": "Support client",
+    "tickets": {
+      "title": "Tickets",
+      "open": "Ouverts",
+      "inProgress": "En cours",
+      "resolved": "Résolus",
+      "priority": "Priorité"
+    },
+    "chat": {
+      "title": "Chat en direct",
+      "activeConversations": "Conversations actives"
+    },
+    "faq": {
+      "title": "FAQ",
+      "addQuestion": "Ajouter une question"
+    }
+  },
+  "zones": {
+    "title": "Gestion des zones",
+    "addZone": "Ajouter une zone",
+    "zoneName": "Nom de la zone",
+    "deliveryFee": "Frais de livraison",
+    "minimumOrder": "Commande minimum",
+    "active": "Active"
+  },
+  "analytics": {
+    "title": "Analytiques",
+    "overview": {
+      "title": "Vue d'ensemble",
+      "revenue": "Revenus",
+      "orders": "Commandes",
+      "avgOrderValue": "Panier moyen"
+    },
+    "revenue": {
+      "title": "Analyse des revenus",
+      "totalRevenue": "Revenus totaux",
+      "commissions": "Commissions",
+      "deliveryFees": "Frais de livraison"
+    },
+    "users": {
+      "title": "Analyse utilisateurs",
+      "newUsers": "Nouveaux utilisateurs",
+      "retention": "Taux de rétention"
+    },
+    "partners": {
+      "title": "Performance partenaires",
+      "topPerformers": "Meilleurs performers"
+    },
+    "couriers": {
+      "title": "Performance livreurs",
+      "avgDeliveryTime": "Temps moyen de livraison"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "send": {
+      "title": "Envoyer une notification",
+      "target": "Destinataires",
+      "title_field": "Titre",
+      "message": "Message",
+      "sendNow": "Envoyer maintenant",
+      "schedule": "Programmer"
+    },
+    "history": {
+      "title": "Historique",
+      "sent": "Envoyées",
+      "delivered": "Délivrées",
+      "opened": "Ouvertes"
+    },
+    "templates": {
+      "title": "Modèles",
+      "addTemplate": "Ajouter un modèle"
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "general": {
+      "title": "Général",
+      "appName": "Nom de l'application",
+      "timezone": "Fuseau horaire",
+      "currency": "Devise"
+    },
+    "commission": {
+      "title": "Commissions",
+      "partnerRate": "Taux partenaire",
+      "courierRate": "Taux livreur"
+    },
+    "payment": {
+      "title": "Paiement",
+      "enabledMethods": "Méthodes activées"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "emailEnabled": "E-mails activés",
+      "pushEnabled": "Push activées"
+    },
+    "emailTemplates": {
+      "title": "Modèles d'e-mails"
+    }
+  },
+  "monitoring": {
+    "title": "Monitoring",
+    "health": {
+      "title": "État des services",
+      "healthy": "Opérationnel",
+      "degraded": "Dégradé",
+      "down": "Indisponible"
+    },
+    "logs": {
+      "title": "Logs API",
+      "endpoint": "Endpoint",
+      "method": "Méthode",
+      "responseTime": "Temps de réponse"
+    },
+    "errors": {
+      "title": "Suivi des erreurs",
+      "errorRate": "Taux d'erreur"
+    }
+  },
+  "errors": {
+    "generic": "Une erreur est survenue",
+    "network": "Erreur de connexion",
+    "unauthorized": "Non autorisé",
+    "forbidden": "Accès refusé",
+    "notFound": "Ressource non trouvée",
+    "serverError": "Erreur serveur"
+  }
+}

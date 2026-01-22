@@ -1,0 +1,45 @@
+<!-- Revenue Analytics Component Template -->
+<div class="revenue-analytics-page">
+  <header class="page-header">
+    <h1>{{ 'analytics.revenue' | translate }}</h1>
+    <div class="header-actions">
+      <mat-button-toggle-group [value]="period" (change)="changePeriod($event.value)">
+        <mat-button-toggle value="week">Semaine</mat-button-toggle>
+        <mat-button-toggle value="month">Mois</mat-button-toggle>
+        <mat-button-toggle value="year">Année</mat-button-toggle>
+      </mat-button-toggle-group>
+      <button mat-stroked-button (click)="exportReport()">
+        <mat-icon>download</mat-icon>
+        Exporter
+      </button>
+    </div>
+  </header>
+
+  <!-- Stats Cards -->
+  <div class="stats-row">
+    <!-- Revenue stats cards -->
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-grid">
+    <mat-card class="chart-card">
+      <h3>Revenus par période</h3>
+      <div class="chart-container">
+        <!-- Chart component here -->
+      </div>
+    </mat-card>
+
+    <mat-card class="chart-card">
+      <h3>Répartition des revenus</h3>
+      <div class="chart-container">
+        <!-- Pie chart here -->
+      </div>
+    </mat-card>
+  </div>
+
+  <!-- Detailed Table -->
+  <mat-card class="table-card">
+    <h3>Détails des revenus</h3>
+    <!-- Revenue details table -->
+  </mat-card>
+</div>

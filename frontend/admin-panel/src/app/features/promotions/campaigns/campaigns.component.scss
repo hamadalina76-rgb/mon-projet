@@ -1,0 +1,79 @@
+// Campaigns Component Styles
+@import 'variables';
+
+.campaigns-page {
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+}
+
+.campaigns-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.campaign-card {
+  padding: 1.5rem;
+}
+
+.campaign-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+
+  h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .campaign-status {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    background: var(--bg-secondary);
+
+    &.ACTIVE {
+      background: var(--success-light);
+      color: var(--success);
+    }
+
+    &.SCHEDULED {
+      background: var(--warning-light);
+      color: var(--warning);
+    }
+
+    &.ENDED {
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+    }
+  }
+}
+
+.campaign-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.campaign-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}

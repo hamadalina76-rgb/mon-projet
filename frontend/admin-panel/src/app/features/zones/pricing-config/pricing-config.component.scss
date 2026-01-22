@@ -1,0 +1,55 @@
+// Pricing Config Component Styles
+@import 'variables';
+
+.pricing-config-page {
+  padding: 1.5rem;
+  max-width: 600px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+}
+
+.form-card {
+  padding: 2rem;
+}
+
+.form-section {
+  margin-bottom: 2rem;
+
+  h3 {
+    margin: 0 0 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+}
+
+.full-width {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+mat-slide-toggle {
+  margin-bottom: 1rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}

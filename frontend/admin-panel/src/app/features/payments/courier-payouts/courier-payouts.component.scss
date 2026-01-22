@@ -1,0 +1,47 @@
+// Courier Payouts Component Styles
+@import 'variables';
+
+.courier-payouts-page {
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+}
+
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.summary-card {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+
+  .value {
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+}
+
+.table-card {
+  overflow: hidden;
+}

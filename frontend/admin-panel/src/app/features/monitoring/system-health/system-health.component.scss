@@ -1,0 +1,135 @@
+// System Health Component Styles
+@use '../../../../assets/styles/variables' as v;
+
+.system-health-page {
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+}
+
+.status-card {
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+
+  &.healthy {
+    background: var(--success-light);
+    border-left: 4px solid var(--success);
+
+    mat-icon {
+      color: var(--success);
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+    }
+  }
+
+  &.degraded {
+    background: var(--warning-light);
+    border-left: 4px solid var(--warning);
+
+    mat-icon {
+      color: var(--warning);
+    }
+  }
+}
+
+.status-info {
+  h2 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+
+  span {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.service-card {
+  padding: 1.5rem;
+}
+
+.service-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+
+  .service-name {
+    font-weight: 600;
+  }
+
+  .service-status {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+
+    &.UP {
+      background: var(--success-light);
+      color: var(--success);
+    }
+
+    &.DOWN {
+      background: var(--error-light);
+      color: var(--error);
+    }
+  }
+}
+
+.service-metrics {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+
+  .metric-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .metric-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+}
+
+.resources-card {
+  padding: 1.5rem;
+
+  h3 {
+    margin: 0 0 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+}
+
+.resources-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}

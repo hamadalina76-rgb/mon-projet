@@ -1,0 +1,82 @@
+<!-- Dashboard Component Template - Angular 19 -->
+<div class="dashboard-page">
+  <header class="page-header">
+    <h1>{{ 'dashboard.title' | translate }}</h1>
+    <span class="greeting">Bonjour, {{ partnerName() }} 👋</span>
+  </header>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="loading-overlay">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  }
+
+  <!-- Stats Cards -->
+  <div class="stats-grid">
+    <app-stats-card
+      icon="shopping_bag"
+      title="Commandes aujourd'hui"
+      [value]="stats().ordersToday"
+      [trend]="stats().ordersTrend"
+      color="primary">
+    </app-stats-card>
+
+    <app-stats-card
+      icon="payments"
+      title="Revenu aujourd'hui"
+      [value]="stats().revenueToday | currency:'MAD'"
+      [trend]="stats().revenueTrend"
+      color="success">
+    </app-stats-card>
+
+    <app-stats-card
+      icon="star"
+      title="Note moyenne"
+      [value]="stats().averageRating"
+      color="warning">
+    </app-stats-card>
+
+    <app-stats-card
+      icon="timer"
+      title="Temps de préparation"
+      [value]="stats().avgPrepTime + ' min'"
+      color="info">
+    </app-stats-card>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="charts-row">
+    <mat-card class="chart-card">
+      <h3>Commandes cette semaine</h3>
+      <app-orders-chart [data]="stats().ordersChart"></app-orders-chart>
+    </mat-card>
+
+    <mat-card class="recent-orders-card">
+      <div class="card-header">
+        <h3>Commandes récentes</h3>
+        <button mat-stroked-button routerLink="/orders">Voir tout</button>
+      </div>
+      <app-recent-orders [orders]="stats().recentOrders"></app-recent-orders>
+    </mat-card>
+  </div>
+
+  <!-- Popular Products -->
+  <mat-card class="popular-products">
+    <h3>Produits populaires</h3>
+    <div class="products-grid">
+      @for (product of stats().popularProducts; track product.id) {
+        <div class="product-item">
+          <img [src]="product.image" [alt]="product.name" />
+          <span class="product-name">{{ product.name }}</span>
+          <span class="product-orders">{{ product.ordersCount }} commandes</span>
+        </div>
+      } @empty {
+        <div class="empty-state">
+          <mat-icon>inventory_2</mat-icon>
+          <p>Aucun produit populaire</p>
+        </div>
+      }
+    </div>
+  </mat-card>
+</div>

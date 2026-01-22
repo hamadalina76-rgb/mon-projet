@@ -1,0 +1,45 @@
+<!-- Zones Map Component Template -->
+<div class="zones-map-page">
+  <mat-sidenav-container>
+    <!-- Zones List Sidebar -->
+    <mat-sidenav mode="side" opened position="start" class="zones-sidebar">
+      <div class="sidebar-header">
+        <h2>{{ 'zones.title' | translate }}</h2>
+        <button mat-flat-button color="primary" (click)="openCreateDialog()">
+          <mat-icon>add</mat-icon>
+          Nouvelle zone
+        </button>
+      </div>
+
+      <div class="zones-list">
+        <mat-card 
+          *ngFor="let zone of zones"
+          class="zone-card"
+          [class.selected]="selectedZone?.id === zone.id"
+          (click)="selectZone(zone)">
+          <div class="zone-header">
+            <span class="zone-name">{{ zone.name }}</span>
+            <span class="zone-status" [ngClass]="zone.active ? 'active' : 'inactive'">
+              {{ zone.active ? 'Active' : 'Inactive' }}
+            </span>
+          </div>
+          <div class="zone-info">
+            <span>{{ zone.partnersCount }} partenaires</span>
+            <span>{{ zone.couriersCount }} livreurs</span>
+          </div>
+        </mat-card>
+      </div>
+    </mat-sidenav>
+
+    <!-- Map Content -->
+    <mat-sidenav-content>
+      <div class="map-container">
+        <!-- Map component here -->
+        <div class="map-placeholder">
+          <mat-icon>map</mat-icon>
+          <span>Carte des zones de livraison</span>
+        </div>
+      </div>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</div>

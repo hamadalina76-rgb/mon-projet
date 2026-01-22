@@ -1,0 +1,76 @@
+// Performance Metrics Component Styles
+@use 'assets/styles/variables' as *;
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.metric-item {
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+}
+
+.metric-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.metric-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.prep-time {
+    background: rgba(33, 150, 243, 0.1);
+    color: var(--primary);
+  }
+
+  &.acceptance {
+    background: rgba(76, 175, 80, 0.1);
+    color: var(--success);
+  }
+
+  &.completion {
+    background: rgba(156, 39, 176, 0.1);
+    color: #9c27b0;
+  }
+
+  &.satisfaction {
+    background: rgba(255, 193, 7, 0.1);
+    color: var(--warning);
+  }
+}
+
+.metric-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.metric-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.metric-target {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}

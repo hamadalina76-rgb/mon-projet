@@ -1,0 +1,58 @@
+<!-- Transactions Component Template -->
+<div class="transactions-page">
+  <header class="page-header">
+    <h1>{{ 'payments.transactions' | translate }}</h1>
+    <div class="header-actions">
+      <button mat-stroked-button (click)="exportTransactions()">
+        <mat-icon>download</mat-icon>
+        {{ 'common.export' | translate }}
+      </button>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <!-- Transaction stats -->
+  </div>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <div class="filters-row">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'common.search' | translate }}</mat-label>
+        <input matInput placeholder="ID transaction, commande..." />
+        <mat-icon matPrefix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Type</mat-label>
+        <mat-select>
+          <mat-option value="ALL">Tous</mat-option>
+          <mat-option value="PAYMENT">Paiement</mat-option>
+          <mat-option value="REFUND">Remboursement</mat-option>
+          <mat-option value="PAYOUT">Versement</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'common.status' | translate }}</mat-label>
+        <mat-select>
+          <mat-option value="ALL">Tous</mat-option>
+          <mat-option value="SUCCESS">Réussi</mat-option>
+          <mat-option value="PENDING">En attente</mat-option>
+          <mat-option value="FAILED">Échoué</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card>
+
+  <!-- Data Table -->
+  <mat-card class="table-card">
+    <app-data-table
+      [data]="transactions"
+      [loading]="loading"
+      [totalItems]="totalTransactions"
+      [pageSize]="pageSize">
+    </app-data-table>
+  </mat-card>
+</div>

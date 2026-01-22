@@ -1,0 +1,46 @@
+<!-- Customers List Component Template -->
+<div class="customers-list-page">
+  <header class="page-header">
+    <h1>{{ 'users.customers.title' | translate }}</h1>
+    <div class="header-actions">
+      <button mat-stroked-button (click)="exportCustomers()">
+        <mat-icon>download</mat-icon>
+        {{ 'common.export' | translate }}
+      </button>
+    </div>
+  </header>
+
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <div class="filters-row">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'common.search' | translate }}</mat-label>
+        <input matInput [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange($event)" />
+        <mat-icon matPrefix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'common.status' | translate }}</mat-label>
+        <mat-select [(value)]="statusFilter" (selectionChange)="filterByStatus($event.value)">
+          <mat-option value="ALL">{{ 'common.all' | translate }}</mat-option>
+          <mat-option value="ACTIVE">{{ 'common.active' | translate }}</mat-option>
+          <mat-option value="BLOCKED">{{ 'common.inactive' | translate }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card>
+
+  <!-- Data Table -->
+  <mat-card class="table-card">
+    <app-data-table
+      [data]="customers"
+      [columns]="columns"
+      [actions]="actions"
+      [loading]="loading"
+      [totalItems]="totalCustomers"
+      [pageSize]="pageSize"
+      (actionClick)="onAction($event)"
+      (pageChange)="onPageChange($event)">
+    </app-data-table>
+  </mat-card>
+</div>

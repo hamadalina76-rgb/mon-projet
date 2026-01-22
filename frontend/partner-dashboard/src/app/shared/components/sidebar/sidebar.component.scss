@@ -1,0 +1,120 @@
+// src/app/shared/components/sidebar/sidebar.component.scss
+@use 'assets/styles/mixins' as *;
+
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: $sidebar-width;
+  background: $white;
+  border-right: 1px solid $gray-200;
+  display: flex;
+  flex-direction: column;
+  transition: width $transition-normal;
+  z-index: $z-fixed;
+
+  &.collapsed {
+    width: $sidebar-collapsed-width;
+  }
+}
+
+.sidebar-header {
+  height: $header-height;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-md;
+  border-bottom: 1px solid $gray-200;
+
+  .logo {
+    height: 32px;
+  }
+
+  .logo-icon {
+    height: 32px;
+    width: 32px;
+  }
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: $spacing-md 0;
+  overflow-y: auto;
+  @include custom-scrollbar(4px);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  margin: $spacing-xs $spacing-sm;
+  border-radius: $border-radius-md;
+  color: $text-secondary;
+  text-decoration: none;
+  transition: all $transition-fast;
+
+  &:hover {
+    background: $gray-100;
+    color: $text-primary;
+  }
+
+  &.active {
+    background: rgba($primary-color, 0.1);
+    color: $primary-color;
+
+    .material-icons {
+      color: $primary-color;
+    }
+  }
+
+  .material-icons {
+    font-size: 20px;
+    color: $gray-500;
+  }
+
+  .nav-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .badge {
+    margin-left: auto;
+    background: $primary-color;
+    color: $white;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: $border-radius-full;
+  }
+
+  .collapsed & {
+    justify-content: center;
+    padding: $spacing-sm;
+  }
+}
+
+.collapse-btn {
+  position: absolute;
+  bottom: $spacing-md;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: $white;
+  border: 1px solid $gray-200;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: $shadow-sm;
+
+  .material-icons {
+    font-size: 16px;
+    color: $gray-600;
+  }
+
+  &:hover {
+    background: $gray-50;
+  }
+}

@@ -1,0 +1,34 @@
+// Disputes Component Styles
+@import 'variables';
+
+.disputes-page {
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.content-card {
+  padding: 1rem;
+}

@@ -1,0 +1,122 @@
+<!-- Business Info Component Template - Angular 19 -->
+<div class="business-info-page">
+  <header class="page-header">
+    <h1>Informations établissement</h1>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="48"></mat-spinner>
+    </div>
+  } @else {
+    <form [formGroup]="businessForm" (ngSubmit)="saveBusinessInfo()">
+      <div class="content-grid">
+        <!-- Left Column -->
+        <div class="left-column">
+          <!-- Cover Image -->
+          <mat-card class="cover-card">
+            <div class="cover-upload" (click)="coverInput.click()">
+              <input #coverInput type="file" accept="image/*" hidden (change)="onCoverSelected($event)" />
+              @if (coverPreview()) {
+                <img [src]="coverPreview()" alt="Cover" class="cover-preview" />
+              } @else {
+                <div class="upload-placeholder">
+                  <mat-icon>panorama</mat-icon>
+                  <span>Photo de couverture</span>
+                </div>
+              }
+            </div>
+          </mat-card>
+
+          <!-- Logo -->
+          <mat-card class="logo-card">
+            <div class="logo-upload" (click)="logoInput.click()">
+              <input #logoInput type="file" accept="image/*" hidden (change)="onLogoSelected($event)" />
+              @if (logoPreview()) {
+                <img [src]="logoPreview()" alt="Logo" class="logo-preview" />
+              } @else {
+                <div class="logo-placeholder">
+                  <mat-icon>store</mat-icon>
+                </div>
+              }
+            </div>
+            <span class="logo-label">Logo</span>
+          </mat-card>
+        </div>
+
+        <!-- Right Column -->
+        <div class="right-column">
+          <mat-card class="form-card">
+            <h3>Informations générales</h3>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Nom de l'établissement</mat-label>
+              <input matInput formControlName="name" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Description</mat-label>
+              <textarea matInput formControlName="description" rows="3"></textarea>
+            </mat-form-field>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Catégorie</mat-label>
+                <mat-select formControlName="category">
+                  @for (cat of categories; track cat.value) {
+                    <mat-option [value]="cat.value">{{ cat.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Type de cuisine</mat-label>
+                <mat-select formControlName="cuisine" multiple>
+                  @for (cuisine of cuisines; track cuisine) {
+                    <mat-option [value]="cuisine">{{ cuisine }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </div>
+          </mat-card>
+
+          <mat-card class="form-card">
+            <h3>Coordonnées</h3>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Adresse</mat-label>
+              <input matInput formControlName="address" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Ville</mat-label>
+              <input matInput formControlName="city" />
+            </mat-form-field>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Téléphone</mat-label>
+                <input matInput formControlName="phone" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Email</mat-label>
+                <input matInput type="email" formControlName="email" />
+              </mat-form-field>
+            </div>
+          </mat-card>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+          @if (saving()) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            Enregistrer
+          }
+        </button>
+      </div>
+    </form>
+  }
+</div>

@@ -1,0 +1,117 @@
+<!-- Earnings Component Template - Angular 19 -->
+<div class="earnings-page">
+  <header class="page-header">
+    <h1>{{ 'finance.earnings' | translate }}</h1>
+    <div class="header-actions">
+      <mat-button-toggle-group 
+        [value]="selectedPeriod()" 
+        (change)="onPeriodChange($event.value)">
+        <mat-button-toggle value="week">Semaine</mat-button-toggle>
+        <mat-button-toggle value="month">Mois</mat-button-toggle>
+        <mat-button-toggle value="year">Année</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      <button mat-stroked-button (click)="exportData()">
+        <mat-icon>download</mat-icon>
+        Exporter
+      </button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="48"></mat-spinner>
+    </div>
+  } @else {
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+      <mat-card class="summary-card">
+        <div class="summary-icon earnings">
+          <mat-icon>payments</mat-icon>
+        </div>
+        <div class="summary-content">
+          <span class="summary-value">{{ summary().totalEarnings | currency:'MAD' }}</span>
+          <span class="summary-label">Revenus totaux</span>
+        </div>
+      </mat-card>
+
+      <mat-card class="summary-card">
+        <div class="summary-icon pending">
+          <mat-icon>schedule</mat-icon>
+        </div>
+        <div class="summary-content">
+          <span class="summary-value">{{ summary().pendingPayout | currency:'MAD' }}</span>
+          <span class="summary-label">En attente de versement</span>
+        </div>
+      </mat-card>
+
+      <mat-card class="summary-card">
+        <div class="summary-icon paid">
+          <mat-icon>check_circle</mat-icon>
+        </div>
+        <div class="summary-content">
+          <span class="summary-value">{{ summary().totalPaidOut | currency:'MAD' }}</span>
+          <span class="summary-label">Total versé</span>
+        </div>
+      </mat-card>
+
+      <mat-card class="summary-card">
+        <div class="summary-icon orders">
+          <mat-icon>receipt_long</mat-icon>
+        </div>
+        <div class="summary-content">
+          <span class="summary-value">{{ summary().ordersCount }}</span>
+          <span class="summary-label">Commandes</span>
+        </div>
+      </mat-card>
+    </div>
+
+    <!-- Chart -->
+    <mat-card class="chart-card">
+      <h3>Évolution des revenus</h3>
+      <div class="chart-container">
+        <canvas baseChart
+          [type]="chartType"
+          [data]="chartData()"
+          [options]="chartOptions">
+        </canvas>
+      </div>
+    </mat-card>
+
+    <!-- Transactions Table -->
+    <mat-card class="table-card">
+      <h3>Détail des transactions</h3>
+      <table mat-table [dataSource]="transactions()">
+        <ng-container matColumnDef="date">
+          <th mat-header-cell *matHeaderCellDef>Date</th>
+          <td mat-cell *matCellDef="let row">{{ row.date | date:'short' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="orderId">
+          <th mat-header-cell *matHeaderCellDef>Commande</th>
+          <td mat-cell *matCellDef="let row">#{{ row.orderId }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="amount">
+          <th mat-header-cell *matHeaderCellDef>Montant</th>
+          <td mat-cell *matCellDef="let row">{{ row.amount | currency:'MAD' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="commission">
+          <th mat-header-cell *matHeaderCellDef>Commission</th>
+          <td mat-cell *matCellDef="let row" class="commission">-{{ row.commission | currency:'MAD' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="net">
+          <th mat-header-cell *matHeaderCellDef>Net</th>
+          <td mat-cell *matCellDef="let row" class="net">{{ row.net | currency:'MAD' }}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+
+      <mat-paginator [pageSize]="10" [pageSizeOptions]="[10, 25, 50]"></mat-paginator>
+    </mat-card>
+  }
+</div>
