@@ -1,11 +1,16 @@
-﻿server:
+server:
   port: 8087
 
 spring:
   application:
     name: notification-service
+  data:
+    mongodb:
+      uri: mongodb://${MONGO_USERNAME:mongo}:${MONGO_PASSWORD:mongo123}@${MONGO_HOST:localhost}:${MONGO_PORT:27017}/speedline_notifications?authSource=admin
+      database: speedline_notifications
+      auto-index-creation: true # Crée automatiquement les index définis dans les @Document
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://${EUREKA_USER:eureka}:${EUREKA_PASSWORD:eureka123}@localhost:8761/eureka/

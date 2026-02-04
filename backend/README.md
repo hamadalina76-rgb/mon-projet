@@ -39,7 +39,7 @@ Bienvenue dans le projet SpeedLine ! Ce document vous guidera dans la compréhen
 │Port: 8086    │Port: 8087    │Port: 8088    │Port: 8089     │
 ├──────────────┼──────────────┼──────────────┼───────────────┤
 │Promotion Svc │Review Service│Support Svc   │               │
-│Port: 8090    │Port: 8091    │Port: 8092    │               │
+│Port: 8092    │Port: 8091    │Port: 8093    │               │
 └──────────────┴──────────────┴──────────────┴───────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
@@ -83,58 +83,65 @@ backend/
     ├── notification-service/  # Push/SMS/Email (Port: 8087)
     ├── location-service/      # Géolocalisation (Port: 8088)
     ├── analytics-service/     # Analytiques (Port: 8089)
-    ├── promotion-service/     # Promotions (Port: 8090)
+    ├── promotion-service/     # Promotions (Port: 8092)
     ├── review-service/        # Avis (Port: 8091)
-    └── support-service/       # Support (Port: 8092)
+    └── support-service/       # Support (Port: 8093)
 ```
 
 ---
 
 ## 🚀 Comment Démarrer
 
+> **📖 Guide Complet :** Consultez le fichier **[GUIDE-DEMARRAGE.md](./GUIDE-DEMARRAGE.md)** pour un guide détaillé étape par étape destiné aux stagiaires.
+
+### Démarrage Rapide
+
+#### Option 1 : Script PowerShell (Recommandé pour Windows)
+
+```powershell
+# Démarrer tous les services automatiquement
+.\start-all-services.ps1
+
+# Arrêter tous les services
+.\stop-all-services.ps1
+```
+
+#### Option 2 : Démarrage Manuel
+
+1. **Démarrer l'infrastructure Docker** (obligatoire en premier)
+   ```powershell
+   docker-compose up -d postgres mongodb redis clickhouse kafka zookeeper kafka-ui eureka-server
+   ```
+
+2. **Démarrer les microservices** (dans l'ordre recommandé)
+   ```powershell
+   # Services de base
+   cd services\auth-service && mvn spring-boot:run
+   cd services\user-service && mvn spring-boot:run
+   cd services\partner-service && mvn spring-boot:run
+   
+   # Services métier
+   cd services\location-service && mvn spring-boot:run
+   cd services\payment-service && mvn spring-boot:run
+   cd services\promotion-service && mvn spring-boot:run
+   cd services\order-service && mvn spring-boot:run
+   cd services\delivery-service && mvn spring-boot:run
+   
+   # Services auxiliaires
+   cd services\notification-service && mvn spring-boot:run
+   cd services\review-service && mvn spring-boot:run
+   cd services\support-service && mvn spring-boot:run
+   cd services\analytics-service && mvn spring-boot:run
+   
+   # API Gateway (en dernier)
+   cd ..\..\api-gateway && mvn spring-boot:run
+   ```
+
 ### Prérequis
 - Java 17+
 - Maven 3.8+
-- Docker & Docker Compose
-- PostgreSQL 15+
-- MongoDB 7+
-- Redis 7+
-- Apache Kafka
-
-### Ordre de Démarrage
-
-1. **Infrastructure** (obligatoire en premier)
-   ```bash
-   # 1. Eureka Server
-   cd eureka-server && mvn spring-boot:run
-   
-   # 2. Config Server
-   cd config-server && mvn spring-boot:run
-   
-   # 3. API Gateway
-   cd api-gateway && mvn spring-boot:run
-   ```
-
-2. **Microservices** (ordre recommandé)
-   ```bash
-   # Services de base
-   cd services/auth-service && mvn spring-boot:run
-   cd services/user-service && mvn spring-boot:run
-   cd services/partner-service && mvn spring-boot:run
-   
-   # Services métier
-   cd services/order-service && mvn spring-boot:run
-   cd services/delivery-service && mvn spring-boot:run
-   cd services/payment-service && mvn spring-boot:run
-   
-   # Services auxiliaires
-   cd services/notification-service && mvn spring-boot:run
-   cd services/location-service && mvn spring-boot:run
-   cd services/analytics-service && mvn spring-boot:run
-   cd services/promotion-service && mvn spring-boot:run
-   cd services/review-service && mvn spring-boot:run
-   cd services/support-service && mvn spring-boot:run
-   ```
+- Docker Desktop (Windows/Mac) ou Docker (Linux)
+- Git
 
 ---
 
@@ -484,7 +491,7 @@ WHERE ST_DWithin(
 
 ---
 
-### 10. Promotion Service (Port: 8090)
+### 10. Promotion Service (Port: 8092)
 
 **Responsabilités:**
 - Gestion promotions/coupons
@@ -518,7 +525,7 @@ WHERE ST_DWithin(
 
 ---
 
-### 12. Support Service (Port: 8092)
+### 12. Support Service (Port: 8093)
 
 **Responsabilités:**
 - Tickets support
