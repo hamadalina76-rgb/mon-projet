@@ -1,6 +1,11 @@
 package com.speedline.user.dto;
 
 import com.speedline.user.domain.VehicleType;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -8,50 +13,44 @@ import lombok.NoArgsConstructor;
 
 /**
  * DTO pour mettre à jour un profil livreur
+ * Tous les champs sont optionnels - seuls les champs fournis sont mis à jour
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Requête de mise à jour du profil livreur. Seuls les champs fournis sont mis à jour.")
 public class CourierUpdateRequest {
 
-    /**
-     * Type de véhicule
-     */
+    @Schema(description = "Type de véhicule", example = "MOTORCYCLE")
     private VehicleType vehicleType;
 
-    /**
-     * Numéro d'immatriculation
-     */
+    @Size(max = 20, message = "Le numéro d'immatriculation ne doit pas dépasser 20 caractères")
+    @Schema(description = "Numéro d'immatriculation du véhicule", example = "12345-A-67")
     private String vehicleNumber;
 
-    /**
-     * Marque et modèle du véhicule
-     */
+    @Size(max = 100, message = "Le modèle ne doit pas dépasser 100 caractères")
+    @Schema(description = "Marque et modèle du véhicule", example = "Honda PCX 125")
     private String vehicleModel;
 
-    /**
-     * Couleur du véhicule
-     */
+    @Size(max = 30, message = "La couleur ne doit pas dépasser 30 caractères")
+    @Schema(description = "Couleur du véhicule", example = "Noir")
     private String vehicleColor;
 
-    /**
-     * Zone de livraison préférée
-     */
+    @Size(max = 100, message = "La zone de livraison ne doit pas dépasser 100 caractères")
+    @Schema(description = "Zone de livraison préférée", example = "Casablanca Centre")
     private String preferredDeliveryZone;
 
-    /**
-     * Rayon maximum de livraison (en mètres)
-     */
+    @Min(value = 1, message = "Le rayon minimum est de 1 km")
+    @Max(value = 50, message = "Le rayon maximum est de 50 km")
+    @Schema(description = "Rayon maximum de livraison en km", example = "15", minimum = "1", maximum = "50")
     private Integer maxDeliveryRadius;
 
-    /**
-     * IBAN pour les virements
-     */
+    @Pattern(regexp = "^MA[0-9]{2}[0-9]{24}$", message = "Format IBAN marocain invalide")
+    @Schema(description = "IBAN pour les virements", example = "MA64011519000001205000534921")
     private String bankIban;
 
-    /**
-     * Nom du titulaire du compte bancaire
-     */
+    @Size(max = 100, message = "Le nom du titulaire ne doit pas dépasser 100 caractères")
+    @Schema(description = "Nom du titulaire du compte bancaire", example = "Ahmed Benali")
     private String bankAccountHolder;
 }

@@ -1,6 +1,7 @@
 package com.speedline.user.dto;
 
 import com.speedline.user.domain.AddressType;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -19,23 +20,27 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Requête de création d'une nouvelle adresse")
 public class AddressCreateRequest {
 
     /**
      * Type d'adresse (HOME, WORK, OTHER)
      */
+    @Schema(description = "Type d'adresse", example = "HOME", defaultValue = "HOME")
     @Builder.Default
     private AddressType type = AddressType.HOME;
 
     /**
      * Label personnalisé
      */
+    @Schema(description = "Label personnalisé", example = "Chez maman", maxLength = 100)
     @Size(max = 100, message = "Le label ne doit pas dépasser 100 caractères")
     private String label;
 
     /**
      * Numéro et nom de rue (obligatoire)
      */
+    @Schema(description = "Numéro et nom de rue", example = "123 Avenue Habib Bourguiba", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "La rue est obligatoire")
     @Size(max = 255, message = "La rue ne doit pas dépasser 255 caractères")
     private String street;
@@ -67,6 +72,7 @@ public class AddressCreateRequest {
     /**
      * Ville (obligatoire)
      */
+    @Schema(description = "Ville", example = "Tunis", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "La ville est obligatoire")
     @Size(max = 100, message = "La ville ne doit pas dépasser 100 caractères")
     private String city;
@@ -86,12 +92,14 @@ public class AddressCreateRequest {
     /**
      * Pays (par défaut: Tunisie)
      */
+    @Schema(description = "Pays", example = "Tunisie", defaultValue = "Tunisie")
     @Builder.Default
     private String country = "Tunisie";
 
     /**
      * Latitude GPS
      */
+    @Schema(description = "Latitude GPS", example = "36.8065", minimum = "-90", maximum = "90")
     @DecimalMin(value = "-90.0", message = "Latitude invalide")
     @DecimalMax(value = "90.0", message = "Latitude invalide")
     private BigDecimal latitude;
@@ -99,6 +107,7 @@ public class AddressCreateRequest {
     /**
      * Longitude GPS
      */
+    @Schema(description = "Longitude GPS", example = "10.1815", minimum = "-180", maximum = "180")
     @DecimalMin(value = "-180.0", message = "Longitude invalide")
     @DecimalMax(value = "180.0", message = "Longitude invalide")
     private BigDecimal longitude;
@@ -135,6 +144,7 @@ public class AddressCreateRequest {
     /**
      * Définir comme adresse par défaut
      */
+    @Schema(description = "Définir comme adresse par défaut", example = "false", defaultValue = "false")
     @Builder.Default
     private Boolean isDefault = false;
 }

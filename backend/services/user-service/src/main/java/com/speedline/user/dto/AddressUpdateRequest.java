@@ -1,6 +1,7 @@
 package com.speedline.user.dto;
 
 import com.speedline.user.domain.AddressType;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
@@ -19,22 +20,26 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Requête de mise à jour d'une adresse (tous les champs sont optionnels)")
 public class AddressUpdateRequest {
 
     /**
      * Type d'adresse (HOME, WORK, OTHER)
      */
+    @Schema(description = "Type d'adresse", example = "HOME")
     private AddressType type;
 
     /**
      * Label personnalisé
      */
+    @Schema(description = "Label personnalisé", example = "Bureau", maxLength = 100)
     @Size(max = 100, message = "Le label ne doit pas dépasser 100 caractères")
     private String label;
 
     /**
      * Numéro et nom de rue
      */
+    @Schema(description = "Numéro et nom de rue", example = "456 Rue de la Liberté")
     @Size(max = 255, message = "La rue ne doit pas dépasser 255 caractères")
     private String street;
 
@@ -65,6 +70,7 @@ public class AddressUpdateRequest {
     /**
      * Ville
      */
+    @Schema(description = "Ville", example = "Sousse")
     @Size(max = 100, message = "La ville ne doit pas dépasser 100 caractères")
     private String city;
 
@@ -83,11 +89,13 @@ public class AddressUpdateRequest {
     /**
      * Pays
      */
+    @Schema(description = "Pays", example = "Tunisie")
     private String country;
 
     /**
      * Latitude GPS
      */
+    @Schema(description = "Latitude GPS", example = "35.8288", minimum = "-90", maximum = "90")
     @DecimalMin(value = "-90.0", message = "Latitude invalide")
     @DecimalMax(value = "90.0", message = "Latitude invalide")
     private BigDecimal latitude;
@@ -95,6 +103,7 @@ public class AddressUpdateRequest {
     /**
      * Longitude GPS
      */
+    @Schema(description = "Longitude GPS", example = "10.5935", minimum = "-180", maximum = "180")
     @DecimalMin(value = "-180.0", message = "Longitude invalide")
     @DecimalMax(value = "180.0", message = "Longitude invalide")
     private BigDecimal longitude;
@@ -131,5 +140,6 @@ public class AddressUpdateRequest {
     /**
      * Définir comme adresse par défaut
      */
+    @Schema(description = "Définir comme adresse par défaut", example = "true")
     private Boolean isDefault;
 }
