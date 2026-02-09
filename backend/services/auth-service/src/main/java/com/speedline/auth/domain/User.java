@@ -22,7 +22,7 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String password;
 
     @Column(name = "phone_number")
@@ -50,6 +50,13 @@ public class User {
 
     @Column(name = "profile_picture")
     private String profilePicture;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", nullable = false)
+    private AuthProvider authProvider = AuthProvider.LOCAL;
+
+    @Column(name = "provider_user_id")
+    private String providerUserId;
 
     @Column(name = "verification_token")
     private String verificationToken;

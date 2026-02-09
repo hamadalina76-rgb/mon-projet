@@ -1,5 +1,7 @@
 package com.speedline.auth.service;
 
+import org.springframework.stereotype.Service;
+
 /**
  * Service pour l'authentification JWT
  * - generateToken()
@@ -7,6 +9,7 @@ package com.speedline.auth.service;
  * - extractUserId()
  * - extractRole()
  */
+@Service
 public class JwtService {
     // TODO: Implémenter
 }
