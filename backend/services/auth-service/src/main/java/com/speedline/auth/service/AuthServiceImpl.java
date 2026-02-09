@@ -1,0 +1,323 @@
+package com.speedline.auth.service;
+
+import com.speedline.auth.domain.AuthProvider;
+import com.speedline.auth.domain.Role;
+import com.speedline.auth.domain.User;
+import com.speedline.auth.domain.UserStatus;
+import com.speedline.auth.dto.request.LoginRequest;
+import com.speedline.auth.dto.request.RegisterRequest;
+import com.speedline.auth.dto.request.SocialLoginRequest;
+import com.speedline.auth.dto.response.AuthResponse;
+import com.speedline.auth.repository.UserRepository;
+import com.speedline.auth.security.JwtTokenProvider;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
+
+/**
+ * Service principal d'authentification
+ * - register()
+ * - login()
+ * - logout()
+ * - refreshToken()
+ * - forgotPassword()
+ * - resetPassword()
+ * - verifyEmail()
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class AuthServiceImpl implements AuthService {
+
+    private final UserRepository userRepo;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider tokenProvider;
+    private final AuthenticationManager authenticationManager;
+    private final OAuth2Service oauth2Service;
+
+    @Value("${jwt.expiration-ms}")
+    private long jwtExpirationMs;
+
+    @Override
+    @Transactional
+    public void register(RegisterRequest request) {
+        log.info("Registering new user with email: {}", request.getEmail());
+        
+        // Check if email already exists (ignore case)
+        if (userRepo.existsByEmailIgnoreCase(request.getEmail())) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        // Generate verification token
+        String verificationToken = tokenProvider.generateTokenFromEmail(request.getEmail());
+
+        // Create user
+        User user = User.builder()
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .phoneNumber(request.getPhoneNumber())
+                .role(request.getRole() != null ? request.getRole() : Role.CUSTOMER)
+                .status(UserStatus.PENDING)
+                .isEmailVerified(false)
+                .isPhoneVerified(false)
+                .verificationToken(verificationToken)
+                .build();
+
+        userRepo.save(user);
+        
+        log.info("User registered successfully. Verification token: {}", verificationToken);
+        log.info("User registered successfully with email: {}", request.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse login(LoginRequest request) {
+        log.info("User login attempt with email: {}", request.getEmail());
+        
+        // Authenticate user
+        Authentication auth = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getEmail(),
+                        request.getPassword()
+                )
+        );
+
+        // Get user from database
+        User user = userRepo.findByEmailIgnoreCase(request.getEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        // Generate tokens
+        String accessToken = tokenProvider.generateToken(user);
+        String refreshToken = tokenProvider.generatRefreshToken(user.getEmail());
+
+        log.info("User logged in successfully: {}", request.getEmail());
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn(jwtExpirationMs) // 24 hours in milliseconds
+                .user(AuthResponse.UserInfo.builder()
+                        .id(user.getId())
+                        .email(user.getEmail())
+                        .firstName(user.getFirstName())
+                        .lastName(user.getLastName())
+                        .role(user.getRole())
+                        .profilePicture(user.getProfilePicture())
+                        .build())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse socialLogin(SocialLoginRequest request) {
+        log.info("Social login attempt with provider: {}", request.getProvider());
+        
+        // Verify token and get user info from OAuth provider
+        OAuth2Service.OAuth2UserInfo oauth2UserInfo = oauth2Service.verifyAndGetUserInfo(
+                request.getAccessToken(), 
+                request.getProvider()
+        );
+        
+        boolean isNewUser = false;
+        
+        // Check if user already exists by provider and provider user ID
+        Optional<User> existingUser = userRepo.findByAuthProviderAndProviderUserId(
+                request.getProvider(), 
+                oauth2UserInfo.getProviderId()
+        );
+        
+        User user;
+        
+        if (existingUser.isPresent()) {
+            user = existingUser.get();
+            // Update profile picture if changed
+            if (oauth2UserInfo.getProfilePicture() != null && 
+                !oauth2UserInfo.getProfilePicture().equals(user.getProfilePicture())) {
+                user.setProfilePicture(oauth2UserInfo.getProfilePicture());
+                userRepo.save(user);
+            }
+        } else {
+            // Check if user exists with same email (different provider)
+            Optional<User> existingByEmail = userRepo.findByEmailIgnoreCase(oauth2UserInfo.getEmail());
+            
+            if (existingByEmail.isPresent()) {
+                // User exists with different provider - update to link OAuth account
+                user = existingByEmail.get();
+                user.setAuthProvider(request.getProvider());
+                user.setProviderUserId(oauth2UserInfo.getProviderId());
+                user.setProfilePicture(oauth2UserInfo.getProfilePicture());
+                user.setIsEmailVerified(oauth2UserInfo.getEmailVerified());
+                log.info("Linking existing user to {} account", request.getProvider());
+            } else {
+                // Create new user
+                user = User.builder()
+                        .email(oauth2UserInfo.getEmail())
+                        .firstName(oauth2UserInfo.getFirstName())
+                        .lastName(oauth2UserInfo.getLastName())
+                        .profilePicture(oauth2UserInfo.getProfilePicture())
+                        .authProvider(request.getProvider())
+                        .providerUserId(oauth2UserInfo.getProviderId())
+                        .role(request.getRole())
+                        .status(UserStatus.ACTIVE)
+                        .isEmailVerified(oauth2UserInfo.getEmailVerified())
+                        .isPhoneVerified(false)
+                        .password(null) // No password for OAuth users
+                        .build();
+                isNewUser = true;
+                log.info("Creating new user from {} login", request.getProvider());
+            }
+            
+            userRepo.save(user);
+        }
+        
+        // Generate JWT tokens
+        String accessToken = tokenProvider.generateToken(user);
+        String refreshToken = tokenProvider.generatRefreshToken(user.getEmail());
+        
+        log.info("Social login successful for user: {}", user.getEmail());
+        
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn(jwtExpirationMs)
+                .isNewUser(isNewUser)
+                .user(AuthResponse.UserInfo.builder()
+                        .id(user.getId())
+                        .email(user.getEmail())
+                        .firstName(user.getFirstName())
+                        .lastName(user.getLastName())
+                        .role(user.getRole())
+                        .profilePicture(user.getProfilePicture())
+                        .build())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void logout(String username) {
+        log.info("User logout: {}", username);
+        // TODO: Implement token blacklist logic if needed
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse refreshToken(String refreshToken) {
+        log.info("Refreshing token");
+        
+        // Validate refresh token
+        if (!tokenProvider.validateToken(refreshToken)) {
+            throw new RuntimeException("Invalid refresh token");
+        }
+
+        // Extract email from token
+        String email = tokenProvider.getEmailFromToken(refreshToken);
+
+        // Get user
+        User user = userRepo.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        // Generate new access token
+        String newAccessToken = tokenProvider.generateToken(user);
+
+        log.info("Token refreshed successfully for user: {}", email);
+
+        return AuthResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn(jwtExpirationMs) // 24 hours in milliseconds
+                .user(AuthResponse.UserInfo.builder()
+                        .id(user.getId())
+                        .email(user.getEmail())
+                        .firstName(user.getFirstName())
+                        .lastName(user.getLastName())
+                        .role(user.getRole())
+                        .profilePicture(user.getProfilePicture())
+                        .build())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void forgotPassword(String email) {
+        log.info("Forgot password request for email: {}", email);
+        
+        User user = userRepo.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        // Generate reset token
+        String resetToken = tokenProvider.generateTokenFromEmail(email);
+        user.setResetPasswordToken(resetToken);
+        userRepo.save(user);
+
+        log.info("Password reset token generated: {}", resetToken);
+        log.info("Password reset token generated for user: {}", email);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        log.info("Reset password with token");
+        
+        // Validate token
+        if (!tokenProvider.validateToken(token)) {
+            throw new RuntimeException("Invalid or expired reset token");
+        }
+
+        // Extract email from token
+        String email = tokenProvider.getEmailFromToken(token);
+        
+        // Find user by email and verify reset token matches
+        User user = userRepo.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (user.getResetPasswordToken() == null || !user.getResetPasswordToken().equals(token)) {
+            throw new RuntimeException("Invalid reset token");
+        }
+
+        // Update password
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setResetPasswordToken(null);
+        user.setResetPasswordExpires(null);
+        userRepo.save(user);
+
+        log.info("Password reset successfully for user: {}", user.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public void verifyEmail(String token) {
+        log.info("Verifying email with token");
+        
+        // Find user by verification token
+        User user = userRepo.findByVerificationToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid verification token"));
+
+        // Update email verification status
+        user.setIsEmailVerified(true);
+        user.setVerificationToken(null);
+        user.setStatus(UserStatus.ACTIVE);
+        userRepo.save(user);
+
+        log.info("Email verified successfully for user: {}", user.getEmail());
+    }
+
+    @Override
+    public boolean checkEmailExists(String email) {
+        log.info("Checking if email exists: {}", email);
+        return userRepo.existsByEmailIgnoreCase(email);
+    }
+}

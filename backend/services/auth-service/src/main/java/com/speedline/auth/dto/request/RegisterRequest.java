@@ -1,10 +1,8 @@
 package com.speedline.auth.dto.request;
 
 import com.speedline.auth.domain.Role;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 @Data
@@ -12,6 +10,7 @@ public class RegisterRequest {
     
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
+    @Schema(example = "saif@gmail.com")
     private String email;
     
     @NotBlank(message = "Password is required")
@@ -23,7 +22,15 @@ public class RegisterRequest {
     
     @NotBlank(message = "Last name is required")
     private String lastName;
-    
+
+    @NotBlank(message = "Phone number is required")
+    @Pattern(
+            regexp = "^(\\+216)?[234579]\\d{7}$",
+            message = "Invalid Tunisian phone number"
+    )
+    @Schema(
+            example = "+21623456789"
+    )
     private String phoneNumber;
     
     @NotNull(message = "Role is required")
