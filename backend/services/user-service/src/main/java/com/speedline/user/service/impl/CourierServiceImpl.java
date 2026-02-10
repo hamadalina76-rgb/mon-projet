@@ -1,5 +1,6 @@
 package com.speedline.user.service.impl;
 
+import com.speedline.user.client.AuthServiceClient;
 import com.speedline.user.domain.Courier;
 import com.speedline.user.domain.CourierStatus;
 import com.speedline.user.domain.VehicleType;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
 public class CourierServiceImpl implements CourierService {
 
     private final CourierRepository courierRepository;
+    private final AuthServiceClient authServiceClient;
 
     // Constantes de validation
     private static final BigDecimal MIN_LATITUDE = new BigDecimal("-90");
@@ -49,8 +51,31 @@ public class CourierServiceImpl implements CourierService {
     @Override
     @Transactional
     public CourierDTO createCourier(CourierCreateRequest request) {
-        // Non implémenté - hors scope
-        throw new UnsupportedOperationException("La création de livreur n'est pas gérée par ce service");
+        log.info("Création d'un nouveau profil livreur pour userId: {}", request.getUserId());
+
+        // Vérifier qu'un profil n'existe pas déjà pour ce userId
+        if (courierRepository.existsByUserId(request.getUserId())) {
+            throw new UserAlreadyExistsException("Un profil livreur existe déjà pour userId: " + request.getUserId());
+        }
+
+        // Créer le nouveau livreur avec statut PENDING_APPROVAL
+        Courier courier = Courier.builder()
+                .userId(request.getUserId())
+                .vehicleType(request.getVehicleType())
+                .vehicleNumber(request.getVehicleNumber())
+                .vehicleModel(request.getVehicleModel())
+                .vehicleColor(request.getVehicleColor())
+                .drivingLicenseNumber(request.getDrivingLicenseNumber())
+                .status(CourierStatus.PENDING_APPROVAL)
+                .isAvailable(false)
+                .isOnline(false)
+                .documentsVerified(false)
+                .build();
+
+        courier = courierRepository.save(courier);
+        log.info("Profil livreur créé avec succès. ID: {}, userId: {}", courier.getId(), courier.getUserId());
+
+        return mapToDTO(courier);
     }
 
     @Override
@@ -537,7 +562,7 @@ public class CourierServiceImpl implements CourierService {
      * Mappe une entité Courier vers un DTO
      */
     private CourierDTO mapToDTO(Courier courier) {
-        return CourierDTO.builder()
+        CourierDTO dto = CourierDTO.builder()
                 .id(courier.getId())
                 .userId(courier.getUserId())
                 // Véhicule
@@ -574,5 +599,24 @@ public class CourierServiceImpl implements CourierService {
                 .createdAt(courier.getCreatedAt())
                 .lastLoginAt(courier.getLastLoginAt())
                 .build();
+
+        // Enrichir avec les données utilisateur depuis auth-service
+        try {
+            log.info("🔍 Fetching user info from auth-service for userId: {}", courier.getUserId());
+            UserInfoDTO userInfo = authServiceClient.getUserById(courier.getUserId());
+            log.info("✅ User info retrieved: {} {}", userInfo.getFirstName(), userInfo.getLastName());
+            dto.setEmail(userInfo.getEmail());
+            dto.setFirstName(userInfo.getFirstName());
+            dto.setLastName(userInfo.getLastName());
+            dto.setPhoneNumber(userInfo.getPhoneNumber());
+        } catch (Exception e) {
+            log.error("❌ FAILED to fetch user info from auth-service for userId: {}", courier.getUserId());
+            log.error("❌ Error type: {}", e.getClass().getName());
+            log.error("❌ Error message: {}", e.getMessage());
+            log.error("❌ Full stack trace:", e);
+            // Continue sans les infos utilisateur
+        }
+
+        return dto;
     }
 }

@@ -92,4 +92,17 @@ public class CustomerController implements ICustomerController {
         customerService.addFavoritePartner(id, partnerId);
         return ResponseEntity.ok().build();
     }
+
+    // ==================== ENDPOINTS INTERNES ====================
+
+    /**
+     * Créer un nouveau profil client (appel interne depuis auth-service)
+     * Accessible uniquement par les autres services via Feign
+     */
+    @PostMapping("/internal")
+    public ResponseEntity<CustomerDTO> createCustomerInternal(@Valid @RequestBody CustomerCreateRequest request) {
+        log.info("POST /customers/internal - Création profil client pour userId: {}", request.getUserId());
+        CustomerDTO customer = customerService.createCustomer(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(customer);
+    }
 }

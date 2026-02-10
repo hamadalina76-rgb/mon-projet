@@ -5,6 +5,7 @@ import com.speedline.user.service.impl.CourierServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -96,5 +97,18 @@ public class CourierController implements ICourierController {
         log.info("POST /couriers/{}/documents - Upload document type: {}", id, request.getDocumentType());
         CourierDTO updated = courierService.uploadDocument(id, request);
         return ResponseEntity.ok(updated);
+    }
+
+    // ==================== ENDPOINTS INTERNES ====================
+
+    /**
+     * Créer un nouveau profil livreur (appel interne depuis auth-service)
+     * Accessible uniquement par les autres services via Feign
+     */
+    @PostMapping("/internal")
+    public ResponseEntity<CourierDTO> createCourierInternal(@Valid @RequestBody CourierCreateRequest request) {
+        log.info("POST /couriers/internal - Création profil livreur pour userId: {}", request.getUserId());
+        CourierDTO courier = courierService.createCourier(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(courier);
     }
 }

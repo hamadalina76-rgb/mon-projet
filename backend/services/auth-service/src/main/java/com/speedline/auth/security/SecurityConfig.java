@@ -37,6 +37,8 @@ public class SecurityConfig {
             "/api/v1/auth/forgot-password/**",
             "/api/v1/auth/reset-password/**",
             "/api/v1/auth/verify-email/**",
+            "/users/**",           // Internal endpoint for inter-service communication
+            "/debug/**",           // Debug endpoints
             "/actuator/**",
             "/v3/api-docs/**",
             "/swagger-ui/**",
