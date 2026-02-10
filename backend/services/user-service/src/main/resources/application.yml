@@ -29,6 +29,15 @@ eureka:
     service-url:
       defaultZone: http://${EUREKA_USER:eureka}:${EUREKA_PASSWORD:eureka123}@localhost:8761/eureka/
 
+# Feign Configuration
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+        loggerLevel: full
+
 # SpringDoc OpenAPI Configuration
 springdoc:
   api-docs:
@@ -45,6 +54,7 @@ springdoc:
 logging:
   level:
     com.speedline.user: DEBUG
+    com.speedline.user.client: DEBUG
     org.springframework.web: INFO
     org.hibernate.SQL: DEBUG
   pattern:

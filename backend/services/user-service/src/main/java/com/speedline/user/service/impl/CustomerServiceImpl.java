@@ -1,10 +1,12 @@
 package com.speedline.user.service.impl;
 
+import com.speedline.user.client.AuthServiceClient;
 import com.speedline.user.domain.Address;
 import com.speedline.user.domain.Customer;
 import com.speedline.user.domain.Customer.CustomerStatus;
 import com.speedline.user.dto.*;
 import com.speedline.user.exception.CustomerNotFoundException;
+import com.speedline.user.exception.UserAlreadyExistsException;
 import com.speedline.user.repository.AddressRepository;
 import com.speedline.user.repository.CustomerRepository;
 import com.speedline.user.service.CustomerService;
@@ -34,8 +36,32 @@ public class CustomerServiceImpl implements CustomerService {
 
     private final CustomerRepository customerRepository;
     private final AddressRepository addressRepository;
+    private final AuthServiceClient authServiceClient;
 
     // ==================== OPÉRATIONS CLIENT ====================
+
+    @Override
+    @Transactional
+    public CustomerDTO createCustomer(CustomerCreateRequest request) {
+        log.info("Création d'un nouveau profil client pour userId: {}", request.getUserId());
+
+        // Vérifier qu'un profil n'existe pas déjà pour ce userId
+        if (customerRepository.existsByUserId(request.getUserId())) {
+            throw new UserAlreadyExistsException("Un profil client existe déjà pour userId: " + request.getUserId());
+        }
+
+        // Créer le nouveau client
+        Customer customer = Customer.builder()
+                .userId(request.getUserId())
+                .status(CustomerStatus.ACTIVE)
+                .preferences(request.getPreferences())
+                .build();
+
+        customer = customerRepository.save(customer);
+        log.info("Profil client créé avec succès. ID: {}, userId: {}", customer.getId(), customer.getUserId());
+
+        return mapToDTO(customer);
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -243,7 +269,7 @@ public class CustomerServiceImpl implements CustomerService {
      * Mappe une entité Customer vers un DTO
      */
     private CustomerDTO mapToDTO(Customer customer) {
-        return CustomerDTO.builder()
+        CustomerDTO dto = CustomerDTO.builder()
                 .id(customer.getId())
                 .userId(customer.getUserId())
                 .walletBalance(customer.getWalletBalance())
@@ -260,6 +286,26 @@ public class CustomerServiceImpl implements CustomerService {
                 .createdAt(customer.getCreatedAt())
                 .updatedAt(customer.getUpdatedAt())
                 .build();
+
+        // Enrichir avec les données utilisateur depuis auth-service
+        try {
+            log.info("🔍 Fetching user info from auth-service for userId: {}", customer.getUserId());
+            UserInfoDTO userInfo = authServiceClient.getUserById(customer.getUserId());
+            log.info("✅ User info retrieved: {} {}", userInfo.getFirstName(), userInfo.getLastName());
+            dto.setEmail(userInfo.getEmail());
+            dto.setFirstName(userInfo.getFirstName());
+            dto.setLastName(userInfo.getLastName());
+            dto.setPhoneNumber(userInfo.getPhoneNumber());
+            dto.setProfilePicture(userInfo.getProfilePicture());
+        } catch (Exception e) {
+            log.error("❌ FAILED to fetch user info from auth-service for userId: {}", customer.getUserId());
+            log.error("❌ Error type: {}", e.getClass().getName());
+            log.error("❌ Error message: {}", e.getMessage());
+            log.error("❌ Full stack trace:", e);
+            // Continue sans les infos utilisateur
+        }
+
+        return dto;
     }
 
     /**

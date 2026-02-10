@@ -24,9 +24,8 @@ public class CourierCreateRequest {
     private Long userId;
 
     /**
-     * Type de véhicule
+     * Type de véhicule (optionnel lors de la création initiale)
      */
-    @NotNull(message = "Le type de véhicule est obligatoire")
     private VehicleType vehicleType;
 
     /**

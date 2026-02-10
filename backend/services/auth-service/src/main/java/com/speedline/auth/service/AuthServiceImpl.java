@@ -1,9 +1,12 @@
 package com.speedline.auth.service;
 
+import com.speedline.auth.client.UserServiceClient;
 import com.speedline.auth.domain.AuthProvider;
 import com.speedline.auth.domain.Role;
 import com.speedline.auth.domain.User;
 import com.speedline.auth.domain.UserStatus;
+import com.speedline.auth.dto.request.CreateCourierRequest;
+import com.speedline.auth.dto.request.CreateCustomerRequest;
 import com.speedline.auth.dto.request.LoginRequest;
 import com.speedline.auth.dto.request.RegisterRequest;
 import com.speedline.auth.dto.request.SocialLoginRequest;
@@ -43,8 +46,9 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider tokenProvider;
     private final AuthenticationManager authenticationManager;
     private final OAuth2Service oauth2Service;
+    private final UserServiceClient userServiceClient;
 
-    @Value("${jwt.expiration-ms}")
+    @Value("${jwt.expiration}")
     private long jwtExpirationMs;
 
     @Override
@@ -74,10 +78,66 @@ public class AuthServiceImpl implements AuthService {
                 .verificationToken(verificationToken)
                 .build();
 
-        userRepo.save(user);
+        user = userRepo.save(user);
         
         log.info("User registered successfully. Verification token: {}", verificationToken);
         log.info("User registered successfully with email: {}", request.getEmail());
+
+        // Create profile after transaction commits
+        Long userId = user.getId();
+        Role userRole = user.getRole();
+        String email = user.getEmail();
+        String firstName = user.getFirstName();
+        String lastName = user.getLastName();
+        String phoneNumber = user.getPhoneNumber();
+        
+        // Call this after @Transactional method completes
+        createUserProfile(userId, userRole, email, firstName, lastName, phoneNumber);
+    }
+
+    /**
+     * Create user profile in user-service (non-transactional)
+     * Separated to avoid issues with @Transactional and Feign calls
+     */
+    private void createUserProfile(Long userId, Role role, String email, String firstName, String lastName, String phoneNumber) {
+        // Create corresponding profile in user-service based on role
+        if (role == Role.CUSTOMER) {
+            log.info("Attempting to create customer profile for userId: {}", userId);
+            try {
+                CreateCustomerRequest customerRequest = CreateCustomerRequest.builder()
+                        .userId(userId)
+                        .email(email)
+                        .firstName(firstName)
+                        .lastName(lastName)
+                        .phoneNumber(phoneNumber)
+                        .build();
+                userServiceClient.createCustomer(customerRequest);
+                log.info("Customer profile created successfully for userId: {}", userId);
+            } catch (Exception e) {
+                log.error("FAILED to create customer profile in user-service for userId: {}. Error: {}", 
+                        userId, e.getMessage(), e);
+                log.error("Full exception details:", e);
+                // Continue - the user account is created, profile can be created later
+            }
+        } else if (role == Role.COURIER) {
+            log.info("Attempting to create courier profile for userId: {}", userId);
+            try {
+                CreateCourierRequest courierRequest = CreateCourierRequest.builder()
+                        .userId(userId)
+                        .email(email)
+                        .firstName(firstName)
+                        .lastName(lastName)
+                        .phoneNumber(phoneNumber)
+                        .build();
+                userServiceClient.createCourier(courierRequest);
+                log.info("Courier profile created successfully for userId: {}", userId);
+            } catch (Exception e) {
+                log.error("FAILED to create courier profile in user-service for userId: {}. Error: {}", 
+                        userId, e.getMessage(), e);
+                log.error("Full exception details:", e);
+                // Continue - the user account is created, profile can be created later
+            }
+        }
     }
 
     @Override

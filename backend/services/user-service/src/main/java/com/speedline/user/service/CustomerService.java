@@ -17,6 +17,16 @@ public interface CustomerService {
     // ==================== OPÉRATIONS CLIENT ====================
 
     /**
+     * Créer un nouveau profil client
+     * Appelé après l'inscription dans auth-service
+     * 
+     * @param request CustomerCreateRequest contenant userId et des préférences optionnelles
+     * @return CustomerDTO avec le profil créé
+     * @throws UserAlreadyExistsException si un profil existe déjà pour ce userId
+     */
+    CustomerDTO createCustomer(CustomerCreateRequest request);
+
+    /**
      * Récupérer un client par son ID
      * 
      * @param customerId ID du profil client
