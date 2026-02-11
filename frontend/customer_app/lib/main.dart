@@ -3,9 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/themes/app_theme.dart';
 import 'config/routes/app_router.dart';
 import 'config/dependency_injection/injection.dart';
+import 'core/localization/app_localizations.dart';
+import 'core/localization/locale_provider.dart';
 import 'services/firebase_service.dart';
 import 'services/analytics_service.dart';
 import 'services/crash_reporting_service.dart';
@@ -25,6 +28,9 @@ void main() async {
 
   // Load environment variables
   await dotenv.load(fileName: '.env.development');
+  
+  // Initialize SharedPreferences before anything else
+  await SharedPreferences.getInstance();
   
   // Setup DI
   setupInjection();
@@ -60,11 +66,13 @@ Future<void> _initializeServices() async {
   }
 }
 
-class SpeedLineApp extends StatelessWidget {
+class SpeedLineApp extends ConsumerWidget {
   const SpeedLineApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
+
     return MaterialApp.router(
       title: 'SpeedLine',
       theme: AppTheme.lightTheme,
@@ -72,7 +80,9 @@ class SpeedLineApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       debugShowCheckedModeBanner: false,
       routerConfig: appRouter,
+      locale: locale,
       localizationsDelegates: const [
+        AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,

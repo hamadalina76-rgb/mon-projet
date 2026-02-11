@@ -18,7 +18,7 @@ class LocalNotificationService {
     );
 
     await _notificationsPlugin.initialize(
-      initializationSettings,
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
   }
@@ -50,7 +50,13 @@ class LocalNotificationService {
       iOS: iosDetails,
     );
 
-    await _notificationsPlugin.show(id, title, body, details, payload: payload);
+    await _notificationsPlugin.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: details,
+      payload: payload,
+    );
   }
 
   void _onNotificationTapped(NotificationResponse response) {
