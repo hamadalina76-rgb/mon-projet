@@ -1,96 +1,165 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logger/logger.dart';
+import 'package:pretty_dio_logger/pretty_dio_logger.dart';
+import 'interceptors/auth_interceptor.dart';
 
+/// Client API Singleton pour gérer toutes les requêtes HTTP
+/// 
+/// Configuration:
+/// - Base URL depuis .env
+/// - Timeout: 30 secondes
+/// - Intercepteurs: Auth + Logging
+/// - Gestion automatique des erreurs et retry
 class ApiClient {
+  static ApiClient? _instance;
   late final Dio _dio;
-  final FlutterSecureStorage _storage;
+  final FlutterSecureStorage _secureStorage;
   final Logger _logger;
 
-  ApiClient({
-    required String baseUrl,
-    required FlutterSecureStorage storage,
-    required Logger logger,
-  })  : _storage = storage,
-        _logger = logger {
+  // Singleton pattern
+  factory ApiClient({
+    FlutterSecureStorage? secureStorage,
+    Logger? logger,
+  }) {
+    if (_instance == null) {
+      final storage = secureStorage ?? const FlutterSecureStorage();
+      final log = logger ?? Logger();
+      _instance = ApiClient._internal(storage, log);
+    }
+    return _instance!;
+  }
+
+  ApiClient._internal(this._secureStorage, this._logger) {
+    _initializeDio();
+  }
+
+  /// Initialiser Dio avec la configuration
+  void _initializeDio() {
+    // Récupérer la configuration depuis .env
+    final baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:8080/api';
+    final timeoutMs = int.tryParse(dotenv.env['API_TIMEOUT'] ?? '30000') ?? 30000;
+    final enableLogging = dotenv.env['LOG_NETWORK']?.toLowerCase() == 'true';
+
+    _logger.i('🚀 Initialisation API Client');
+    _logger.i('📍 Base URL: $baseUrl');
+    _logger.i('⏱️ Timeout: ${timeoutMs}ms');
+    _logger.i('📝 Logging: $enableLogging');
+
     _dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
+        connectTimeout: Duration(milliseconds: timeoutMs),
+        receiveTimeout: Duration(milliseconds: timeoutMs),
+        sendTimeout: Duration(milliseconds: timeoutMs),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
+        validateStatus: (status) {
+          // Accepter tous les status codes pour gérer les erreurs manuellement
+          return status != null && status < 500;
+        },
       ),
     );
 
-    _setupInterceptors();
+    _setupInterceptors(enableLogging);
   }
 
-  void _setupInterceptors() {
+  /// Configurer les intercepteurs
+  void _setupInterceptors(bool enableLogging) {
+    // 1. Auth Interceptor (priorité haute)
+    _dio.interceptors.add(
+      AuthInterceptor(
+        secureStorage: _secureStorage,
+        logger: _logger,
+        dio: _dio,
+      ),
+    );
+
+    // 2. Pretty Logger (uniquement en développement)
+    if (enableLogging) {
+      _dio.interceptors.add(
+        PrettyDioLogger(
+          requestHeader: true,
+          requestBody: true,
+          responseBody: true,
+          responseHeader: false,
+          error: true,
+          compact: true,
+          maxWidth: 90,
+          logPrint: (object) {
+            // Utiliser notre logger au lieu de print
+            _logger.d(object);
+          },
+        ),
+      );
+    }
+
+    // 3. Error Handler Interceptor
     _dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (options, handler) async {
-          final token = await _storage.read(key: 'access_token');
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
+        onError: (error, handler) {
+          final statusCode = error.response?.statusCode;
+          final message = _getErrorMessage(error);
+
+          _logger.e('❌ API Error [$statusCode]: $message');
+
+          // Transformer DioException en erreur plus lisible
+          if (error.type == DioExceptionType.connectionTimeout ||
+              error.type == DioExceptionType.receiveTimeout ||
+              error.type == DioExceptionType.sendTimeout) {
+            _logger.e('⏱️ Timeout: Vérifiez votre connexion Internet');
+          } else if (error.type == DioExceptionType.connectionError) {
+            _logger.e('🌐 Erreur de connexion: Backend inaccessible');
           }
-          _logger.d('Request: ${options.method} ${options.path}');
-          return handler.next(options);
-        },
-        onResponse: (response, handler) {
-          _logger.d('Response: ${response.statusCode} ${response.requestOptions.path}');
-          return handler.next(response);
-        },
-        onError: (error, handler) async {
-          _logger.e('Error: ${error.response?.statusCode} ${error.requestOptions.path}');
-          
-          if (error.response?.statusCode == 401) {
-            final refreshed = await _refreshToken();
-            if (refreshed) {
-              return handler.resolve(await _retry(error.requestOptions));
-            }
-          }
-          
+
           return handler.next(error);
         },
       ),
     );
+
+    _logger.i('✅ Intercepteurs configurés');
   }
 
-  Future<bool> _refreshToken() async {
-    try {
-      final refreshToken = await _storage.read(key: 'refresh_token');
-      if (refreshToken == null) return false;
-
-      final response = await _dio.post('/auth/refresh', data: {
-        'refreshToken': refreshToken,
-      });
-
-      if (response.statusCode == 200) {
-        await _storage.write(key: 'access_token', value: response.data['accessToken']);
-        await _storage.write(key: 'refresh_token', value: response.data['refreshToken']);
-        return true;
-      }
-    } catch (e) {
-      _logger.e('Token refresh failed: $e');
+  /// Extraire un message d'erreur lisible
+  String _getErrorMessage(DioException error) {
+    if (error.response?.data is Map) {
+      final data = error.response!.data as Map<String, dynamic>;
+      return data['message'] ?? data['error'] ?? 'Erreur inconnue';
     }
-    return false;
+    return error.message ?? 'Erreur inconnue';
   }
 
-  Future<Response<dynamic>> _retry(RequestOptions requestOptions) async {
-    final options = Options(
-      method: requestOptions.method,
-      headers: requestOptions.headers,
-    );
-    return _dio.request<dynamic>(
-      requestOptions.path,
-      data: requestOptions.data,
-      queryParameters: requestOptions.queryParameters,
-      options: options,
-    );
+  /// Sauvegarder les tokens après authentification
+  Future<void> saveTokens({
+    required String token,
+    required String refreshToken,
+  }) async {
+    await _secureStorage.write(key: 'auth_token', value: token);
+    await _secureStorage.write(key: 'refresh_token', value: refreshToken);
+    _logger.i('💾 Tokens sauvegardés');
   }
 
+  /// Supprimer les tokens (déconnexion)
+  Future<void> clearTokens() async {
+    await _secureStorage.delete(key: 'auth_token');
+    await _secureStorage.delete(key: 'refresh_token');
+    _logger.i('🗑️ Tokens supprimés');
+  }
+
+  /// Vérifier si l'utilisateur est authentifié
+  Future<bool> hasToken() async {
+    final token = await _secureStorage.read(key: 'auth_token');
+    return token != null && token.isNotEmpty;
+  }
+
+  /// Accès au client Dio
   Dio get dio => _dio;
+
+  /// Reset l'instance (pour les tests)
+  static void resetInstance() {
+    _instance = null;
+  }
 }

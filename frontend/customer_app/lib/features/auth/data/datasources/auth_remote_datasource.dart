@@ -1,13 +1,320 @@
+import 'package:dio/dio.dart';
+import '../../../../core/api/api_client.dart';
+import '../../../../core/api/api_endpoints.dart';
+import '../../../../core/errors/exceptions.dart';
+import '../models/login_request.dart';
+import '../models/register_request.dart';
+import '../models/forgot_password_request.dart';
+import '../models/verify_otp_request.dart';
+import '../models/reset_password_request.dart';
+import '../models/auth_response.dart';
 import '../models/user_model.dart';
 
+/// DataSource distant pour l'authentification
+/// 
+/// Responsabilités:
+/// - Communication avec l'API backend via Dio
+/// - Conversion des réponses JSON en modèles
+/// - Gestion des erreurs HTTP
+/// - Ne gère PAS le cache local (voir AuthLocalDataSource)
 abstract class AuthRemoteDataSource {
-  Future<UserModel> login(String email, String password);
+  /// Connexion avec email et mot de passe
+  /// 
+  /// @throws AuthException si credentials invalides
+  /// @throws ServerException si erreur serveur
+  /// @throws NetworkException si pas de connexion
+  Future<AuthResponse> login(LoginRequest request);
+
+  /// Inscription d'un nouveau client
+  /// 
+  /// @throws ValidationException si données invalides
+  /// @throws ServerException si erreur serveur
+  Future<AuthResponse> register(RegisterRequest request);
+
+  /// Demande de réinitialisation de mot de passe
+  /// Envoie un OTP par email
+  /// 
+  /// @throws NotFoundException si email n'existe pas
+  /// @throws ServerException si erreur serveur
+  Future<void> forgotPassword(ForgotPasswordRequest request);
+
+  /// Vérification du code OTP
+  /// 
+  /// @throws AuthException si OTP invalide ou expiré
+  /// @throws ServerException si erreur serveur
+  Future<void> verifyOtp(VerifyOtpRequest request);
+
+  /// Réinitialisation du mot de passe avec OTP validé
+  /// 
+  /// @throws AuthException si OTP invalide
+  /// @throws ValidationException si mot de passe invalide
+  Future<void> resetPassword(ResetPasswordRequest request);
+
+  /// Déconnexion (invalide le refresh token côté serveur)
+  /// 
+  /// @throws ServerException si erreur serveur
+  Future<void> logout();
+
+  /// Rafraîchissement du token JWT
+  /// 
+  /// @throws AuthException si refresh token invalide
+  /// @throws ServerException si erreur serveur
+  Future<AuthResponse> refreshToken(String refreshToken);
+
+  /// Récupération du profil utilisateur actuel
+  /// 
+  /// @throws AuthException si token invalide
+  /// @throws ServerException si erreur serveur
+  Future<UserModel> getCurrentUser();
 }
 
+/// Implémentation de AuthRemoteDataSource avec Dio
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
+  final ApiClient apiClient;
+
+  AuthRemoteDataSourceImpl({required this.apiClient});
+
   @override
-  Future<UserModel> login(String email, String password) async {
-    // Mock implementation
-    return UserModel(id: '1', email: email, name: 'User');
+  Future<AuthResponse> login(LoginRequest request) async {
+    try {
+      final response = await apiClient.dio.post(
+        ApiEndpoints.AUTH_LOGIN,
+        data: request.toJson(),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        return AuthResponse.fromJson(response.data);
+      } else {
+        throw ServerException(
+          message: 'Réponse serveur invalide',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    }
+  }
+
+  @override
+  Future<AuthResponse> register(RegisterRequest request) async {
+    try {
+      final response = await apiClient.dio.post(
+        ApiEndpoints.AUTH_REGISTER,
+        data: request.toJson(),
+      );
+
+      if (response.statusCode == 201 && response.data != null) {
+        return AuthResponse.fromJson(response.data);
+      } else {
+        throw ServerException(
+          message: 'Réponse serveur invalide',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    }
+  }
+
+  @override
+  Future<void> forgotPassword(ForgotPasswordRequest request) async {
+    try {
+      final response = await apiClient.dio.post(
+        ApiEndpoints.AUTH_FORGOT_PASSWORD,
+        data: request.toJson(),
+      );
+
+      if (response.statusCode != 200) {
+        throw ServerException(
+          message: 'Échec de l\'envoi du code OTP',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    }
+  }
+
+  @override
+  Future<void> verifyOtp(VerifyOtpRequest request) async {
+    try {
+      final response = await apiClient.dio.post(
+        ApiEndpoints.AUTH_VERIFY_OTP,
+        data: request.toJson(),
+      );
+
+      if (response.statusCode != 200) {
+        throw ServerException(
+          message: 'Vérification OTP échouée',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    }
+  }
+
+  @override
+  Future<void> resetPassword(ResetPasswordRequest request) async {
+    try {
+      final response = await apiClient.dio.post(
+        ApiEndpoints.AUTH_RESET_PASSWORD,
+        data: request.toJson(),
+      );
+
+      if (response.statusCode != 200) {
+        throw ServerException(
+          message: 'Réinitialisation du mot de passe échouée',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    }
+  }
+
+  @override
+  Future<void> logout() async {
+    try {
+      // Note: AuthInterceptor ajoutera automatiquement le token
+      final response = await apiClient.dio.post(ApiEndpoints.AUTH_LOGOUT);
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw ServerException(
+          message: 'Déconnexion échouée',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      // On ignore les erreurs de déconnexion côté serveur
+      // Car on déconnecte quand même l'utilisateur localement
+      if (e.response?.statusCode != 401) {
+        throw _handleDioException(e);
+      }
+    }
+  }
+
+  @override
+  Future<AuthResponse> refreshToken(String refreshToken) async {
+    try {
+      final response = await apiClient.dio.post(
+        ApiEndpoints.AUTH_REFRESH_TOKEN,
+        data: {'refreshToken': refreshToken},
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        return AuthResponse.fromJson(response.data);
+      } else {
+        throw ServerException(
+          message: 'Rafraîchissement du token échoué',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    }
+  }
+
+  @override
+  Future<UserModel> getCurrentUser() async {
+    try {
+      final response = await apiClient.dio.get(ApiEndpoints.AUTH_ME);
+
+      if (response.statusCode == 200 && response.data != null) {
+        return UserModel.fromJson(response.data);
+      } else {
+        throw ServerException(
+          message: 'Récupération du profil échouée',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    }
+  }
+
+  /// Convertit une DioException en exception personnalisée
+  ApiException _handleDioException(DioException error) {
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return TimeoutException(
+          message: 'La requête a pris trop de temps',
+        );
+
+      case DioExceptionType.connectionError:
+        return NetworkException(
+          message: 'Pas de connexion internet',
+        );
+
+      case DioExceptionType.badResponse:
+        final statusCode = error.response?.statusCode;
+        final data = error.response?.data;
+
+        // Message d'erreur du serveur
+        String errorMessage = 'Une erreur est survenue';
+        if (data is Map<String, dynamic>) {
+          errorMessage = data['message'] ?? 
+                        data['error'] ?? 
+                        data['detail'] ?? 
+                        errorMessage;
+        }
+
+        switch (statusCode) {
+          case 400:
+            return ValidationException(
+              message: errorMessage,
+              data: data is Map ? data['errors'] : null,
+            );
+
+          case 401:
+            return AuthException(
+              message: errorMessage,
+              statusCode: 401,
+            );
+
+          case 403:
+            return AuthException(
+              message: 'Accès refusé',
+              statusCode: 403,
+            );
+
+          case 404:
+            return NotFoundException(
+              message: errorMessage,
+            );
+
+          case 422:
+            return ValidationException(
+              message: errorMessage,
+              data: data is Map ? data['errors'] : null,
+            );
+
+          case 500:
+          case 502:
+          case 503:
+            return ServerException(
+              message: 'Erreur serveur. Réessayez plus tard.',
+              statusCode: statusCode,
+            );
+
+          default:
+            return ServerException(
+              message: errorMessage,
+              statusCode: statusCode,
+            );
+        }
+
+      case DioExceptionType.cancel:
+        return NetworkException(
+          message: 'Requête annulée',
+        );
+
+      default:
+        return NetworkException(
+          message: error.message ?? 'Erreur réseau inconnue',
+        );
+    }
   }
 }
