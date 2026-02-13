@@ -1,5 +1,6 @@
 package com.speedline.auth.service;
 
+import com.speedline.auth.dto.request.CreateAdminAccountRequest;
 import com.speedline.auth.dto.request.LoginRequest;
 import com.speedline.auth.dto.request.RegisterRequest;
 import com.speedline.auth.dto.request.SocialLoginRequest;
@@ -12,7 +13,9 @@ public interface AuthService {
     void register(RegisterRequest request);
 
     OtpResponse login(LoginRequest request);
-    
+
+    AuthResponse adminLogin(LoginRequest request);
+
     Object verifyOtp(VerifyOtpRequest request);
     
     AuthResponse socialLogin(SocialLoginRequest request);
@@ -28,6 +31,13 @@ public interface AuthService {
     void verifyEmail(String token);
     
     boolean checkEmailExists(String email);
-    
+
+    /**
+     * Crée un compte admin (appelé par user-service)
+     * @param request Détails du compte à créer
+     * @return ID de l'utilisateur créé
+     */
+    Long createAdminAccount(CreateAdminAccountRequest request);
+
     OtpResponse resendOtp(String email);
 }

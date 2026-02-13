@@ -1,54 +1,160 @@
 <!-- Admin Form Component Template -->
 <div class="admin-form-page">
-  <header class="page-header">
+  <!-- Header with Back Button -->
+  <div class="page-header">
     <div class="header-left">
-      <button mat-icon-button routerLink="/users/admins">
-        <mat-icon>arrow_back</mat-icon>
+      <button class="btn-back" routerLink="/users/admins">
+        <span class="material-icons-round">arrow_back</span>
       </button>
-      <h1>{{ isEditMode ? 'Modifier administrateur' : 'Nouvel administrateur' }}</h1>
+      <div class="header-titles">
+        <div class="breadcrumb">
+          <a routerLink="/users/admins" class="breadcrumb-link">{{ 'users.admins.breadcrumb' | translate }}</a>
+          <span class="breadcrumb-separator">/</span>
+          <span class="breadcrumb-current">{{ isEditMode ? ('users.admins.edit' | translate) : ('users.admins.add' | translate) }}</span>
+        </div>
+        <h1 class="page-title">{{ isEditMode ? ('users.admins.editTitle' | translate) : ('users.admins.new' | translate) }}</h1>
+      </div>
     </div>
-  </header>
+  </div>
 
-  <mat-card class="form-card">
-    <form [formGroup]="adminForm" (ngSubmit)="onSubmit()">
-      <!-- Name -->
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Nom complet</mat-label>
-        <input matInput formControlName="name" />
-      </mat-form-field>
+  <!-- Form Container -->
+  <div class="form-container">
+    <div class="form-card">
+      <p class="form-subtitle">{{ 'users.admins.subtitle' | translate }}</p>
 
-      <!-- Email -->
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>{{ 'auth.email' | translate }}</mat-label>
-        <input matInput type="email" formControlName="email" />
-      </mat-form-field>
+      <form [formGroup]="adminForm" (ngSubmit)="onSubmit()">
+        <!-- Personal Information Section -->
+        <div class="form-section">
+          <div class="section-header">
+            <span class="material-icons-round section-icon">person</span>
+            <h3 class="section-title">{{ 'users.admins.personalInfo' | translate }}</h3>
+          </div>
 
-      <!-- Role -->
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>{{ 'users.admins.role' | translate }}</mat-label>
-        <mat-select formControlName="role">
-          <mat-option value="SUPER_ADMIN">Super Admin</mat-option>
-          <mat-option value="ADMIN">Admin</mat-option>
-          <mat-option value="MODERATOR">Modérateur</mat-option>
-          <mat-option value="SUPPORT">Support</mat-option>
-        </mat-select>
-      </mat-form-field>
+          <div class="form-row">
+            <!-- Full Name -->
+            <mat-form-field appearance="outline" class="form-field">
+              <mat-label>{{ 'users.admins.fullName' | translate }}</mat-label>
+              <input matInput formControlName="fullName" [placeholder]="'users.admins.fullNamePlaceholder' | translate" />
+              @if (adminForm.get('fullName')?.touched && adminForm.get('fullName')?.invalid) {
+                <mat-error>{{ 'users.admins.fullNameRequired' | translate }}</mat-error>
+              }
+            </mat-form-field>
 
-      <!-- Permissions -->
-      <div class="permissions-section">
-        <h3>{{ 'users.admins.permissions' | translate }}</h3>
-        <!-- Permissions checkboxes -->
-      </div>
+            <!-- Email -->
+            <mat-form-field appearance="outline" class="form-field">
+              <mat-label>{{ 'users.admins.email' | translate }}</mat-label>
+              <input matInput type="email" formControlName="email" [placeholder]="'users.admins.emailPlaceholder' | translate" />
+              @if (adminForm.get('email')?.touched && adminForm.get('email')?.invalid) {
+                <mat-error>{{ 'users.admins.emailInvalid' | translate }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
 
-      <!-- Actions -->
-      <div class="form-actions">
-        <button mat-stroked-button type="button" routerLink="/users/admins">
-          {{ 'common.cancel' | translate }}
-        </button>
-        <button mat-flat-button color="primary" type="submit" [disabled]="loading">
-          {{ 'common.save' | translate }}
-        </button>
-      </div>
-    </form>
-  </mat-card>
+          <!-- Password Field (only for new admins) -->
+          @if (!isEditMode) {
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="form-field-full">
+                <mat-label>{{ 'users.admins.password' | translate }}</mat-label>
+                <input matInput type="password" formControlName="password" [placeholder]="'users.admins.passwordPlaceholder' | translate" />
+                <mat-hint>{{ 'users.admins.passwordHint' | translate }}</mat-hint>
+                @if (adminForm.get('password')?.touched && adminForm.get('password')?.invalid) {
+                  <mat-error>{{ 'users.admins.passwordRequired' | translate }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+          }
+        </div>
+
+        <!-- Roles and Permissions Section -->
+        <div class="form-section">
+          <div class="section-header">
+            <span class="material-icons-round section-icon">shield</span>
+            <h3 class="section-title">{{ 'users.admins.rolesAndPermissions' | translate }}</h3>
+          </div>
+
+          <!-- Role Selection -->
+          <div class="role-selection">
+            <label class="field-label">{{ 'users.admins.roleAssignment' | translate }}</label>
+            <mat-form-field appearance="outline" class="form-field-full">
+              <mat-label>{{ 'users.admins.selectRole' | translate }}</mat-label>
+              <mat-select formControlName="role" (selectionChange)="onRoleChange()">
+                @for (role of roles(); track role.id) {
+                  <mat-option [value]="role.id">
+                    <div class="role-option">
+                      <span class="role-dot" [style.background-color]="role.color"></span>
+                      {{ role.label }}
+                    </div>
+                  </mat-option>
+                }
+              </mat-select>
+              @if (adminForm.get('role')?.touched && adminForm.get('role')?.invalid) {
+                <mat-error>{{ 'users.admins.roleRequired' | translate }}</mat-error>
+              }
+            </mat-form-field>
+
+            <!-- Selected Role Preview -->
+            @if (adminForm.get('role')?.value) {
+              <div class="role-preview">
+                <div class="role-preview-badge" [style.background-color]="getRoleColor(adminForm.get('role')?.value)">
+                  {{ getRoleName(adminForm.get('role')?.value) }}
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Permissions Overview -->
+          <div class="permissions-overview">
+            <div class="permissions-header">
+              <span class="material-icons-round">info</span>
+              <span class="permissions-title">{{ 'users.admins.permissionsOverview' | translate }}</span>
+            </div>
+            <div class="permissions-grid">
+              @for (permission of permissions(); track permission.module) {
+                <div 
+                  class="permission-card"
+                  [class.selected]="isPermissionSelected(permission.module)"
+                  (click)="togglePermission(permission.module)"
+                >
+                  <div class="permission-header">
+                    <div class="permission-icon" [style.background-color]="isPermissionSelected(permission.module) ? '#E31E24' : '#F1F5F9'">
+                      <span class="material-icons-round" [style.color]="isPermissionSelected(permission.module) ? 'white' : '#94A3B8'">
+                        {{ permission.icon }}
+                      </span>
+                    </div>
+                    <mat-checkbox 
+                      [checked]="isPermissionSelected(permission.module)"
+                      (change)="togglePermission(permission.module)"
+                      [color]="'primary'"
+                      (click)="$event.stopPropagation()"
+                    ></mat-checkbox>
+                  </div>
+                  <h4 class="permission-title">{{ getPermissionLabel(permission) }}</h4>
+                  <p class="permission-description">{{ getPermissionDescription(permission) }}</p>
+                </div>
+              }
+            </div>
+
+            <!-- Note -->
+            <div class="permissions-note">
+              <span class="material-icons-round">lightbulb</span>
+              <p>{{ 'users.admins.permissionsNote' | translate }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="button" class="btn-cancel" (click)="onCancel()">
+            {{ 'users.admins.cancel' | translate }}
+          </button>
+          <button type="submit" class="btn-submit" [disabled]="loading()">
+            @if (loading()) {
+              <span class="material-icons-round spin">refresh</span>
+            }
+            {{ isEditMode ? ('users.admins.save' | translate) : ('users.admins.create' | translate) }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>

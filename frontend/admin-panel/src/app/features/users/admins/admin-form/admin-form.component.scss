@@ -1,50 +1,636 @@
 // Admin Form Component Styles
+@use 'sass:color';
 @use '../../../../../assets/styles/variables' as v;
 
+$primary: v.$primary-color;
+
 .admin-form-page {
-  padding: 1.5rem;
-  max-width: 600px;
+  padding: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
+// Header
 .page-header {
+  margin-bottom: 2rem;
+}
+
+.header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.btn-back {
+  width: 2.5rem;
+  height: 2.5rem;
   display: flex;
   align-items: center;
-  margin-bottom: 1.5rem;
+  justify-content: center;
+  background: white;
+  border: 1px solid v.$gray-200;
+  border-radius: 0.5rem;
+  color: v.$gray-600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  flex-shrink: 0;
 
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+  .material-icons-round {
+    font-size: 1.25rem;
   }
 
-  h1 {
-    margin: 0;
-    font-size: 1.5rem;
+  &:hover {
+    background: v.$gray-50;
+    border-color: v.$gray-300;
+    color: v.$gray-900;
+    transform: translateX(-2px);
   }
+}
+
+.header-titles {
+  flex: 1;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: v.$gray-900;
+  margin: 0.25rem 0 0 0;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  margin-bottom: 0.25rem;
+}
+
+.breadcrumb-link {
+  color: #64748b;
+  text-decoration: none;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: $primary;
+  }
+}
+
+.breadcrumb-separator {
+  color: #cbd5e1;
+}
+
+.breadcrumb-current {
+  color: #1e293b;
+  font-weight: 500;
+}
+
+// Form Container
+.form-container {
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
 }
 
 .form-card {
   padding: 2rem;
 }
 
-.full-width {
-  width: 100%;
-  margin-bottom: 1rem;
+.form-subtitle {
+  font-size: 0.9375rem;
+  color: v.$gray-600;
+  margin: 0 0 2rem 0;
 }
 
-.permissions-section {
-  margin: 1.5rem 0;
+// Form Sections
+.form-section {
+  margin-bottom: 2.5rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #f1f5f9;
 
-  h3 {
-    margin: 0 0 1rem;
-    font-size: 1rem;
-    font-weight: 600;
+  &:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
   }
 }
 
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.section-icon {
+  color: $primary;
+  font-size: 1.5rem;
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+// Form Fields
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.form-field,
+.form-field-full {
+  width: 100%;
+
+  ::ng-deep {
+    .mat-mdc-text-field-wrapper {
+      background: #f8fafc;
+    }
+
+    .mat-mdc-form-field-subscript-wrapper {
+      margin-top: 0.25rem;
+    }
+
+    .mat-mdc-form-field-hint-wrapper,
+    .mat-mdc-form-field-error-wrapper {
+      padding: 0;
+    }
+  }
+}
+
+.field-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 0.5rem;
+}
+
+// Role Selection
+.role-selection {
+  margin-bottom: 2rem;
+}
+
+.role-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.role-dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+}
+
+.role-preview {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.role-preview-badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+// Permissions Overview
+.permissions-overview {
+  margin-top: 1.5rem;
+}
+
+.permissions-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: #EFF6FF;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+
+  .material-icons-round {
+    color: #3B82F6;
+    font-size: 1.25rem;
+  }
+
+  .permissions-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1E40AF;
+  }
+}
+
+.permissions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.permission-card {
+  padding: 1.25rem;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #cbd5e1;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  &.selected {
+    background: #FEF2F2;
+    border-color: $primary;
+
+    .permission-title {
+      color: $primary;
+    }
+  }
+}
+
+.permission-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.permission-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+
+  .material-icons-round {
+    font-size: 1.25rem;
+  }
+}
+
+.permission-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 0.375rem 0;
+}
+
+.permission-description {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+// Permissions Note
+.permissions-note {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #FFFBEB;
+  border-left: 3px solid #F59E0B;
+  border-radius: 0.5rem;
+
+  .material-icons-round {
+    color: #F59E0B;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: #92400E;
+    font-style: italic;
+    line-height: 1.5;
+  }
+}
+
+// Form Actions
 .form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
   margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.btn-cancel,
+.btn-submit {
+  padding: 0.625rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-cancel {
+  background: white;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+
+  &:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #475569;
+  }
+}
+
+.btn-submit {
+  background: $primary;
+  color: white;
+  border: none;
+
+  &:hover:not(:disabled) {
+    background: color.adjust($primary, $lightness: -8%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba($primary, 0.3);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .material-icons-round {
+    font-size: 1.125rem;
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Dark Mode
+:host-context(html.dark) {
+  .admin-form-page {
+    color: v.$gray-100;
+  }
+
+  .breadcrumb-current,
+  .page-title {
+    color: v.$white;
+  }
+
+  .btn-back {
+    background: v.$gray-800;
+    border-color: v.$gray-700;
+    color: v.$gray-400;
+
+    &:hover {
+      background: v.$gray-700;
+      border-color: v.$gray-600;
+      color: v.$gray-200;
+    }
+  }
+
+  .form-container {
+    background: v.$gray-800;
+  }
+
+  .form-subtitle {
+    color: v.$gray-400;
+  }
+
+  .section-title {
+    color: v.$white;
+  }
+
+  .form-section {
+    border-bottom-color: v.$gray-700;
+  }
+
+  .form-field,
+  .form-field-full {
+    ::ng-deep {
+      .mat-mdc-text-field-wrapper {
+        background: #1e1e1e;
+      }
+
+      .mdc-text-field--filled {
+        background-color: #1e1e1e;
+      }
+
+      .mat-mdc-form-field-focus-overlay {
+        background-color: transparent;
+      }
+    }
+  }
+
+  .field-label {
+    color: #d0d0d0;
+  }
+
+  .role-preview {
+    background: #1e1e1e;
+  }
+
+  .permissions-header {
+    background: #1a2942;
+
+    .material-icons-round {
+      color: #60A5FA;
+    }
+
+    .permissions-title {
+      color: #93C5FD;
+    }
+  }
+
+  .permission-card {
+    background: #333;
+    border-color: #3a3a3a;
+
+    &:hover {
+      border-color: #4a4a4a;
+    }
+
+    &.selected {
+      background: #3a1a1a;
+      border-color: $primary;
+    }
+  }
+
+  .permission-title {
+    color: #f5f5f5;
+  }
+
+  .permission-description {
+    color: #a0a0a0;
+  }
+
+  .permissions-note {
+    background: #2a2218;
+    border-left-color: #F59E0B;
+
+    p {
+      color: #FDE047;
+    }
+  }
+
+  .form-actions {
+    border-top-color: #3a3a3a;
+  }
+
+  .btn-cancel {
+    background: #333;
+    color: #d0d0d0;
+    border-color: #3a3a3a;
+
+    &:hover {
+      background: #3a3a3a;
+      border-color: #4a4a4a;
+      color: #e5e5e5;
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .admin-form-page {
+    padding: 1rem;
+  }
+
+  .form-card {
+    padding: 1.25rem;
+  }
+
+  .page-title {
+    font-size: 1.25rem;
+  }
+
+  .breadcrumb {
+    font-size: 0.75rem;
+  }
+
+  .form-subtitle {
+    font-size: 0.875rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .section-title {
+    font-size: 1rem;
+  }
+
+  .permissions-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .permission-card {
+    padding: 1rem;
+  }
+
+  .permissions-note {
+    padding: 0.75rem;
+    
+    p {
+      font-size: 0.75rem;
+    }
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: 0.75rem;
+    padding-top: 1.5rem;
+
+    .btn-cancel,
+    .btn-submit {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-form-page {
+    padding: 0.75rem;
+  }
+
+  .header-left {
+    gap: 0.75rem;
+  }
+
+  .btn-back {
+    width: 2.25rem;
+    height: 2.25rem;
+
+    .material-icons-round {
+      font-size: 1.125rem;
+    }
+  }
+
+  .page-title {
+    font-size: 1.125rem;
+  }
+
+  .form-container {
+    border-radius: 0.5rem;
+  }
+
+  .form-card {
+    padding: 1rem;
+  }
+
+  .section-header {
+    gap: 0.5rem;
+
+    .section-icon {
+      font-size: 1.25rem;
+    }
+  }
+
+  .section-title {
+    font-size: 0.9375rem;
+  }
+
+  .permission-card {
+    padding: 0.875rem;
+  }
+
+  .permission-title {
+    font-size: 0.875rem;
+  }
+
+  .permission-description {
+    font-size: 0.75rem;
+  }
 }

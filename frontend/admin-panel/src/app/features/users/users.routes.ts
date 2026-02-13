@@ -1,5 +1,6 @@
 // src/app/features/users/users.routes.ts
 import { Routes } from '@angular/router';
+import { permissionGuard } from '@core/guards/permission.guard';
 
 export const USERS_ROUTES: Routes = [
   {
@@ -39,6 +40,8 @@ export const USERS_ROUTES: Routes = [
   },
   {
     path: 'admins',
+    canActivate: [permissionGuard],
+    data: { permissions: ['admins:view'] },
     loadComponent: () =>
       import('./admins/admins-list/admins-list.component').then(
         (m) => m.AdminsListComponent
@@ -46,6 +49,8 @@ export const USERS_ROUTES: Routes = [
   },
   {
     path: 'admins/new',
+    canActivate: [permissionGuard],
+    data: { permissions: ['admins:create'] },
     loadComponent: () =>
       import('./admins/admin-form/admin-form.component').then(
         (m) => m.AdminFormComponent
@@ -53,6 +58,8 @@ export const USERS_ROUTES: Routes = [
   },
   {
     path: 'admins/:id/edit',
+    canActivate: [permissionGuard],
+    data: { permissions: ['admins:edit'] },
     loadComponent: () =>
       import('./admins/admin-form/admin-form.component').then(
         (m) => m.AdminFormComponent

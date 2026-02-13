@@ -1,20 +1,253 @@
-<!-- Admins List Component Template -->
-<div class="admins-list-page">
-  <header class="page-header">
-    <h1>{{ 'users.admins.title' | translate }}</h1>
-    <div class="header-actions">
-      <button mat-flat-button color="primary" routerLink="new">
-        <mat-icon>add</mat-icon>
-        {{ 'users.admins.addAdmin' | translate }}
+<!-- src/app/features/users/admins/admins-list/admins-list.component.html -->
+<div class="admins-page">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <button class="btn-back" routerLink="/dashboard">
+        <span class="material-icons-round">arrow_back</span>
       </button>
+      <h1 class="page-title">{{ 'users.admins.title' | translate }}</h1>
     </div>
-  </header>
+    <button class="btn-add" routerLink="new">
+      <span class="material-icons-round">add</span>
+      <span class="btn-text">{{ 'users.admins.addAdmin' | translate }}</span>
+    </button>
+  </div>
 
-  <!-- Data Table -->
-  <mat-card class="table-card">
-    <app-data-table
-      [data]="admins"
-      [loading]="loading">
-    </app-data-table>
-  </mat-card>
+  <!-- Content Card -->
+  <div class="content-card">
+    <!-- Filters Bar -->
+    <div class="filters-bar">
+      <!-- Search -->
+      <div class="search-box">
+        <span class="material-icons-round search-icon">search</span>
+        <input 
+          type="text"
+          class="search-input"
+          [placeholder]="'users.admins.searchPlaceholder' | translate"
+          [(ngModel)]="searchText"
+          (ngModelChange)="onSearchChange()"
+        />
+      </div>
+
+      <!-- Role Filter (dynamic from backend) -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-select [(ngModel)]="selectedRole" (selectionChange)="onRoleChange()">
+          <mat-option value="all">{{ 'users.admins.allRoles' | translate }}</mat-option>
+          @for (role of roles(); track role.id) {
+            <mat-option [value]="role.id">
+              <span class="role-filter-dot" [style.background-color]="role.color"></span>
+              {{ role.label }}
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Status Filter (uppercase values matching backend) -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange()">
+          <mat-option value="all">{{ 'users.admins.allStatuses' | translate }}</mat-option>
+          <mat-option value="ACTIVE">{{ 'common.active' | translate }}</mat-option>
+          <mat-option value="INACTIVE">{{ 'common.inactive' | translate }}</mat-option>
+          <mat-option value="PENDING">{{ 'common.pending' | translate }}</mat-option>
+          <mat-option value="SUSPENDED">Suspendu</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <!-- Table -->
+    <div class="table-container">
+      @if (loading()) {
+        <div class="loading-state">
+          <span class="material-icons-round spin">refresh</span>
+          <p>{{ 'common.loading' | translate }}</p>
+        </div>
+      } @else if (paginatedAdmins.length === 0) {
+        <div class="empty-state">
+          <span class="material-icons-round">person_off</span>
+          <p>{{ 'users.admins.noAdmins' | translate }}</p>
+        </div>
+      } @else {
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="col-admin">{{ 'users.admins.administrator' | translate | uppercase }}</th>
+              <th class="col-role">{{ 'users.admins.role' | translate | uppercase }}</th>
+              <th class="col-permissions">{{ 'users.admins.permissions' | translate | uppercase }}</th>
+              <th class="col-last-login">{{ 'users.admins.lastLogin' | translate | uppercase }}</th>
+              <th class="col-status">{{ 'users.admins.status' | translate | uppercase }}</th>
+              <th class="col-actions">{{ 'users.admins.actions' | translate | uppercase }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (admin of paginatedAdmins; track admin.id) {
+              <tr class="table-row">
+                <!-- Admin Info -->
+                <td class="col-admin">
+                  <div class="admin-info">
+                    <div class="admin-avatar" [style.background-color]="admin.role.color">
+                      {{ getInitials(admin.fullName) }}
+                    </div>
+                    <div class="admin-details">
+                      <div class="admin-name">{{ admin.fullName }}</div>
+                      <div class="admin-email">{{ admin.email }}</div>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Role -->
+                <td class="col-role">
+                  <span class="role-badge" [style.background-color]="admin.role.color">
+                    {{ admin.role.label }}
+                  </span>
+                </td>
+
+                <!-- Permissions -->
+                <td class="col-permissions">
+                  <div class="permissions-cell">
+                    @if (admin.permissions && admin.permissions.length > 0) {
+                      <div class="permissions-chips">
+                        @for (perm of admin.permissions.slice(0, 3); track perm) {
+                          <span class="permission-chip">
+                            {{ getPermissionLabel(perm) }}
+                          </span>
+                        }
+                        @if (admin.permissions.length > 3) {
+                          <button 
+                            class="permission-chip more-chip"
+                            (click)="togglePermissions(admin.id)"
+                            [matTooltip]="expandedAdminId === admin.id ? ('users.admins.hide' | translate) : ('users.admins.viewAll' | translate)"
+                          >
+                            +{{ admin.permissions.length - 3 }} {{ 'users.admins.morePermissions' | translate }}
+                          </button>
+                        }
+                      </div>
+                      <!-- Expanded permissions -->
+                      @if (expandedAdminId === admin.id && admin.permissions.length > 3) {
+                        <div class="permissions-expanded">
+                          @for (perm of admin.permissions.slice(3); track perm) {
+                            <span class="permission-chip">
+                              {{ getPermissionLabel(perm) }}
+                            </span>
+                          }
+                        </div>
+                      }
+                    } @else {
+                      <span class="no-permissions">{{ 'users.admins.noPermissions' | translate }}</span>
+                    }
+                  </div>
+                </td>
+
+                <!-- Last Login -->
+                <td class="col-last-login">
+                  {{ admin.lastLogin }}
+                </td>
+
+                <!-- Status -->
+                <td class="col-status">
+                  <span class="status-dot" [style.background-color]="getStatusColor(admin.status)"></span>
+                  <span class="status-label">{{ getStatusLabel(admin.status) }}</span>
+                </td>
+
+                <!-- Actions -->
+                <td class="col-actions">
+                  <div class="action-buttons">
+                    <!-- Edit button - fixed route -->
+                    <button 
+                      class="action-btn"
+                      [routerLink]="[admin.id, 'edit']"
+                      [matTooltip]="'users.admins.edit' | translate"
+                    >
+                      <span class="material-icons-round">edit</span>
+                    </button>
+
+                    <!-- Status actions menu -->
+                    <button 
+                      class="action-btn"
+                      [matMenuTriggerFor]="statusMenu"
+                      [matTooltip]="'users.admins.changeStatus' | translate"
+                    >
+                      <span class="material-icons-round">more_vert</span>
+                    </button>
+                    <mat-menu #statusMenu="matMenu">
+                      @if (admin.status !== AdminStatus.ACTIVE) {
+                        <button mat-menu-item (click)="activateAdmin(admin)">
+                          <span class="material-icons-round" style="color: #10B981">check_circle</span>
+                          <span>{{ 'users.admins.activate' | translate }}</span>
+                        </button>
+                      }
+                      @if (admin.status !== AdminStatus.INACTIVE) {
+                        <button mat-menu-item (click)="deactivateAdmin(admin)">
+                          <span class="material-icons-round" style="color: #94A3B8">block</span>
+                          <span>{{ 'users.admins.deactivate' | translate }}</span>
+                        </button>
+                      }
+                      @if (admin.status !== AdminStatus.SUSPENDED) {
+                        <button mat-menu-item (click)="suspendAdmin(admin)">
+                          <span class="material-icons-round" style="color: #EF4444">gpp_bad</span>
+                          <span>{{ 'users.admins.suspend' | translate }}</span>
+                        </button>
+                      }
+                      <button mat-menu-item (click)="deleteAdmin(admin)" class="delete-action">
+                        <span class="material-icons-round" style="color: #EF4444">delete</span>
+                        <span style="color: #EF4444">{{ 'users.admins.delete' | translate }}</span>
+                      </button>
+                    </mat-menu>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <!-- Pagination -->
+    @if (filteredAdmins().length > 0) {
+      <div class="pagination">
+        <div class="pagination-info">
+          <span>{{ 'users.admins.itemsPerPage' | translate }}:</span>
+          <select [(ngModel)]="itemsPerPage" (change)="applyFilters()" class="items-select">
+            <option [value]="20">20</option>
+            <option [value]="50">50</option>
+            <option [value]="100">100</option>
+          </select>
+          <span class="page-range">
+            {{ (currentPage - 1) * itemsPerPage + 1 }} - {{ Math.min(currentPage * itemsPerPage, totalItems) }} {{ 'users.admins.of' | translate }} {{ totalItems }}
+          </span>
+        </div>
+
+        <div class="pagination-controls">
+          <button 
+            class="page-btn"
+            (click)="goToFirstPage()"
+            [disabled]="currentPage === 1"
+          >
+            <span class="material-icons-round">first_page</span>
+          </button>
+          <button 
+            class="page-btn"
+            (click)="previousPage()"
+            [disabled]="currentPage === 1"
+          >
+            <span class="material-icons-round">chevron_left</span>
+          </button>
+          <button 
+            class="page-btn"
+            (click)="nextPage()"
+            [disabled]="currentPage === totalPages"
+          >
+            <span class="material-icons-round">chevron_right</span>
+          </button>
+          <button 
+            class="page-btn"
+            (click)="goToLastPage()"
+            [disabled]="currentPage === totalPages"
+          >
+            <span class="material-icons-round">last_page</span>
+          </button>
+        </div>
+      </div>
+    }
+  </div>
 </div>

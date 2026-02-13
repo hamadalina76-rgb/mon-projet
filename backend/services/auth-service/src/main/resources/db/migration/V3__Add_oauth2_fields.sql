@@ -11,10 +11,17 @@ ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_users_provider 
 ON users(auth_provider, provider_user_id);
 
--- Add unique constraint for OAuth provider + user_id combination
-ALTER TABLE users 
-ADD CONSTRAINT unique_oauth_provider 
-UNIQUE (auth_provider, provider_user_id);
+-- Add unique constraint for OAuth provider + user_id combination (skip if exists)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'unique_oauth_provider'
+    ) THEN
+        ALTER TABLE users 
+        ADD CONSTRAINT unique_oauth_provider 
+        UNIQUE (auth_provider, provider_user_id);
+    END IF;
+END $$;
 
 -- Add comment
 COMMENT ON COLUMN users.auth_provider IS 'Authentication provider: LOCAL, GOOGLE, FACEBOOK';

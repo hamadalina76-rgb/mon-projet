@@ -21,9 +21,14 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
 
     private static final List<String> OPEN_ENDPOINTS = List.of(
         "/auth/login",
+        "/auth/admin/login",
         "/auth/register",
         "/auth/refresh",
         "/auth/forgot-password",
+        "/auth/reset-password",
+        "/auth/verify-email",
+        "/auth/check-email",
+        "/auth/health",
         "/partners",
         "/categories",
         "/products"

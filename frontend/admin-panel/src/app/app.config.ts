@@ -1,12 +1,12 @@
 // src/app/app.config.ts
-import { ApplicationConfig, importProvidersFrom } from '@angular/core';
+import { ApplicationConfig, importProvidersFrom, APP_INITIALIZER } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideToastr } from 'ngx-toastr';
-import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
-import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
-import { HttpClient } from '@angular/common/http';
+import { TranslateModule, TranslateService, TranslateLoader } from '@ngx-translate/core';
+import { TranslateHttpLoader, TRANSLATE_HTTP_LOADER_CONFIG } from '@ngx-translate/http-loader';
+import { firstValueFrom } from 'rxjs';
 // import { SocketIoModule, SocketIoConfig } from 'ngx-socket-io';
 
 import { routes } from './app.routes';
@@ -23,6 +23,19 @@ import { environment } from '@environments/environment';
 //   },
 // };
 
+// Initialize translations before app starts
+export function initializeTranslations(translate: TranslateService) {
+  return async (): Promise<void> => {
+    const savedLang = localStorage.getItem('language') || environment.defaultLanguage;
+    translate.setDefaultLang(environment.defaultLanguage);
+    translate.addLangs(environment.supportedLanguages);
+    document.documentElement.dir = savedLang === 'ar' ? 'rtl' : 'ltr';
+    
+    // Load translations before app starts
+    await firstValueFrom(translate.use(savedLang));
+  };
+}
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes, withComponentInputBinding()),
@@ -36,15 +49,29 @@ export const appConfig: ApplicationConfig = {
       preventDuplicates: true,
       progressBar: true,
     }),
+    // Configure TranslateHttpLoader
+    {
+      provide: TRANSLATE_HTTP_LOADER_CONFIG,
+      useValue: {
+        prefix: './assets/i18n/',
+        suffix: '.json',
+      },
+    },
     importProvidersFrom(
       TranslateModule.forRoot({
-        defaultLanguage: environment.defaultLanguage,
         loader: {
           provide: TranslateLoader,
-          useFactory: provideTranslateHttpLoader,
+          useClass: TranslateHttpLoader,
         },
       }),
       // SocketIoModule.forRoot(socketConfig)
     ),
+    // Initialize translations at app startup
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeTranslations,
+      deps: [TranslateService],
+      multi: true,
+    },
   ],
 };

@@ -51,6 +51,42 @@ public class UserController {
     }
     
     /**
+     * Supprime un utilisateur (appelé par user-service lors de la suppression d'un admin)
+     */
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long userId) {
+        log.info("DELETE /users/{} - Suppression du compte utilisateur", userId);
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> {
+                    log.error("User not found for deletion with id: {}", userId);
+                    return new RuntimeException("User not found with id: " + userId);
+                });
+        
+        userRepository.delete(user);
+        log.info("User deleted successfully: {} ({})", user.getEmail(), userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Change le statut d'un utilisateur (ACTIVE, SUSPENDED, DELETED)
+     */
+    @PutMapping("/{userId}/status")
+    public ResponseEntity<Void> changeUserStatus(
+            @PathVariable Long userId,
+            @RequestParam String status) {
+        log.info("PUT /users/{}/status?status={}", userId, status);
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        
+        user.setStatus(com.speedline.auth.domain.UserStatus.valueOf(status));
+        userRepository.save(user);
+        log.info("User status changed to {} for user {}", status, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
      * Liste tous les utilisateurs (pour debug)
      */
     @GetMapping
