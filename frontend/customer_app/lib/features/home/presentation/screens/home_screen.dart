@@ -43,8 +43,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Load saved language
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Show language selection banner on first launch
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final hasSelected = await ref.read(localeProvider.notifier).hasSelectedLanguage();
+      if (!hasSelected && mounted) {
+        _showLanguageSelectionBanner();
+      }
+      // Load saved language
       final currentLocale = ref.read(localeProvider);
       setState(() => _selectedLanguage = currentLocale.languageCode);
     });
@@ -446,6 +451,360 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
+  }
+
+  /// Show modern language selection banner at bottom
+  void _showLanguageSelectionBanner() {
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return WillPopScope(
+          onWillPop: () async => false,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(AppConstants.borderRadiusLarge),
+                topRight: Radius.circular(AppConstants.borderRadiusLarge),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            padding: EdgeInsets.all(ResponsiveUtils.getResponsiveSpacing(context, 24)),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Welcome icon
+                Container(
+                  width: ResponsiveUtils.getResponsiveSize(context, 60),
+                  height: ResponsiveUtils.getResponsiveSize(context, 60),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppColors.primary, AppColors.primaryDark],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.waving_hand,
+                    size: ResponsiveUtils.getResponsiveSize(context, 30),
+                    color: Colors.white,
+                  ),
+                ),
+
+                SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+
+                // Welcome title
+                Text(
+                  'Welcome!',
+                  style: TextStyle(
+                    fontSize: ResponsiveUtils.getResponsiveFontSize(context, 26),
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+
+                // Subtitle
+                Text(
+                  'Select your preferred language to continue',
+                  style: TextStyle(
+                    fontSize: ResponsiveUtils.getResponsiveFontSize(context, 15),
+                    color: AppColors.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+
+                // Language buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildLanguageCard(
+                        context: context,
+                        flag: '🇫🇷',
+                        language: 'Français',
+                        languageCode: 'fr',
+                      ),
+                    ),
+                    SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+                    Expanded(
+                      child: _buildLanguageCard(
+                        context: context,
+                        flag: '🇬🇧',
+                        language: 'English',
+                        languageCode: 'en',
+                      ),
+                    ),
+                    SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+                    Expanded(
+                      child: _buildLanguageCard(
+                        context: context,
+                        flag: '🇸🇦',
+                        language: 'العربية',
+                        languageCode: 'ar',
+                      ),
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Build language selection card
+  Widget _buildLanguageCard({
+    required BuildContext context,
+    required String flag,
+    required String language,
+    required String languageCode,
+  }) {
+    return InkWell(
+      onTap: () => _selectLanguageFromBanner(languageCode),
+      borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          vertical: ResponsiveUtils.getResponsiveSpacing(context, 16),
+          horizontal: ResponsiveUtils.getResponsiveSpacing(context, 8),
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+          border: Border.all(color: AppColors.border, width: 1.5),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Flag
+            Text(
+              flag,
+              style: TextStyle(
+                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 36),
+              ),
+            ),
+
+            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+
+            // Language name
+            Text(
+              language,
+              style: TextStyle(
+                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Select language from banner and close
+  void _selectLanguageFromBanner(String languageCode) {
+    final locale = Locale(
+      languageCode,
+      languageCode == 'en' ? 'US' : languageCode == 'fr' ? 'FR' : 'SA',
+    );
+    ref.read(localeProvider.notifier).setLocale(locale);
+    setState(() => _selectedLanguage = languageCode);
+    Navigator.of(context).pop();
+  }
+
+  /// Show modern language selection dialog
+  Future<void> _showLanguageSelectionDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),
+          ),
+          elevation: 10,
+          child: Container(
+            padding: EdgeInsets.all(ResponsiveUtils.getResponsiveSpacing(context, 24)),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Logo
+                Container(
+                  width: ResponsiveUtils.getResponsiveSize(context, 80),
+                  height: ResponsiveUtils.getResponsiveSize(context, 80),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.language,
+                    size: ResponsiveUtils.getResponsiveSize(context, 40),
+                    color: AppColors.primary,
+                  ),
+                ),
+
+                SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 20)),
+
+                // Title
+                Text(
+                  'Choose Your Language',
+                  style: TextStyle(
+                    fontSize: ResponsiveUtils.getResponsiveFontSize(context, 24),
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+
+                // Subtitle
+                Text(
+                  'Choisissez votre langue • اختر لغتك',
+                  style: TextStyle(
+                    fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+                    color: AppColors.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 32)),
+
+                // Language options
+                _buildLanguageOption(
+                  context: context,
+                  flag: '🇫🇷',
+                  language: 'Français',
+                  subtitle: 'French',
+                  onTap: () => _selectLanguage('fr'),
+                ),
+
+                SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+
+                _buildLanguageOption(
+                  context: context,
+                  flag: '🇬🇧',
+                  language: 'English',
+                  subtitle: 'Anglais',
+                  onTap: () => _selectLanguage('en'),
+                ),
+
+                SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+
+                _buildLanguageOption(
+                  context: context,
+                  flag: '🇸🇦',
+                  language: 'العربية',
+                  subtitle: 'Arabic',
+                  onTap: () => _selectLanguage('ar'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Build language option tile
+  Widget _buildLanguageOption({
+    required BuildContext context,
+    required String flag,
+    required String language,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+      child: Container(
+        padding: EdgeInsets.all(ResponsiveUtils.getResponsiveSpacing(context, 16)),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+          border: Border.all(color: AppColors.border, width: 1),
+        ),
+        child: Row(
+          children: [
+            // Flag
+            Text(
+              flag,
+              style: TextStyle(
+                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 32),
+              ),
+            ),
+
+            SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+
+            // Language info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    language,
+                    style: TextStyle(
+                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 2)),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Arrow icon
+            Icon(
+              Icons.arrow_forward_ios,
+              size: ResponsiveUtils.getResponsiveSize(context, 16),
+              color: AppColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Select language and close dialog
+  void _selectLanguage(String languageCode) {
+    final locale = Locale(
+      languageCode,
+      languageCode == 'en' ? 'US' : languageCode == 'fr' ? 'FR' : 'SA',
+    );
+    ref.read(localeProvider.notifier).setLocale(locale);
+    setState(() => _selectedLanguage = languageCode);
+    Navigator.of(context).pop();
   }
 }
 

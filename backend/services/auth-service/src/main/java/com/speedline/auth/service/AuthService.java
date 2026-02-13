@@ -3,13 +3,17 @@ package com.speedline.auth.service;
 import com.speedline.auth.dto.request.LoginRequest;
 import com.speedline.auth.dto.request.RegisterRequest;
 import com.speedline.auth.dto.request.SocialLoginRequest;
+import com.speedline.auth.dto.request.VerifyOtpRequest;
 import com.speedline.auth.dto.response.AuthResponse;
+import com.speedline.auth.dto.response.OtpResponse;
 
 public interface AuthService {
 
     void register(RegisterRequest request);
 
-    AuthResponse login(LoginRequest request);
+    OtpResponse login(LoginRequest request);
+    
+    Object verifyOtp(VerifyOtpRequest request);
     
     AuthResponse socialLogin(SocialLoginRequest request);
 
@@ -17,11 +21,13 @@ public interface AuthService {
 
     AuthResponse refreshToken(String refreshToken);
 
-    void forgotPassword(String email);
+    OtpResponse forgotPassword(String email);
 
-    void resetPassword(String token, String newPassword);
+    void resetPassword(String email, String otpCode, String newPassword);
 
     void verifyEmail(String token);
     
     boolean checkEmailExists(String email);
+    
+    OtpResponse resendOtp(String email);
 }

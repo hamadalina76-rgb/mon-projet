@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
 import '../entities/user.dart';
+import '../entities/otp_result.dart';
 import '../../data/models/login_request.dart';
 import '../../data/models/register_request.dart';
 import '../../data/models/forgot_password_request.dart';
@@ -12,17 +13,27 @@ import '../../data/models/reset_password_request.dart';
 /// Définit le contrat entre la couche domain et data.
 /// Retourne Either<Failure, Success> pour gérer les erreurs de manière fonctionnelle.
 abstract class AuthRepository {
-  /// Connexion avec email et mot de passe
+  /// Connexion avec email et mot de passe (envoie OTP)
   /// 
-  /// @returns Right(User) si succès
+  /// @returns Right(OtpResult) si succès
   /// @returns Left(Failure) si erreur
-  Future<Either<Failure, User>> login(LoginRequest request);
+  Future<Either<Failure, OtpResult>> login(LoginRequest request);
 
-  /// Inscription d'un nouveau client
+  /// Vérification du code OTP pour authentification
   /// 
-  /// @returns Right(User) si succès
+  /// @returns Right(User) si OTP valide et login réussi
+  /// @returns Left(Failure) si OTP invalide
+  Future<Either<Failure, User>> verifyOtp(VerifyOtpRequest request);
+  
+  /// Renvoyer OTP
+  /// 
+  /// @returns Right(Unit) si succès
   /// @returns Left(Failure) si erreur
-  Future<Either<Failure, User>> register(RegisterRequest request);
+  Future<Either<Failure, Unit>> resendOtp(String email);
+
+  /// Inscription d'un nouvel utilisateur
+  /// Retourne Unit en cas de succès (inscription réussie)
+  Future<Either<Failure, Unit>> register(RegisterRequest request);
 
   /// Demande de réinitialisation de mot de passe
   /// Envoie un OTP par email
@@ -30,12 +41,6 @@ abstract class AuthRepository {
   /// @returns Right(Unit) si succès
   /// @returns Left(Failure) si erreur
   Future<Either<Failure, Unit>> forgotPassword(ForgotPasswordRequest request);
-
-  /// Vérification du code OTP
-  /// 
-  /// @returns Right(Unit) si OTP valide
-  /// @returns Left(Failure) si OTP invalide
-  Future<Either<Failure, Unit>> verifyOtp(VerifyOtpRequest request);
 
   /// Réinitialisation du mot de passe avec OTP validé
   /// 

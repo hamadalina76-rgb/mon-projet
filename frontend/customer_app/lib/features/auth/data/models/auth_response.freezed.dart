@@ -20,9 +20,15 @@ AuthResponse _$AuthResponseFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$AuthResponse {
+  @JsonKey(name: 'access_token')
   String get token => throw _privateConstructorUsedError;
+  @JsonKey(name: 'refresh_token')
   String get refreshToken => throw _privateConstructorUsedError;
   UserModel get user => throw _privateConstructorUsedError;
+  int? get expiresIn => throw _privateConstructorUsedError;
+  @JsonKey(name: 'token_type')
+  String? get tokenType => throw _privateConstructorUsedError;
+  bool? get isNewUser => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -36,7 +42,13 @@ abstract class $AuthResponseCopyWith<$Res> {
           AuthResponse value, $Res Function(AuthResponse) then) =
       _$AuthResponseCopyWithImpl<$Res, AuthResponse>;
   @useResult
-  $Res call({String token, String refreshToken, UserModel user});
+  $Res call(
+      {@JsonKey(name: 'access_token') String token,
+      @JsonKey(name: 'refresh_token') String refreshToken,
+      UserModel user,
+      int? expiresIn,
+      @JsonKey(name: 'token_type') String? tokenType,
+      bool? isNewUser});
 
   $UserModelCopyWith<$Res> get user;
 }
@@ -57,6 +69,9 @@ class _$AuthResponseCopyWithImpl<$Res, $Val extends AuthResponse>
     Object? token = null,
     Object? refreshToken = null,
     Object? user = null,
+    Object? expiresIn = freezed,
+    Object? tokenType = freezed,
+    Object? isNewUser = freezed,
   }) {
     return _then(_value.copyWith(
       token: null == token
@@ -71,6 +86,18 @@ class _$AuthResponseCopyWithImpl<$Res, $Val extends AuthResponse>
           ? _value.user
           : user // ignore: cast_nullable_to_non_nullable
               as UserModel,
+      expiresIn: freezed == expiresIn
+          ? _value.expiresIn
+          : expiresIn // ignore: cast_nullable_to_non_nullable
+              as int?,
+      tokenType: freezed == tokenType
+          ? _value.tokenType
+          : tokenType // ignore: cast_nullable_to_non_nullable
+              as String?,
+      isNewUser: freezed == isNewUser
+          ? _value.isNewUser
+          : isNewUser // ignore: cast_nullable_to_non_nullable
+              as bool?,
     ) as $Val);
   }
 
@@ -91,7 +118,13 @@ abstract class _$$AuthResponseImplCopyWith<$Res>
       __$$AuthResponseImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String token, String refreshToken, UserModel user});
+  $Res call(
+      {@JsonKey(name: 'access_token') String token,
+      @JsonKey(name: 'refresh_token') String refreshToken,
+      UserModel user,
+      int? expiresIn,
+      @JsonKey(name: 'token_type') String? tokenType,
+      bool? isNewUser});
 
   @override
   $UserModelCopyWith<$Res> get user;
@@ -111,6 +144,9 @@ class __$$AuthResponseImplCopyWithImpl<$Res>
     Object? token = null,
     Object? refreshToken = null,
     Object? user = null,
+    Object? expiresIn = freezed,
+    Object? tokenType = freezed,
+    Object? isNewUser = freezed,
   }) {
     return _then(_$AuthResponseImpl(
       token: null == token
@@ -125,6 +161,18 @@ class __$$AuthResponseImplCopyWithImpl<$Res>
           ? _value.user
           : user // ignore: cast_nullable_to_non_nullable
               as UserModel,
+      expiresIn: freezed == expiresIn
+          ? _value.expiresIn
+          : expiresIn // ignore: cast_nullable_to_non_nullable
+              as int?,
+      tokenType: freezed == tokenType
+          ? _value.tokenType
+          : tokenType // ignore: cast_nullable_to_non_nullable
+              as String?,
+      isNewUser: freezed == isNewUser
+          ? _value.isNewUser
+          : isNewUser // ignore: cast_nullable_to_non_nullable
+              as bool?,
     ));
   }
 }
@@ -133,21 +181,35 @@ class __$$AuthResponseImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$AuthResponseImpl implements _AuthResponse {
   const _$AuthResponseImpl(
-      {required this.token, required this.refreshToken, required this.user});
+      {@JsonKey(name: 'access_token') required this.token,
+      @JsonKey(name: 'refresh_token') required this.refreshToken,
+      required this.user,
+      this.expiresIn,
+      @JsonKey(name: 'token_type') this.tokenType,
+      this.isNewUser});
 
   factory _$AuthResponseImpl.fromJson(Map<String, dynamic> json) =>
       _$$AuthResponseImplFromJson(json);
 
   @override
+  @JsonKey(name: 'access_token')
   final String token;
   @override
+  @JsonKey(name: 'refresh_token')
   final String refreshToken;
   @override
   final UserModel user;
+  @override
+  final int? expiresIn;
+  @override
+  @JsonKey(name: 'token_type')
+  final String? tokenType;
+  @override
+  final bool? isNewUser;
 
   @override
   String toString() {
-    return 'AuthResponse(token: $token, refreshToken: $refreshToken, user: $user)';
+    return 'AuthResponse(token: $token, refreshToken: $refreshToken, user: $user, expiresIn: $expiresIn, tokenType: $tokenType, isNewUser: $isNewUser)';
   }
 
   @override
@@ -158,12 +220,19 @@ class _$AuthResponseImpl implements _AuthResponse {
             (identical(other.token, token) || other.token == token) &&
             (identical(other.refreshToken, refreshToken) ||
                 other.refreshToken == refreshToken) &&
-            (identical(other.user, user) || other.user == user));
+            (identical(other.user, user) || other.user == user) &&
+            (identical(other.expiresIn, expiresIn) ||
+                other.expiresIn == expiresIn) &&
+            (identical(other.tokenType, tokenType) ||
+                other.tokenType == tokenType) &&
+            (identical(other.isNewUser, isNewUser) ||
+                other.isNewUser == isNewUser));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, token, refreshToken, user);
+  int get hashCode => Object.hash(
+      runtimeType, token, refreshToken, user, expiresIn, tokenType, isNewUser);
 
   @JsonKey(ignore: true)
   @override
@@ -181,19 +250,31 @@ class _$AuthResponseImpl implements _AuthResponse {
 
 abstract class _AuthResponse implements AuthResponse {
   const factory _AuthResponse(
-      {required final String token,
-      required final String refreshToken,
-      required final UserModel user}) = _$AuthResponseImpl;
+      {@JsonKey(name: 'access_token') required final String token,
+      @JsonKey(name: 'refresh_token') required final String refreshToken,
+      required final UserModel user,
+      final int? expiresIn,
+      @JsonKey(name: 'token_type') final String? tokenType,
+      final bool? isNewUser}) = _$AuthResponseImpl;
 
   factory _AuthResponse.fromJson(Map<String, dynamic> json) =
       _$AuthResponseImpl.fromJson;
 
   @override
+  @JsonKey(name: 'access_token')
   String get token;
   @override
+  @JsonKey(name: 'refresh_token')
   String get refreshToken;
   @override
   UserModel get user;
+  @override
+  int? get expiresIn;
+  @override
+  @JsonKey(name: 'token_type')
+  String? get tokenType;
+  @override
+  bool? get isNewUser;
   @override
   @JsonKey(ignore: true)
   _$$AuthResponseImplCopyWith<_$AuthResponseImpl> get copyWith =>

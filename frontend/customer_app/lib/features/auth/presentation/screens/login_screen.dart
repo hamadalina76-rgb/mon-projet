@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../config/dependency_injection/injection.dart';
 import '../../../../config/routes/route_names.dart';
 import '../providers/auth_state.dart';
+import 'verify_otp_screen.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/responsive_utils.dart';
@@ -36,6 +37,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _registerEmailController = TextEditingController();
   final _registerPhoneController = TextEditingController();
   final _registerPasswordController = TextEditingController();
+  
+  // Password visibility states
+  bool _obscureLoginPassword = true;
+  bool _obscureRegisterPassword = true;
+  
+  // Remember me state
+  bool _rememberMe = false;
 
   @override
   void initState() {
@@ -72,7 +80,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           firstName: _registerFirstNameController.text.trim(),
           lastName: _registerLastNameController.text.trim(),
           email: _registerEmailController.text.trim(),
-          phone: _registerPhoneController.text.trim(),
+          phoneNumber: _registerPhoneController.text.trim(),
           password: _registerPasswordController.text,
         );
   }
@@ -103,22 +111,73 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         error: (message) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(message),
+              content: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(child: Text(message)),
+                ],
+              ),
               backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              margin: EdgeInsets.all(16),
             ),
           );
+        },
+        otpSent: (otpResult) {
+          // Navigation vers écran de vérification OTP pour connexion
+          context.push(
+            RouteNames.verifyOtp,
+            extra: {
+              'email': otpResult.email,
+              'type': OtpVerificationType.login,
+            },
+          );
+        },
+        registered: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle_outline, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(child: Text(context.tr('register_success'))),
+                ],
+              ),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              margin: EdgeInsets.all(16),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          // Basculer vers l'onglet login
+          _tabController.animateTo(0);
         },
         authenticated: (user) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Bienvenue ${user.fullName}!'),
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle_outline, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(child: Text('${context.tr('welcome_user')} ${user.fullName}!')),
+                ],
+              ),
               backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              margin: EdgeInsets.all(16),
             ),
           );
-          // TODO: Navigation vers home
-          // Navigator.pushReplacementNamed(context, '/home');
+          context.go(RouteNames.accueil);
         },
         orElse: () {},
       );
@@ -361,7 +420,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             const SizedBox(height: 8),
             TextFormField(
               controller: _loginPasswordController,
-              obscureText: true,
+              obscureText: _obscureLoginPassword,
               enabled: !isLoading,
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) => _handleLogin(),
@@ -382,12 +441,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   size: AppConstants.iconSizeSmall,
                 ),
                 suffixIcon: IconButton(
-                  icon: const Icon(
-                    Icons.visibility_outlined,
+                  icon: Icon(
+                    _obscureLoginPassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
                     color: AppColors.textHint,
                     size: AppConstants.iconSizeSmall,
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    setState(() {
+                      _obscureLoginPassword = !_obscureLoginPassword;
+                    });
+                  },
                 ),
                 filled: true,
                 fillColor: AppColors.surface,
@@ -426,6 +491,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 }
                 return null;
               },
+            ),
+          ],
+        ),
+
+        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+        
+        // Stay connected checkbox
+        Row(
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Checkbox(
+                value: _rememberMe,
+                onChanged: isLoading ? null : (value) {
+                  setState(() {
+                    _rememberMe = value ?? false;
+                  });
+                },
+                activeColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              context.tr('stay_connected'),
+              style: TextStyle(
+                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ),

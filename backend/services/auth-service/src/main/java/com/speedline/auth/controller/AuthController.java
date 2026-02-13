@@ -2,6 +2,7 @@ package com.speedline.auth.controller;
 
 import com.speedline.auth.dto.request.*;
 import com.speedline.auth.dto.response.AuthResponse;
+import com.speedline.auth.dto.response.OtpResponse;
 import com.speedline.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,12 +18,14 @@ import java.util.Map;
  * 
  * Endpoints:
  * POST /api/v1/auth/register - Inscription
- * POST /api/v1/auth/login - Connexion
+ * POST /api/v1/auth/login - Connexion (envoie OTP)
+ * POST /api/v1/auth/verify-login-otp - Vérifier OTP de connexion
  * POST /api/v1/auth/refresh - Refresh token
  * POST /api/v1/auth/logout - Déconnexion
  * POST /api/v1/auth/verify-email - Vérifier email
- * POST /api/v1/auth/forgot-password - Mot de passe oublié
- * POST /api/v1/auth/reset-password - Réinitialiser mot de passe
+ * POST /api/v1/auth/forgot-password - Mot de passe oublié (envoie OTP)
+ * POST /api/v1/auth/verify-forgot-password-otp - Vérifier OTP de mot de passe oublié
+ * POST /api/v1/auth/reset-password - Réinitialiser mot de passe avec OTP
  */
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -41,9 +44,16 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<OtpResponse> login(@Valid @RequestBody LoginRequest request) {
         log.info("Login endpoint called for email: {}", request.getEmail());
-        AuthResponse response = authService.login(request);
+        OtpResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        log.info("Verify OTP endpoint called for email: {} with type: {}", request.getEmail(), request.getType());
+        Object response = authService.verifyOtp(request);
         return ResponseEntity.ok(response);
     }
 
@@ -70,16 +80,16 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
-        log.info("Forgot password endpoint called");
-        authService.forgotPassword(request.getEmail());
-        return ResponseEntity.ok(Map.of("message", "Password reset link sent to your email"));
+    public ResponseEntity<OtpResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        log.info("Forgot password endpoint called for email: {}", request.getEmail());
+        OtpResponse response = authService.forgotPassword(request.getEmail());
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/reset-password")
     public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-        log.info("Reset password endpoint called");
-        authService.resetPassword(request.getToken(), request.getNewPassword());
+        log.info("Reset password endpoint called for email: {}", request.getEmail());
+        authService.resetPassword(request.getEmail(), request.getOtpCode(), request.getNewPassword());
         return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
     }
 
@@ -111,6 +121,14 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("exists", exists));
     }
 
+    @PostMapping("/resend-otp")
+    public ResponseEntity<OtpResponse> resendOtp(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        log.info("Resend OTP endpoint called for email: {}", email);
+        OtpResponse response = authService.resendOtp(email);
+        return ResponseEntity.ok(response);
+    }
+    
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of("status", "UP", "service", "auth-service"));

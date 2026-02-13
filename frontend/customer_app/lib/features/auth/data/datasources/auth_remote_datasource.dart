@@ -9,6 +9,7 @@ import '../models/verify_otp_request.dart';
 import '../models/reset_password_request.dart';
 import '../models/auth_response.dart';
 import '../models/user_model.dart';
+import '../models/otp_response.dart';
 
 /// DataSource distant pour l'authentification
 /// 
@@ -18,18 +19,30 @@ import '../models/user_model.dart';
 /// - Gestion des erreurs HTTP
 /// - Ne gère PAS le cache local (voir AuthLocalDataSource)
 abstract class AuthRemoteDataSource {
-  /// Connexion avec email et mot de passe
+  /// Connexion avec email et mot de passe (envoie OTP)
   /// 
   /// @throws AuthException si credentials invalides
   /// @throws ServerException si erreur serveur
   /// @throws NetworkException si pas de connexion
-  Future<AuthResponse> login(LoginRequest request);
+  Future<OtpResponse> login(LoginRequest request);
+
+  /// Vérification du code OTP pour authentification
+  /// 
+  /// @throws AuthException si OTP invalide ou expiré
+  /// @throws ServerException si erreur serveur
+  Future<AuthResponse> verifyOtp(VerifyOtpRequest request);
+  
+  /// Renvoyer OTP
+  /// 
+  /// @throws NotFoundException si email n'existe pas
+  /// @throws ServerException si erreur serveur
+  Future<void> resendOtp(String email);
 
   /// Inscription d'un nouveau client
   /// 
   /// @throws ValidationException si données invalides
   /// @throws ServerException si erreur serveur
-  Future<AuthResponse> register(RegisterRequest request);
+  Future<void> register(RegisterRequest request);
 
   /// Demande de réinitialisation de mot de passe
   /// Envoie un OTP par email
@@ -37,12 +50,6 @@ abstract class AuthRemoteDataSource {
   /// @throws NotFoundException si email n'existe pas
   /// @throws ServerException si erreur serveur
   Future<void> forgotPassword(ForgotPasswordRequest request);
-
-  /// Vérification du code OTP
-  /// 
-  /// @throws AuthException si OTP invalide ou expiré
-  /// @throws ServerException si erreur serveur
-  Future<void> verifyOtp(VerifyOtpRequest request);
 
   /// Réinitialisation du mot de passe avec OTP validé
   /// 
@@ -75,11 +82,36 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   AuthRemoteDataSourceImpl({required this.apiClient});
 
   @override
-  Future<AuthResponse> login(LoginRequest request) async {
+  Future<OtpResponse> login(LoginRequest request) async {
     try {
       final response = await apiClient.dio.post(
         ApiEndpoints.AUTH_LOGIN,
         data: request.toJson(),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        return OtpResponse.fromJson(response.data);
+      } else {
+        throw ServerException(
+          message: 'Réponse serveur invalide',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    }
+  }
+
+  @override
+  Future<AuthResponse> verifyOtp(VerifyOtpRequest request) async {
+    try {
+      final response = await apiClient.dio.post(
+        ApiEndpoints.AUTH_VERIFY_OTP,
+        data: {
+          'email': request.email,
+          'otpCode': request.otp,
+          'type': request.type ?? 'login',
+        },
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -96,18 +128,35 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<AuthResponse> register(RegisterRequest request) async {
+  Future<void> register(RegisterRequest request) async {
     try {
       final response = await apiClient.dio.post(
         ApiEndpoints.AUTH_REGISTER,
         data: request.toJson(),
       );
 
-      if (response.statusCode == 201 && response.data != null) {
-        return AuthResponse.fromJson(response.data);
-      } else {
+      if (response.statusCode != 201) {
         throw ServerException(
-          message: 'Réponse serveur invalide',
+          message: 'Inscription échouée',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    }
+  }
+  
+  @override
+  Future<void> resendOtp(String email) async {
+    try {
+      final response = await apiClient.dio.post(
+        ApiEndpoints.AUTH_RESEND_OTP,
+        data: {'email': email},
+      );
+
+      if (response.statusCode != 200) {
+        throw ServerException(
+          message: 'Échec du renvoi de l\'OTP',
           statusCode: response.statusCode,
         );
       }
@@ -127,25 +176,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (response.statusCode != 200) {
         throw ServerException(
           message: 'Échec de l\'envoi du code OTP',
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    }
-  }
-
-  @override
-  Future<void> verifyOtp(VerifyOtpRequest request) async {
-    try {
-      final response = await apiClient.dio.post(
-        ApiEndpoints.AUTH_VERIFY_OTP,
-        data: request.toJson(),
-      );
-
-      if (response.statusCode != 200) {
-        throw ServerException(
-          message: 'Vérification OTP échouée',
           statusCode: response.statusCode,
         );
       }

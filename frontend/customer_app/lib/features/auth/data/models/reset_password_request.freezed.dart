@@ -21,6 +21,7 @@ ResetPasswordRequest _$ResetPasswordRequestFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$ResetPasswordRequest {
   String get email => throw _privateConstructorUsedError;
+  @JsonKey(name: 'otpCode')
   String get otp => throw _privateConstructorUsedError;
   String get newPassword => throw _privateConstructorUsedError;
 
@@ -36,7 +37,8 @@ abstract class $ResetPasswordRequestCopyWith<$Res> {
           $Res Function(ResetPasswordRequest) then) =
       _$ResetPasswordRequestCopyWithImpl<$Res, ResetPasswordRequest>;
   @useResult
-  $Res call({String email, String otp, String newPassword});
+  $Res call(
+      {String email, @JsonKey(name: 'otpCode') String otp, String newPassword});
 }
 
 /// @nodoc
@@ -82,7 +84,8 @@ abstract class _$$ResetPasswordRequestImplCopyWith<$Res>
       __$$ResetPasswordRequestImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String email, String otp, String newPassword});
+  $Res call(
+      {String email, @JsonKey(name: 'otpCode') String otp, String newPassword});
 }
 
 /// @nodoc
@@ -121,7 +124,9 @@ class __$$ResetPasswordRequestImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$ResetPasswordRequestImpl implements _ResetPasswordRequest {
   const _$ResetPasswordRequestImpl(
-      {required this.email, required this.otp, required this.newPassword});
+      {required this.email,
+      @JsonKey(name: 'otpCode') required this.otp,
+      required this.newPassword});
 
   factory _$ResetPasswordRequestImpl.fromJson(Map<String, dynamic> json) =>
       _$$ResetPasswordRequestImplFromJson(json);
@@ -129,6 +134,7 @@ class _$ResetPasswordRequestImpl implements _ResetPasswordRequest {
   @override
   final String email;
   @override
+  @JsonKey(name: 'otpCode')
   final String otp;
   @override
   final String newPassword;
@@ -172,7 +178,7 @@ class _$ResetPasswordRequestImpl implements _ResetPasswordRequest {
 abstract class _ResetPasswordRequest implements ResetPasswordRequest {
   const factory _ResetPasswordRequest(
       {required final String email,
-      required final String otp,
+      @JsonKey(name: 'otpCode') required final String otp,
       required final String newPassword}) = _$ResetPasswordRequestImpl;
 
   factory _ResetPasswordRequest.fromJson(Map<String, dynamic> json) =
@@ -181,6 +187,7 @@ abstract class _ResetPasswordRequest implements ResetPasswordRequest {
   @override
   String get email;
   @override
+  @JsonKey(name: 'otpCode')
   String get otp;
   @override
   String get newPassword;

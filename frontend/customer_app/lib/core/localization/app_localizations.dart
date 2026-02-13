@@ -69,6 +69,39 @@ class AppLocalizations {
       'resend': 'Resend',
       'please_enter_6_digit_code': 'Please enter the 6-digit code',
       'code_resent_success': 'Code resent successfully',
+      'verify_identity': 'Verify Your Identity',
+      'otp_sent_to': 'We sent a verification code to',
+      'code_expired': 'Code Expired',
+      'code_expired_message': 'Your OTP code has expired. Please request a new code.',
+      'back': 'Back',
+      'resend_code': 'Resend',
+      'expires_in': 'Expires in',
+      'verify_and_login': 'Verify and Login',
+      'enter_6_digit_code': 'Please enter a 6-digit code',
+      'invalid_or_expired_code': 'Invalid or expired code',
+      'login_success': '✓ Login successful!',
+      'resend_login_otp_message': 'To resend the code, please log in again',
+      'wait': 'Wait',
+      'seconds': 'seconds',
+      'sec': 's',
+      
+      // Snackbar messages
+      'login_failed': 'Login failed. Please check your credentials.',
+      'otp_verification_failed': 'OTP verification failed. Please try again.',
+      'otp_verification_success': 'OTP verified successfully!',
+      'password_reset_failed': 'Password reset failed. Please try again.',
+      'password_reset_complete': 'Your password has been reset successfully!',
+      'email_not_found': 'Email not found. Please check and try again.',
+      'invalid_credentials': 'Invalid email or password.',
+      'generic_error': 'An error occurred. Please try again.',
+      'please_wait': 'Please wait...',
+      'otp_sent': 'OTP sent successfully to your email.',
+      'stay_connected': 'Stay connected',
+      
+      // Accueil Screen
+      'welcome_speedline': 'Welcome to SpeedLine!',
+      'welcome_message': 'You are now logged in to your account.\nThe full home screen is coming soon!',
+      'welcome_user': 'Welcome',
       
       // Reset Password
       'reset_password': 'Reset Password',
@@ -84,6 +117,7 @@ class AppLocalizations {
       // Social login in development
       'google_signin_dev': 'Google Sign In - Under development',
       'facebook_signin_dev': 'Facebook Sign In - Under development',
+      'register_success': 'Registration successful! Please log in with your credentials.',
       
       // Home/Onboarding screen
       'skip': 'Skip',
@@ -161,7 +195,38 @@ class AppLocalizations {
       'resend': 'Renvoyer',
       'please_enter_6_digit_code': 'Veuillez entrer le code à 6 chiffres',
       'code_resent_success': 'Code renvoyé avec succès',
+      'verify_identity': 'Vérifier votre identité',
+      'otp_sent_to': 'Nous avons envoyé un code de vérification à',
+      'code_expired': 'Code expiré',
+      'code_expired_message': 'Votre code OTP a expiré. Veuillez demander un nouveau code.',
+      'back': 'Retour',
+      'resend_code': 'Renvoyer',
+      'expires_in': 'Expire dans',
+      'verify_and_login': 'Vérifier et se connecter',
+      'enter_6_digit_code': 'Veuillez entrer un code de 6 chiffres',
+      'invalid_or_expired_code': 'Code invalide ou expiré',
+      'login_success': '✓ Connexion réussie!',
+      'resend_login_otp_message': 'Pour renvoyer le code, veuillez vous reconnecter',
+      'wait': 'Attendez',
+      'seconds': 'secondes',
+      'sec': 's',
       
+      // Snackbar messages
+      'login_failed': 'Échec de la connexion. Veuillez vérifier vos identifiants.',
+      'otp_verification_failed': 'Échec de la vérification OTP. Veuillez réessayer.',
+      'otp_verification_success': 'OTP vérifié avec succès!',
+      'password_reset_failed': 'Échec de la réinitialisation. Veuillez réessayer.',
+      'password_reset_complete': 'Votre mot de passe a été réinitialisé avec succès!',
+      'email_not_found': 'Email introuvable. Veuillez vérifier et réessayer.',
+      'invalid_credentials': 'Email ou mot de passe invalide.',
+      'generic_error': 'Une erreur s\'est produite. Veuillez réessayer.',
+      'please_wait': 'Veuillez patienter...',
+      'otp_sent': 'OTP envoyé avec succès à votre email.',
+      'stay_connected': 'Rester connecté',
+      
+      // Accueil Screen
+      'welcome_speedline': 'Bienvenue sur SpeedLine!',
+      'welcome_message': 'Vous êtes maintenant connecté à votre compte.\nL\'écran d\'accueil complet arrive bientôt!',      'welcome_user': 'Bienvenue',      
       // Reset Password
       'reset_password': 'Réinitialiser le Mot de Passe',
       'reset_password_desc': 'Veuillez entrer votre nouveau mot de passe. Assurez-vous qu\'il contient au moins 6 caractères.',
@@ -176,6 +241,7 @@ class AppLocalizations {
       // Social login in development
       'google_signin_dev': 'Google Sign In - En cours de développement',
       'facebook_signin_dev': 'Facebook Sign In - En cours de développement',
+      'register_success': 'Inscription réussie! Veuillez vous connecter avec vos identifiants.',
       
       // Home/Onboarding screen
       'skip': 'Passer',
@@ -253,6 +319,39 @@ class AppLocalizations {
       'resend': 'إعادة إرسال',
       'please_enter_6_digit_code': 'يرجى إدخال الرمز المكون من 6 أرقام',
       'code_resent_success': 'تم إعادة إرسال الرمز بنجاح',
+      'verify_identity': 'التحقق من هويتك',
+      'otp_sent_to': 'لقد أرسلنا رمز التحقق إلى',
+      'code_expired': 'انتهت صلاحية الرمز',
+      'code_expired_message': 'انتهت صلاحية رمز OTP الخاص بك. يرجى طلب رمز جديد.',
+      'back': 'رجوع',
+      'resend_code': 'إعادة إرسال',
+      'expires_in': 'تنتهي الصلاحية في',
+      'verify_and_login': 'التحقق وتسجيل الدخول',
+      'enter_6_digit_code': 'يرجى إدخال رمز مكون من 6 أرقام',
+      'invalid_or_expired_code': 'رمز غير صالح أو منتهي الصلاحية',
+      'login_success': '✓ تم تسجيل الدخول بنجاح!',
+      'resend_login_otp_message': 'لإعادة إرسال الرمز، يرجى تسجيل الدخول مرة أخرى',
+      'wait': 'انتظر',
+      'seconds': 'ثانية',
+      'sec': 'ث',
+      
+      // Snackbar messages
+      'login_failed': 'فشل تسجيل الدخول. يرجى التحقق من بيانات الاعتماد الخاصة بك.',
+      'otp_verification_failed': 'فشل التحقق من OTP. يرجى المحاولة مرة أخرى.',
+      'otp_verification_success': 'تم التحقق من OTP بنجاح!',
+      'password_reset_failed': 'فشلت إعادة تعيين كلمة المرور. يرجى المحاولة مرة أخرى.',
+      'password_reset_complete': 'تمت إعادة تعيين كلمة المرور الخاصة بك بنجاح!',
+      'email_not_found': 'البريد الإلكتروني غير موجود. يرجى التحقق والمحاولة مرة أخرى.',
+      'invalid_credentials': 'بريد إلكتروني أو كلمة مرور غير صالحة.',
+      'generic_error': 'حدث خطأ. يرجى المحاولة مرة أخرى.',
+      'please_wait': 'يرجى الانتظار...',
+      'otp_sent': 'تم إرسال OTP بنجاح إلى بريدك الإلكتروني.',
+      'stay_connected': 'ابق متصلاً',
+      
+      // Accueil Screen
+      'welcome_speedline': 'مرحبا بك في سبيد لاين!',
+      'welcome_message': 'أنت الآن متصل بحسابك.\nشاشة الرئيسية الكاملة قادمة قريباً!',
+      'welcome_user': 'مرحبا',
       
       // Reset Password
       'reset_password': 'إعادة تعيين كلمة المرور',
@@ -268,6 +367,7 @@ class AppLocalizations {
       // Social login in development
       'google_signin_dev': 'تسجيل الدخول عبر Google - قيد التطوير',
       'facebook_signin_dev': 'تسجيل الدخول عبر Facebook - قيد التطوير',
+      'register_success': 'تم التسجيل بنجاح! الرجاء تسجيل الدخول باستخدام بيانات الاعتماد الخاصة بك.',
       
       // Home/Onboarding screen
       'skip': 'تخطي',

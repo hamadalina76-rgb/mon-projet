@@ -10,7 +10,7 @@ _$ResetPasswordRequestImpl _$$ResetPasswordRequestImplFromJson(
         Map<String, dynamic> json) =>
     _$ResetPasswordRequestImpl(
       email: json['email'] as String,
-      otp: json['otp'] as String,
+      otp: json['otpCode'] as String,
       newPassword: json['newPassword'] as String,
     );
 
@@ -18,6 +18,6 @@ Map<String, dynamic> _$$ResetPasswordRequestImplToJson(
         _$ResetPasswordRequestImpl instance) =>
     <String, dynamic>{
       'email': instance.email,
-      'otp': instance.otp,
+      'otpCode': instance.otp,
       'newPassword': instance.newPassword,
     };
