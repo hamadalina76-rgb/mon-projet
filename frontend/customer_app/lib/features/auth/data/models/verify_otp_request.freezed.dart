@@ -21,7 +21,9 @@ VerifyOtpRequest _$VerifyOtpRequestFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$VerifyOtpRequest {
   String get email => throw _privateConstructorUsedError;
+  @JsonKey(name: 'otpCode')
   String get otp => throw _privateConstructorUsedError;
+  String? get type => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -35,7 +37,7 @@ abstract class $VerifyOtpRequestCopyWith<$Res> {
           VerifyOtpRequest value, $Res Function(VerifyOtpRequest) then) =
       _$VerifyOtpRequestCopyWithImpl<$Res, VerifyOtpRequest>;
   @useResult
-  $Res call({String email, String otp});
+  $Res call({String email, @JsonKey(name: 'otpCode') String otp, String? type});
 }
 
 /// @nodoc
@@ -53,6 +55,7 @@ class _$VerifyOtpRequestCopyWithImpl<$Res, $Val extends VerifyOtpRequest>
   $Res call({
     Object? email = null,
     Object? otp = null,
+    Object? type = freezed,
   }) {
     return _then(_value.copyWith(
       email: null == email
@@ -63,6 +66,10 @@ class _$VerifyOtpRequestCopyWithImpl<$Res, $Val extends VerifyOtpRequest>
           ? _value.otp
           : otp // ignore: cast_nullable_to_non_nullable
               as String,
+      type: freezed == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -75,7 +82,7 @@ abstract class _$$VerifyOtpRequestImplCopyWith<$Res>
       __$$VerifyOtpRequestImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String email, String otp});
+  $Res call({String email, @JsonKey(name: 'otpCode') String otp, String? type});
 }
 
 /// @nodoc
@@ -91,6 +98,7 @@ class __$$VerifyOtpRequestImplCopyWithImpl<$Res>
   $Res call({
     Object? email = null,
     Object? otp = null,
+    Object? type = freezed,
   }) {
     return _then(_$VerifyOtpRequestImpl(
       email: null == email
@@ -101,6 +109,10 @@ class __$$VerifyOtpRequestImplCopyWithImpl<$Res>
           ? _value.otp
           : otp // ignore: cast_nullable_to_non_nullable
               as String,
+      type: freezed == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -108,7 +120,10 @@ class __$$VerifyOtpRequestImplCopyWithImpl<$Res>
 /// @nodoc
 @JsonSerializable()
 class _$VerifyOtpRequestImpl implements _VerifyOtpRequest {
-  const _$VerifyOtpRequestImpl({required this.email, required this.otp});
+  const _$VerifyOtpRequestImpl(
+      {required this.email,
+      @JsonKey(name: 'otpCode') required this.otp,
+      this.type});
 
   factory _$VerifyOtpRequestImpl.fromJson(Map<String, dynamic> json) =>
       _$$VerifyOtpRequestImplFromJson(json);
@@ -116,11 +131,14 @@ class _$VerifyOtpRequestImpl implements _VerifyOtpRequest {
   @override
   final String email;
   @override
+  @JsonKey(name: 'otpCode')
   final String otp;
+  @override
+  final String? type;
 
   @override
   String toString() {
-    return 'VerifyOtpRequest(email: $email, otp: $otp)';
+    return 'VerifyOtpRequest(email: $email, otp: $otp, type: $type)';
   }
 
   @override
@@ -129,12 +147,13 @@ class _$VerifyOtpRequestImpl implements _VerifyOtpRequest {
         (other.runtimeType == runtimeType &&
             other is _$VerifyOtpRequestImpl &&
             (identical(other.email, email) || other.email == email) &&
-            (identical(other.otp, otp) || other.otp == otp));
+            (identical(other.otp, otp) || other.otp == otp) &&
+            (identical(other.type, type) || other.type == type));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, email, otp);
+  int get hashCode => Object.hash(runtimeType, email, otp, type);
 
   @JsonKey(ignore: true)
   @override
@@ -154,7 +173,8 @@ class _$VerifyOtpRequestImpl implements _VerifyOtpRequest {
 abstract class _VerifyOtpRequest implements VerifyOtpRequest {
   const factory _VerifyOtpRequest(
       {required final String email,
-      required final String otp}) = _$VerifyOtpRequestImpl;
+      @JsonKey(name: 'otpCode') required final String otp,
+      final String? type}) = _$VerifyOtpRequestImpl;
 
   factory _VerifyOtpRequest.fromJson(Map<String, dynamic> json) =
       _$VerifyOtpRequestImpl.fromJson;
@@ -162,7 +182,10 @@ abstract class _VerifyOtpRequest implements VerifyOtpRequest {
   @override
   String get email;
   @override
+  @JsonKey(name: 'otpCode')
   String get otp;
+  @override
+  String? get type;
   @override
   @JsonKey(ignore: true)
   _$$VerifyOtpRequestImplCopyWith<_$VerifyOtpRequestImpl> get copyWith =>

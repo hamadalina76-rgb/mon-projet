@@ -1,3 +1,5 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
 part of 'user_model.dart';
 
 // **************************************************************************
@@ -6,12 +8,14 @@ part of 'user_model.dart';
 
 _$UserModelImpl _$$UserModelImplFromJson(Map<String, dynamic> json) =>
     _$UserModelImpl(
-      id: json['id'] as String,
+      id: (json['id'] as num).toInt(),
       email: json['email'] as String,
       firstName: json['firstName'] as String,
       lastName: json['lastName'] as String,
-      phone: json['phone'] as String,
+      phone: json['phone'] as String?,
+      phoneNumber: json['phoneNumber'] as String?,
       role: json['role'] as String,
+      profilePicture: json['profilePicture'] as String?,
     );
 
 Map<String, dynamic> _$$UserModelImplToJson(_$UserModelImpl instance) =>
@@ -21,5 +25,7 @@ Map<String, dynamic> _$$UserModelImplToJson(_$UserModelImpl instance) =>
       'firstName': instance.firstName,
       'lastName': instance.lastName,
       'phone': instance.phone,
+      'phoneNumber': instance.phoneNumber,
       'role': instance.role,
+      'profilePicture': instance.profilePicture,
     };

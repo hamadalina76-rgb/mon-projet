@@ -5,6 +5,7 @@ import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/verify_otp_screen.dart';
 import '../../features/auth/presentation/screens/reset_password_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/home/presentation/screens/accueil_screen.dart';
 import 'route_names.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -17,6 +18,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: RouteNames.home,
       builder: (context, state) => const HomeScreen(),
+    ),
+    GoRoute(
+      path: RouteNames.accueil,
+      builder: (context, state) => const AccueilScreen(),
     ),
 
     // Authentication Flow
@@ -31,17 +36,38 @@ final appRouter = GoRouter(
     GoRoute(
       path: RouteNames.verifyOtp,
       builder: (context, state) {
-        final email = state.extra as String?;
-        return VerifyOtpScreen(email: email ?? '');
+        final extra = state.extra;
+        String email = '';
+        OtpVerificationType verificationType = OtpVerificationType.forgotPassword;
+        
+        if (extra is Map) {
+          email = extra['email'] as String? ?? '';
+          verificationType = extra['type'] as OtpVerificationType? ?? OtpVerificationType.forgotPassword;
+        } else if (extra is String) {
+          email = extra;
+        }
+        
+        return VerifyOtpScreen(
+          email: email,
+          verificationType: verificationType,
+        );
       },
     ),
     GoRoute(
       path: RouteNames.resetPassword,
       builder: (context, state) {
-        final params = state.extra as Map<String, String>?;
+        final extra = state.extra;
+        String email = '';
+        String otp = '';
+        
+        if (extra is Map) {
+          email = extra['email'] as String? ?? '';
+          otp = extra['otp'] as String? ?? '';
+        }
+        
         return ResetPasswordScreen(
-          email: params?['email'] ?? '',
-          otp: params?['otp'] ?? '',
+          email: email,
+          otp: otp,
         );
       },
     ),

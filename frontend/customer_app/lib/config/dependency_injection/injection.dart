@@ -32,8 +32,9 @@ final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
 });
 
 /// Provider pour SharedPreferences (cache local)
-final sharedPreferencesProvider = FutureProvider<SharedPreferences>((ref) async {
-  return await SharedPreferences.getInstance();
+/// Initialized in main.dart and passed as an override
+final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError('SharedPreferences must be initialized in main.dart');
 });
 
 /// Provider pour Logger (logging)
@@ -74,12 +75,7 @@ final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
 /// Provider pour AuthLocalDataSource
 final authLocalDataSourceProvider = Provider<AuthLocalDataSource>((ref) {
   final secureStorage = ref.watch(secureStorageProvider);
-  final sharedPreferences = ref.watch(sharedPreferencesProvider).value;
-  
-  // Si SharedPreferences n'est pas encore chargé, retourner une instance temporaire
-  if (sharedPreferences == null) {
-    throw Exception('SharedPreferences not initialized');
-  }
+  final sharedPreferences = ref.watch(sharedPreferencesProvider);
   
   return AuthLocalDataSourceImpl(
     secureStorage: secureStorage,
@@ -161,6 +157,7 @@ final checkLoginStatusUseCaseProvider = Provider<CheckLoginStatusUseCase>((ref) 
 /// Provider pour AuthNotifier (State Management)
 final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(
+    authRepository: ref.watch(authRepositoryProvider),
     loginUseCase: ref.watch(loginUseCaseProvider),
     registerUseCase: ref.watch(registerUseCaseProvider),
     logoutUseCase: ref.watch(logoutUseCaseProvider),

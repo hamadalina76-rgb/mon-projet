@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../domain/entities/user.dart';
+import '../../domain/entities/otp_result.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
 import '../datasources/auth_local_datasource.dart';
@@ -28,10 +29,38 @@ class AuthRepositoryImpl implements AuthRepository {
   });
 
   @override
-  Future<Either<Failure, User>> login(LoginRequest request) async {
+  Future<Either<Failure, OtpResult>> login(LoginRequest request) async {
     try {
-      // 1. Appel API
-      final authResponse = await remoteDataSource.login(request);
+      // 1. Appel API (envoie OTP)
+      final otpResponse = await remoteDataSource.login(request);
+
+      // 2. Convertir en entity
+      final result = OtpResult(
+        message: otpResponse.message,
+        email: otpResponse.email,
+        otpSent: otpResponse.otpSent,
+        expirationMinutes: otpResponse.expirationMinutes,
+      );
+
+      return Right(result);
+    } on AuthException catch (e) {
+      return Left(AuthFailure(e.message));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } on TimeoutException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure('Erreur inattendue: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, User>> verifyOtp(VerifyOtpRequest request) async {
+    try {
+      // 1. Appel API (vérifie OTP)
+      final authResponse = await remoteDataSource.verifyOtp(request);
 
       // 2. Sauvegarder les tokens
       await localDataSource.saveTokens(
@@ -62,24 +91,13 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, User>> register(RegisterRequest request) async {
+  Future<Either<Failure, Unit>> register(RegisterRequest request) async {
     try {
-      // 1. Appel API
-      final authResponse = await remoteDataSource.register(request);
+      // 1. Appel API (inscription uniquement, pas de login automatique)
+      await remoteDataSource.register(request);
 
-      // 2. Sauvegarder les tokens
-      await localDataSource.saveTokens(
-        token: authResponse.token,
-        refreshToken: authResponse.refreshToken,
-      );
-
-      // 3. Sauvegarder l'utilisateur en cache
-      await localDataSource.saveUser(authResponse.user);
-
-      // 4. Convertir UserModel → User (Entity)
-      final user = _mapUserModelToEntity(authResponse.user);
-
-      return Right(user);
+      // 2. Retourner succès
+      return const Right(unit);
     } on ValidationException catch (e) {
       return Left(ValidationFailure(e.message));
     } on NetworkException catch (e) {
@@ -96,14 +114,10 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, Unit>> forgotPassword(
-    ForgotPasswordRequest request,
-  ) async {
+  Future<Either<Failure, Unit>> resendOtp(String email) async {
     try {
-      await remoteDataSource.forgotPassword(request);
+      await remoteDataSource.resendOtp(email);
       return const Right(unit);
-    } on NotFoundException catch (e) {
-      return Left(NotFoundFailure(e.message));
     } on NetworkException catch (e) {
       return Left(NetworkFailure(e.message));
     } on ServerException catch (e) {
@@ -116,12 +130,14 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, Unit>> verifyOtp(VerifyOtpRequest request) async {
+  Future<Either<Failure, Unit>> forgotPassword(
+    ForgotPasswordRequest request,
+  ) async {
     try {
-      await remoteDataSource.verifyOtp(request);
+      await remoteDataSource.forgotPassword(request);
       return const Right(unit);
-    } on AuthException catch (e) {
-      return Left(AuthFailure(e.message));
+    } on NotFoundException catch (e) {
+      return Left(NotFoundFailure(e.message));
     } on NetworkException catch (e) {
       return Left(NetworkFailure(e.message));
     } on ServerException catch (e) {
@@ -225,13 +241,6 @@ class AuthRepositoryImpl implements AuthRepository {
 
   /// Convertit un UserModel (data) en User (domain entity)
   User _mapUserModelToEntity(userModel) {
-    return User(
-      id: userModel.id,
-      email: userModel.email,
-      firstName: userModel.firstName,
-      lastName: userModel.lastName,
-      phone: userModel.phone,
-      role: userModel.role,
-    );
+    return userModel.toEntity();
   }
 }

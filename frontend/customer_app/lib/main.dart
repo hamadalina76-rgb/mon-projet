@@ -30,7 +30,7 @@ void main() async {
   await dotenv.load(fileName: '.env.development');
   
   // Initialize SharedPreferences before anything else
-  await SharedPreferences.getInstance();
+  final sharedPreferences = await SharedPreferences.getInstance();
   
   // Setup DI
   setupInjection();
@@ -39,8 +39,11 @@ void main() async {
   await _initializeServices();
 
   runApp(
-    const ProviderScope(
-      child: SpeedLineApp(),
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(sharedPreferences),
+      ],
+      child: const SpeedLineApp(),
     ),
   );
 }

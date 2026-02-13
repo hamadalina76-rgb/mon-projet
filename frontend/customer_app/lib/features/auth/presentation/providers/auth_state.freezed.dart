@@ -20,7 +20,9 @@ mixin _$AuthState {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(OtpResult otpResult) otpSent,
     required TResult Function(User user) authenticated,
+    required TResult Function() registered,
     required TResult Function() unauthenticated,
     required TResult Function(String message) error,
   }) =>
@@ -29,7 +31,9 @@ mixin _$AuthState {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(OtpResult otpResult)? otpSent,
     TResult? Function(User user)? authenticated,
+    TResult? Function()? registered,
     TResult? Function()? unauthenticated,
     TResult? Function(String message)? error,
   }) =>
@@ -38,7 +42,9 @@ mixin _$AuthState {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(OtpResult otpResult)? otpSent,
     TResult Function(User user)? authenticated,
+    TResult Function()? registered,
     TResult Function()? unauthenticated,
     TResult Function(String message)? error,
     required TResult orElse(),
@@ -48,7 +54,9 @@ mixin _$AuthState {
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
+    required TResult Function(_OtpSent value) otpSent,
     required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_Registered value) registered,
     required TResult Function(_Unauthenticated value) unauthenticated,
     required TResult Function(_Error value) error,
   }) =>
@@ -57,7 +65,9 @@ mixin _$AuthState {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
+    TResult? Function(_OtpSent value)? otpSent,
     TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_Registered value)? registered,
     TResult? Function(_Unauthenticated value)? unauthenticated,
     TResult? Function(_Error value)? error,
   }) =>
@@ -66,7 +76,9 @@ mixin _$AuthState {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
+    TResult Function(_OtpSent value)? otpSent,
     TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_Registered value)? registered,
     TResult Function(_Unauthenticated value)? unauthenticated,
     TResult Function(_Error value)? error,
     required TResult orElse(),
@@ -131,7 +143,9 @@ class _$InitialImpl implements _Initial {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(OtpResult otpResult) otpSent,
     required TResult Function(User user) authenticated,
+    required TResult Function() registered,
     required TResult Function() unauthenticated,
     required TResult Function(String message) error,
   }) {
@@ -143,7 +157,9 @@ class _$InitialImpl implements _Initial {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(OtpResult otpResult)? otpSent,
     TResult? Function(User user)? authenticated,
+    TResult? Function()? registered,
     TResult? Function()? unauthenticated,
     TResult? Function(String message)? error,
   }) {
@@ -155,7 +171,9 @@ class _$InitialImpl implements _Initial {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(OtpResult otpResult)? otpSent,
     TResult Function(User user)? authenticated,
+    TResult Function()? registered,
     TResult Function()? unauthenticated,
     TResult Function(String message)? error,
     required TResult orElse(),
@@ -171,7 +189,9 @@ class _$InitialImpl implements _Initial {
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
+    required TResult Function(_OtpSent value) otpSent,
     required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_Registered value) registered,
     required TResult Function(_Unauthenticated value) unauthenticated,
     required TResult Function(_Error value) error,
   }) {
@@ -183,7 +203,9 @@ class _$InitialImpl implements _Initial {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
+    TResult? Function(_OtpSent value)? otpSent,
     TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_Registered value)? registered,
     TResult? Function(_Unauthenticated value)? unauthenticated,
     TResult? Function(_Error value)? error,
   }) {
@@ -195,7 +217,9 @@ class _$InitialImpl implements _Initial {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
+    TResult Function(_OtpSent value)? otpSent,
     TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_Registered value)? registered,
     TResult Function(_Unauthenticated value)? unauthenticated,
     TResult Function(_Error value)? error,
     required TResult orElse(),
@@ -251,7 +275,9 @@ class _$LoadingImpl implements _Loading {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(OtpResult otpResult) otpSent,
     required TResult Function(User user) authenticated,
+    required TResult Function() registered,
     required TResult Function() unauthenticated,
     required TResult Function(String message) error,
   }) {
@@ -263,7 +289,9 @@ class _$LoadingImpl implements _Loading {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(OtpResult otpResult)? otpSent,
     TResult? Function(User user)? authenticated,
+    TResult? Function()? registered,
     TResult? Function()? unauthenticated,
     TResult? Function(String message)? error,
   }) {
@@ -275,7 +303,9 @@ class _$LoadingImpl implements _Loading {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(OtpResult otpResult)? otpSent,
     TResult Function(User user)? authenticated,
+    TResult Function()? registered,
     TResult Function()? unauthenticated,
     TResult Function(String message)? error,
     required TResult orElse(),
@@ -291,7 +321,9 @@ class _$LoadingImpl implements _Loading {
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
+    required TResult Function(_OtpSent value) otpSent,
     required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_Registered value) registered,
     required TResult Function(_Unauthenticated value) unauthenticated,
     required TResult Function(_Error value) error,
   }) {
@@ -303,7 +335,9 @@ class _$LoadingImpl implements _Loading {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
+    TResult? Function(_OtpSent value)? otpSent,
     TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_Registered value)? registered,
     TResult? Function(_Unauthenticated value)? unauthenticated,
     TResult? Function(_Error value)? error,
   }) {
@@ -315,7 +349,9 @@ class _$LoadingImpl implements _Loading {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
+    TResult Function(_OtpSent value)? otpSent,
     TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_Registered value)? registered,
     TResult Function(_Unauthenticated value)? unauthenticated,
     TResult Function(_Error value)? error,
     required TResult orElse(),
@@ -329,6 +365,180 @@ class _$LoadingImpl implements _Loading {
 
 abstract class _Loading implements AuthState {
   const factory _Loading() = _$LoadingImpl;
+}
+
+/// @nodoc
+abstract class _$$OtpSentImplCopyWith<$Res> {
+  factory _$$OtpSentImplCopyWith(
+          _$OtpSentImpl value, $Res Function(_$OtpSentImpl) then) =
+      __$$OtpSentImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({OtpResult otpResult});
+
+  $OtpResultCopyWith<$Res> get otpResult;
+}
+
+/// @nodoc
+class __$$OtpSentImplCopyWithImpl<$Res>
+    extends _$AuthStateCopyWithImpl<$Res, _$OtpSentImpl>
+    implements _$$OtpSentImplCopyWith<$Res> {
+  __$$OtpSentImplCopyWithImpl(
+      _$OtpSentImpl _value, $Res Function(_$OtpSentImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? otpResult = null,
+  }) {
+    return _then(_$OtpSentImpl(
+      otpResult: null == otpResult
+          ? _value.otpResult
+          : otpResult // ignore: cast_nullable_to_non_nullable
+              as OtpResult,
+    ));
+  }
+
+  @override
+  @pragma('vm:prefer-inline')
+  $OtpResultCopyWith<$Res> get otpResult {
+    return $OtpResultCopyWith<$Res>(_value.otpResult, (value) {
+      return _then(_value.copyWith(otpResult: value));
+    });
+  }
+}
+
+/// @nodoc
+
+class _$OtpSentImpl implements _OtpSent {
+  const _$OtpSentImpl({required this.otpResult});
+
+  @override
+  final OtpResult otpResult;
+
+  @override
+  String toString() {
+    return 'AuthState.otpSent(otpResult: $otpResult)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$OtpSentImpl &&
+            (identical(other.otpResult, otpResult) ||
+                other.otpResult == otpResult));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, otpResult);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$OtpSentImplCopyWith<_$OtpSentImpl> get copyWith =>
+      __$$OtpSentImplCopyWithImpl<_$OtpSentImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function(OtpResult otpResult) otpSent,
+    required TResult Function(User user) authenticated,
+    required TResult Function() registered,
+    required TResult Function() unauthenticated,
+    required TResult Function(String message) error,
+  }) {
+    return otpSent(otpResult);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function(OtpResult otpResult)? otpSent,
+    TResult? Function(User user)? authenticated,
+    TResult? Function()? registered,
+    TResult? Function()? unauthenticated,
+    TResult? Function(String message)? error,
+  }) {
+    return otpSent?.call(otpResult);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function(OtpResult otpResult)? otpSent,
+    TResult Function(User user)? authenticated,
+    TResult Function()? registered,
+    TResult Function()? unauthenticated,
+    TResult Function(String message)? error,
+    required TResult orElse(),
+  }) {
+    if (otpSent != null) {
+      return otpSent(otpResult);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Initial value) initial,
+    required TResult Function(_Loading value) loading,
+    required TResult Function(_OtpSent value) otpSent,
+    required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_Registered value) registered,
+    required TResult Function(_Unauthenticated value) unauthenticated,
+    required TResult Function(_Error value) error,
+  }) {
+    return otpSent(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Initial value)? initial,
+    TResult? Function(_Loading value)? loading,
+    TResult? Function(_OtpSent value)? otpSent,
+    TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_Registered value)? registered,
+    TResult? Function(_Unauthenticated value)? unauthenticated,
+    TResult? Function(_Error value)? error,
+  }) {
+    return otpSent?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Initial value)? initial,
+    TResult Function(_Loading value)? loading,
+    TResult Function(_OtpSent value)? otpSent,
+    TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_Registered value)? registered,
+    TResult Function(_Unauthenticated value)? unauthenticated,
+    TResult Function(_Error value)? error,
+    required TResult orElse(),
+  }) {
+    if (otpSent != null) {
+      return otpSent(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _OtpSent implements AuthState {
+  const factory _OtpSent({required final OtpResult otpResult}) = _$OtpSentImpl;
+
+  OtpResult get otpResult;
+  @JsonKey(ignore: true)
+  _$$OtpSentImplCopyWith<_$OtpSentImpl> get copyWith =>
+      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -397,7 +607,9 @@ class _$AuthenticatedImpl implements _Authenticated {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(OtpResult otpResult) otpSent,
     required TResult Function(User user) authenticated,
+    required TResult Function() registered,
     required TResult Function() unauthenticated,
     required TResult Function(String message) error,
   }) {
@@ -409,7 +621,9 @@ class _$AuthenticatedImpl implements _Authenticated {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(OtpResult otpResult)? otpSent,
     TResult? Function(User user)? authenticated,
+    TResult? Function()? registered,
     TResult? Function()? unauthenticated,
     TResult? Function(String message)? error,
   }) {
@@ -421,7 +635,9 @@ class _$AuthenticatedImpl implements _Authenticated {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(OtpResult otpResult)? otpSent,
     TResult Function(User user)? authenticated,
+    TResult Function()? registered,
     TResult Function()? unauthenticated,
     TResult Function(String message)? error,
     required TResult orElse(),
@@ -437,7 +653,9 @@ class _$AuthenticatedImpl implements _Authenticated {
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
+    required TResult Function(_OtpSent value) otpSent,
     required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_Registered value) registered,
     required TResult Function(_Unauthenticated value) unauthenticated,
     required TResult Function(_Error value) error,
   }) {
@@ -449,7 +667,9 @@ class _$AuthenticatedImpl implements _Authenticated {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
+    TResult? Function(_OtpSent value)? otpSent,
     TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_Registered value)? registered,
     TResult? Function(_Unauthenticated value)? unauthenticated,
     TResult? Function(_Error value)? error,
   }) {
@@ -461,7 +681,9 @@ class _$AuthenticatedImpl implements _Authenticated {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
+    TResult Function(_OtpSent value)? otpSent,
     TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_Registered value)? registered,
     TResult Function(_Unauthenticated value)? unauthenticated,
     TResult Function(_Error value)? error,
     required TResult orElse(),
@@ -481,6 +703,138 @@ abstract class _Authenticated implements AuthState {
   @JsonKey(ignore: true)
   _$$AuthenticatedImplCopyWith<_$AuthenticatedImpl> get copyWith =>
       throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$RegisteredImplCopyWith<$Res> {
+  factory _$$RegisteredImplCopyWith(
+          _$RegisteredImpl value, $Res Function(_$RegisteredImpl) then) =
+      __$$RegisteredImplCopyWithImpl<$Res>;
+}
+
+/// @nodoc
+class __$$RegisteredImplCopyWithImpl<$Res>
+    extends _$AuthStateCopyWithImpl<$Res, _$RegisteredImpl>
+    implements _$$RegisteredImplCopyWith<$Res> {
+  __$$RegisteredImplCopyWithImpl(
+      _$RegisteredImpl _value, $Res Function(_$RegisteredImpl) _then)
+      : super(_value, _then);
+}
+
+/// @nodoc
+
+class _$RegisteredImpl implements _Registered {
+  const _$RegisteredImpl();
+
+  @override
+  String toString() {
+    return 'AuthState.registered()';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType && other is _$RegisteredImpl);
+  }
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function(OtpResult otpResult) otpSent,
+    required TResult Function(User user) authenticated,
+    required TResult Function() registered,
+    required TResult Function() unauthenticated,
+    required TResult Function(String message) error,
+  }) {
+    return registered();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function(OtpResult otpResult)? otpSent,
+    TResult? Function(User user)? authenticated,
+    TResult? Function()? registered,
+    TResult? Function()? unauthenticated,
+    TResult? Function(String message)? error,
+  }) {
+    return registered?.call();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function(OtpResult otpResult)? otpSent,
+    TResult Function(User user)? authenticated,
+    TResult Function()? registered,
+    TResult Function()? unauthenticated,
+    TResult Function(String message)? error,
+    required TResult orElse(),
+  }) {
+    if (registered != null) {
+      return registered();
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Initial value) initial,
+    required TResult Function(_Loading value) loading,
+    required TResult Function(_OtpSent value) otpSent,
+    required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_Registered value) registered,
+    required TResult Function(_Unauthenticated value) unauthenticated,
+    required TResult Function(_Error value) error,
+  }) {
+    return registered(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Initial value)? initial,
+    TResult? Function(_Loading value)? loading,
+    TResult? Function(_OtpSent value)? otpSent,
+    TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_Registered value)? registered,
+    TResult? Function(_Unauthenticated value)? unauthenticated,
+    TResult? Function(_Error value)? error,
+  }) {
+    return registered?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Initial value)? initial,
+    TResult Function(_Loading value)? loading,
+    TResult Function(_OtpSent value)? otpSent,
+    TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_Registered value)? registered,
+    TResult Function(_Unauthenticated value)? unauthenticated,
+    TResult Function(_Error value)? error,
+    required TResult orElse(),
+  }) {
+    if (registered != null) {
+      return registered(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _Registered implements AuthState {
+  const factory _Registered() = _$RegisteredImpl;
 }
 
 /// @nodoc
@@ -523,7 +877,9 @@ class _$UnauthenticatedImpl implements _Unauthenticated {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(OtpResult otpResult) otpSent,
     required TResult Function(User user) authenticated,
+    required TResult Function() registered,
     required TResult Function() unauthenticated,
     required TResult Function(String message) error,
   }) {
@@ -535,7 +891,9 @@ class _$UnauthenticatedImpl implements _Unauthenticated {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(OtpResult otpResult)? otpSent,
     TResult? Function(User user)? authenticated,
+    TResult? Function()? registered,
     TResult? Function()? unauthenticated,
     TResult? Function(String message)? error,
   }) {
@@ -547,7 +905,9 @@ class _$UnauthenticatedImpl implements _Unauthenticated {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(OtpResult otpResult)? otpSent,
     TResult Function(User user)? authenticated,
+    TResult Function()? registered,
     TResult Function()? unauthenticated,
     TResult Function(String message)? error,
     required TResult orElse(),
@@ -563,7 +923,9 @@ class _$UnauthenticatedImpl implements _Unauthenticated {
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
+    required TResult Function(_OtpSent value) otpSent,
     required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_Registered value) registered,
     required TResult Function(_Unauthenticated value) unauthenticated,
     required TResult Function(_Error value) error,
   }) {
@@ -575,7 +937,9 @@ class _$UnauthenticatedImpl implements _Unauthenticated {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
+    TResult? Function(_OtpSent value)? otpSent,
     TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_Registered value)? registered,
     TResult? Function(_Unauthenticated value)? unauthenticated,
     TResult? Function(_Error value)? error,
   }) {
@@ -587,7 +951,9 @@ class _$UnauthenticatedImpl implements _Unauthenticated {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
+    TResult Function(_OtpSent value)? otpSent,
     TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_Registered value)? registered,
     TResult Function(_Unauthenticated value)? unauthenticated,
     TResult Function(_Error value)? error,
     required TResult orElse(),
@@ -669,7 +1035,9 @@ class _$ErrorImpl implements _Error {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(OtpResult otpResult) otpSent,
     required TResult Function(User user) authenticated,
+    required TResult Function() registered,
     required TResult Function() unauthenticated,
     required TResult Function(String message) error,
   }) {
@@ -681,7 +1049,9 @@ class _$ErrorImpl implements _Error {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(OtpResult otpResult)? otpSent,
     TResult? Function(User user)? authenticated,
+    TResult? Function()? registered,
     TResult? Function()? unauthenticated,
     TResult? Function(String message)? error,
   }) {
@@ -693,7 +1063,9 @@ class _$ErrorImpl implements _Error {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(OtpResult otpResult)? otpSent,
     TResult Function(User user)? authenticated,
+    TResult Function()? registered,
     TResult Function()? unauthenticated,
     TResult Function(String message)? error,
     required TResult orElse(),
@@ -709,7 +1081,9 @@ class _$ErrorImpl implements _Error {
   TResult map<TResult extends Object?>({
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
+    required TResult Function(_OtpSent value) otpSent,
     required TResult Function(_Authenticated value) authenticated,
+    required TResult Function(_Registered value) registered,
     required TResult Function(_Unauthenticated value) unauthenticated,
     required TResult Function(_Error value) error,
   }) {
@@ -721,7 +1095,9 @@ class _$ErrorImpl implements _Error {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
+    TResult? Function(_OtpSent value)? otpSent,
     TResult? Function(_Authenticated value)? authenticated,
+    TResult? Function(_Registered value)? registered,
     TResult? Function(_Unauthenticated value)? unauthenticated,
     TResult? Function(_Error value)? error,
   }) {
@@ -733,7 +1109,9 @@ class _$ErrorImpl implements _Error {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
+    TResult Function(_OtpSent value)? otpSent,
     TResult Function(_Authenticated value)? authenticated,
+    TResult Function(_Registered value)? registered,
     TResult Function(_Unauthenticated value)? unauthenticated,
     TResult Function(_Error value)? error,
     required TResult orElse(),

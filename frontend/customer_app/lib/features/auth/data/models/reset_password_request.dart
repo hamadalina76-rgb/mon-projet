@@ -29,7 +29,7 @@ part 'reset_password_request.g.dart';
 class ResetPasswordRequest with _$ResetPasswordRequest {
   const factory ResetPasswordRequest({
     required String email,
-    required String otp,
+    @JsonKey(name: 'otpCode') required String otp,
     required String newPassword,
   }) = _ResetPasswordRequest;
 

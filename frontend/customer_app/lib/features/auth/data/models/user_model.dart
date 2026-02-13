@@ -9,12 +9,14 @@ class UserModel with _$UserModel {
   const UserModel._();
 
   const factory UserModel({
-    required String id,
+    required int id,
     required String email,
     required String firstName,
     required String lastName,
-    required String phone,
+    String? phone,
+    @JsonKey(name: 'phoneNumber') String? phoneNumber,
     required String role,
+    String? profilePicture,
   }) = _UserModel;
 
   factory UserModel.fromJson(Map<String, dynamic> json) =>
@@ -23,11 +25,11 @@ class UserModel with _$UserModel {
   // Convertir UserModel vers User entity
   User toEntity() {
     return User(
-      id: id,
+      id: id.toString(),
       email: email,
       firstName: firstName,
       lastName: lastName,
-      phone: phone,
+      phone: phoneNumber ?? phone ?? '',
       role: role,
     );
   }
@@ -35,11 +37,11 @@ class UserModel with _$UserModel {
   // Créer UserModel depuis User entity
   factory UserModel.fromEntity(User user) {
     return UserModel(
-      id: user.id,
+      id: int.parse(user.id),
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      phone: user.phone,
+      phoneNumber: user.phone,
       role: user.role,
     );
   }

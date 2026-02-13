@@ -17,23 +17,24 @@ class RegisterUseCase {
   /// @param firstName Prénom
   /// @param lastName Nom
   /// @param email Email
-  /// @param phone Téléphone
+  /// @param phoneNumber Téléphone
   /// @param password Mot de passe
-  /// @returns Right(User) si succès
+  /// @returns Right(Unit) si succès
   /// @returns Left(Failure) si erreur
-  Future<Either<Failure, User>> call({
+  Future<Either<Failure, Unit>> call({
     required String firstName,
     required String lastName,
     required String email,
-    required String phone,
+    required String phoneNumber,
     required String password,
   }) async {
     final request = RegisterRequest(
       firstName: firstName,
       lastName: lastName,
       email: email,
-      phone: phone,
+      phoneNumber: phoneNumber,
       password: password,
+      role: 'CUSTOMER',
     );
 
     return await repository.register(request);

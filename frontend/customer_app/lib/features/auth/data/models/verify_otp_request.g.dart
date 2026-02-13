@@ -10,12 +10,14 @@ _$VerifyOtpRequestImpl _$$VerifyOtpRequestImplFromJson(
         Map<String, dynamic> json) =>
     _$VerifyOtpRequestImpl(
       email: json['email'] as String,
-      otp: json['otp'] as String,
+      otp: json['otpCode'] as String,
+      type: json['type'] as String?,
     );
 
 Map<String, dynamic> _$$VerifyOtpRequestImplToJson(
         _$VerifyOtpRequestImpl instance) =>
     <String, dynamic>{
       'email': instance.email,
-      'otp': instance.otp,
+      'otpCode': instance.otp,
+      'type': instance.type,
     };

@@ -8,14 +8,23 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/responsive_utils.dart';
 import '../../../../core/localization/localization_extension.dart';
 import '../widgets/otp_input.dart';
+import 'dart:async';
+
+/// Type de vérification OTP
+enum OtpVerificationType {
+  login,
+  forgotPassword,
+}
 
 /// Écran de vérification du code OTP
 class VerifyOtpScreen extends ConsumerStatefulWidget {
   final String email;
+  final OtpVerificationType verificationType;
 
   const VerifyOtpScreen({
     super.key,
     required this.email,
+    this.verificationType = OtpVerificationType.forgotPassword,
   });
 
   @override
@@ -25,64 +34,278 @@ class VerifyOtpScreen extends ConsumerStatefulWidget {
 class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
   bool _isLoading = false;
   String _otp = '';
+  int _remainingSeconds = 180; // 3 minutes = 180 seconds
+  Timer? _timer;
+  int _resendCountdown = 0; // Countdown for resend button
+  Timer? _resendTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+    _startResendCountdown();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _resendTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _remainingSeconds = 180;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds > 0) {
+        setState(() => _remainingSeconds--);
+      } else {
+        timer.cancel();
+        _showExpiredDialog();
+      }
+    });
+  }
+
+  void _startResendCountdown() {
+    _resendTimer?.cancel();
+    _resendCountdown = 30;
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_resendCountdown > 0) {
+        setState(() => _resendCountdown--);
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  void _showExpiredDialog() {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.timer_off, color: AppColors.error),
+            SizedBox(width: 8),
+            Text(context.tr('code_expired')),
+          ],
+        ),
+        content: Text(context.tr('code_expired_message')),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+            child: Text(context.tr('back')),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _handleResend();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(context.tr('resend_code')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String get _timerDisplay {
+    final minutes = _remainingSeconds ~/ 60;
+    final seconds = _remainingSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
 
   Future<void> _handleVerify() async {
     if (_otp.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('please_enter_6_digit_code')),
-          backgroundColor: AppColors.error,
-        ),
+      _showSnackBar(
+        message: context.tr('enter_6_digit_code'),
+        isError: true,
       );
       return;
     }
 
     setState(() => _isLoading = true);
 
-    final success = await ref.read(authNotifierProvider.notifier).verifyOtp(
+    try {
+      bool success = false;
+
+      if (widget.verificationType == OtpVerificationType.login) {
+        // Flow de connexion
+        success = await ref.read(authNotifierProvider.notifier).verifyLoginOtp(
+          email: widget.email,
+          otpCode: _otp,
+        );
+
+        if (!mounted) return;
+
+        if (success) {
+          _timer?.cancel();
+          _showSnackBar(
+            message: context.tr('login_success'),
+            isError: false,
+          );
+          
+          // Navigation vers accueil après un court délai pour afficher le snackbar
+          await Future.delayed(const Duration(milliseconds: 800));
+          if (mounted) {
+            context.go(RouteNames.accueil);
+          }
+        } else {
+          _showSnackBar(
+            message: context.tr('invalid_or_expired_code'),
+            isError: true,
+          );
+        }
+      } else {
+        // Flow de mot de passe oublié
+        success = await ref.read(authNotifierProvider.notifier).verifyOtp(
           email: widget.email,
           otp: _otp,
         );
 
-    setState(() => _isLoading = false);
+        if (!mounted) return;
 
-    if (!mounted) return;
-
-    if (success) {
-      // Navigation vers écran reset password
-      context.go(
-        RouteNames.resetPassword,
-        extra: {
-          'email': widget.email,
-          'otp': _otp,
-        },
-      );
+        if (success) {
+          _timer?.cancel();
+          context.go(
+            RouteNames.resetPassword,
+            extra: {
+              'email': widget.email,
+              'otp': _otp,
+            },
+          );
+        } else {
+          _showSnackBar(
+            message: context.tr('invalid_or_expired_code'),
+            isError: true,
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _handleResend() async {
+    if (_resendCountdown > 0) {
+      _showSnackBar(
+        message: '${context.tr('wait')} $_resendCountdown ${context.tr('seconds')}',
+        isError: true,
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
-    final success = await ref.read(authNotifierProvider.notifier).forgotPassword(
+    try {
+      bool success = false;
+
+      if (widget.verificationType == OtpVerificationType.login) {
+        // Renvoyer OTP pour connexion
+        success = await ref.read(authNotifierProvider.notifier).resendOtp(
+          email: widget.email,
+        );
+        
+        if (mounted && success) {
+          // Redémarrer les timers
+          _startTimer();
+          _startResendCountdown();
+          
+          _showSnackBar(
+            message: context.tr('code_resent_success'),
+            isError: false,
+          );
+        } else if (mounted && !success) {
+          _showSnackBar(
+            message: context.tr('generic_error'),
+            isError: true,
+          );
+        }
+      } else {
+        // Renvoyer OTP pour mot de passe oublié
+        success = await ref.read(authNotifierProvider.notifier).forgotPassword(
           email: widget.email,
         );
 
-    setState(() => _isLoading = false);
+        if (!mounted) return;
 
-    if (!mounted) return;
-
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('code_resent_success')),
-          backgroundColor: AppColors.success,
-        ),
-      );
+        if (success) {
+          _startTimer();
+          _startResendCountdown();
+          _showSnackBar(
+            message: context.tr('code_resent_success'),
+            isError: false,
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
+  }
+
+  void _showSnackBar({required String message, required bool isError}) {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle_outline,
+              color: Colors.white,
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: isError ? AppColors.error : AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        margin: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration: Duration(seconds: isError ? 4 : 2),
+        action: SnackBarAction(
+          label: 'OK',
+          textColor: Colors.white,
+          onPressed: () {
+            if (mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            }
+          },
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLogin = widget.verificationType == OtpVerificationType.login;
+    
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -110,7 +333,7 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  Icons.mail_outlined,
+                  isLogin ? Icons.lock_outlined : Icons.mail_outlined,
                   size: ResponsiveUtils.getResponsiveSize(context, 40),
                   color: AppColors.primary,
                 ),
@@ -120,18 +343,20 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
 
               // Titre
               Text(
-                context.tr('verify_code'),
+                isLogin ? context.tr('verify_identity') : context.tr('verify_code'),
                 style: TextStyle(
                   fontSize: ResponsiveUtils.getResponsiveFontSize(context, 28),
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
+                textAlign: TextAlign.center,
               ),
 
               SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
 
               // Description
               RichText(
+                textAlign: TextAlign.center,
                 text: TextSpan(
                   style: TextStyle(
                     fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
@@ -140,7 +365,9 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
                   ),
                   children: [
                     TextSpan(
-                      text: '${context.tr('verify_code_desc')}\n',
+                      text: isLogin
+                          ? '${context.tr('otp_sent_to')}\n'
+                          : '${context.tr('verify_code_desc')}\n',
                     ),
                     TextSpan(
                       text: widget.email,
@@ -153,7 +380,42 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
                 ),
               ),
 
-              SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 40)),
+              SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+
+              // Timer
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: ResponsiveUtils.getResponsiveSpacing(context, 16),
+                  vertical: ResponsiveUtils.getResponsiveSpacing(context, 12),
+                ),
+                decoration: BoxDecoration(
+                  color: _remainingSeconds < 120 
+                      ? AppColors.error.withOpacity(0.1)
+                      : AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.timer,
+                      size: ResponsiveUtils.getResponsiveSize(context, 20),
+                      color: _remainingSeconds < 120 ? AppColors.error : AppColors.primary,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      '${context.tr('expires_in')}: $_timerDisplay',
+                      style: TextStyle(
+                        fontSize: ResponsiveUtils.getResponsiveFontSize(context, 15),
+                        fontWeight: FontWeight.w600,
+                        color: _remainingSeconds < 120 ? AppColors.error : AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 32)),
 
               // OTP Input
               OtpInput(
@@ -173,7 +435,8 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    elevation: 0,
+                    elevation: 2,
+                    shadowColor: AppColors.primary.withOpacity(0.3),
                     shape: RoundedRectangleBorder(
                       borderRadius:
                           BorderRadius.circular(AppConstants.borderRadiusMedium),
@@ -190,7 +453,7 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
                           ),
                         )
                       : Text(
-                          context.tr('verify_code'),
+                          isLogin ? context.tr('verify_and_login') : context.tr('verify_code'),
                           style: TextStyle(
                             fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
                             fontWeight: FontWeight.w600,
@@ -215,7 +478,7 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: _isLoading ? null : _handleResend,
+                    onPressed: (_isLoading || _resendCountdown > 0) ? null : _handleResend,
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.symmetric(
                         horizontal: ResponsiveUtils.getResponsiveSpacing(context, 4),
@@ -224,11 +487,15 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     child: Text(
-                      context.tr('resend'),
+                      _resendCountdown > 0 
+                          ? '${context.tr('resend')} ($_resendCountdown${context.tr('sec')})'
+                          : context.tr('resend'),
                       style: TextStyle(
                         fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
                         fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
+                        color: (_resendCountdown > 0) 
+                            ? AppColors.textSecondary 
+                            : AppColors.primary,
                       ),
                     ),
                   ),

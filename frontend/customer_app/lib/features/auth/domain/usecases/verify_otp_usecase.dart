@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
+import '../entities/user.dart';
 import '../repositories/auth_repository.dart';
 import '../../data/models/verify_otp_request.dart';
 
@@ -15,9 +16,9 @@ class VerifyOtpUseCase {
   /// 
   /// @param email Email de l'utilisateur
   /// @param otp Code OTP reçu
-  /// @returns Right(Unit) si OTP valide
+  /// @returns Right(User) si OTP valide
   /// @returns Left(Failure) si OTP invalide ou expiré
-  Future<Either<Failure, Unit>> call({
+  Future<Either<Failure, User>> call({
     required String email,
     required String otp,
   }) async {

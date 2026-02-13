@@ -31,7 +31,8 @@ part 'verify_otp_request.g.dart';
 class VerifyOtpRequest with _$VerifyOtpRequest {
   const factory VerifyOtpRequest({
     required String email,
-    required String otp,
+    @JsonKey(name: 'otpCode') required String otp,
+    String? type, // "login" or "forgot-password"
   }) = _VerifyOtpRequest;
 
   factory VerifyOtpRequest.fromJson(Map<String, dynamic> json) =>

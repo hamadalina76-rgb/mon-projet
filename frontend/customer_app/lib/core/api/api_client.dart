@@ -38,7 +38,10 @@ class ApiClient {
   /// Initialiser Dio avec la configuration
   void _initializeDio() {
     // Récupérer la configuration depuis .env
-    final baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:8080/api';
+    final baseUrl = dotenv.env['API_BASE_URL'];
+    if (baseUrl == null || baseUrl.isEmpty) {
+      throw StateError('API_BASE_URL must be defined in .env file');
+    }
     final timeoutMs = int.tryParse(dotenv.env['API_TIMEOUT'] ?? '30000') ?? 30000;
     final enableLogging = dotenv.env['LOG_NETWORK']?.toLowerCase() == 'true';
 

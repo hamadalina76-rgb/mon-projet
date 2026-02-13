@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/user.dart';
+import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
 import '../../domain/usecases/logout_usecase.dart';
@@ -10,6 +11,7 @@ import '../../domain/usecases/reset_password_usecase.dart';
 import '../../domain/usecases/get_current_user_usecase.dart';
 import '../../domain/usecases/get_cached_user_usecase.dart';
 import '../../domain/usecases/check_login_status_usecase.dart';
+import '../../data/models/verify_otp_request.dart';
 import 'auth_state.dart';
 
 /// Notifier pour gérer l'état d'authentification
@@ -20,6 +22,7 @@ import 'auth_state.dart';
 /// - Gérer les erreurs
 /// - Notifier l'UI des changements
 class AuthNotifier extends StateNotifier<AuthState> {
+  final AuthRepository _authRepository;
   final LoginUseCase _loginUseCase;
   final RegisterUseCase _registerUseCase;
   final LogoutUseCase _logoutUseCase;
@@ -31,6 +34,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final CheckLoginStatusUseCase _checkLoginStatusUseCase;
 
   AuthNotifier({
+    required AuthRepository authRepository,
     required LoginUseCase loginUseCase,
     required RegisterUseCase registerUseCase,
     required LogoutUseCase logoutUseCase,
@@ -40,7 +44,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required GetCurrentUserUseCase getCurrentUserUseCase,
     required GetCachedUserUseCase getCachedUserUseCase,
     required CheckLoginStatusUseCase checkLoginStatusUseCase,
-  })  : _loginUseCase = loginUseCase,
+  })  : _authRepository = authRepository,
+        _loginUseCase = loginUseCase,
         _registerUseCase = registerUseCase,
         _logoutUseCase = logoutUseCase,
         _forgotPasswordUseCase = forgotPasswordUseCase,
@@ -94,7 +99,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
-  /// Connexion avec email et mot de passe
+  /// Connexion avec email et mot de passe (envoie OTP)
   Future<void> login({
     required String email,
     required String password,
@@ -110,8 +115,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
       (failure) {
         state = AuthState.error(message: _mapFailureToMessage(failure));
       },
+      (otpResult) {
+        state = AuthState.otpSent(otpResult: otpResult);
+      },
+    );
+  }
+
+  /// Vérification du code OTP pour authentification (login)
+  /// 
+  /// @returns true si succès, false si erreur
+  Future<bool> verifyLoginOtp({
+    required String email,
+    required String otpCode,
+  }) async {
+    state = const AuthState.loading();
+
+    final result = await _authRepository.verifyOtp(
+      VerifyOtpRequest(email: email, otp: otpCode, type: 'login'),
+    );
+
+    return result.fold(
+      (failure) {
+        state = AuthState.error(message: _mapFailureToMessage(failure));
+        return false;
+      },
       (user) {
         state = AuthState.authenticated(user: user);
+        return true;
       },
     );
   }
@@ -121,7 +151,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String firstName,
     required String lastName,
     required String email,
-    required String phone,
+    required String phoneNumber,
     required String password,
   }) async {
     state = const AuthState.loading();
@@ -130,7 +160,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       firstName: firstName,
       lastName: lastName,
       email: email,
-      phone: phone,
+      phoneNumber: phoneNumber,
       password: password,
     );
 
@@ -138,8 +168,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       (failure) {
         state = AuthState.error(message: _mapFailureToMessage(failure));
       },
-      (user) {
-        state = AuthState.authenticated(user: user);
+      (_) {
+        // Inscription réussie, rediriger vers login
+        state = const AuthState.registered();
       },
     );
   }
@@ -177,6 +208,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
       (_) {
         // Retour à l'état unauthenticated après envoi OTP
         state = const AuthState.unauthenticated();
+        return true;
+      },
+    );
+  }
+  
+  /// Renvoyer OTP
+  /// 
+  /// @returns true si succès, false si erreur
+  Future<bool> resendOtp({required String email}) async {
+    final result = await _authRepository.resendOtp(email);
+
+    return result.fold(
+      (failure) {
+        return false;
+      },
+      (_) {
         return true;
       },
     );

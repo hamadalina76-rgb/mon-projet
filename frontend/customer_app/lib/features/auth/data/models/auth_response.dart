@@ -29,9 +29,12 @@ part 'auth_response.g.dart';
 @freezed
 class AuthResponse with _$AuthResponse {
   const factory AuthResponse({
-    required String token,
-    required String refreshToken,
+    @JsonKey(name: 'access_token') required String token,
+    @JsonKey(name: 'refresh_token') required String refreshToken,
     required UserModel user,
+    int? expiresIn,
+    @JsonKey(name: 'token_type') String? tokenType,
+    bool? isNewUser,
   }) = _AuthResponse;
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) =>
