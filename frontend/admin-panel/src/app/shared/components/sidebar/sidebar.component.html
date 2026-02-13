@@ -1,17 +1,46 @@
-<!-- Sidebar Component Template -->
-<aside class="sidebar" [class.collapsed]="collapsed">
-  <!-- Logo -->
-  <div class="sidebar-header">
-    <!-- Logo content -->
-  </div>
+<!-- Sidebar -->
+<aside class="sidebar" [class.mobile-open]="mobileOpen">
+  <!-- Overlay for mobile -->
+  @if (mobileOpen) {
+    <div class="sidebar-overlay" (click)="closeMobile.emit()"></div>
+  }
 
-  <!-- Navigation -->
-  <nav class="sidebar-nav">
-    <!-- Navigation items -->
-  </nav>
+  <div class="sidebar-inner">
+    <!-- Logo -->
+    <div class="sidebar-header">
+      <img src="assets/image/speedLineLogo.png" alt="SpeedLine" class="logo" />
+      <span class="brand-name">SpeedLine</span>
+    </div>
 
-  <!-- Footer -->
-  <div class="sidebar-footer">
-    <!-- Toggle button -->
+    <!-- Navigation -->
+    <nav class="sidebar-nav">
+      @for (section of sections; track section) {
+        <div class="nav-section">
+          <p class="section-label">{{ section | translate }}</p>
+          @for (item of getItemsBySection(section); track item.label) {
+            @if (!item.permission || hasPermission(item.permission)) {
+              <a
+                class="nav-item"
+                [routerLink]="item.route"
+                routerLinkActive="active"
+                [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
+                (click)="onNavClick()"
+              >
+                <span class="material-icons-round nav-icon">{{ item.icon }}</span>
+                <span class="nav-label">{{ item.label | translate }}</span>
+              </a>
+            }
+          }
+        </div>
+      }
+    </nav>
+
+    <!-- Footer: Theme Toggle -->
+    <div class="sidebar-footer">
+      <button class="theme-btn" (click)="toggleTheme()">
+        <span class="material-icons-round">{{ themeService.isDarkMode() ? 'light_mode' : 'dark_mode' }}</span>
+        <span class="theme-label">{{ 'common.appearance' | translate }}</span>
+      </button>
+    </div>
   </div>
 </aside>

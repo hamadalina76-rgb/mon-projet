@@ -1,23 +1,115 @@
-<!-- Dashboard Component Template -->
+<!-- Dashboard Page -->
 <div class="dashboard-page">
-  <header class="page-header">
-    <h1>{{ 'dashboard.title' | translate }}</h1>
-  </header>
 
-  <!-- Stats Cards -->
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">{{ 'dashboard.title' | translate }}</h1>
+      <div class="breadcrumb">
+        <span class="material-icons-round bc-icon">home</span>
+        <span class="bc-sep">/</span>
+        <span class="bc-current">{{ 'dashboard.title' | translate }}</span>
+      </div>
+    </div>
+    <div class="page-header-right">
+      <button class="btn btn-outline">
+        <span class="material-icons-round">download</span>
+        {{ 'common.export' | translate }}
+      </button>
+      <button class="btn btn-primary">
+        <span class="material-icons-round">add</span>
+        {{ 'common.refresh' | translate }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
   <div class="stats-grid">
-    <!-- Platform stats cards -->
+    @for (card of stats; track card.labelKey) {
+      <div class="stat-card">
+        <div class="stat-header">
+          <div class="stat-icon" [style.background]="card.color + '14'" [style.color]="card.color">
+            <span class="material-icons-round">{{ card.icon }}</span>
+          </div>
+          <span class="stat-trend" [class.up]="card.trendUp" [class.down]="!card.trendUp">
+            <span class="material-icons-round trend-arrow">{{ card.trendUp ? 'trending_up' : 'trending_down' }}</span>
+            {{ card.trend }}
+          </span>
+        </div>
+        <p class="stat-value">{{ card.value }}</p>
+        <p class="stat-label">{{ card.labelKey | translate }}</p>
+      </div>
+    }
   </div>
 
-  <!-- Charts Section -->
-  <div class="charts-section">
-    <app-platform-stats></app-platform-stats>
-    <app-revenue-chart></app-revenue-chart>
-  </div>
+  <!-- Filter Bar + Table -->
+  <div class="table-card">
+    <div class="table-header">
+      <h2 class="table-title">{{ 'dashboard.recentOrders' | translate }}</h2>
+      <div class="filter-bar">
+        @for (s of statuses; track s) {
+          <button
+            class="filter-chip"
+            [class.active]="selectedStatus === s"
+            (click)="selectedStatus = s"
+          >
+            {{ s === 'all' ? ('common.all' | translate) : ('orders.status.' + s | translate) }}
+          </button>
+        }
+      </div>
+    </div>
 
-  <!-- Real-time Orders -->
-  <div class="realtime-section">
-    <app-real-time-orders></app-real-time-orders>
-    <app-active-users></app-active-users>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>{{ 'orders.orderId' | translate }}</th>
+            <th>{{ 'orders.customer' | translate }}</th>
+            <th>{{ 'orders.partner' | translate }}</th>
+            <th>{{ 'orders.total' | translate }}</th>
+            <th>{{ 'common.status' | translate }}</th>
+            <th>{{ 'common.date' | translate }}</th>
+            <th>{{ 'common.actions' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (order of recentOrders; track order.id) {
+            <tr>
+              <td class="order-id">{{ order.id }}</td>
+              <td>{{ order.customer }}</td>
+              <td>{{ order.partner }}</td>
+              <td class="order-total">{{ order.total }}</td>
+              <td>
+                <span class="status-badge" [ngClass]="order.statusClass">
+                  {{ order.status | translate }}
+                </span>
+              </td>
+              <td class="order-date">{{ order.date }}</td>
+              <td>
+                <button class="action-btn" title="View">
+                  <span class="material-icons-round">visibility</span>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="table-footer">
+      <span class="pagination-info">Showing 1–6 of 12,845</span>
+      <div class="pagination-btns">
+        <button class="page-btn" disabled>
+          <span class="material-icons-round">chevron_left</span>
+        </button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn">2</button>
+        <button class="page-btn">3</button>
+        <button class="page-btn">
+          <span class="material-icons-round">chevron_right</span>
+        </button>
+      </div>
+    </div>
   </div>
 </div>

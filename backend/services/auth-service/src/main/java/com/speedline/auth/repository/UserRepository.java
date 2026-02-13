@@ -1,6 +1,7 @@
 package com.speedline.auth.repository;
 
 import com.speedline.auth.domain.AuthProvider;
+import com.speedline.auth.domain.Role;
 import com.speedline.auth.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -30,4 +31,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByAuthProviderAndProviderUserId(AuthProvider authProvider, String providerUserId);
     
     boolean existsByAuthProviderAndProviderUserId(AuthProvider authProvider, String providerUserId);
+    
+    // Count by role
+    long countByRole(Role role);
 }

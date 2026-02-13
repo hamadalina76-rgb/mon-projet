@@ -1,5 +1,6 @@
 package com.speedline.auth.controller;
 
+import com.speedline.auth.domain.Role;
 import com.speedline.auth.dto.request.*;
 import com.speedline.auth.dto.response.AuthResponse;
 import com.speedline.auth.dto.response.OtpResponse;
@@ -15,7 +16,7 @@ import java.util.Map;
 
 /**
  * REST Controller pour l'authentification
- * 
+ *
  * Endpoints:
  * POST /api/v1/auth/register - Inscription
  * POST /api/v1/auth/login - Connexion (envoie OTP)
@@ -55,6 +56,40 @@ public class AuthController {
         log.info("Verify OTP endpoint called for email: {} with type: {}", request.getEmail(), request.getType());
         Object response = authService.verifyOtp(request);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Admin-only login — rejects non-ADMIN/SUPER_ADMIN users.
+     * Used by the Angular admin panel.
+     */
+    @PostMapping("/admin/login")
+    public ResponseEntity<AuthResponse> adminLogin(@Valid @RequestBody LoginRequest request) {
+        log.info("Admin login endpoint called for email: {}", request.getEmail());
+        AuthResponse response = authService.adminLogin(request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Create admin account endpoint
+     * Used by user-service to create admin accounts
+     * POST /api/v1/auth/admin/create-account
+     */
+    @PostMapping("/admin/create-account")
+    public ResponseEntity<Map<String, Object>> createAdminAccount(@Valid @RequestBody CreateAdminAccountRequest request) {
+        log.info("Create admin account endpoint called for email: {}", request.getEmail());
+
+        // Vérifier que le rôle est ADMIN ou SUPER_ADMIN
+        if (!request.getRole().equals("ADMIN") && !request.getRole().equals("SUPER_ADMIN")) {
+            throw new RuntimeException("Invalid role: " + request.getRole());
+        }
+
+        Long userId = authService.createAdminAccount(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "userId", userId,
+                "email", request.getEmail(),
+                "role", request.getRole()
+        ));
     }
 
     @PostMapping("/refresh")
@@ -120,7 +155,6 @@ public class AuthController {
         boolean exists = authService.checkEmailExists(email);
         return ResponseEntity.ok(Map.of("exists", exists));
     }
-
     @PostMapping("/resend-otp")
     public ResponseEntity<OtpResponse> resendOtp(@RequestBody Map<String, String> request) {
         String email = request.get("email");
@@ -128,7 +162,6 @@ public class AuthController {
         OtpResponse response = authService.resendOtp(email);
         return ResponseEntity.ok(response);
     }
-    
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of("status", "UP", "service", "auth-service"));

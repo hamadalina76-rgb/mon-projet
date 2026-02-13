@@ -18,6 +18,7 @@ public class CorsConfig {
         corsConfig.setAllowedOrigins(List.of(
             "http://localhost:3000",
             "http://localhost:4200",
+            "http://localhost:4300",
             "http://localhost:8080"
         ));
         corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));

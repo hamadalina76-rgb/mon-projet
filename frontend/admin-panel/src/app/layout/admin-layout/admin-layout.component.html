@@ -1,20 +1,21 @@
-<!-- Admin Layout Component Template -->
-<div class="admin-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+<div class="admin-layout">
+  <!-- Sidebar -->
   <app-sidebar
-    [collapsed]="sidebarCollapsed"
-    (toggleCollapse)="toggleSidebar()">
-  </app-sidebar>
+    [mobileOpen]="sidebarMobileOpen()"
+    (closeMobile)="closeMobileSidebar()"
+  ></app-sidebar>
 
-  <div class="main-content">
-    <app-header
-      [notificationCount]="notificationCount"
-      [alertCount]="alertCount"
-      (toggleSidebar)="toggleSidebar()">
-    </app-header>
+  <!-- Main Area -->
+  <div class="main-area">
+    <app-header (toggleSidebar)="toggleMobileSidebar()"></app-header>
 
     <main class="content-area">
-      <app-loading-spinner *ngIf="loading" [overlay]="true"></app-loading-spinner>
+      @if (isLoading()) {
+        <app-loading-spinner [overlay]="true"></app-loading-spinner>
+      }
       <router-outlet></router-outlet>
     </main>
+
+    <app-footer></app-footer>
   </div>
 </div>

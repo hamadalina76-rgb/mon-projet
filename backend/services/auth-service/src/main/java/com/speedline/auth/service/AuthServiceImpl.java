@@ -5,6 +5,7 @@ import com.speedline.auth.domain.AuthProvider;
 import com.speedline.auth.domain.Role;
 import com.speedline.auth.domain.User;
 import com.speedline.auth.domain.UserStatus;
+import com.speedline.auth.dto.request.CreateAdminAccountRequest;
 import com.speedline.auth.dto.request.CreateCourierRequest;
 import com.speedline.auth.dto.request.CreateCustomerRequest;
 import com.speedline.auth.dto.request.LoginRequest;
@@ -13,6 +14,7 @@ import com.speedline.auth.dto.request.SocialLoginRequest;
 import com.speedline.auth.dto.request.VerifyOtpRequest;
 import com.speedline.auth.dto.response.AuthResponse;
 import com.speedline.auth.dto.response.OtpResponse;
+import com.speedline.auth.exception.AccountStatusException;
 import com.speedline.auth.repository.UserRepository;
 import com.speedline.auth.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -59,7 +61,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void register(RegisterRequest request) {
         log.info("Registering new user with email: {}", request.getEmail());
-        
+
         // Check if email already exists (ignore case)
         if (userRepo.existsByEmailIgnoreCase(request.getEmail())) {
             throw new RuntimeException("Email already exists");
@@ -83,7 +85,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         user = userRepo.save(user);
-        
+
         log.info("User registered successfully. Verification token: {}", verificationToken);
         log.info("User registered successfully with email: {}", request.getEmail());
 
@@ -94,7 +96,7 @@ public class AuthServiceImpl implements AuthService {
         String firstName = user.getFirstName();
         String lastName = user.getLastName();
         String phoneNumber = user.getPhoneNumber();
-        
+
         // Call this after @Transactional method completes
         createUserProfile(userId, userRole, email, firstName, lastName, phoneNumber);
     }
@@ -118,7 +120,7 @@ public class AuthServiceImpl implements AuthService {
                 userServiceClient.createCustomer(customerRequest);
                 log.info("Customer profile created successfully for userId: {}", userId);
             } catch (Exception e) {
-                log.error("FAILED to create customer profile in user-service for userId: {}. Error: {}", 
+                log.error("FAILED to create customer profile in user-service for userId: {}. Error: {}",
                         userId, e.getMessage(), e);
                 log.error("Full exception details:", e);
                 // Continue - the user account is created, profile can be created later
@@ -136,7 +138,7 @@ public class AuthServiceImpl implements AuthService {
                 userServiceClient.createCourier(courierRequest);
                 log.info("Courier profile created successfully for userId: {}", userId);
             } catch (Exception e) {
-                log.error("FAILED to create courier profile in user-service for userId: {}. Error: {}", 
+                log.error("FAILED to create courier profile in user-service for userId: {}. Error: {}",
                         userId, e.getMessage(), e);
                 log.error("Full exception details:", e);
                 // Continue - the user account is created, profile can be created later
@@ -148,7 +150,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public OtpResponse login(LoginRequest request) {
         log.info("User login attempt with email: {}", request.getEmail());
-        
+
         // Authenticate user (verify email and password)
         try {
             authenticationManager.authenticate(
@@ -181,30 +183,105 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
+    public AuthResponse adminLogin(LoginRequest request) {
+        log.info("Admin login attempt with email: {}", request.getEmail());
+
+        // Authenticate user (verify email and password)
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getPassword()
+                    )
+            );
+        } catch (Exception e) {
+            log.warn("Authentication failed for email: {}", request.getEmail());
+            throw e;
+        }
+
+        // Get user from database
+        User user = userRepo.findByEmailIgnoreCase(request.getEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        // Check if user is INACTIVE
+        if (user.getStatus() == UserStatus.INACTIVE) {
+            log.warn("Login attempt for INACTIVE account: {}", request.getEmail());
+            throw new AccountStatusException("Your account has been deactivated. Please contact support.");
+        }
+
+        // Check if user is SUSPENDED
+        if (user.getStatus() == UserStatus.SUSPENDED) {
+            log.warn("Login attempt for SUSPENDED account: {}", request.getEmail());
+            throw new AccountStatusException("Your account has been suspended. Please contact support.");
+        }
+
+        // Check if user is admin
+        if (user.getRole() != Role.ADMIN && user.getRole() != Role.SUPER_ADMIN) {
+            log.warn("Non-admin user attempted admin login: {}", request.getEmail());
+            throw new AccountStatusException("Access denied. Only administrators can log in here.");
+        }
+
+        // Generate tokens
+        String accessToken = tokenProvider.generateToken(user);
+        String refreshToken = tokenProvider.generatRefreshToken(user.getEmail());
+
+        log.info("Admin login successful for email: {}", request.getEmail());
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn(jwtExpirationMs)
+                .user(AuthResponse.UserInfo.builder()
+                        .id(user.getId())
+                        .email(user.getEmail())
+                        .firstName(user.getFirstName())
+                        .lastName(user.getLastName())
+                        .role(user.getRole())
+                        .build())
+                .build();
+    }
+
+    @Override
+    @Transactional
     public Object verifyOtp(VerifyOtpRequest request) {
         log.info("Verifying OTP for email: {} with type: {}", request.getEmail(), request.getType());
-        
+
         // Verify OTP code
         boolean isValid = otpService.verifyOtp(request.getEmail(), request.getOtpCode());
-        
+
         if (!isValid) {
             throw new RuntimeException("Invalid or expired OTP code");
         }
 
         // Determine flow based on type
         String type = request.getType() != null ? request.getType() : "login";
-        
+
         if ("forgot-password".equals(type)) {
             // Forgot password flow - just verify user exists
             User user = userRepo.findByEmailIgnoreCase(request.getEmail())
                     .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-            
+
             log.info("OTP verified successfully for forgot password flow: {}", request.getEmail());
             return Map.of("message", "OTP verified successfully");
         } else {
             // Login flow - generate tokens
             User user = userRepo.findByEmailIgnoreCase(request.getEmail())
                     .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+            // Check account status — block suspended / inactive / deleted accounts
+            if (user.getStatus() == UserStatus.SUSPENDED) {
+                log.warn("Login blocked: account SUSPENDED for {}", request.getEmail());
+                throw new AccountStatusException("ACCOUNT_SUSPENDED");
+            }
+            if (user.getStatus() == UserStatus.INACTIVE) {
+                log.warn("Login blocked: account INACTIVE (deactivated) for {}", request.getEmail());
+                throw new AccountStatusException("ACCOUNT_INACTIVE");
+            }
+            if (user.getStatus() == UserStatus.DELETED) {
+                log.warn("Login blocked: account DELETED for {}", request.getEmail());
+                throw new AccountStatusException("ACCOUNT_DELETED");
+            }
 
             // Generate tokens
             String accessToken = tokenProvider.generateToken(user);
@@ -233,35 +310,35 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse socialLogin(SocialLoginRequest request) {
         log.info("Social login attempt with provider: {}", request.getProvider());
-        
+
         // Verify token and get user info from OAuth provider
         OAuth2Service.OAuth2UserInfo oauth2UserInfo = oauth2Service.verifyAndGetUserInfo(
-                request.getAccessToken(), 
+                request.getAccessToken(),
                 request.getProvider()
         );
-        
+
         boolean isNewUser = false;
-        
+
         // Check if user already exists by provider and provider user ID
         Optional<User> existingUser = userRepo.findByAuthProviderAndProviderUserId(
-                request.getProvider(), 
+                request.getProvider(),
                 oauth2UserInfo.getProviderId()
         );
-        
+
         User user;
-        
+
         if (existingUser.isPresent()) {
             user = existingUser.get();
             // Update profile picture if changed
-            if (oauth2UserInfo.getProfilePicture() != null && 
-                !oauth2UserInfo.getProfilePicture().equals(user.getProfilePicture())) {
+            if (oauth2UserInfo.getProfilePicture() != null &&
+                    !oauth2UserInfo.getProfilePicture().equals(user.getProfilePicture())) {
                 user.setProfilePicture(oauth2UserInfo.getProfilePicture());
                 userRepo.save(user);
             }
         } else {
             // Check if user exists with same email (different provider)
             Optional<User> existingByEmail = userRepo.findByEmailIgnoreCase(oauth2UserInfo.getEmail());
-            
+
             if (existingByEmail.isPresent()) {
                 // User exists with different provider - update to link OAuth account
                 user = existingByEmail.get();
@@ -288,16 +365,16 @@ public class AuthServiceImpl implements AuthService {
                 isNewUser = true;
                 log.info("Creating new user from {} login", request.getProvider());
             }
-            
+
             userRepo.save(user);
         }
-        
+
         // Generate JWT tokens
         String accessToken = tokenProvider.generateToken(user);
         String refreshToken = tokenProvider.generatRefreshToken(user.getEmail());
-        
+
         log.info("Social login successful for user: {}", user.getEmail());
-        
+
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -326,7 +403,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse refreshToken(String refreshToken) {
         log.info("Refreshing token");
-        
+
         // Validate refresh token
         if (!tokenProvider.validateToken(refreshToken)) {
             throw new RuntimeException("Invalid refresh token");
@@ -364,7 +441,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public OtpResponse forgotPassword(String email) {
         log.info("Forgot password request for email: {}", email);
-        
+
         User user = userRepo.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
@@ -372,7 +449,7 @@ public class AuthServiceImpl implements AuthService {
         otpService.generateAndSendOtp(email, user.getFirstName());
 
         log.info("OTP sent successfully to email: {}", email);
-        
+
         return OtpResponse.builder()
                 .message("OTP sent to your email")
                 .email(email)
@@ -384,11 +461,11 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void resetPassword(String email, String otpCode, String newPassword) {
         log.info("Reset password with OTP for email: {}", email);
-        
+
         // Find user
         User user = userRepo.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         // Verify OTP
         otpService.verifyOtp(email, otpCode);
 
@@ -410,7 +487,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void verifyEmail(String token) {
         log.info("Verifying email with token");
-        
+
         // Find user by verification token
         User user = userRepo.findByVerificationToken(token)
                 .orElseThrow(() -> new RuntimeException("Invalid verification token"));
@@ -429,21 +506,66 @@ public class AuthServiceImpl implements AuthService {
         log.info("Checking if email exists: {}", email);
         return userRepo.existsByEmailIgnoreCase(email);
     }
-    
+
+    @Override
+    @Transactional
+    public Long createAdminAccount(CreateAdminAccountRequest request) {
+        log.info("Creating admin account for email: {} with role: {}", request.getEmail(), request.getRole());
+
+        // Vérifier si l'email existe déjà
+        if (userRepo.existsByEmailIgnoreCase(request.getEmail())) {
+            throw new RuntimeException("Un compte existe déjà avec cet email: " + request.getEmail());
+        }
+
+        // Déterminer le rôle
+        Role role;
+        try {
+            role = Role.valueOf(request.getRole());
+            if (role != Role.ADMIN && role != Role.SUPER_ADMIN) {
+                throw new RuntimeException("Invalid admin role: " + request.getRole());
+            }
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid role: " + request.getRole());
+        }
+
+        // Séparer le nom complet
+        String[] nameParts = request.getFullName().trim().split("\\s+", 2);
+        String firstName = nameParts[0];
+        String lastName = nameParts.length > 1 ? nameParts[1] : "";
+
+        // Créer le compte utilisateur
+        User user = User.builder()
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .firstName(firstName)
+                .lastName(lastName)
+                .role(role)
+                .status(UserStatus.ACTIVE) // Admin directement actif
+                .isEmailVerified(true) // Admin vérifié par défaut
+                .isPhoneVerified(false)
+                .authProvider(AuthProvider.LOCAL)
+                .build();
+
+        user = userRepo.save(user);
+        log.info("Admin account created successfully with ID: {}", user.getId());
+
+        return user.getId();
+    }
+
     @Override
     @Transactional
     public OtpResponse resendOtp(String email) {
         log.info("Resend OTP request for email: {}", email);
-        
+
         // Get user from database
         User user = userRepo.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        
+
         // Generate and send new OTP
         otpService.generateAndSendOtp(user.getEmail(), user.getFirstName());
-        
+
         log.info("New OTP sent successfully to: {}", email);
-        
+
         return OtpResponse.builder()
                 .message("New OTP sent to your email.")
                 .email(user.getEmail())

@@ -13,6 +13,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
+      // Skip interceptor toast for auth endpoints (login handles its own errors)
+      const isAuthRequest = req.url.includes('/auth/');
+
       let errorMessage = 'Une erreur est survenue';
 
       switch (error.status) {
@@ -20,9 +23,11 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           errorMessage = error.error?.message || 'Requête invalide';
           break;
         case 401:
-          errorMessage = 'Session expirée';
-          authService.logout();
-          router.navigate(['/auth/login']);
+          if (!isAuthRequest) {
+            errorMessage = 'Session expirée';
+            authService.logout();
+            router.navigate(['/auth/login']);
+          }
           break;
         case 403:
           errorMessage = 'Accès non autorisé';
@@ -31,11 +36,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           errorMessage = 'Ressource non trouvée';
           break;
         case 500:
-          errorMessage = 'Erreur serveur';
+          errorMessage = error.error?.message || 'Erreur serveur';
           break;
       }
 
-      toastr.error(errorMessage, 'Erreur');
+      if (!isAuthRequest) {
+        toastr.error(errorMessage, 'Erreur');
+      }
       return throwError(() => error);
     })
   );

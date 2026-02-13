@@ -1,34 +1,29 @@
-// Admin Layout Component Styles
-@import 'variables';
-@import 'mixins';
+$sidebar-width: 16rem;
 
 .admin-layout {
   display: flex;
   min-height: 100vh;
-  background: var(--bg-main);
+  background: #f9fafb;
 }
 
-.main-content {
+.main-area {
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-left: 280px;
-  transition: margin-left 0.3s ease;
-}
-
-.sidebar-collapsed .main-content {
-  margin-left: 72px;
+  min-height: 100vh;
+  min-width: 0; // prevent flex overflow
 }
 
 .content-area {
   flex: 1;
   position: relative;
-  padding: 1.5rem;
+  padding: 1.5rem 2rem;
   overflow-y: auto;
 }
 
-@include tablet {
-  .main-content {
-    margin-left: 0;
+// ─── Responsive ──────────────────────────────────
+@media (max-width: 1023px) {
+  .content-area {
+    padding: 1rem;
   }
 }
