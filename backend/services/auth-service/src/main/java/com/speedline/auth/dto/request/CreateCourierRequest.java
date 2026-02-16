@@ -18,5 +18,21 @@ public class CreateCourierRequest {
     private String firstName;
     private String lastName;
     private String phoneNumber;
-    // vehicleType and other details can be added later by the courier
+    
+    // Vehicle Info
+    private String vehicleType;
+    private String vehicleModel;
+    private String vehicleColor;
+    private String vehiclePlate;
+    
+    // ID Card Info
+    private String identityNumber;
+    
+    // Driving License Info
+    private String licenseNumber;
+    private String licenseExpiryDate;
+    
+    // Bank Info
+    private String accountHolderName;
+    private String iban;
 }

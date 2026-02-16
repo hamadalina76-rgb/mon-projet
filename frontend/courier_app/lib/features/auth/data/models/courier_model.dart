@@ -14,6 +14,7 @@ class CourierModel extends Courier {
     String? vehicleNumber,
     bool isOnline = false,
     bool isVerified = false,
+    bool documentsVerified = false,
   }) : super(
           id: id,
           firstName: firstName,
@@ -27,15 +28,17 @@ class CourierModel extends Courier {
           vehicleNumber: vehicleNumber,
           isOnline: isOnline,
           isVerified: isVerified,
+          documentsVerified: documentsVerified,
         );
 
   factory CourierModel.fromJson(Map<String, dynamic> json) {
+    print('👤 Parsing CourierModel from JSON: $json');
     return CourierModel(
-      id: json['id'] as String,
-      firstName: json['firstName'] as String,
-      lastName: json['lastName'] as String,
-      email: json['email'] as String,
-      phone: json['phone'] as String,
+      id: json['id']?.toString() ?? '',
+      firstName: json['firstName'] ?? json['first_name'] ?? '',
+      lastName: json['lastName'] ?? json['last_name'] ?? '',
+      email: json['email'] ?? '',
+      phone: json['phone'] ?? json['phoneNumber'] ?? json['phone_number'] ?? '',
       photoUrl: json['photoUrl'] as String?,
       rating: (json['rating'] as num?)?.toDouble(),
       totalDeliveries: json['totalDeliveries'] as int? ?? 0,
@@ -43,6 +46,7 @@ class CourierModel extends Courier {
       vehicleNumber: json['vehicleNumber'] as String?,
       isOnline: json['isOnline'] as bool? ?? false,
       isVerified: json['isVerified'] as bool? ?? false,
+      documentsVerified: json['documentsVerified'] as bool? ?? false,
     );
   }
 
@@ -60,6 +64,7 @@ class CourierModel extends Courier {
       'vehicleNumber': vehicleNumber,
       'isOnline': isOnline,
       'isVerified': isVerified,
+      'documentsVerified': documentsVerified,
     };
   }
 
@@ -76,6 +81,7 @@ class CourierModel extends Courier {
     String? vehicleNumber,
     bool? isOnline,
     bool? isVerified,
+    bool? documentsVerified,
   }) {
     return CourierModel(
       id: id ?? this.id,
@@ -90,6 +96,7 @@ class CourierModel extends Courier {
       vehicleNumber: vehicleNumber ?? this.vehicleNumber,
       isOnline: isOnline ?? this.isOnline,
       isVerified: isVerified ?? this.isVerified,
+      documentsVerified: documentsVerified ?? this.documentsVerified,
     );
   }
 }

@@ -24,24 +24,26 @@ class AuthRepositoryImpl implements AuthRepository {
       refreshToken: loginResponse.refreshToken,
     );
     
-    await localDataSource.saveCourierData(loginResponse.courier.toJson());
-    
-    return loginResponse.courier;
+    // Fetch full courier profile from user-service to get documentsVerified status
+    try {
+      final courierProfile = await remoteDataSource.getCourierProfile();
+      final courier = CourierModel.fromJson(courierProfile);
+      await localDataSource.saveCourierData(courier.toJson());
+      return courier;
+    } catch (e) {
+      print('⚠️ Failed to fetch courier profile, using login response data: $e');
+      // Fallback to data from login response if profile fetch fails
+      await localDataSource.saveCourierData(loginResponse.courier.toJson());
+      return loginResponse.courier;
+    }
   }
 
   @override
-  Future<Courier> register({required Map<String, dynamic> data}) async {
+  Future<void> register({required Map<String, dynamic> data}) async {
+    // Just call the registration endpoint - it returns a success message
     final response = await remoteDataSource.register(data: data);
-    final loginResponse = LoginResponse.fromJson(response);
-    
-    await localDataSource.saveTokens(
-      accessToken: loginResponse.accessToken,
-      refreshToken: loginResponse.refreshToken,
-    );
-    
-    await localDataSource.saveCourierData(loginResponse.courier.toJson());
-    
-    return loginResponse.courier;
+    print('✅ Registration successful: $response');
+    // No need to parse tokens or save data - user will login after registration
   }
 
   @override
@@ -77,5 +79,16 @@ class AuthRepositoryImpl implements AuthRepository {
     final courier = CourierModel.fromJson(response);
     await localDataSource.saveCourierData(courier.toJson());
     return courier;
+  }
+
+  @override
+  Future<void> uploadDocumentation({
+    required Map<String, dynamic> documentData,
+    required Map<String, String> filePaths,
+  }) async {
+    await remoteDataSource.uploadDocumentation(
+      documentData: documentData,
+      filePaths: filePaths,
+    );
   }
 }

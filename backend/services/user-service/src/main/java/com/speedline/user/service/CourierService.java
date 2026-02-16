@@ -78,6 +78,46 @@ public interface CourierService {
     CourierDTO updateCourier(Long courierId, CourierUpdateRequest request);
 
     /**
+     * Mettre à jour le profil d'un livreur par userId (auth-service)
+     * Utilisé par l'endpoint /couriers/me
+     * 
+     * @param userId ID de l'utilisateur dans auth-service
+     * @param request CourierUpdateRequest contenant les champs à modifier
+     * @return CourierDTO mis à jour
+     * @throws CourierNotFoundException si le livreur n'existe pas
+     */
+    CourierDTO updateCourierByUserId(Long userId, CourierUpdateRequest request);
+
+    /**
+     * Mettre à jour la documentation complète d'un livreur par userId (avec upload de fichiers)
+     * 
+     * @param userId ID de l'utilisateur dans auth-service
+     * @param vehicleType Type de véhicule
+     * @param vehicleModel Modèle du véhicule
+     * @param vehicleColor Couleur du véhicule
+     * @param plateNumber Numéro de plaque
+     * @param idNumber Numéro de carte d'identité
+     * @param licenseNumber Numéro de permis
+     * @param licenseExpiryDate Date d'expiration du permis
+     * @param accountHolder Titulaire du compte bancaire
+     * @param accountNumber Numéro de compte/IBAN
+     * @param idCardFront Photo recto carte d'identité
+     * @param idCardBack Photo verso carte d'identité
+     * @param licenseFront Photo recto permis
+     * @param licenseBack Photo verso permis
+     * @return CourierDTO mis à jour
+     * @throws CourierNotFoundException si le livreur n'existe pas
+     */
+    CourierDTO updateCourierDocumentationByUserId(
+            Long userId, String vehicleType, String vehicleModel, String vehicleColor, String plateNumber,
+            String idNumber, String licenseNumber, String licenseExpiryDate,
+            String accountHolder, String accountNumber,
+            org.springframework.web.multipart.MultipartFile idCardFront,
+            org.springframework.web.multipart.MultipartFile idCardBack,
+            org.springframework.web.multipart.MultipartFile licenseFront,
+            org.springframework.web.multipart.MultipartFile licenseBack);
+
+    /**
      * Supprimer (désactiver) un profil livreur
      * 
      * @param courierId ID du profil livreur
@@ -191,12 +231,13 @@ public interface CourierService {
      * 
      * @param courierId ID du profil livreur
      * @param drivingLicenseImage URL de l'image du permis de conduire
-     * @param identityDocumentImage URL de l'image de la pièce d'identité
+     * @param identityDocumentFrontImage URL de l'image recto de la CIN
+     * @param identityDocumentBackImage URL de l'image verso de la CIN
      * @param profilePhoto URL de la photo de profil
      * @return CourierDTO mis à jour
      * @throws CourierNotFoundException si le livreur n'existe pas
      */
-    CourierDTO submitDocuments(Long courierId, String drivingLicenseImage, String identityDocumentImage, String profilePhoto);
+    CourierDTO submitDocuments(Long courierId, String drivingLicenseImage, String identityDocumentFrontImage, String identityDocumentBackImage, String profilePhoto);
 
     /**
      * Valider les documents d'un livreur (Admin only)

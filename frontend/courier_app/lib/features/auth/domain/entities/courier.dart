@@ -11,6 +11,7 @@ class Courier {
   final String? vehicleNumber;
   final bool isOnline;
   final bool isVerified;
+  final bool documentsVerified;
 
   const Courier({
     required this.id,
@@ -25,5 +26,6 @@ class Courier {
     this.vehicleNumber,
     this.isOnline = false,
     this.isVerified = false,
+    this.documentsVerified = false,
   });
 }

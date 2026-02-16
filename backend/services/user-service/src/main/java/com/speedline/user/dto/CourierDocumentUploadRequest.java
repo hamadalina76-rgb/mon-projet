@@ -22,8 +22,8 @@ public class CourierDocumentUploadRequest {
     /**
      * Type de document à uploader
      */
-    @Schema(description = "Type de document", example = "CIN", 
-            allowableValues = {"CIN", "LICENSE", "INSURANCE", "VEHICLE", "PROFILE_PHOTO"},
+    @Schema(description = "Type de document", example = "CIN_FRONT", 
+            allowableValues = {"CIN_FRONT", "CIN_BACK", "LICENSE", "INSURANCE", "VEHICLE", "PROFILE_PHOTO"},
             requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "Le type de document est obligatoire")
     private DocumentType documentType;
@@ -56,9 +56,14 @@ public class CourierDocumentUploadRequest {
      */
     public enum DocumentType {
         /**
-         * Carte d'identité nationale
+         * Carte d'identité nationale - Face avant
          */
-        CIN,
+        CIN_FRONT,
+        
+        /**
+         * Carte d'identité nationale - Face arrière
+         */
+        CIN_BACK,
         
         /**
          * Permis de conduire
