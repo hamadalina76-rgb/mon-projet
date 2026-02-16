@@ -11,6 +11,7 @@ import com.speedline.user.repository.CourierRepository;
 import com.speedline.user.service.CourierService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -32,13 +34,35 @@ import java.util.stream.Collectors;
  * - Statistiques
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 @Transactional
 public class CourierServiceImpl implements CourierService {
 
     private final CourierRepository courierRepository;
     private final AuthServiceClient authServiceClient;
+    private final String uploadBaseDir;
+
+    public CourierServiceImpl(CourierRepository courierRepository, 
+                             AuthServiceClient authServiceClient,
+                             @Value("${file.upload-dir}") String uploadBaseDir) {
+        this.courierRepository = courierRepository;
+        this.authServiceClient = authServiceClient;
+        
+        // Convert relative path to absolute path
+        java.io.File uploadDir = new java.io.File(uploadBaseDir);
+        this.uploadBaseDir = uploadDir.getAbsolutePath();
+        log.info("📂 Upload directory configured: {}", this.uploadBaseDir);
+        
+        // Create base directory if it doesn't exist
+        if (!uploadDir.exists()) {
+            boolean created = uploadDir.mkdirs();
+            if (created) {
+                log.info("✅ Base upload directory created: {}", this.uploadBaseDir);
+            } else {
+                log.warn("⚠️ Could not create base upload directory: {}", this.uploadBaseDir);
+            }
+        }
+    }
 
     // Constantes de validation
     private static final BigDecimal MIN_LATITUDE = new BigDecimal("-90");
@@ -133,8 +157,198 @@ public class CourierServiceImpl implements CourierService {
             courier.setBankAccountHolder(request.getBankAccountHolder());
         }
 
+        // Mettre à jour les documents d'identité
+        if (request.getIdentityNumber() != null) {
+            courier.setIdentityNumber(request.getIdentityNumber());
+        }
+        if (request.getIdentityDocumentFrontImage() != null) {
+            courier.setIdentityDocumentFrontImage(request.getIdentityDocumentFrontImage());
+        }
+        if (request.getIdentityDocumentBackImage() != null) {
+            courier.setIdentityDocumentBackImage(request.getIdentityDocumentBackImage());
+        }
+
+        // Mettre à jour le permis de conduire
+        if (request.getDrivingLicenseNumber() != null) {
+            courier.setDrivingLicenseNumber(request.getDrivingLicenseNumber());
+        }
+        if (request.getDrivingLicenseImage() != null) {
+            courier.setDrivingLicenseImage(request.getDrivingLicenseImage());
+        }
+        if (request.getDrivingLicenseExpiry() != null) {
+            courier.setDrivingLicenseExpiry(request.getDrivingLicenseExpiry().atStartOfDay());
+        }
+
         courier = courierRepository.save(courier);
         log.info("UPDATE - Livreur {} mis à jour avec succès", courierId);
+
+        return mapToDTO(courier);
+    }
+
+    @Override
+    @Transactional
+    public CourierDTO updateCourierByUserId(Long userId, CourierUpdateRequest request) {
+        log.info("Mise à jour du livreur par userId: {}", userId);
+        
+        // Trouver le livreur par userId (auth-service ID)
+        final Courier courier = courierRepository.findByUserId(userId)
+                .orElseThrow(() -> CourierNotFoundException.byUserId(userId));
+
+        // Mettre à jour les champs véhicule si fournis
+        Optional.ofNullable(request.getVehicleType())
+                .ifPresent(courier::setVehicleType);
+        Optional.ofNullable(request.getVehicleNumber())
+                .ifPresent(courier::setVehicleNumber);
+        Optional.ofNullable(request.getVehicleModel())
+                .ifPresent(courier::setVehicleModel);
+        Optional.ofNullable(request.getVehicleColor())
+                .ifPresent(courier::setVehicleColor);
+
+        // Mettre à jour les préférences de livraison
+        Optional.ofNullable(request.getPreferredDeliveryZone())
+                .ifPresent(courier::setPreferredDeliveryZone);
+        Optional.ofNullable(request.getMaxDeliveryRadius())
+                .ifPresent(courier::setMaxDeliveryRadius);
+
+        // Mettre à jour les coordonnées bancaires
+        Optional.ofNullable(request.getBankIban())
+                .ifPresent(courier::setBankIban);
+        Optional.ofNullable(request.getBankAccountHolder())
+                .ifPresent(courier::setBankAccountHolder);
+
+        // Mettre à jour les documents d'identité
+        Optional.ofNullable(request.getIdentityNumber())
+                .ifPresent(courier::setIdentityNumber);
+        Optional.ofNullable(request.getIdentityDocumentFrontImage())
+                .ifPresent(courier::setIdentityDocumentFrontImage);
+        Optional.ofNullable(request.getIdentityDocumentBackImage())
+                .ifPresent(courier::setIdentityDocumentBackImage);
+
+        // Mettre à jour le permis de conduire
+        Optional.ofNullable(request.getDrivingLicenseNumber())
+                .ifPresent(courier::setDrivingLicenseNumber);
+        Optional.ofNullable(request.getDrivingLicenseImage())
+                .ifPresent(courier::setDrivingLicenseImage);
+        Optional.ofNullable(request.getDrivingLicenseExpiry())
+                .ifPresent(expiry -> courier.setDrivingLicenseExpiry(expiry.atStartOfDay()));
+
+        // Marquer la documentation comme complète si tous les documents requis sont fournis
+        if (courier.getIdentityNumber() != null && 
+            courier.getIdentityDocumentFrontImage() != null && 
+            courier.getIdentityDocumentBackImage() != null && 
+            courier.getDrivingLicenseNumber() != null && 
+            courier.getDrivingLicenseImage() != null) {
+            courier.setDocumentsVerified(true);
+        }
+
+        Courier savedCourier = courierRepository.save(courier);
+        log.info("UPDATE - Livreur avec userId {} mis à jour avec succès", userId);
+
+        return mapToDTO(savedCourier);
+    }
+
+    @Override
+    @Transactional
+    public CourierDTO updateCourierDocumentationByUserId(
+            Long userId, String vehicleType, String vehicleModel, String vehicleColor, String plateNumber,
+            String idNumber, String licenseNumber, String licenseExpiryDate,
+            String accountHolder, String accountNumber,
+            org.springframework.web.multipart.MultipartFile idCardFront,
+            org.springframework.web.multipart.MultipartFile idCardBack,
+            org.springframework.web.multipart.MultipartFile licenseFront,
+            org.springframework.web.multipart.MultipartFile licenseBack) {
+        
+        log.info("Mise à jour de la documentation complète pour userId: {}", userId);
+        
+        // Trouver le livreur par userId
+        Courier courier = courierRepository.findByUserId(userId)
+                .orElseThrow(() -> CourierNotFoundException.byUserId(userId));
+
+        // Mettre à jour les informations du véhicule
+        if (vehicleType != null && !vehicleType.isBlank()) {
+            try {
+                courier.setVehicleType(VehicleType.valueOf(vehicleType.toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                log.warn("Type de véhicule invalide: {}, utilisation de BICYCLE par défaut", vehicleType);
+                courier.setVehicleType(VehicleType.BICYCLE);
+            }
+        }
+        if (vehicleModel != null && !vehicleModel.isBlank()) {
+            courier.setVehicleModel(vehicleModel);
+        }
+        if (vehicleColor != null && !vehicleColor.isBlank()) {
+            courier.setVehicleColor(vehicleColor);
+        }
+        if (plateNumber != null && !plateNumber.isBlank()) {
+            courier.setVehicleNumber(plateNumber);
+        }
+
+        // Mettre à jour les informations d'identité
+        if (idNumber != null && !idNumber.isBlank()) {
+            courier.setIdentityNumber(idNumber);
+        }
+
+        // Mettre à jour les informations de permis
+        if (licenseNumber != null && !licenseNumber.isBlank()) {
+            courier.setDrivingLicenseNumber(licenseNumber);
+        }
+        if (licenseExpiryDate != null && !licenseExpiryDate.isBlank()) {
+            try {
+                // Parse format MM/DD/YYYY
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+                courier.setDrivingLicenseExpiry(LocalDateTime.parse(licenseExpiryDate + " 00:00:00",
+                        DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss")));
+            } catch (Exception e) {
+                log.warn("Format de date invalide pour l'expiration du permis: {}", licenseExpiryDate);
+            }
+        }
+
+        // Mettre à jour les informations bancaires
+        if (accountHolder != null && !accountHolder.isBlank()) {
+            courier.setBankAccountHolder(accountHolder);
+        }
+        if (accountNumber != null && !accountNumber.isBlank()) {
+            courier.setBankIban(accountNumber);
+        }
+
+        // Traiter les fichiers uploadés et les sauvegarder sur le disque
+        String uploadDir = "couriers/" + userId + "/";
+        
+        if (idCardFront != null && !idCardFront.isEmpty()) {
+            String savedPath = saveUploadedFile(idCardFront, uploadDir, "id_front_");
+            courier.setIdentityDocumentFrontImage(savedPath);
+            log.info("✅ Photo recto CIN sauvegardée: {}", savedPath);
+        }
+        if (idCardBack != null && !idCardBack.isEmpty()) {
+            String savedPath = saveUploadedFile(idCardBack, uploadDir, "id_back_");
+            courier.setIdentityDocumentBackImage(savedPath);
+            log.info("✅ Photo verso CIN sauvegardée: {}", savedPath);
+        }
+        if (licenseFront != null && !licenseFront.isEmpty()) {
+            String savedPath = saveUploadedFile(licenseFront, uploadDir, "license_front_");
+            courier.setDrivingLicenseImage(savedPath);
+            log.info("✅ Photo permis recto sauvegardée: {}", savedPath);
+        }
+        if (licenseBack != null && !licenseBack.isEmpty()) {
+            String savedPath = saveUploadedFile(licenseBack, uploadDir, "license_back_");
+            // Le modèle actuel n'a pas de champ pour le verso du permis
+            log.info("✅ Photo permis verso sauvegardée: {}", savedPath);
+        }
+
+        // Marquer la documentation comme complète si tous les documents requis sont présents
+        if (courier.getIdentityNumber() != null && 
+            courier.getIdentityDocumentFrontImage() != null && 
+            courier.getIdentityDocumentBackImage() != null && 
+            courier.getDrivingLicenseNumber() != null && 
+            courier.getDrivingLicenseImage() != null &&
+            courier.getBankAccountHolder() != null &&
+            courier.getBankIban() != null) {
+            courier.setDocumentsVerified(true);
+            log.info("✅ Documentation complète pour le livreur userId {}", userId);
+        }
+
+        courier = courierRepository.save(courier);
+        log.info("UPDATE - Documentation mise à jour pour userId {}", userId);
 
         return mapToDTO(courier);
     }
@@ -284,7 +498,7 @@ public class CourierServiceImpl implements CourierService {
 
     @Override
     @Transactional
-    public CourierDTO submitDocuments(Long courierId, String drivingLicenseImage, String identityDocumentImage, String profilePhoto) {
+    public CourierDTO submitDocuments(Long courierId, String drivingLicenseImage, String identityDocumentFrontImage, String identityDocumentBackImage, String profilePhoto) {
         log.info("Soumission de documents pour le livreur ID: {}", courierId);
 
         Courier courier = findCourierById(courierId);
@@ -292,8 +506,11 @@ public class CourierServiceImpl implements CourierService {
         if (drivingLicenseImage != null && !drivingLicenseImage.isBlank()) {
             courier.setDrivingLicenseImage(drivingLicenseImage);
         }
-        if (identityDocumentImage != null && !identityDocumentImage.isBlank()) {
-            courier.setIdentityDocumentImage(identityDocumentImage);
+        if (identityDocumentFrontImage != null && !identityDocumentFrontImage.isBlank()) {
+            courier.setIdentityDocumentFrontImage(identityDocumentFrontImage);
+        }
+        if (identityDocumentBackImage != null && !identityDocumentBackImage.isBlank()) {
+            courier.setIdentityDocumentBackImage(identityDocumentBackImage);
         }
         if (profilePhoto != null && !profilePhoto.isBlank()) {
             courier.setProfilePhoto(profilePhoto);
@@ -319,8 +536,15 @@ public class CourierServiceImpl implements CourierService {
         Courier courier = findCourierById(courierId);
 
         switch (request.getDocumentType()) {
-            case CIN:
-                courier.setIdentityDocumentImage(request.getDocumentUrl());
+            case CIN_FRONT:
+                courier.setIdentityDocumentFrontImage(request.getDocumentUrl());
+                // Enregistrer le numéro CIN si fourni
+                if (request.getDocumentNumber() != null && !request.getDocumentNumber().isBlank()) {
+                    courier.setIdentityNumber(request.getDocumentNumber());
+                }
+                break;
+            case CIN_BACK:
+                courier.setIdentityDocumentBackImage(request.getDocumentUrl());
                 break;
             case LICENSE:
                 courier.setDrivingLicenseImage(request.getDocumentUrl());
@@ -618,5 +842,63 @@ public class CourierServiceImpl implements CourierService {
         }
 
         return dto;
+    }
+
+    // ==================== GESTION DES FICHIERS ====================
+
+    /**
+     * Sauvegarde un fichier uploadé sur le disque
+     * 
+     * @param file Le fichier à sauvegarder
+     * @param directory Le répertoire de destination relatif (ex: "couriers/123/")
+     * @param prefix Le préfixe du nom de fichier (ex: "id_front_")
+     * @return Le chemin relatif du fichier sauvegardé (pour stockage en DB et accès via URL)
+     */
+    private String saveUploadedFile(org.springframework.web.multipart.MultipartFile file, 
+                                    String directory, String prefix) {
+        try {
+            // Construire le chemin absolu complet
+            java.io.File uploadBaseDirFile = new java.io.File(uploadBaseDir);
+            java.io.File targetDir = new java.io.File(uploadBaseDirFile, directory);
+            
+            // Créer le répertoire s'il n'existe pas
+            if (!targetDir.exists()) {
+                boolean created = targetDir.mkdirs();
+                if (created) {
+                    log.info("📁 Répertoire créé: {} (chemin absolu: {})", directory, targetDir.getAbsolutePath());
+                } else {
+                    log.error("❌ Impossible de créer le répertoire: {}", targetDir.getAbsolutePath());
+                }
+            }
+
+            // Générer un nom de fichier unique avec timestamp
+            String timestamp = String.valueOf(System.currentTimeMillis());
+            String originalFilename = file.getOriginalFilename();
+            String extension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+            String filename = prefix + timestamp + extension;
+            
+            // Créer le fichier de destination
+            java.io.File destinationFile = new java.io.File(targetDir, filename);
+            
+            // Sauvegarder le fichier
+            file.transferTo(destinationFile);
+            
+            // Retourner le chemin pour accès via URL (avec préfixe /uploads/)
+            // Les fichiers seront accessibles via: http://localhost:8082/uploads/couriers/123/file.jpg
+            String urlPath = "/uploads/" + directory + filename;
+            log.info("💾 Fichier sauvegardé avec succès!");
+            log.info("   📍 Chemin absolu: {}", destinationFile.getAbsolutePath());
+            log.info("   🌐 URL d'accès: {}", urlPath);
+            log.info("   📊 Taille: {} bytes", file.getSize());
+            
+            return urlPath;
+            
+        } catch (java.io.IOException e) {
+            log.error("❌ Erreur lors de la sauvegarde du fichier: {}", e.getMessage(), e);
+            throw new RuntimeException("Échec de la sauvegarde du fichier: " + e.getMessage(), e);
+        }
     }
 }

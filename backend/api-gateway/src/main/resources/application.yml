@@ -25,6 +25,14 @@ spring:
           filters:
             - AuthenticationFilter
 
+        # User Service - Direct courier endpoints (without /api prefix)
+        - id: user-service-couriers-direct
+          uri: lb://user-service
+          predicates:
+            - Path=/couriers/**
+          filters:
+            - AuthenticationFilter
+
         # Partner Service
         - id: partner-service
           uri: lb://partner-service

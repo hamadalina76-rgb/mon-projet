@@ -12,9 +12,9 @@ abstract class AuthLocalDataSource {
 }
 
 class AuthLocalDataSourceImpl implements AuthLocalDataSource {
-  final FlutterSecureStorage secureStorage;
+  final FlutterSecureStorage storage;
 
-  AuthLocalDataSourceImpl({required this.secureStorage});
+  AuthLocalDataSourceImpl({required this.storage});
 
   static const String _keyAccessToken = 'access_token';
   static const String _keyRefreshToken = 'refresh_token';
@@ -22,25 +22,25 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
 
   @override
   Future<String?> getAccessToken() async {
-    return await secureStorage.read(key: _keyAccessToken);
+    return await storage.read(key: _keyAccessToken);
   }
 
   @override
   Future<String?> getRefreshToken() async {
-    return await secureStorage.read(key: _keyRefreshToken);
+    return await storage.read(key: _keyRefreshToken);
   }
 
   @override
   Future<void> saveTokens({required String accessToken, required String refreshToken}) async {
-    await secureStorage.write(key: _keyAccessToken, value: accessToken);
-    await secureStorage.write(key: _keyRefreshToken, value: refreshToken);
+    await storage.write(key: _keyAccessToken, value: accessToken);
+    await storage.write(key: _keyRefreshToken, value: refreshToken);
   }
 
   @override
   Future<void> clearTokens() async {
-    await secureStorage.delete(key: _keyAccessToken);
-    await secureStorage.delete(key: _keyRefreshToken);
-    await secureStorage.delete(key: _keyCourierData);
+    await storage.delete(key: _keyAccessToken);
+    await storage.delete(key: _keyRefreshToken);
+    await storage.delete(key: _keyCourierData);
   }
 
   @override

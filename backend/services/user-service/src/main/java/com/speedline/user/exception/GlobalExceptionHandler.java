@@ -259,13 +259,22 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-        log.error("Erreur inattendue: ", ex);
+        log.error("❌ Erreur inattendue: ", ex);
+        log.error("   Type: {}", ex.getClass().getName());
+        log.error("   Message: {}", ex.getMessage());
+        if (ex.getCause() != null) {
+            log.error("   Cause: {}", ex.getCause().getMessage());
+        }
+        
+        // Retourner plus de détails pour le debug (à sécuriser en production)
+        String detailedMessage = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
+        
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse(
                         HttpStatus.INTERNAL_SERVER_ERROR.value(),
                         "INTERNAL_SERVER_ERROR",
-                        "Une erreur inattendue s'est produite. Veuillez réessayer plus tard."
+                        "Erreur serveur: " + detailedMessage
                 ));
     }
 }

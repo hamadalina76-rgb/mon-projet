@@ -11,6 +11,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 /**
  * DTO pour mettre à jour un profil livreur
  * Tous les champs sont optionnels - seuls les champs fournis sont mis à jour
@@ -53,4 +55,24 @@ public class CourierUpdateRequest {
     @Size(max = 100, message = "Le nom du titulaire ne doit pas dépasser 100 caractères")
     @Schema(description = "Nom du titulaire du compte bancaire", example = "Ahmed Benali")
     private String bankAccountHolder;
+
+    @Size(max = 50, message = "Le numéro d'identité ne doit pas dépasser 50 caractères")
+    @Schema(description = "Numéro de la carte d'identité", example = "AB123456")
+    private String identityNumber;
+
+    @Schema(description = "URL de l'image recto de la carte d'identité")
+    private String identityDocumentFrontImage;
+
+    @Schema(description = "URL de l'image verso de la carte d'identité")
+    private String identityDocumentBackImage;
+
+    @Size(max = 50, message = "Le numéro de permis ne doit pas dépasser 50 caractères")
+    @Schema(description = "Numéro du permis de conduire", example = "ABC-12345-6789")
+    private String drivingLicenseNumber;
+
+    @Schema(description = "URL de l'image du permis de conduire")
+    private String drivingLicenseImage;
+
+    @Schema(description = "Date d'expiration du permis de conduire", example = "2026-12-31")
+    private LocalDate drivingLicenseExpiry;
 }

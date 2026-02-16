@@ -68,6 +68,24 @@ public class Courier {
     // ==================== DOCUMENTS ====================
 
     /**
+     * Numéro de la carte d'identité nationale (CIN)
+     */
+    @Column(length = 50)
+    private String identityNumber;
+
+    /**
+     * URL de la photo recto de la CIN
+     */
+    @Column(length = 500)
+    private String identityDocumentFrontImage;
+
+    /**
+     * URL de la photo verso de la CIN
+     */
+    @Column(length = 500)
+    private String identityDocumentBackImage;
+
+    /**
      * Numéro du permis de conduire
      */
     @Column(length = 100)
@@ -83,12 +101,6 @@ public class Courier {
      * Date d'expiration du permis
      */
     private LocalDateTime drivingLicenseExpiry;
-
-    /**
-     * URL de la photo d'identité
-     */
-    @Column(length = 500)
-    private String identityDocumentImage;
 
     /**
      * URL de la photo de profil

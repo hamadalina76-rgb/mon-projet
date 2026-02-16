@@ -99,6 +99,65 @@ public class CourierController implements ICourierController {
         return ResponseEntity.ok(updated);
     }
 
+    // ==================== ENDPOINT AUTHENTIFIÉ ====================
+
+    /**
+     * Récupère le profil du livreur connecté
+     * Utilise le X-User-Id du header (ajouté par l'API Gateway depuis le JWT)
+     */
+    @GetMapping("/profile")
+    public ResponseEntity<CourierDTO> getMyProfile(@RequestHeader(value = "X-User-Id", required = true) Long userId) {
+        log.info("GET /couriers/profile - Récupération du profil pour userId: {}", userId);
+        CourierDTO courier = courierService.getCourierByUserId(userId);
+        return ResponseEntity.ok(courier);
+    }
+
+    /**
+     * Met à jour la documentation du livreur connecté (avec upload de fichiers)
+     * Utilise le X-User-Id du header (ajouté par l'API Gateway depuis le JWT)
+     */
+    @PutMapping(value = "/me", consumes = "multipart/form-data")
+    public ResponseEntity<CourierDTO> updateMyDocumentation(
+            @RequestHeader(value = "X-User-Id", required = true) Long userId,
+            @RequestParam(required = false) String vehicleType,
+            @RequestParam(required = false) String vehicleModel,
+            @RequestParam(required = false) String vehicleColor,
+            @RequestParam(required = false) String plateNumber,
+            @RequestParam(required = false) String idNumber,
+            @RequestParam(required = false) String licenseNumber,
+            @RequestParam(required = false) String licenseExpiryDate,
+            @RequestParam(required = false) String accountHolder,
+            @RequestParam(required = false) String accountNumber,
+            @RequestPart(required = false) org.springframework.web.multipart.MultipartFile idCardFront,
+            @RequestPart(required = false) org.springframework.web.multipart.MultipartFile idCardBack,
+            @RequestPart(required = false) org.springframework.web.multipart.MultipartFile licenseFront,
+            @RequestPart(required = false) org.springframework.web.multipart.MultipartFile licenseBack) {
+        
+        log.info("PUT /couriers/me - Mise à jour documentation pour userId: {}", userId);
+        log.info("Données reçues - vehicleType: {}, vehicleModel: {}, plateNumber: {}", 
+                 vehicleType, vehicleModel, plateNumber);
+        log.info("Fichiers reçus - idFront: {}, idBack: {}, licenseFront: {}, licenseBack: {}", 
+                 idCardFront != null ? idCardFront.getOriginalFilename() : "null",
+                 idCardBack != null ? idCardBack.getOriginalFilename() : "null",
+                 licenseFront != null ? licenseFront.getOriginalFilename() : "null",
+                 licenseBack != null ? licenseBack.getOriginalFilename() : "null");
+        
+        try {
+            CourierDTO updated = courierService.updateCourierDocumentationByUserId(
+                    userId, vehicleType, vehicleModel, vehicleColor, plateNumber,
+                    idNumber, licenseNumber, licenseExpiryDate,
+                    accountHolder, accountNumber,
+                    idCardFront, idCardBack, licenseFront, licenseBack);
+            
+            log.info("✅ Documentation mise à jour avec succès pour userId: {}", userId);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            log.error("❌ Erreur lors de la mise à jour de la documentation pour userId {}: {}", 
+                     userId, e.getMessage(), e);
+            throw e;
+        }
+    }
+
     // ==================== ENDPOINTS INTERNES ====================
 
     /**

@@ -33,7 +33,7 @@ dependencies:
   google_maps_flutter: ^2.5.3
   flutter_polyline_points: ^3.1.0
   geocoding: ^4.0.0
-  background_location: ^0.13.0
+  background_location: ^0.13.2
   location: ^8.0.1
   
   # NAVIGATION
@@ -108,7 +108,7 @@ dependencies:
   flutter_webrtc: ^1.2.1
   
   # DEEP LINKS
-  uni_links: ^0.5.1
+  app_links: ^6.3.4
   
   # TESTING
   mockito: ^5.4.4

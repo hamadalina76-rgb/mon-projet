@@ -30,7 +30,14 @@ public class JwtUtil {
     }
 
     public String extractUserId(String token) {
-        return extractAllClaims(token).getSubject();
+        Claims claims = extractAllClaims(token);
+        // Try to get userId from claims first (numeric ID)
+        Object userIdObj = claims.get("userId");
+        if (userIdObj != null) {
+            return String.valueOf(userIdObj);
+        }
+        // Fallback to subject if userId not present
+        return claims.getSubject();
     }
 
     public String extractRole(String token) {
