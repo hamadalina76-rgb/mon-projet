@@ -66,6 +66,15 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Courier> fetchCourierProfile() async {
+    final response = await remoteDataSource.getCourierProfile();
+    final courier = CourierModel.fromJson(response);
+    // persist locally for offline access
+    await localDataSource.saveCourierData(courier.toJson());
+    return courier;
+  }
+
+  @override
   Future<Courier> verifyPhone({required String phone, required String code}) async {
     final response = await remoteDataSource.verifyPhone(phone: phone, code: code);
     final courier = CourierModel.fromJson(response['courier']);

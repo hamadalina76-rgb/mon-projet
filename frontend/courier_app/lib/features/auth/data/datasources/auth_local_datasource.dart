@@ -1,4 +1,5 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:convert';
 
 /// Local data source for authentication
 /// Manages secure storage of tokens and user data
@@ -45,12 +46,25 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
 
   @override
   Future<Map<String, dynamic>?> getCourierData() async {
-    // TODO: Implement JSON parsing
-    return null;
+    final raw = await storage.read(key: _keyCourierData);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final Map<String, dynamic> data = json.decode(raw) as Map<String, dynamic>;
+      return data;
+    } catch (e) {
+      // If parsing fails, clear the invalid value and return null
+      await storage.delete(key: _keyCourierData);
+      return null;
+    }
   }
 
   @override
   Future<void> saveCourierData(Map<String, dynamic> data) async {
-    // TODO: Implement JSON serialization
+    try {
+      final raw = json.encode(data);
+      await storage.write(key: _keyCourierData, value: raw);
+    } catch (e) {
+      print('❌ Failed to save courier data locally: $e');
+    }
   }
 }
