@@ -31,6 +31,7 @@ class UserModel with _$UserModel {
       lastName: lastName,
       phone: phoneNumber ?? phone ?? '',
       role: role,
+      profilePicture: profilePicture,
     );
   }
 
@@ -43,6 +44,7 @@ class UserModel with _$UserModel {
       lastName: user.lastName,
       phoneNumber: user.phone,
       role: user.role,
+      profilePicture: user.profilePicture,
     );
   }
 }

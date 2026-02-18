@@ -1,8 +1,11 @@
 package com.speedline.auth.controller;
 
 import com.speedline.auth.domain.User;
+import com.speedline.auth.dto.request.UpdateUserRequest;
 import com.speedline.auth.dto.response.UserInfoResponse;
 import com.speedline.auth.repository.UserRepository;
+import com.speedline.auth.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -13,12 +16,13 @@ import org.springframework.web.bind.annotation.*;
  * Endpoints internes pour communication inter-services
  */
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/api/v1/auth/users")
 @RequiredArgsConstructor
 @Slf4j
 public class UserController {
 
     private final UserRepository userRepository;
+    private final UserService userService;
 
     /**
      * Récupérer les informations d'un utilisateur par son ID
@@ -98,5 +102,17 @@ public class UserController {
                 .map(u -> String.format("ID: %d, Email: %s, Name: %s %s, Role: %s", 
                         u.getId(), u.getEmail(), u.getFirstName(), u.getLastName(), u.getRole()))
                 .toList());
+    }
+    
+    /**
+     * Met à jour le profil utilisateur (endpoint interne pour Feign)
+     */
+    @PutMapping("/{userId}")
+    public ResponseEntity<UserInfoResponse> updateUserProfile(
+            @PathVariable Long userId,
+            @Valid @RequestBody UpdateUserRequest request) {
+        log.info("PUT /users/{} - Mise à jour du profil (internal)", userId);
+        UserInfoResponse response = userService.updateUserProfile(userId, request);
+        return ResponseEntity.ok(response);
     }
 }

@@ -7,6 +7,7 @@ import '../models/register_request.dart';
 import '../models/forgot_password_request.dart';
 import '../models/verify_otp_request.dart';
 import '../models/reset_password_request.dart';
+import '../models/social_login_request.dart';
 import '../models/auth_response.dart';
 import '../models/user_model.dart';
 import '../models/otp_response.dart';
@@ -73,6 +74,12 @@ abstract class AuthRemoteDataSource {
   /// @throws AuthException si token invalide
   /// @throws ServerException si erreur serveur
   Future<UserModel> getCurrentUser();
+
+  /// Connexion via fournisseur social (Google/Facebook)
+  /// 
+  /// @throws AuthException si token social invalide
+  /// @throws ServerException si erreur serveur
+  Future<AuthResponse> socialLogin(SocialLoginRequest request);
 }
 
 /// Implémentation de AuthRemoteDataSource avec Dio
@@ -255,6 +262,27 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       } else {
         throw ServerException(
           message: 'Récupération du profil échouée',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    }
+  }
+
+  @override
+  Future<AuthResponse> socialLogin(SocialLoginRequest request) async {
+    try {
+      final response = await apiClient.dio.post(
+        ApiEndpoints.AUTH_SOCIAL_LOGIN,
+        data: request.toJson(),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        return AuthResponse.fromJson(response.data);
+      } else {
+        throw ServerException(
+          message: 'Connexion sociale échouée',
           statusCode: response.statusCode,
         );
       }

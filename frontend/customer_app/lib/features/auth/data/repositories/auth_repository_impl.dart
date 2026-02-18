@@ -11,6 +11,7 @@ import '../models/register_request.dart';
 import '../models/forgot_password_request.dart';
 import '../models/verify_otp_request.dart';
 import '../models/reset_password_request.dart';
+import '../models/social_login_request.dart';
 
 /// Implémentation du repository d'authentification (Data Layer)
 /// 
@@ -242,5 +243,39 @@ class AuthRepositoryImpl implements AuthRepository {
   /// Convertit un UserModel (data) en User (domain entity)
   User _mapUserModelToEntity(userModel) {
     return userModel.toEntity();
+  }
+
+  @override
+  Future<Either<Failure, User>> socialLogin(SocialLoginRequest request) async {
+    try {
+      // 1. Appel API (connexion sociale)
+      final authResponse = await remoteDataSource.socialLogin(request);
+
+      // 2. Sauvegarder les tokens
+      await localDataSource.saveTokens(
+        token: authResponse.token,
+        refreshToken: authResponse.refreshToken,
+      );
+
+      // 3. Sauvegarder l'utilisateur en cache
+      await localDataSource.saveUser(authResponse.user);
+
+      // 4. Convertir UserModel → User (Entity)
+      final user = _mapUserModelToEntity(authResponse.user);
+
+      return Right(user);
+    } on AuthException catch (e) {
+      return Left(AuthFailure(e.message));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } on TimeoutException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } on CacheException catch (e) {
+      return Left(CacheFailure(e.message));
+    } catch (e) {
+      return Left(UnknownFailure('Erreur inattendue: $e'));
+    }
   }
 }

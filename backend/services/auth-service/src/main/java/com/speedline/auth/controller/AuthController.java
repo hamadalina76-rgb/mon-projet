@@ -1,9 +1,14 @@
 package com.speedline.auth.controller;
 
+import com.speedline.auth.domain.User;
 import com.speedline.auth.domain.Role;
+import com.speedline.auth.domain.User;
 import com.speedline.auth.dto.request.*;
 import com.speedline.auth.dto.response.AuthResponse;
 import com.speedline.auth.dto.response.OtpResponse;
+import com.speedline.auth.dto.response.UserInfoResponse;
+import com.speedline.auth.repository.UserRepository;
+import com.speedline.auth.security.JwtTokenProvider;
 import com.speedline.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +40,8 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
 
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> register(@Valid @RequestBody RegisterRequest request) {
@@ -162,6 +169,43 @@ public class AuthController {
         OtpResponse response = authService.resendOtp(email);
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * Get current authenticated user's information
+     * Requires JWT token in Authorization header
+     */
+    @GetMapping("/me")
+    public ResponseEntity<UserInfoResponse> getCurrentUser(@RequestHeader("Authorization") String authHeader) {
+        log.info("GET /auth/me - Getting current user info");
+
+        // Extract JWT token from Bearer header
+        String token = authHeader.replace("Bearer ", "");
+        Long userId = jwtTokenProvider.getUserIdFromToken(token);
+
+        log.info("Extracted userId {} from token", userId);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> {
+                    log.error("User not found with id: {}", userId);
+                    return new RuntimeException("User not found with id: " + userId);
+                });
+
+        log.info("User found: {} {} ({})", user.getFirstName(), user.getLastName(), user.getEmail());
+
+        UserInfoResponse response = UserInfoResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phoneNumber(user.getPhoneNumber())
+                .profilePicture(user.getProfilePicture())
+                .role(user.getRole().name())
+                .build();
+
+        log.info("Returning current user info: {}", response);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of("status", "UP", "service", "auth-service"));

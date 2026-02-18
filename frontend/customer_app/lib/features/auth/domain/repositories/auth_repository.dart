@@ -7,6 +7,7 @@ import '../../data/models/register_request.dart';
 import '../../data/models/forgot_password_request.dart';
 import '../../data/models/verify_otp_request.dart';
 import '../../data/models/reset_password_request.dart';
+import '../../data/models/social_login_request.dart';
 
 /// Interface du repository d'authentification (Domain Layer)
 /// 
@@ -71,4 +72,10 @@ abstract class AuthRepository {
   /// 
   /// @returns true si un token existe
   Future<bool> isLoggedIn();
+
+  /// Connexion via fournisseur social (Google/Facebook)
+  /// 
+  /// @returns Right(User) si authentification réussie
+  /// @returns Left(Failure) si erreur
+  Future<Either<Failure, User>> socialLogin(SocialLoginRequest request);
 }

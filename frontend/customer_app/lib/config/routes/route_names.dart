@@ -8,4 +8,17 @@ class RouteNames {
   static const String forgotPassword = '/forgot-password';
   static const String verifyOtp = '/verify-otp';
   static const String resetPassword = '/reset-password';
+  
+  // Post-login
+  static const String enableLocation = '/enable-location';
+  
+  // Main App
+  static const String explore = '/explore';
+  static const String search = '/search';
+  static const String orders = '/orders';
+  static const String profile = '/profile';
+  
+  // Profile Settings
+  static const String settings = '/settings';
+  static const String editProfile = '/edit-profile';
 }

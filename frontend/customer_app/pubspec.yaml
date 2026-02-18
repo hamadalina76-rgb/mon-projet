@@ -57,6 +57,10 @@ dependencies:
   # Payment
   flutter_stripe: ^10.1.0
   
+  # Social Authentication
+  google_sign_in: ^6.2.1
+  flutter_facebook_auth: ^7.0.1
+  
   # Utilities
   intl: ^0.20.0
   equatable: ^2.0.5
@@ -100,6 +104,9 @@ dev_dependencies:
   # Testing
   mockito: ^5.4.4
   flutter_lints: ^3.0.1
+  
+  # App Icon Generator
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -111,3 +118,11 @@ flutter:
     - .env.development
     - .env.staging
     - .env.production
+
+# Flutter Launcher Icons Configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/speedline_logo.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/speedline_logo.png"
