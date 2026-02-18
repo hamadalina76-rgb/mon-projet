@@ -6,6 +6,8 @@ abstract class AuthRepository {
   Future<void> logout();
   Future<bool> isLoggedIn();
   Future<Courier?> getCurrentCourier();
+  /// Fetch the latest courier profile from the backend and persist locally
+  Future<Courier> fetchCourierProfile();
   Future<Courier> verifyPhone({required String phone, required String code});
   Future<Courier> updateProfile({required Map<String, dynamic> data});
   Future<void> uploadDocumentation({

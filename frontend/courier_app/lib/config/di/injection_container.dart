@@ -11,7 +11,7 @@ final getIt = GetIt.instance;
 
 Future<void> setupDependencies() async {
   print('🔧 Setting up dependencies...');
-
+  
   // Core
   getIt.registerLazySingleton<ApiClient>(() => ApiClient());
   getIt.registerLazySingleton<FlutterSecureStorage>(

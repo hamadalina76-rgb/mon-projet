@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 
 /**
  * Implémentation du service de gestion des livreurs
- * 
+ *
  * Gère les opérations liées aux profils livreurs :
  * - Consultation et mise à jour de profil
  * - Gestion de la disponibilité
@@ -42,17 +42,17 @@ public class CourierServiceImpl implements CourierService {
     private final AuthServiceClient authServiceClient;
     private final String uploadBaseDir;
 
-    public CourierServiceImpl(CourierRepository courierRepository, 
+    public CourierServiceImpl(CourierRepository courierRepository,
                              AuthServiceClient authServiceClient,
                              @Value("${file.upload-dir}") String uploadBaseDir) {
         this.courierRepository = courierRepository;
         this.authServiceClient = authServiceClient;
-        
+
         // Convert relative path to absolute path
         java.io.File uploadDir = new java.io.File(uploadBaseDir);
         this.uploadBaseDir = uploadDir.getAbsolutePath();
         log.info("📂 Upload directory configured: {}", this.uploadBaseDir);
-        
+
         // Create base directory if it doesn't exist
         if (!uploadDir.exists()) {
             boolean created = uploadDir.mkdirs();
@@ -189,7 +189,7 @@ public class CourierServiceImpl implements CourierService {
     @Transactional
     public CourierDTO updateCourierByUserId(Long userId, CourierUpdateRequest request) {
         log.info("Mise à jour du livreur par userId: {}", userId);
-        
+
         // Trouver le livreur par userId (auth-service ID)
         final Courier courier = courierRepository.findByUserId(userId)
                 .orElseThrow(() -> CourierNotFoundException.byUserId(userId));
@@ -233,10 +233,10 @@ public class CourierServiceImpl implements CourierService {
                 .ifPresent(expiry -> courier.setDrivingLicenseExpiry(expiry.atStartOfDay()));
 
         // Marquer la documentation comme complète si tous les documents requis sont fournis
-        if (courier.getIdentityNumber() != null && 
-            courier.getIdentityDocumentFrontImage() != null && 
-            courier.getIdentityDocumentBackImage() != null && 
-            courier.getDrivingLicenseNumber() != null && 
+        if (courier.getIdentityNumber() != null &&
+            courier.getIdentityDocumentFrontImage() != null &&
+            courier.getIdentityDocumentBackImage() != null &&
+            courier.getDrivingLicenseNumber() != null &&
             courier.getDrivingLicenseImage() != null) {
             courier.setDocumentsVerified(true);
         }
@@ -257,9 +257,9 @@ public class CourierServiceImpl implements CourierService {
             org.springframework.web.multipart.MultipartFile idCardBack,
             org.springframework.web.multipart.MultipartFile licenseFront,
             org.springframework.web.multipart.MultipartFile licenseBack) {
-        
+
         log.info("Mise à jour de la documentation complète pour userId: {}", userId);
-        
+
         // Trouver le livreur par userId
         Courier courier = courierRepository.findByUserId(userId)
                 .orElseThrow(() -> CourierNotFoundException.byUserId(userId));
@@ -313,7 +313,7 @@ public class CourierServiceImpl implements CourierService {
 
         // Traiter les fichiers uploadés et les sauvegarder sur le disque
         String uploadDir = "couriers/" + userId + "/";
-        
+
         if (idCardFront != null && !idCardFront.isEmpty()) {
             String savedPath = saveUploadedFile(idCardFront, uploadDir, "id_front_");
             courier.setIdentityDocumentFrontImage(savedPath);
@@ -336,10 +336,10 @@ public class CourierServiceImpl implements CourierService {
         }
 
         // Marquer la documentation comme complète si tous les documents requis sont présents
-        if (courier.getIdentityNumber() != null && 
-            courier.getIdentityDocumentFrontImage() != null && 
-            courier.getIdentityDocumentBackImage() != null && 
-            courier.getDrivingLicenseNumber() != null && 
+        if (courier.getIdentityNumber() != null &&
+            courier.getIdentityDocumentFrontImage() != null &&
+            courier.getIdentityDocumentBackImage() != null &&
+            courier.getDrivingLicenseNumber() != null &&
             courier.getDrivingLicenseImage() != null &&
             courier.getBankAccountHolder() != null &&
             courier.getBankIban() != null) {
@@ -388,7 +388,7 @@ public class CourierServiceImpl implements CourierService {
         }
 
         courier = courierRepository.save(courier);
-        log.info("UPDATE - Disponibilité livreur {} mise à jour: online={}, available={}", 
+        log.info("UPDATE - Disponibilité livreur {} mise à jour: online={}, available={}",
                 courierId, request.getIsOnline(), request.getIsAvailable());
 
         return mapToDTO(courier);
@@ -417,11 +417,11 @@ public class CourierServiceImpl implements CourierService {
 
         Courier courier = findCourierById(courierId);
         courier.goOffline();
-        
+
         if (courier.getCurrentDeliveryId() == null) {
             courier.setStatus(CourierStatus.OFFLINE);
         }
-        
+
         courier = courierRepository.save(courier);
         log.info("UPDATE - Livreur {} passé hors ligne", courierId);
 
@@ -432,11 +432,11 @@ public class CourierServiceImpl implements CourierService {
     @Transactional
     public void markAsBusy(Long courierId, Long deliveryId) {
         log.info("Marquage du livreur {} comme occupé (livraison {})", courierId, deliveryId);
-        
+
         Courier courier = findCourierById(courierId);
         courier.startDelivery(deliveryId);
         courierRepository.save(courier);
-        
+
         log.info("UPDATE - Livreur {} marqué comme occupé pour livraison {}", courierId, deliveryId);
     }
 
@@ -444,15 +444,15 @@ public class CourierServiceImpl implements CourierService {
     @Transactional
     public void markAsAvailable(Long courierId) {
         log.info("Marquage du livreur {} comme disponible", courierId);
-        
+
         Courier courier = findCourierById(courierId);
         courier.setCurrentDeliveryId(null);
         courier.setIsAvailable(true);
-        
+
         if (Boolean.TRUE.equals(courier.getIsOnline())) {
             courier.setStatus(CourierStatus.AVAILABLE);
         }
-        
+
         courierRepository.save(courier);
         log.info("UPDATE - Livreur {} marqué comme disponible", courierId);
     }
@@ -794,6 +794,15 @@ public class CourierServiceImpl implements CourierService {
                 .vehicleNumber(courier.getVehicleNumber())
                 .vehicleModel(courier.getVehicleModel())
                 .vehicleColor(courier.getVehicleColor())
+                // Documentation
+                .identityNumber(courier.getIdentityNumber())
+                .identityDocumentFrontImage(courier.getIdentityDocumentFrontImage())
+                .identityDocumentBackImage(courier.getIdentityDocumentBackImage())
+                .drivingLicenseNumber(courier.getDrivingLicenseNumber())
+                .drivingLicenseImage(courier.getDrivingLicenseImage())
+                .drivingLicenseExpiry(courier.getDrivingLicenseExpiry())
+                .bankAccountHolder(courier.getBankAccountHolder())
+                .bankIban(courier.getBankIban())
                 // Statut
                 .status(courier.getStatus())
                 .isAvailable(courier.getIsAvailable())
@@ -848,19 +857,19 @@ public class CourierServiceImpl implements CourierService {
 
     /**
      * Sauvegarde un fichier uploadé sur le disque
-     * 
+     *
      * @param file Le fichier à sauvegarder
      * @param directory Le répertoire de destination relatif (ex: "couriers/123/")
      * @param prefix Le préfixe du nom de fichier (ex: "id_front_")
      * @return Le chemin relatif du fichier sauvegardé (pour stockage en DB et accès via URL)
      */
-    private String saveUploadedFile(org.springframework.web.multipart.MultipartFile file, 
+    private String saveUploadedFile(org.springframework.web.multipart.MultipartFile file,
                                     String directory, String prefix) {
         try {
             // Construire le chemin absolu complet
             java.io.File uploadBaseDirFile = new java.io.File(uploadBaseDir);
             java.io.File targetDir = new java.io.File(uploadBaseDirFile, directory);
-            
+
             // Créer le répertoire s'il n'existe pas
             if (!targetDir.exists()) {
                 boolean created = targetDir.mkdirs();
@@ -879,13 +888,13 @@ public class CourierServiceImpl implements CourierService {
                 extension = originalFilename.substring(originalFilename.lastIndexOf("."));
             }
             String filename = prefix + timestamp + extension;
-            
+
             // Créer le fichier de destination
             java.io.File destinationFile = new java.io.File(targetDir, filename);
-            
+
             // Sauvegarder le fichier
             file.transferTo(destinationFile);
-            
+
             // Retourner le chemin pour accès via URL (avec préfixe /uploads/)
             // Les fichiers seront accessibles via: http://localhost:8082/uploads/couriers/123/file.jpg
             String urlPath = "/uploads/" + directory + filename;
@@ -893,9 +902,9 @@ public class CourierServiceImpl implements CourierService {
             log.info("   📍 Chemin absolu: {}", destinationFile.getAbsolutePath());
             log.info("   🌐 URL d'accès: {}", urlPath);
             log.info("   📊 Taille: {} bytes", file.getSize());
-            
+
             return urlPath;
-            
+
         } catch (java.io.IOException e) {
             log.error("❌ Erreur lors de la sauvegarde du fichier: {}", e.getMessage(), e);
             throw new RuntimeException("Échec de la sauvegarde du fichier: " + e.getMessage(), e);

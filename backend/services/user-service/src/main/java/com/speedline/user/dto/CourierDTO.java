@@ -56,6 +56,31 @@ public class CourierDTO {
     @Schema(description = "Couleur du véhicule", example = "Noir")
     private String vehicleColor;
     
+    // Informations de documentation
+    @Schema(description = "Numéro de carte d'identité", example = "AB123456")
+    private String identityNumber;
+
+    @Schema(description = "URL de la photo recto de la CIN")
+    private String identityDocumentFrontImage;
+
+    @Schema(description = "URL de la photo verso de la CIN")
+    private String identityDocumentBackImage;
+
+    @Schema(description = "Numéro du permis de conduire", example = "XYZ-12345-6789")
+    private String drivingLicenseNumber;
+
+    @Schema(description = "URL de l'image du permis de conduire")
+    private String drivingLicenseImage;
+
+    @Schema(description = "Date d'expiration du permis")
+    private LocalDateTime drivingLicenseExpiry;
+
+    @Schema(description = "Nom du titulaire du compte bancaire", example = "Ahmed Benali")
+    private String bankAccountHolder;
+
+    @Schema(description = "IBAN du compte bancaire", example = "FR76 1234 5678 9012 3456 7890 123")
+    private String bankIban;
+    
     // Statut et disponibilité
     @Schema(description = "Statut du livreur", example = "AVAILABLE")
     private CourierStatus status;

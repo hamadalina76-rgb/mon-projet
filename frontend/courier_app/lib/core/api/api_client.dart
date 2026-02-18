@@ -1,5 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import '../constants/api_constants.dart';
 
 import '../constants/api_constants.dart';
 
@@ -19,14 +22,14 @@ class ApiClient {
         },
       ),
     );
-    
+
     // Add auth interceptor to include JWT token in requests
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           // Get token from secure storage
           final token = await _storage.read(key: 'access_token');
-          
+
           if (token != null && token.isNotEmpty) {
             // Add Authorization header
             options.headers['Authorization'] = 'Bearer $token';
@@ -34,7 +37,7 @@ class ApiClient {
           } else {
             print('⚠️ No token found for request: ${options.path}');
           }
-          
+
           return handler.next(options);
         },
         onError: (error, handler) async {
@@ -47,7 +50,7 @@ class ApiClient {
         },
       ),
     );
-    
+
     // Add logging interceptor for debugging
     dio.interceptors.add(
       LogInterceptor(

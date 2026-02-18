@@ -9,9 +9,12 @@ import 'package:dio/dio.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../config/di/injection_container.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../domain/entities/courier.dart';
 
 class DocumentationScreen extends StatefulWidget {
-  const DocumentationScreen({super.key});
+  final Courier? existingCourier;
+  
+  const DocumentationScreen({super.key, this.existingCourier});
 
   @override
   State<DocumentationScreen> createState() => _DocumentationScreenState();
@@ -21,6 +24,9 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
   final _formKey = GlobalKey<FormState>();
   int _currentStep = 0;
   bool _isSubmitting = false;
+  bool _isEditMode = false;
+  bool _isLoading = true;
+  Courier? _currentCourier;
   
   // Vehicle controllers
   final _vehicleModelController = TextEditingController();
@@ -43,6 +49,139 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
   // Bank controllers
   final _accountHolderController = TextEditingController();
   final _accountNumberController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCourierData();
+  }
+
+  Future<void> _loadCourierData() async {
+    try {
+      // First check if courier was passed as parameter
+      if (widget.existingCourier != null) {
+        _currentCourier = widget.existingCourier;
+      } else {
+        // Try to fetch latest courier profile from backend (/couriers/profile).
+        if (!getIt.isRegistered<AuthRepository>()) {
+          await setupDependencies();
+        }
+        final authRepository = getIt<AuthRepository>();
+        try {
+          _currentCourier = await authRepository.fetchCourierProfile();
+        } catch (e) {
+          // If remote fetch fails, fall back to locally saved courier data
+          print('⚠️ Remote profile fetch failed, falling back to local: $e');
+          _currentCourier = await authRepository.getCurrentCourier();
+        }
+      }
+
+      // If we have courier data, populate the form
+      if (_currentCourier != null) {
+        // Treat any loaded courier as edit mode so user can update their documentation
+        _isEditMode = true;
+        _populateFormWithExistingData();
+      }
+    } catch (e) {
+      print('⚠️ Could not load courier data: $e');
+      // Continue with empty form for new documentation
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _populateFormWithExistingData() {
+    if (_currentCourier == null) return;
+
+    // Vehicle information
+    if (_currentCourier!.vehicleType != null) {
+      _selectedVehicleType = _mapBackendVehicleTypeToUi(_currentCourier!.vehicleType!);
+    }
+    if (_currentCourier!.vehicleModel != null) {
+      _vehicleModelController.text = _currentCourier!.vehicleModel!;
+    }
+    if (_currentCourier!.vehicleColor != null) {
+      _vehicleColorController.text = _currentCourier!.vehicleColor!;
+    }
+    if (_currentCourier!.vehicleNumber != null) {
+      _plateNumberController.text = _currentCourier!.vehicleNumber!;
+    }
+
+    // ID information
+    if (_currentCourier!.identityNumber != null) {
+      _idNumberController.text = _currentCourier!.identityNumber!;
+    }
+
+    // License information
+    if (_currentCourier!.drivingLicenseNumber != null) {
+      _licenseNumberController.text = _currentCourier!.drivingLicenseNumber!;
+    }
+    if (_currentCourier!.drivingLicenseExpiry != null) {
+      _expiryDateController.text = _currentCourier!.drivingLicenseExpiry!;
+    }
+
+    // Bank information
+    if (_currentCourier!.bankAccountHolder != null) {
+      _accountHolderController.text = _currentCourier!.bankAccountHolder!;
+    }
+    if (_currentCourier!.bankIban != null) {
+      _accountNumberController.text = _currentCourier!.bankIban!;
+    }
+
+    print('✅ Form populated with existing data (Edit Mode: $_isEditMode)');
+  }
+
+  String _mapBackendVehicleTypeToUi(String backendType) {
+    switch (backendType.toUpperCase()) {
+      case 'ELECTRIC_BICYCLE':
+        return 'ebike';
+      case 'BICYCLE':
+        return 'bicycle';
+      case 'MOTORCYCLE':
+        return 'motorcycle';
+      case 'CAR':
+        return 'car';
+      case 'WALKING':
+        return 'walking';
+      default:
+        return 'bicycle';
+    }
+  }
+
+  String _mapUiVehicleTypeToBackend(String uiType) {
+    switch (uiType) {
+      case 'ebike':
+        return 'ELECTRIC_BICYCLE';
+      case 'bicycle':
+        return 'BICYCLE';
+      case 'motorcycle':
+        return 'MOTORCYCLE';
+      case 'car':
+        return 'CAR';
+      case 'walking':
+        return 'WALKING';
+      default:
+        return 'BICYCLE';
+    }
+  }
+
+  String? _toIsoDate(String input) {
+    final trimmed = input.trim();
+    if (trimmed.isEmpty) return null;
+    final parts = trimmed.split('/');
+    if (parts.length == 3) {
+      final mm = parts[0].padLeft(2, '0');
+      final dd = parts[1].padLeft(2, '0');
+      final yyyy = parts[2];
+      return '$yyyy-$mm-$dd';
+    }
+    // assume already ISO-like
+    return trimmed;
+  }
 
   @override
   void dispose() {
@@ -131,8 +270,12 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
           _currentStep++;
         });
       } else if (_currentStep == 1) {
-        // ID Card step - check images
-        if (_uploadedIdFront == null || _uploadedIdBack == null) {
+        // ID Card step - check images (only required if not in edit mode or no existing images)
+        final hasExistingImages = _isEditMode && 
+                                  _currentCourier?.identityDocumentFrontImage != null &&
+                                  _currentCourier?.identityDocumentBackImage != null;
+        
+        if (!hasExistingImages && (_uploadedIdFront == null || _uploadedIdBack == null)) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Please upload both sides of your ID card'),
@@ -145,8 +288,11 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
           _currentStep++;
         });
       } else if (_currentStep == 2) {
-        // License step - check images
-        if (_uploadedLicenseFront == null) {
+        // License step - check images (only required if not in edit mode or no existing image)
+        final hasExistingLicense = _isEditMode && 
+                                    _currentCourier?.drivingLicenseImage != null;
+        
+        if (!hasExistingLicense && _uploadedLicenseFront == null) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Please upload your driving license'),
@@ -206,14 +352,36 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
       }
       final authRepository = getIt<AuthRepository>();
 
-      // Upload documentation
-      await authRepository.uploadDocumentation(
-        documentData: documentData,
-        filePaths: filePaths,
-      );
+      if (_isEditMode) {
+        // Update profile fields via /couriers/profile (more reliable in current backend setup)
+        final updateData = {
+          'vehicleType': _mapUiVehicleTypeToBackend(_selectedVehicleType),
+          'vehicleNumber': _plateNumberController.text.trim(),
+          'vehicleModel': _vehicleModelController.text.trim(),
+          'vehicleColor': _vehicleColorController.text.trim(),
+          'identityNumber': _idNumberController.text.trim(),
+          'drivingLicenseNumber': _licenseNumberController.text.trim(),
+          'drivingLicenseExpiry': _toIsoDate(_expiryDateController.text),
+          'bankAccountHolder': _accountHolderController.text.trim(),
+          'bankIban': _accountNumberController.text.trim(),
+        };
+
+        updateData.removeWhere((key, value) => value == null || (value is String && value.isEmpty));
+        await authRepository.updateProfile(data: updateData);
+      } else {
+        // New submission still uses multipart endpoint for document uploads
+        await authRepository.uploadDocumentation(
+          documentData: documentData,
+          filePaths: filePaths,
+        );
+      }
 
       if (mounted) {
-        // Show success dialog
+        // Show success dialog with appropriate message
+        final successMessage = _isEditMode 
+            ? 'Documentation updated successfully!' 
+            : 'Documentation submitted successfully!';
+        
         await showDialog(
           context: context,
           barrierDismissible: false,
@@ -229,9 +397,9 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                   Text('Success'),
                 ],
               ),
-              content: const Text(
-                'Documentation submitted successfully!',
-                style: TextStyle(fontSize: 16),
+              content: Text(
+                successMessage,
+                style: const TextStyle(fontSize: 16),
               ),
               actions: [
                 ElevatedButton(
@@ -334,6 +502,28 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: AppColors.primary),
+              SizedBox(height: 16.h),
+              Text(
+                'Loading documentation...',
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final stepTitles = [
       'Vehicle Information',
       'ID Card Details',
@@ -352,13 +542,19 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
         ),
         title: Column(
           children: [
-            Text(
-              stepTitles[_currentStep],
-              style: TextStyle(
-                fontSize: 20.sp,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  stepTitles[_currentStep],
+                  style: TextStyle(
+                    fontSize: 20.sp,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
             ),
             Text(
               'Step ${_currentStep + 1} of 4',
@@ -475,7 +671,9 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        _currentStep == 3 ? 'COMPLETE' : 'NEXT',
+                        _currentStep == 3 
+                            ? (_isEditMode ? 'UPDATE' : 'COMPLETE')
+                            : 'NEXT',
                         style: TextStyle(
                           fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
@@ -611,6 +809,9 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
 
   // Step 2: ID Card Details
   Widget _buildIDCardStep() {
+    final hasExistingIdFront = _currentCourier?.identityDocumentFrontImage != null;
+    final hasExistingIdBack = _currentCourier?.identityDocumentBackImage != null;
+    
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(24.w),
@@ -638,24 +839,56 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
           ),
           SizedBox(height: 32.h),
           _buildSectionTitle('Upload ID Card'),
+          if (_isEditMode && (hasExistingIdFront || hasExistingIdBack)) ...[
+            SizedBox(height: 8.h),
+            Container(
+              padding: EdgeInsets.all(12.w),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue[700], size: 20.sp),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      'Documents already uploaded. Upload new ones to replace.',
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: Colors.blue[900],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           SizedBox(height: 16.h),
           Row(
             children: [
               Expanded(
                 child: _buildImageUpload(
                   label: 'Front Side',
-                  subtitle: 'Clear photo of front',
+                  subtitle: hasExistingIdFront && _uploadedIdFront == null 
+                      ? '✓ Already uploaded' 
+                      : 'Clear photo of front',
                   imageFile: _uploadedIdFront,
                   onTap: () => _pickImage(true, isLicense: false),
+                  hasExisting: hasExistingIdFront && _uploadedIdFront == null,
                 ),
               ),
               SizedBox(width: 16.w),
               Expanded(
                 child: _buildImageUpload(
                   label: 'Back Side',
-                  subtitle: 'Clear photo of back',
+                  subtitle: hasExistingIdBack && _uploadedIdBack == null 
+                      ? '✓ Already uploaded' 
+                      : 'Clear photo of back',
                   imageFile: _uploadedIdBack,
                   onTap: () => _pickImage(false, isLicense: false),
+                  hasExisting: hasExistingIdBack && _uploadedIdBack == null,
                 ),
               ),
             ],
@@ -667,6 +900,8 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
 
   // Step 3: License Details  
   Widget _buildLicenseStep() {
+    final hasExistingLicense = _currentCourier?.drivingLicenseImage != null;
+    
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(24.w),
@@ -786,6 +1021,32 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
               letterSpacing: 0.5,
             ),
           ),
+          if (_isEditMode && hasExistingLicense) ...[
+            SizedBox(height: 8.h),
+            Container(
+              padding: EdgeInsets.all(12.w),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue[700], size: 20.sp),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      'License already uploaded. Upload new one to replace.',
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: Colors.blue[900],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           SizedBox(height: 16.h),
 
           // Photo Upload Box
@@ -798,7 +1059,11 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                 color: Colors.grey[50],
                 borderRadius: BorderRadius.circular(16.r),
                 border: Border.all(
-                  color: _uploadedLicenseFront != null ? Colors.green[300]! : Colors.grey[300]!,
+                  color: _uploadedLicenseFront != null 
+                      ? Colors.green[300]! 
+                      : (hasExistingLicense && _uploadedLicenseFront == null)
+                          ? Colors.blue[300]!
+                          : Colors.grey[300]!,
                   width: 2,
                   style: BorderStyle.solid,
                 ),
@@ -838,27 +1103,37 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                         Container(
                           padding: EdgeInsets.all(16.w),
                           decoration: BoxDecoration(
-                            color: Colors.red[50],
+                            color: hasExistingLicense 
+                                ? Colors.blue[50] 
+                                : Colors.red[50],
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            Icons.add_a_photo,
-                            color: AppColors.primary,
+                            hasExistingLicense ? Icons.check_circle : Icons.add_a_photo,
+                            color: hasExistingLicense 
+                                ? Colors.blue[700]
+                                : AppColors.primary,
                             size: 40.sp,
                           ),
                         ),
                         SizedBox(height: 16.h),
                         Text(
-                          'Upload Front Side',
+                          hasExistingLicense 
+                              ? 'Already Uploaded' 
+                              : 'Upload Front Side',
                           style: TextStyle(
                             fontSize: 18.sp,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black,
+                            color: hasExistingLicense 
+                                ? Colors.blue[700]
+                                : Colors.black,
                           ),
                         ),
                         SizedBox(height: 8.h),
                         Text(
-                          'CLEAR PHOTO, NO GLARE',
+                          hasExistingLicense 
+                              ? 'Tap to replace' 
+                              : 'CLEAR PHOTO, NO GLARE',
                           style: TextStyle(
                             fontSize: 12.sp,
                             color: Colors.grey[400],
@@ -1042,6 +1317,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
     required String subtitle,
     required File? imageFile,
     required VoidCallback onTap,
+    bool hasExisting = false,
   }) {
     final isUploaded = imageFile != null;
     
@@ -1053,7 +1329,11 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
           color: Colors.grey[50],
           borderRadius: BorderRadius.circular(16.r),
           border: Border.all(
-            color: isUploaded ? Colors.green[300]! : Colors.grey[300]!,
+            color: isUploaded 
+                ? Colors.green[300]! 
+                : hasExisting 
+                    ? Colors.blue[300]!
+                    : Colors.grey[300]!,
             width: 2,
           ),
         ),
@@ -1085,20 +1365,31 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                   Container(
                     padding: EdgeInsets.all(12.w),
                     decoration: BoxDecoration(
-                      color: Colors.red[50],
+                      color: hasExisting ? Colors.blue[50] : Colors.red[50],
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.add_a_photo, color: AppColors.primary, size: 32.sp),
+                    child: Icon(
+                      hasExisting ? Icons.check_circle : Icons.add_a_photo, 
+                      color: hasExisting ? Colors.blue[700] : AppColors.primary, 
+                      size: 32.sp,
+                    ),
                   ),
                   SizedBox(height: 12.h),
                   Text(
                     label,
-                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: Colors.black),
+                    style: TextStyle(
+                      fontSize: 16.sp, 
+                      fontWeight: FontWeight.w600, 
+                      color: hasExisting ? Colors.blue[700] : Colors.black,
+                    ),
                   ),
                   SizedBox(height: 4.h),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 12.sp, color: Colors.grey[400]),
+                    style: TextStyle(
+                      fontSize: 12.sp, 
+                      color: hasExisting ? Colors.blue[600] : Colors.grey[400],
+                    ),
                   ),
                 ],
               ),
