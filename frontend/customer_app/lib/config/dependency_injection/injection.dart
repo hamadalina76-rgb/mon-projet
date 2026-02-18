@@ -5,6 +5,7 @@ import 'package:logger/logger.dart';
 import '../../core/api/api_client.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/datasources/auth_local_datasource.dart';
+import '../../features/auth/data/datasources/social_auth_service.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/entities/user.dart';
@@ -83,6 +84,12 @@ final authLocalDataSourceProvider = Provider<AuthLocalDataSource>((ref) {
   );
 });
 
+/// Provider pour SocialAuthService (Google/Facebook)
+final socialAuthServiceProvider = Provider<SocialAuthService>((ref) {
+  final logger = ref.watch(loggerProvider);
+  return SocialAuthService(logger: logger);
+});
+
 // ==================== AUTH REPOSITORY ====================
 
 /// Provider pour AuthRepository
@@ -158,6 +165,7 @@ final checkLoginStatusUseCaseProvider = Provider<CheckLoginStatusUseCase>((ref) 
 final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(
     authRepository: ref.watch(authRepositoryProvider),
+    socialAuthService: ref.watch(socialAuthServiceProvider),
     loginUseCase: ref.watch(loginUseCaseProvider),
     registerUseCase: ref.watch(registerUseCaseProvider),
     logoutUseCase: ref.watch(logoutUseCaseProvider),

@@ -10,7 +10,7 @@
 /// - Notifications: Notifications push
 class ApiEndpoints {
   // ==================== AUTHENTICATION ====================
-  static const String AUTH_BASE = '/auth';
+  static const String AUTH_BASE = '/v1/auth';
   static const String AUTH_LOGIN = '$AUTH_BASE/login';
   static const String AUTH_REGISTER = '$AUTH_BASE/register';
   static const String AUTH_VERIFY_OTP = '$AUTH_BASE/verify-otp';
@@ -20,6 +20,9 @@ class ApiEndpoints {
   static const String AUTH_REFRESH_TOKEN = '$AUTH_BASE/refresh-token';
   static const String AUTH_LOGOUT = '$AUTH_BASE/logout';
   static const String AUTH_ME = '$AUTH_BASE/me';
+  static const String AUTH_SOCIAL_LOGIN = '$AUTH_BASE/social-login';
+  static const String AUTH_GOOGLE_LOGIN = '$AUTH_BASE/google';
+  static const String AUTH_FACEBOOK_LOGIN = '$AUTH_BASE/facebook';
 
   // ==================== USER ====================
   static const String USER_BASE = '/users';

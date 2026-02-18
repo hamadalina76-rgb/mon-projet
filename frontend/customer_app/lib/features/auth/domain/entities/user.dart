@@ -7,6 +7,7 @@ class User extends Equatable {
   final String lastName;
   final String phone;
   final String role;
+  final String? profilePicture;
 
   const User({
     required this.id,
@@ -15,12 +16,13 @@ class User extends Equatable {
     required this.lastName,
     required this.phone,
     required this.role,
+    this.profilePicture,
   });
 
   String get fullName => '$firstName $lastName';
 
   @override
-  List<Object?> get props => [id, email, firstName, lastName, phone, role];
+  List<Object?> get props => [id, email, firstName, lastName, phone, role, profilePicture];
 
   @override
   bool get stringify => true;

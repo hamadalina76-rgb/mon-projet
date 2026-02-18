@@ -90,17 +90,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   void _handleGoogleLogin() {
-    // TODO: Implémenter Google Sign In
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.tr('google_signin_dev'))),
-    );
+    ref.read(authNotifierProvider.notifier).signInWithGoogle();
   }
 
   void _handleFacebookLogin() {
-    // TODO: Implémenter Facebook Sign In
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.tr('facebook_signin_dev'))),
-    );
+    ref.read(authNotifierProvider.notifier).signInWithFacebook();
   }
 
   @override
@@ -177,7 +171,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               margin: EdgeInsets.all(16),
             ),
           );
-          context.go(RouteNames.accueil);
+          // Navigate to location permission screen for first-time setup
+          context.go(RouteNames.enableLocation);
         },
         orElse: () {},
       );
@@ -443,8 +438,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 suffixIcon: IconButton(
                   icon: Icon(
                     _obscureLoginPassword
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
                     color: AppColors.textHint,
                     size: AppConstants.iconSizeSmall,
                   ),

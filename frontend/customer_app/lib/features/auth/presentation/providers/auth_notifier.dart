@@ -12,6 +12,7 @@ import '../../domain/usecases/get_current_user_usecase.dart';
 import '../../domain/usecases/get_cached_user_usecase.dart';
 import '../../domain/usecases/check_login_status_usecase.dart';
 import '../../data/models/verify_otp_request.dart';
+import '../../data/datasources/social_auth_service.dart';
 import 'auth_state.dart';
 
 /// Notifier pour gérer l'état d'authentification
@@ -23,6 +24,7 @@ import 'auth_state.dart';
 /// - Notifier l'UI des changements
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _authRepository;
+  final SocialAuthService _socialAuthService;
   final LoginUseCase _loginUseCase;
   final RegisterUseCase _registerUseCase;
   final LogoutUseCase _logoutUseCase;
@@ -35,6 +37,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   AuthNotifier({
     required AuthRepository authRepository,
+    required SocialAuthService socialAuthService,
     required LoginUseCase loginUseCase,
     required RegisterUseCase registerUseCase,
     required LogoutUseCase logoutUseCase,
@@ -45,6 +48,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required GetCachedUserUseCase getCachedUserUseCase,
     required CheckLoginStatusUseCase checkLoginStatusUseCase,
   })  : _authRepository = authRepository,
+        _socialAuthService = socialAuthService,
         _loginUseCase = loginUseCase,
         _registerUseCase = registerUseCase,
         _logoutUseCase = logoutUseCase,
@@ -337,5 +341,77 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Utilisé après traitement d'une erreur
   void clearError() {
     state = const AuthState.unauthenticated();
+  }
+
+  /// Connexion avec Google
+  /// 
+  /// @returns true si succès, false si erreur ou annulé
+  Future<bool> signInWithGoogle() async {
+    state = const AuthState.loading();
+
+    try {
+      // 1. Obtenir le token Google via le SDK
+      final socialRequest = await _socialAuthService.signInWithGoogle();
+
+      // 2. Envoyer le token au backend pour authentification
+      final result = await _authRepository.socialLogin(socialRequest);
+
+      return result.fold(
+        (failure) {
+          state = AuthState.error(message: _mapFailureToMessage(failure));
+          return false;
+        },
+        (user) {
+          state = AuthState.authenticated(user: user);
+          return true;
+        },
+      );
+    } on SocialAuthCancelledException {
+      // Utilisateur a annulé, retour à l'état précédent
+      state = const AuthState.unauthenticated();
+      return false;
+    } on SocialAuthException catch (e) {
+      state = AuthState.error(message: e.message);
+      return false;
+    } catch (e) {
+      state = AuthState.error(message: 'Erreur lors de la connexion Google: $e');
+      return false;
+    }
+  }
+
+  /// Connexion avec Facebook
+  /// 
+  /// @returns true si succès, false si erreur ou annulé
+  Future<bool> signInWithFacebook() async {
+    state = const AuthState.loading();
+
+    try {
+      // 1. Obtenir le token Facebook via le SDK
+      final socialRequest = await _socialAuthService.signInWithFacebook();
+
+      // 2. Envoyer le token au backend pour authentification
+      final result = await _authRepository.socialLogin(socialRequest);
+
+      return result.fold(
+        (failure) {
+          state = AuthState.error(message: _mapFailureToMessage(failure));
+          return false;
+        },
+        (user) {
+          state = AuthState.authenticated(user: user);
+          return true;
+        },
+      );
+    } on SocialAuthCancelledException {
+      // Utilisateur a annulé, retour à l'état précédent
+      state = const AuthState.unauthenticated();
+      return false;
+    } on SocialAuthException catch (e) {
+      state = AuthState.error(message: e.message);
+      return false;
+    } catch (e) {
+      state = AuthState.error(message: 'Erreur lors de la connexion Facebook: $e');
+      return false;
+    }
   }
 }
