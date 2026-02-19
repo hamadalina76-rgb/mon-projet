@@ -1,55 +1,280 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:async';
 
 import '../../../../core/theme/app_colors.dart';
+import '../widgets/otp_input.dart';
+import '../../data/repositories/auth_repository_impl.dart';
+import '../../data/datasources/auth_remote_datasource.dart';
+import '../../data/datasources/auth_local_datasource.dart';
+import '../../../../config/di/injection_container.dart' show getIt;
 
 class EmailVerificationScreen extends StatefulWidget {
-  const EmailVerificationScreen({super.key});
+  final String email;
+
+  const EmailVerificationScreen({
+    super.key,
+    required this.email,
+  });
 
   @override
   State<EmailVerificationScreen> createState() => _EmailVerificationScreenState();
 }
 
 class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
-  final _codeControllers = List.generate(6, (_) => TextEditingController());
-  final _focusNodes = List.generate(6, (_) => FocusNode());
+  bool _isLoading = false;
+  String _otp = '';
+  int _remainingSeconds = 180; // 3 minutes = 180 seconds
+  Timer? _timer;
+  int _resendCountdown = 0; // Countdown for resend button
+  Timer? _resendTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+    _startResendCountdown();
+  }
 
   @override
   void dispose() {
-    for (var controller in _codeControllers) {
-      controller.dispose();
-    }
-    for (var node in _focusNodes) {
-      node.dispose();
-    }
+    _timer?.cancel();
+    _resendTimer?.cancel();
     super.dispose();
   }
 
-  void _handleVerify() {
-    // Get complete code
-    final code = _codeControllers.map((c) => c.text).join();
+  void _startTimer() {
+    _timer?.cancel();
+    _remainingSeconds = 180;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds > 0) {
+        setState(() => _remainingSeconds--);
+      } else {
+        timer.cancel();
+        _showExpiredDialog();
+      }
+    });
+  }
+
+  void _startResendCountdown() {
+    _resendTimer?.cancel();
+    _resendCountdown = 30;
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_resendCountdown > 0) {
+        setState(() => _resendCountdown--);
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  void _showExpiredDialog() {
+    if (!mounted) return;
     
-    if (code.length == 6) {
-      // TODO: Verify code with backend
-      // For now, navigate to home
-      context.go('/home');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter the complete verification code'),
-          backgroundColor: Colors.red,
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
         ),
+        title: Row(
+          children: [
+            Icon(Icons.timer_off, color: AppColors.error),
+            SizedBox(width: 8.w),
+            const Text('Code Expired'),
+          ],
+        ),
+        content: const Text('The verification code has expired. Please request a new one.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.go('/login');
+            },
+            child: const Text('Back'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _handleResend();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Resend Code'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String get _timerDisplay {
+    final minutes = _remainingSeconds ~/ 60;
+    final seconds = _remainingSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _handleVerify() async {
+    if (_otp.length != 6) {
+      _showSnackBar(
+        message: 'Please enter the complete 6-digit code',
+        isError: true,
       );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Get repository instance
+      final authRepository = AuthRepositoryImpl(
+        remoteDataSource: getIt<AuthRemoteDataSource>(),
+        localDataSource: getIt<AuthLocalDataSource>(),
+      );
+
+      // Verify OTP and get initial courier
+      final courier = await authRepository.verifyOtp(
+        email: widget.email,
+        otpCode: _otp,
+      );
+      print('📋 OTP verified. Initial courier.documentsVerified = ${courier.documentsVerified}');
+
+      // Fetch fresh profile from backend to get authoritative documentsVerified from DB
+      bool documentsVerified = courier.documentsVerified;
+      try {
+        final freshProfile = await authRepository.fetchCourierProfile();
+        documentsVerified = freshProfile.documentsVerified;
+        print('🔄 Fetched fresh profile from /couriers/profile. documentsVerified = $documentsVerified');
+      } catch (e) {
+        print('⚠️ Could not fetch fresh profile: $e. Using OTP response value: $documentsVerified');
+      }
+
+      if (!mounted) return;
+
+      _timer?.cancel();
+      _showSnackBar(
+        message: 'Email verified successfully!',
+        isError: false,
+      );
+      
+      // Navigate depending on documentation status
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (mounted) {
+        print('🔎 Using documentsVerified=$documentsVerified for navigation');
+        if (documentsVerified == false) {
+          context.go('/documentation');
+        } else {
+          context.go('/home');
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      print('❌ OTP verification error: $e');
+      String errorMessage = 'Invalid or expired code. Please try again.';
+      
+      // Try to extract error message from exception
+      if (e.toString().contains('Exception:')) {
+        errorMessage = e.toString().replaceAll('Exception:', '').trim();
+      }
+      
+      _showSnackBar(
+        message: errorMessage,
+        isError: true,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  void _handleResendCode() {
-    // TODO: Resend verification code
+  Future<void> _handleResend() async {
+    if (_resendCountdown > 0) {
+      _showSnackBar(
+        message: 'Please wait $_resendCountdown seconds before resending',
+        isError: true,
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Get repository instance
+      final authRepository = AuthRepositoryImpl(
+        remoteDataSource: getIt<AuthRemoteDataSource>(),
+        localDataSource: getIt<AuthLocalDataSource>(),
+      );
+
+      // Resend OTP
+      await authRepository.resendOtp(email: widget.email);
+
+      if (!mounted) return;
+
+      // Restart timers
+      _startTimer();
+      _startResendCountdown();
+      
+      _showSnackBar(
+        message: 'Verification code sent successfully!',
+        isError: false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar(
+        message: 'Failed to resend code. Please try again.',
+        isError: true,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showSnackBar({required String message, required bool isError}) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Verification code sent!'),
-        backgroundColor: Colors.green,
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle_outline,
+              color: Colors.white,
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: isError ? AppColors.error : AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        margin: EdgeInsets.all(16.w),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+        duration: Duration(seconds: isError ? 4 : 2),
+        action: SnackBarAction(
+          label: 'OK',
+          textColor: Colors.white,
+          onPressed: () {
+            if (mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            }
+          },
+        ),
       ),
     );
   }
@@ -59,26 +284,18 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.black, size: 28.sp),
-          onPressed: () => context.pop(),
+          onPressed: () => context.go('/login'),
         ),
-        title: Text(
-          'Email Verification',
-          style: TextStyle(
-            fontSize: 20.sp,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
+      body: SafeArea(
+        child: SingleChildScrollView(
           padding: EdgeInsets.all(24.w),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(height: 32.h),
               
@@ -103,9 +320,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               Text(
                 'Verify Your Email',
                 style: TextStyle(
-                  fontSize: 24.sp,
+                  fontSize: 28.sp,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: AppColors.text,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -113,73 +330,81 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               SizedBox(height: 16.h),
               
               // Description
-              Text(
-                'We\'ve sent a 6-digit verification code to your email address. Please enter it below.',
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  color: Colors.grey[600],
-                  height: 1.5,
-                ),
+              RichText(
                 textAlign: TextAlign.center,
-              ),
-              
-              SizedBox(height: 40.h),
-              
-              // Code input boxes
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(6, (index) {
-                  return SizedBox(
-                    width: 50.w,
-                    height: 60.h,
-                    child: TextFormField(
-                      controller: _codeControllers[index],
-                      focusNode: _focusNodes[index],
-                      textAlign: TextAlign.center,
-                      keyboardType: TextInputType.number,
-                      maxLength: 1,
-                      style: TextStyle(
-                        fontSize: 24.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      decoration: InputDecoration(
-                        counterText: '',
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.r),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.r),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.r),
-                          borderSide: BorderSide(color: AppColors.primary, width: 2),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        if (value.isNotEmpty && index < 5) {
-                          _focusNodes[index + 1].requestFocus();
-                        }
-                        if (value.isEmpty && index > 0) {
-                          _focusNodes[index - 1].requestFocus();
-                        }
-                      },
+                text: TextSpan(
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    color: AppColors.textSecondary,
+                    height: 1.5,
+                  ),
+                  children: [
+                    const TextSpan(
+                      text: 'We\'ve sent a 6-digit verification code to\n',
                     ),
-                  );
-                }),
+                    TextSpan(
+                      text: widget.email,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.text,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               
-              SizedBox(height: 40.h),
+              SizedBox(height: 24.h),
+              
+              // Timer
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 16.w,
+                  vertical: 12.h,
+                ),
+                decoration: BoxDecoration(
+                  color: _remainingSeconds < 120 
+                      ? AppColors.error.withOpacity(0.1)
+                      : AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.timer,
+                      size: 20.sp,
+                      color: _remainingSeconds < 120 ? AppColors.error : AppColors.primary,
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      'Expires in: $_timerDisplay',
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w600,
+                        color: _remainingSeconds < 120 ? AppColors.error : AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              SizedBox(height: 32.h),
+              
+              // OTP Input
+              OtpInput(
+                onCompleted: (otp) {
+                  setState(() => _otp = otp);
+                  _handleVerify();
+                },
+              ),
+              
+              SizedBox(height: 32.h),
               
               // Verify button
               SizedBox(
-                width: double.infinity,
                 height: 56.h,
                 child: ElevatedButton(
-                  onPressed: _handleVerify,
+                  onPressed: _isLoading ? null : _handleVerify,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -187,38 +412,59 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                       borderRadius: BorderRadius.circular(28.r),
                     ),
                     elevation: 2,
+                    shadowColor: AppColors.primary.withOpacity(0.3),
                   ),
-                  child: Text(
-                    'VERIFY EMAIL',
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? SizedBox(
+                          width: 24.w,
+                          height: 24.h,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          'VERIFY EMAIL',
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
               
               SizedBox(height: 24.h),
               
               // Resend code
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 4.w,
                 children: [
                   Text(
                     'Didn\'t receive the code? ',
                     style: TextStyle(
                       fontSize: 14.sp,
-                      color: Colors.grey[600],
+                      color: AppColors.textSecondary,
                     ),
                   ),
-                  GestureDetector(
-                    onTap: _handleResendCode,
+                  TextButton(
+                    onPressed: (_isLoading || _resendCountdown > 0) ? null : _handleResend,
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 4.w),
+                      minimumSize: const Size(0, 0),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                     child: Text(
-                      'Resend',
+                      _resendCountdown > 0 
+                          ? 'Resend ($_resendCountdown s)'
+                          : 'Resend',
                       style: TextStyle(
                         fontSize: 14.sp,
-                        color: AppColors.primary,
                         fontWeight: FontWeight.w600,
+                        color: (_resendCountdown > 0) 
+                            ? AppColors.textSecondary 
+                            : AppColors.primary,
                       ),
                     ),
                   ),

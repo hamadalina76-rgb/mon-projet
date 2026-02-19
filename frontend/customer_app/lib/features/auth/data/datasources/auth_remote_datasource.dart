@@ -135,13 +135,27 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         ApiEndpoints.AUTH_VERIFY_OTP,
         data: {
           'email': request.email,
+          // Send both keys to support backends expecting either field
           'otpCode': request.otp,
+          'otp': request.otp,
           'type': request.type ?? 'login',
         },
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        return AuthResponse.fromJson(response.data);
+        try {
+          return AuthResponse.fromJson(response.data);
+        } catch (e) {
+          // Parsing failed - try to extract a meaningful message from the server
+          final data = response.data;
+          String serverMessage = 'Réponse serveur invalide';
+          if (data is Map<String, dynamic>) {
+            serverMessage = data['message'] ?? data['error'] ?? serverMessage;
+          } else if (data is String && data.isNotEmpty) {
+            serverMessage = data;
+          }
+          throw AuthException(message: serverMessage);
+        }
       } else {
         throw ServerException(
           message: 'Réponse serveur invalide',

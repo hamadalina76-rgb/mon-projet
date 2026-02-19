@@ -335,20 +335,26 @@ public class CourierServiceImpl implements CourierService {
             log.info("✅ Photo permis verso sauvegardée: {}", savedPath);
         }
 
-        // Marquer la documentation comme complète si tous les documents requis sont présents
-        if (courier.getIdentityNumber() != null &&
-            courier.getIdentityDocumentFrontImage() != null &&
-            courier.getIdentityDocumentBackImage() != null &&
-            courier.getDrivingLicenseNumber() != null &&
-            courier.getDrivingLicenseImage() != null &&
-            courier.getBankAccountHolder() != null &&
-            courier.getBankIban() != null) {
+        // Log current documentation state
+        log.info("📋 Documentation state for userId {}:", userId);
+        log.info("   - identityNumber: {}", courier.getIdentityNumber() != null ? "✅" : "❌");
+        log.info("   - identityDocumentFrontImage: {}", courier.getIdentityDocumentFrontImage() != null ? "✅" : "❌");
+        log.info("   - identityDocumentBackImage: {}", courier.getIdentityDocumentBackImage() != null ? "✅" : "❌");
+        log.info("   - drivingLicenseNumber: {}", courier.getDrivingLicenseNumber() != null ? "✅" : "❌");
+        log.info("   - drivingLicenseImage: {}", courier.getDrivingLicenseImage() != null ? "✅" : "❌");
+        log.info("   - bankAccountHolder: {}", courier.getBankAccountHolder() != null ? "✅" : "❌");
+        log.info("   - bankIban: {}", courier.getBankIban() != null ? "✅" : "❌");
+
+        // Mark documentation as verified if at least identity doc front and driving license image are present
+        if (courier.getIdentityDocumentFrontImage() != null && courier.getDrivingLicenseImage() != null) {
             courier.setDocumentsVerified(true);
-            log.info("✅ Documentation complète pour le livreur userId {}", userId);
+            log.info("✅ Documentation verified for userId {} (critical docs present)", userId);
+        } else {
+            log.warn("⚠️ Documentation incomplete for userId {} - missing critical documents", userId);
         }
 
         courier = courierRepository.save(courier);
-        log.info("UPDATE - Documentation mise à jour pour userId {}", userId);
+        log.info("UPDATE - Documentation updated for userId {}, documentsVerified={}", userId, courier.getDocumentsVerified());
 
         return mapToDTO(courier);
     }
@@ -880,14 +886,28 @@ public class CourierServiceImpl implements CourierService {
                 }
             }
 
-            // Générer un nom de fichier unique avec timestamp
-            String timestamp = String.valueOf(System.currentTimeMillis());
+            // Générer un nom de fichier déterministe par livreur et type de document
+            // directory attendu: "couriers/{userId}/"
+            String userIdPart = "unknown";
+            try {
+                String tmp = directory.replaceAll("\\\\", "/");
+                if (tmp.endsWith("/")) tmp = tmp.substring(0, tmp.length() - 1);
+                String[] parts = tmp.split("/");
+                if (parts.length > 0) {
+                    userIdPart = parts[parts.length - 1];
+                }
+            } catch (Exception e) {
+                log.warn("Could not parse userId from directory '{}': {}", directory, e.getMessage());
+            }
+
             String originalFilename = file.getOriginalFilename();
             String extension = "";
             if (originalFilename != null && originalFilename.contains(".")) {
                 extension = originalFilename.substring(originalFilename.lastIndexOf("."));
             }
-            String filename = prefix + timestamp + extension;
+
+            // Exemple de nom: id_front_123.jpg => prefix + userId
+            String filename = prefix + userIdPart + extension;
 
             // Créer le fichier de destination
             java.io.File destinationFile = new java.io.File(targetDir, filename);

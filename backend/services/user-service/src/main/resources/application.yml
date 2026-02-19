@@ -9,12 +9,6 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres123}
     driver-class-name: org.postgresql.Driver
-  servlet:
-    multipart:
-      enabled: true
-      max-file-size: 10MB
-      max-request-size: 50MB
-      file-size-threshold: 2KB
   jpa:
     hibernate:
       ddl-auto: validate # Flyway gère les migrations, Hibernate valide seulement
@@ -29,14 +23,20 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
     validate-on-migrate: true
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 50MB
+      file-size-threshold: 2KB
 
-# File Upload Configuration  
 file:
-  upload:
-    dir: ${UPLOAD_DIR:c:/PFE2026/speedline/backend/services/user-service/uploads/profile-pictures}
-    base-url: ${UPLOAD_BASE_URL:http://10.0.2.2:8082/uploads}
-    max-file-size: 5MB
-    max-request-size: 5MB
+  # Use a relative `uploads` directory inside the service folder:
+  # when running from backend/services/user-service, this resolves to
+  # backend/services/user-service/uploads (i.e. C:\git\speedline\backend\services\user-service\uploads)
+  upload-dir: uploads
+
+# File Upload Configuration
 
 eureka:
   client:

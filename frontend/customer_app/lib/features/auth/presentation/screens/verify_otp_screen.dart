@@ -162,8 +162,14 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
             context.go(RouteNames.enableLocation);
           }
         } else {
+          // Show server-provided error when available
+          final authState = ref.read(authNotifierProvider);
+          final serverMessage = authState.maybeWhen(
+            error: (message) => message,
+            orElse: () => context.tr('invalid_or_expired_code'),
+          );
           _showSnackBar(
-            message: context.tr('invalid_or_expired_code'),
+            message: serverMessage,
             isError: true,
           );
         }
@@ -186,8 +192,13 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
             },
           );
         } else {
+          final authState = ref.read(authNotifierProvider);
+          final serverMessage = authState.maybeWhen(
+            error: (message) => message,
+            orElse: () => context.tr('invalid_or_expired_code'),
+          );
           _showSnackBar(
-            message: context.tr('invalid_or_expired_code'),
+            message: serverMessage,
             isError: true,
           );
         }
