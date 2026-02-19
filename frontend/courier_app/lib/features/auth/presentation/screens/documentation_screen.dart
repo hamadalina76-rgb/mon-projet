@@ -277,8 +277,8 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
         
         if (!hasExistingImages && (_uploadedIdFront == null || _uploadedIdBack == null)) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please upload both sides of your ID card'),
+            SnackBar(
+              content: const Text('Please upload both sides of your ID card'),
               backgroundColor: Colors.red,
             ),
           );
@@ -294,8 +294,8 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
         
         if (!hasExistingLicense && _uploadedLicenseFront == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please upload your driving license'),
+            SnackBar(
+              content: const Text('Please  your driving license'),
               backgroundColor: Colors.red,
             ),
           );
@@ -353,7 +353,25 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
       final authRepository = getIt<AuthRepository>();
 
       if (_isEditMode) {
-        // Update profile fields via /couriers/profile (more reliable in current backend setup)
+        // If files were picked in edit mode, upload them via multipart endpoint
+        if (filePaths.isNotEmpty) {
+          await authRepository.uploadDocumentation(
+            documentData: documentData,
+            filePaths: filePaths,
+          );
+
+          // Refresh local courier profile so UI shows new image URLs
+          try {
+            final refreshed = await authRepository.fetchCourierProfile();
+            if (refreshed != null) {
+              _currentCourier = refreshed;
+            }
+          } catch (e) {
+            print('⚠️ Failed to refresh courier profile after upload: $e');
+          }
+        }
+
+        // Update profile fields via /couriers/{id} for non-file fields
         final updateData = {
           'vehicleType': _mapUiVehicleTypeToBackend(_selectedVehicleType),
           'vehicleNumber': _plateNumberController.text.trim(),

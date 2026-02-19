@@ -130,7 +130,7 @@ class ProfileScreen extends StatelessWidget {
                     _buildMenuItem(
                       context: context,
                       icon: Icons.description_outlined,
-                      title: 'Complete Documentation',
+                      title: 'Documentation',
                       subtitle: 'Upload your documents',
                       onTap: () => context.push('/documentation'),
                       showBadge: true,

@@ -41,7 +41,6 @@ public interface AuthServiceClient {
             @PathVariable("userId") Long userId,
             @RequestBody UserProfileUpdateRequest request);
 
-    
     /**
      * Crée un compte admin dans auth-service
      *

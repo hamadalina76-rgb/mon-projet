@@ -21,6 +21,7 @@ class Courier {
   final String? drivingLicenseImage;
   final bool isOnline;
   final bool isVerified;
+  final bool isEmailVerified;
   final bool documentsVerified;
 
   const Courier({
@@ -46,6 +47,7 @@ class Courier {
     this.drivingLicenseImage,
     this.isOnline = false,
     this.isVerified = false,
+    this.isEmailVerified = false,
     this.documentsVerified = false,
   });
 }

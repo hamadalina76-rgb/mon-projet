@@ -24,6 +24,7 @@ class CourierModel extends Courier {
     String? drivingLicenseImage,
     bool isOnline = false,
     bool isVerified = false,
+    bool isEmailVerified = false,
     bool documentsVerified = false,
   }) : super(
           id: id,
@@ -48,6 +49,7 @@ class CourierModel extends Courier {
           drivingLicenseImage: drivingLicenseImage,
           isOnline: isOnline,
           isVerified: isVerified,
+          isEmailVerified: isEmailVerified,
           documentsVerified: documentsVerified,
         );
 
@@ -76,6 +78,7 @@ class CourierModel extends Courier {
       drivingLicenseImage: json['drivingLicenseImage'] as String?,
       isOnline: json['isOnline'] as bool? ?? false,
       isVerified: json['isVerified'] as bool? ?? false,
+      isEmailVerified: json['isEmailVerified'] as bool? ?? json['emailVerified'] as bool? ?? false,
       documentsVerified: json['documentsVerified'] as bool? ?? false,
     );
   }
@@ -104,6 +107,7 @@ class CourierModel extends Courier {
       'drivingLicenseImage': drivingLicenseImage,
       'isOnline': isOnline,
       'isVerified': isVerified,
+      'isEmailVerified': isEmailVerified,
       'documentsVerified': documentsVerified,
     };
   }
@@ -131,6 +135,7 @@ class CourierModel extends Courier {
     String? drivingLicenseImage,
     bool? isOnline,
     bool? isVerified,
+    bool? isEmailVerified,
     bool? documentsVerified,
   }) {
     return CourierModel(
@@ -156,6 +161,7 @@ class CourierModel extends Courier {
       drivingLicenseImage: drivingLicenseImage ?? this.drivingLicenseImage,
       isOnline: isOnline ?? this.isOnline,
       isVerified: isVerified ?? this.isVerified,
+      isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       documentsVerified: documentsVerified ?? this.documentsVerified,
     );
   }

@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../config/di/injection_container.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../domain/exceptions/auth_exceptions.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -58,11 +59,24 @@ class _LoginScreenState extends State<LoginScreen> {
           password: _passwordController.text,
         );
         
-        print('📋 Login response - courier ID: ${courier.id}, documentsVerified: ${courier.documentsVerified}');
+        print('📋 Login response - courier ID: ${courier.id}, isEmailVerified: ${courier.isEmailVerified}, documentsVerified: ${courier.documentsVerified}');
         
         if (mounted) {
+          // Check if email is verified (first-time login)
+          if (!courier.isEmailVerified) {
+            print('⚠️ Email not verified, redirecting to email verification screen');
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please verify your email to continue'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+            // Navigate to email verification screen with email parameter
+            context.go('/email-verification?email=${Uri.encodeComponent(_emailController.text.trim())}');
+          }
           // Check if documents are verified
-          if (!courier.documentsVerified) {
+          else if (!courier.documentsVerified) {
             print('⚠️ Documents not verified, redirecting to documentation screen');
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -73,9 +87,23 @@ class _LoginScreenState extends State<LoginScreen> {
             );
             context.go('/documentation');
           } else {
-            print('✅ Documents verified, redirecting to home');
+            print('✅ Email and documents verified, redirecting to home');
             context.go('/home');
           }
+        }
+      } on EmailVerificationRequiredException catch (e) {
+        // Email verification required - redirect to verification screen
+        print('⚠️ Email verification required: ${e.message}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.message),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          // Navigate to email verification screen with email parameter
+          context.go('/email-verification?email=${Uri.encodeComponent(e.email)}');
         }
       } catch (e) {
         print('❌ Login error: $e');

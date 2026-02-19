@@ -1,5 +1,6 @@
 import '../../domain/entities/courier.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../domain/exceptions/auth_exceptions.dart';
 import '../datasources/auth_local_datasource.dart';
 import '../datasources/auth_remote_datasource.dart';
 import '../models/courier_model.dart';
@@ -17,6 +18,15 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Courier> login({required String email, required String password}) async {
     final response = await remoteDataSource.login(email: email, password: password);
+    
+    // Check if OTP verification is required
+    if (response['otpSent'] == true) {
+      throw EmailVerificationRequiredException(
+        email: response['email'] ?? email,
+        message: response['message'] ?? 'OTP sent to your email. Please verify to complete login.',
+      );
+    }
+    
     final loginResponse = LoginResponse.fromJson(response);
     
     await localDataSource.saveTokens(
@@ -80,6 +90,51 @@ class AuthRepositoryImpl implements AuthRepository {
     final courier = CourierModel.fromJson(response['courier']);
     await localDataSource.saveCourierData(courier.toJson());
     return courier;
+  }
+
+  @override
+  Future<Courier> verifyOtp({required String email, required String otpCode}) async {
+    print('📧 Repository: Verifying OTP for email=$email');
+    final response = await remoteDataSource.verifyOtp(email: email, otpCode: otpCode);
+    print('📦 Repository: OTP verification response keys: ${response.keys}');
+    
+    // Save tokens from OTP verification response (accept multiple key styles)
+    String? accessToken;
+    String? refreshToken;
+    if (response.containsKey('accessToken')) accessToken = response['accessToken']?.toString();
+    if (response.containsKey('access_token')) accessToken ??= response['access_token']?.toString();
+    if (response.containsKey('token')) accessToken ??= response['token']?.toString();
+
+    if (response.containsKey('refreshToken')) refreshToken = response['refreshToken']?.toString();
+    if (response.containsKey('refresh_token')) refreshToken ??= response['refresh_token']?.toString();
+
+    if (accessToken != null && refreshToken != null) {
+      print('💾 Repository: Saving tokens (access token length=${accessToken.length})');
+      await localDataSource.saveTokens(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      );
+    } else {
+      print('⚠️ Repository: No access/refresh tokens found in OTP response. Available keys: ${response.keys}');
+    }
+    
+    // Get courier data from response
+    final courierData = response['courier'] ?? response['user'];
+    if (courierData == null) {
+      print('❌ Repository: No courier data in response');
+      throw Exception('No courier data in OTP verification response');
+    }
+    
+    print('👤 Repository: Parsing courier data');
+    final courier = CourierModel.fromJson(courierData);
+    await localDataSource.saveCourierData(courier.toJson());
+    print('✅ Repository: OTP verification complete, isEmailVerified=${courier.isEmailVerified}');
+    return courier;
+  }
+
+  @override
+  Future<void> resendOtp({required String email}) async {
+    await remoteDataSource.resendOtp(email: email);
   }
 
   @override

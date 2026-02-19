@@ -48,8 +48,8 @@ public class CourierUpdateRequest {
     @Schema(description = "Rayon maximum de livraison en km", example = "15", minimum = "1", maximum = "50")
     private Integer maxDeliveryRadius;
 
-    @Pattern(regexp = "^MA[0-9]{2}[0-9]{24}$", message = "Format IBAN marocain invalide")
-    @Schema(description = "IBAN pour les virements", example = "MA64011519000001205000534921")
+    @Pattern(regexp = "^(?i)TN[0-9]{2}[0-9A-Z]{20}$", message = "Format IBAN tunisien invalide")
+    @Schema(description = "IBAN pour les virements (format tunisien)", example = "TN5914207207100707129648")
     private String bankIban;
 
     @Size(max = 100, message = "Le nom du titulaire ne doit pas dépasser 100 caractères")
