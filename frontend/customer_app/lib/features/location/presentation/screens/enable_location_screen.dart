@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../../../config/routes/route_names.dart';
+import '../../../../core/localization/app_localizations.dart';
+
 
 /// Enable Location Screen
 /// Shows after successful login to request location permission
@@ -20,13 +23,14 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen> {
 
   Future<void> _handleAllowLocation() async {
     setState(() => _isLoading = true);
+    final l10n = AppLocalizations.of(context)!;
 
     try {
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) {
-          _showError('Location services are disabled. Please enable them in settings.');
+          _showError(l10n.translate('location_services_disabled'));
         }
         setState(() => _isLoading = false);
         return;
@@ -38,7 +42,7 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen> {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           if (mounted) {
-            _showError('Location permission denied. Please allow access to continue.');
+            _showError(l10n.translate('location_permission_denied'));
           }
           setState(() => _isLoading = false);
           return;
@@ -47,8 +51,7 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen> {
 
       if (permission == LocationPermission.deniedForever) {
         if (mounted) {
-          _showError(
-              'Location permissions are permanently denied. Please enable them in app settings.');
+          _showError(l10n.translate('location_permanently_denied'));
           // Optionally open app settings
           await Geolocator.openAppSettings();
         }
@@ -68,23 +71,27 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen> {
       // TODO: Save location to backend
       // For now, just navigate to explore (main home screen)
       if (mounted) {
-        context.go('/explore');
+        context.go(RouteNames.explore);
       }
     } on LocationServiceDisabledException {
       if (mounted) {
-        _showError('Location services are disabled. Please enable them in settings.');
+        final l10n = AppLocalizations.of(context)!;
+        _showError(l10n.translate('location_services_disabled'));
       }
     } on PermissionDeniedException {
       if (mounted) {
-        _showError('Location permission denied. Please allow access to continue.');
+        final l10n = AppLocalizations.of(context)!;
+        _showError(l10n.translate('location_permission_denied'));
       }
     } on TimeoutException {
       if (mounted) {
-        _showError('Location request timed out. Please try again.');
+        final l10n = AppLocalizations.of(context)!;
+        _showError(l10n.translate('location_timeout'));
       }
     } catch (e) {
       if (mounted) {
-        _showError('Failed to get location: ${e.toString()}');
+        final l10n = AppLocalizations.of(context)!;
+        _showError('${l10n.translate('location_error')}: ${e.toString()}');
       }
       debugPrint('Location error: $e');
     } finally {
@@ -95,16 +102,17 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen> {
   }
 
   void _handleManualEntry() {
+    final l10n = AppLocalizations.of(context)!;
     // TODO: Navigate to manual address entry screen
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Manual Address Entry'),
-        content: const Text('Manual address entry screen coming soon!'),
+        title: Text(l10n.translate('manual_address_entry')),
+        content: Text(l10n.translate('manual_address_coming_soon')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: Text(l10n.translate('ok')),
           ),
         ],
       ),
@@ -112,7 +120,7 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen> {
   }
 
   void _handleSkip() {
-    context.go('/explore');
+    context.go(RouteNames.explore);
   }
 
   void _showError(String message) {
@@ -126,6 +134,7 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -220,9 +229,9 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen> {
               const SizedBox(height: 48),
               
               // Title
-              const Text(
-                'Enable Location',
-                style: TextStyle(
+              Text(
+                l10n.translate('enable_location'),
+                style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
@@ -235,25 +244,23 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen> {
               // Description
               RichText(
                 textAlign: TextAlign.center,
-                text: const TextSpan(
-                  style: TextStyle(
+                text: TextSpan(
+                  style: const TextStyle(
                     fontSize: 16,
                     color: Colors.black54,
                     height: 1.5,
                   ),
                   children: [
                     TextSpan(
-                      text:
-                          'To find the best restaurants near you, we need your precise location. This helps us discover local favorites within a ',
+                      text: l10n.translate('location_permission_desc'),
                     ),
                     TextSpan(
-                      text: '5 km radius',
-                      style: TextStyle(
+                      text: l10n.translate('accurate_delivery'),
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
                     ),
-                    TextSpan(text: '.'),
                   ],
                 ),
               ),
@@ -283,9 +290,9 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Text(
-                          'Allow Location Access',
-                          style: TextStyle(
+                      : Text(
+                          l10n.translate('allow_location_access'),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -302,9 +309,9 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen> {
                 child: OutlinedButton.icon(
                   onPressed: _handleManualEntry,
                   icon: const Icon(Icons.edit_location_outlined),
-                  label: const Text(
-                    'Enter Address Manually',
-                    style: TextStyle(
+                  label: Text(
+                    l10n.translate('enter_address_manually'),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -347,7 +354,7 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen> {
               TextButton(
                 onPressed: _handleSkip,
                 child: Text(
-                  'Skip for now',
+                  l10n.translate('skip_for_now'),
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[600],

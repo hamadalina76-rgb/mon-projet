@@ -41,18 +41,7 @@ public interface AuthServiceClient {
             @PathVariable("userId") Long userId,
             @RequestBody UserProfileUpdateRequest request);
 
-    /**
-     * Mettre à jour le profil utilisateur
-     *
-     * @param userId ID de l'utilisateur
-     * @param request Données de mise à jour
-     * @return UserInfoDTO mis à jour
-     */
-    @PutMapping("/api/v1/auth/users/{userId}")
-    UserInfoDTO updateUserProfile(
-            @PathVariable("userId") Long userId,
-            @RequestBody UserProfileUpdateRequest request);
-
+    
     /**
      * Crée un compte admin dans auth-service
      *

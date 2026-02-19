@@ -103,7 +103,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
-  /// Connexion avec email et mot de passe (envoie OTP)
+  /// Connexion avec email et mot de passe
+  /// 
+  /// Gère deux cas:
+  /// - Compte PENDING: Envoie OTP pour vérification (première connexion)
+  /// - Compte ACTIVE: Authentification directe avec tokens
   Future<void> login({
     required String email,
     required String password,
@@ -119,8 +123,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
       (failure) {
         state = AuthState.error(message: _mapFailureToMessage(failure));
       },
-      (otpResult) {
-        state = AuthState.otpSent(otpResult: otpResult);
+      (loginResult) {
+        // Gérer les deux cas de connexion
+        loginResult.when(
+          requiresOtp: (otpResult) {
+            // Compte PENDING - Rediriger vers vérification OTP
+            state = AuthState.otpSent(otpResult: otpResult);
+          },
+          authenticated: (user) {
+            // Compte ACTIVE - Connexion directe réussie
+            state = AuthState.authenticated(user: user);
+          },
+        );
       },
     );
   }

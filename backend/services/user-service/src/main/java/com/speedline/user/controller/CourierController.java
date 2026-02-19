@@ -116,7 +116,7 @@ public class CourierController implements ICourierController {
      * Met à jour la documentation du livreur connecté (avec upload de fichiers)
      * Utilise le X-User-Id du header (ajouté par l'API Gateway depuis le JWT)
      */
-    @PutMapping(value = "/me", consumes = "multipart/form-data")
+    @PutMapping(value = "/current_user", consumes = "multipart/form-data")
     public ResponseEntity<CourierDTO> updateMyDocumentation(
             @RequestHeader(value = "X-User-Id", required = true) Long userId,
             @RequestParam(required = false) String vehicleType,
@@ -133,7 +133,7 @@ public class CourierController implements ICourierController {
             @RequestPart(required = false) org.springframework.web.multipart.MultipartFile licenseFront,
             @RequestPart(required = false) org.springframework.web.multipart.MultipartFile licenseBack) {
         
-        log.info("PUT /couriers/me - Mise à jour documentation pour userId: {}", userId);
+        log.info("PUT /couriers/current_user - Mise à jour documentation pour userId: {}", userId);
         log.info("Données reçues - vehicleType: {}, vehicleModel: {}, plateNumber: {}", 
                  vehicleType, vehicleModel, plateNumber);
         log.info("Fichiers reçus - idFront: {}, idBack: {}, licenseFront: {}, licenseBack: {}", 

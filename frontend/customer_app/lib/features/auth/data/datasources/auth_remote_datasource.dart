@@ -20,12 +20,15 @@ import '../models/otp_response.dart';
 /// - Gestion des erreurs HTTP
 /// - Ne gère PAS le cache local (voir AuthLocalDataSource)
 abstract class AuthRemoteDataSource {
-  /// Connexion avec email et mot de passe (envoie OTP)
+  /// Connexion avec email et mot de passe
+  /// 
+  /// Retourne OtpResponse si compte PENDING (nécessite vérification OTP)
+  /// Retourne AuthResponse si compte ACTIVE (connexion directe)
   /// 
   /// @throws AuthException si credentials invalides
   /// @throws ServerException si erreur serveur
   /// @throws NetworkException si pas de connexion
-  Future<OtpResponse> login(LoginRequest request);
+  Future<dynamic> login(LoginRequest request);
 
   /// Vérification du code OTP pour authentification
   /// 
@@ -89,7 +92,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   AuthRemoteDataSourceImpl({required this.apiClient});
 
   @override
-  Future<OtpResponse> login(LoginRequest request) async {
+  Future<dynamic> login(LoginRequest request) async {
     try {
       final response = await apiClient.dio.post(
         ApiEndpoints.AUTH_LOGIN,
@@ -97,7 +100,23 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        return OtpResponse.fromJson(response.data);
+        // Check response type by examining the data structure
+        // If it has 'access_token', it's an AuthResponse (ACTIVE account)
+        // If it has 'otpSent', it's an OtpResponse (PENDING account)
+        final data = response.data as Map<String, dynamic>;
+        
+        if (data.containsKey('access_token') || data.containsKey('accessToken')) {
+          // Direct authentication for ACTIVE accounts
+          return AuthResponse.fromJson(data);
+        } else if (data.containsKey('otpSent')) {
+          // OTP required for PENDING accounts
+          return OtpResponse.fromJson(data);
+        } else {
+          throw ServerException(
+            message: 'Format de réponse invalide',
+            statusCode: response.statusCode,
+          );
+        }
       } else {
         throw ServerException(
           message: 'Réponse serveur invalide',
@@ -255,7 +274,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<UserModel> getCurrentUser() async {
     try {
-      final response = await apiClient.dio.get(ApiEndpoints.AUTH_ME);
+      final response = await apiClient.dio.get(ApiEndpoints.AUTH_CURRENT_USER);
 
       if (response.statusCode == 200 && response.data != null) {
         return UserModel.fromJson(response.data);

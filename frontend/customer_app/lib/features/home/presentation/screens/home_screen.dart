@@ -7,6 +7,8 @@ import '../../../../core/utils/responsive_utils.dart';
 import '../../../../core/localization/locale_provider.dart';
 import '../../../../core/localization/localization_extension.dart';
 import '../../../../config/routes/route_names.dart';
+import '../../../auth/presentation/providers/auth_notifier.dart';
+import '../../../../config/dependency_injection/injection.dart';
 
 /// Écran d'accueil / Onboarding
 /// Premier écran affiché au lancement de l'app
@@ -43,16 +45,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Show language selection banner on first launch
+    
+    // Check if user is already logged in
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final hasSelected = await ref.read(localeProvider.notifier).hasSelectedLanguage();
-      if (!hasSelected && mounted) {
-        _showLanguageSelectionBanner();
-      }
-      // Load saved language
-      final currentLocale = ref.read(localeProvider);
-      setState(() => _selectedLanguage = currentLocale.languageCode);
+      // Check authentication status
+      await ref.read(authNotifierProvider.notifier).checkAuthStatus();
+      
+      // Navigate to main screen if authenticated
+      final authState = ref.read(authNotifierProvider);
+      authState.maybeWhen(
+        authenticated: (_) {
+          if (mounted) {
+            context.go(RouteNames.enableLocation);
+          }
+        },
+        orElse: () {
+          // User not authenticated, continue with onboarding
+          // Show language selection banner on first launch
+          _checkLanguageSelection();
+        },
+      );
     });
+  }
+
+  Future<void> _checkLanguageSelection() async {
+    final hasSelected = await ref.read(localeProvider.notifier).hasSelectedLanguage();
+    if (!hasSelected && mounted) {
+      _showLanguageSelectionBanner();
+    }
+    // Load saved language
+    final currentLocale = ref.read(localeProvider);
+    setState(() => _selectedLanguage = currentLocale.languageCode);
   }
 
   @override
@@ -77,10 +100,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 vertical: ResponsiveUtils.getResponsiveSpacing(context, 16),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   // Language selector
-                  _buildLanguageSelector(),
+
                   // Skip button
                   TextButton(
                     onPressed: () => context.go(RouteNames.login),
@@ -243,106 +266,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildLanguageSelector() {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: ResponsiveUtils.getResponsiveSpacing(context, 12),
-        vertical: ResponsiveUtils.getResponsiveSpacing(context, 6),
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),
-        border: Border.all(color: AppColors.border, width: 1),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedLanguage,
-          isDense: true,
-          icon: Icon(
-            Icons.language,
-            size: ResponsiveUtils.getResponsiveFontSize(context, 18),
-            color: AppColors.textSecondary,
-          ),
-          items: [
-            DropdownMenuItem(
-              value: 'fr',
-              child: Row(
-                children: [
-                  Text(
-                    '🇫🇷',
-                    style: TextStyle(
-                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
-                    ),
-                  ),
-                  SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                  Text(
-                    'Français',
-                    style: TextStyle(
-                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            DropdownMenuItem(
-              value: 'en',
-              child: Row(
-                children: [
-                  Text(
-                    '🇬🇧',
-                    style: TextStyle(
-                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
-                    ),
-                  ),
-                  SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                  Text(
-                    'English',
-                    style: TextStyle(
-                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            DropdownMenuItem(
-              value: 'ar',
-              child: Row(
-                children: [
-                  Text(
-                    '🇸🇦',
-                    style: TextStyle(
-                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
-                    ),
-                  ),
-                  SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-                  Text(
-                    'العربية',
-                    style: TextStyle(
-                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          onChanged: (String? newValue) {
-            if (newValue != null) {
-              setState(() => _selectedLanguage = newValue);
-              // Update app locale
-              final locale = Locale(newValue, newValue == 'en' ? 'US' : newValue == 'fr' ? 'FR' : 'SA');
-              ref.read(localeProvider.notifier).setLocale(locale);
-            }
-          },
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildPageContent(OnboardingPage page) {
     return Padding(

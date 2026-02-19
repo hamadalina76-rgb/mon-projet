@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/localization/app_localizations.dart';
 
 /// Orders Screen
 /// Screen for viewing order history and active orders
@@ -8,35 +9,36 @@ class OrdersScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Orders'),
+        title: Text(l10n.translate('my_orders')),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.receipt_long_outlined,
               size: 80,
               color: AppColors.textSecondary,
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
-              'Orders Screen',
-              style: TextStyle(
+              l10n.translate('my_orders'),
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              'Coming soon...',
-              style: TextStyle(
+              l10n.translate('coming_soon'),
+              style: const TextStyle(
                 fontSize: 16,
                 color: AppColors.textSecondary,
               ),

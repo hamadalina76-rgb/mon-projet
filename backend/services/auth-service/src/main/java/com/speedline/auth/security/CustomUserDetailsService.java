@@ -26,9 +26,13 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
+        // For social login users (OAuth), password is null. Use empty string as placeholder
+        // since they don't use password authentication
+        String password = user.getPassword() != null ? user.getPassword() : "";
+
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
-                user.getPassword(),
+                password,
                 getAuthorities(user)
         );
     }

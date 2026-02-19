@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../config/routes/route_names.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../config/dependency_injection/injection.dart';
+import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/localization/locale_provider.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -13,30 +16,30 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  String _selectedLanguage = 'English';
   bool _isDarkMode = false;
 
   void _handleLogout() {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: Text(l10n.translate('logout')),
+        content: Text(l10n.translate('are_you_sure_logout')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(l10n.translate('cancel')),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               ref.read(authNotifierProvider.notifier).logout();
-              context.go('/login');
+              context.go(RouteNames.login);
             },
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
             ),
-            child: const Text('Logout'),
+            child: Text(l10n.translate('logout')),
           ),
         ],
       ),
@@ -44,41 +47,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showLanguageDialog() {
+    final l10n = AppLocalizations.of(context)!;
+    final currentLocale = ref.read(localeProvider);
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Select Language'),
+        title: Text(l10n.translate('select_language')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             RadioListTile<String>(
-              title: const Text('English'),
-              value: 'English',
-              groupValue: _selectedLanguage,
+              title: Text(l10n.translate('english')),
+              value: 'en',
+              groupValue: currentLocale.languageCode,
               activeColor: AppColors.primary,
-              onChanged: (value) {
-                setState(() => _selectedLanguage = value!);
-                Navigator.pop(context);
+              onChanged: (value) async {
+                await ref.read(localeProvider.notifier).setLocale(const Locale('en', 'US'));
+                if (mounted) {
+                  Navigator.pop(context);
+                }
               },
             ),
             RadioListTile<String>(
-              title: const Text('Français'),
-              value: 'Français',
-              groupValue: _selectedLanguage,
+              title: Text(l10n.translate('french')),
+              value: 'fr',
+              groupValue: currentLocale.languageCode,
               activeColor: AppColors.primary,
-              onChanged: (value) {
-                setState(() => _selectedLanguage = value!);
-                Navigator.pop(context);
+              onChanged: (value) async {
+                await ref.read(localeProvider.notifier).setLocale(const Locale('fr', 'FR'));
+                if (mounted) {
+                  Navigator.pop(context);
+                }
               },
             ),
             RadioListTile<String>(
-              title: const Text('العربية'),
-              value: 'العربية',
-              groupValue: _selectedLanguage,
+              title: Text(l10n.translate('arabic')),
+              value: 'ar',
+              groupValue: currentLocale.languageCode,
               activeColor: AppColors.primary,
-              onChanged: (value) {
-                setState(() => _selectedLanguage = value!);
-                Navigator.pop(context);
+              onChanged: (value) async {
+                await ref.read(localeProvider.notifier).setLocale(const Locale('ar', 'SA'));
+                if (mounted) {
+                  Navigator.pop(context);
+                }
               },
             ),
           ],
@@ -87,12 +99,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+ String _getLanguageName(String code) {
+    switch (code) {
+      case 'en':
+        return 'English';
+      case 'fr':
+        return 'Français';
+      case 'ar':
+        return 'العربية';
+      default:
+        return 'English';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final currentLocale = ref.watch(localeProvider);
+    
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(l10n.translate('settings')),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -102,48 +130,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 8),
           
           // Account Section
-          _buildSectionHeader('ACCOUNT'),
+          _buildSectionHeader(l10n.translate('account')),
           _buildSettingsTile(
+            l10n: l10n,
             icon: Icons.person_outline,
-            title: 'Edit Profile',
-            subtitle: 'Update your personal information',
+            titleKey: 'edit_profile',
+            subtitleKey: 'manage_preferences',
             onTap: () => context.push('/edit-profile'),
           ),
           _buildSettingsTile(
+            l10n: l10n,
             icon: Icons.lock_outline,
-            title: 'Change Password',
-            subtitle: 'Update your account password',
-            onTap: () {
-              // TODO: Navigate to change password
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Change password coming soon')),
-              );
-            },
+            titleKey: 'change_password',
+            subtitleKey: 'update_security_credentials',
+            onTap: () => context.push(RouteNames.changePassword),
           ),
           
           const SizedBox(height: 24),
           
           // App Preferences Section
-          _buildSectionHeader('APP PREFERENCES'),
+          _buildSectionHeader(l10n.translate('app_preferences')),
           _buildSettingsTile(
+            l10n: l10n,
             icon: Icons.language_outlined,
-            title: 'Language',
-            subtitle: _selectedLanguage,
+            titleKey: 'language',
+            subtitle: _getLanguageName(currentLocale.languageCode),
             onTap: _showLanguageDialog,
             trailing: const Icon(Icons.chevron_right, color: Colors.grey),
           ),
           _buildSettingsTile(
+            l10n: l10n,
             icon: Icons.brightness_6_outlined,
-            title: 'Dark Mode',
-            subtitle: 'Switch between light and dark theme',
+            titleKey: 'dark_mode',
+            subtitleKey: 'enable_dark_theme',
             trailing: Switch(
               value: _isDarkMode,
               onChanged: (value) {
                 setState(() => _isDarkMode = value);
-                // TODO: Implement theme switching
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(value ? 'Dark mode enabled' : 'Light mode enabled'),
+                    content: Text(l10n.translate(value ? 'dark_mode_enabled' : 'light_mode_enabled')),
                   ),
                 );
               },
@@ -154,11 +180,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 24),
           
           // Notifications Section
-          _buildSectionHeader('NOTIFICATIONS'),
+          _buildSectionHeader(l10n.translate('notifications')),
           _buildSettingsTile(
+            l10n: l10n,
             icon: Icons.notifications_outlined,
-            title: 'Push Notifications',
-            subtitle: 'Receive order updates',
+            titleKey: 'push_notifications',
+            subtitleKey: 'receive_order_updates',
             trailing: Switch(
               value: true,
               onChanged: (value) {
@@ -168,9 +195,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           _buildSettingsTile(
+            l10n: l10n,
             icon: Icons.email_outlined,
-            title: 'Email Notifications',
-            subtitle: 'Receive promotional emails',
+            titleKey: 'email_notifications',
+            subtitleKey: 'receive_news_offers',
             trailing: Switch(
               value: false,
               onChanged: (value) {
@@ -183,27 +211,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 24),
           
           // Support Section
-          _buildSectionHeader('SUPPORT'),
+          _buildSectionHeader(l10n.translate('support')),
           _buildSettingsTile(
+            l10n: l10n,
             icon: Icons.help_outline,
-            title: 'Help & Support',
-            subtitle: 'Get help with your orders',
+            titleKey: 'help_center',
+            subtitleKey: 'faq_support_articles',
             onTap: () {
               // TODO: Navigate to help
             },
           ),
           _buildSettingsTile(
-            icon: Icons.privacy_tip_outlined,
-            title: 'Privacy Policy',
-            subtitle: 'Read our privacy policy',
+            l10n: l10n,
+            icon: Icons.contact_support_outlined,
+            titleKey: 'contact_us',
+            subtitleKey: 'get_in_touch',
             onTap: () {
-              // TODO: Navigate to privacy policy
+              // TODO: Navigate to contact
             },
           ),
           _buildSettingsTile(
+            l10n: l10n,
             icon: Icons.description_outlined,
-            title: 'Terms of Service',
-            subtitle: 'Read our terms and conditions',
+            titleKey: 'terms_conditions',
+            subtitleKey: 'legal_information',
             onTap: () {
               // TODO: Navigate to terms
             },
@@ -212,10 +243,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 24),
           
           // About Section
-          _buildSectionHeader('ABOUT'),
+          _buildSectionHeader(l10n.translate('about')),
           _buildSettingsTile(
+            l10n: l10n,
             icon: Icons.info_outline,
-            title: 'App Version',
+            titleKey: 'app_version',
             subtitle: '1.0.0',
             onTap: null,
           ),
@@ -231,9 +263,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: OutlinedButton.icon(
                 onPressed: _handleLogout,
                 icon: const Icon(Icons.logout),
-                label: const Text(
-                  'Logout',
-                  style: TextStyle(
+                label: Text(
+                  l10n.translate('logout'),
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -271,8 +303,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildSettingsTile({
+    required AppLocalizations l10n,
     required IconData icon,
-    required String title,
+    String? titleKey,
+    String? subtitleKey,
     String? subtitle,
     VoidCallback? onTap,
     Widget? trailing,
@@ -294,18 +328,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
         title: Text(
-          title,
+          titleKey != null ? l10n.translate(titleKey) : '',
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
             color: Colors.black87,
           ),
         ),
-        subtitle: subtitle != null
+        subtitle: (subtitleKey != null || subtitle != null)
             ? Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  subtitle,
+                  subtitleKey != null ? l10n.translate(subtitleKey) : subtitle!,
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[600],

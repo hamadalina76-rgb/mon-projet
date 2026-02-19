@@ -148,7 +148,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public OtpResponse login(LoginRequest request) {
+    public Object login(LoginRequest request) {
         log.info("User login attempt with email: {}", request.getEmail());
 
         // Authenticate user (verify email and password)
@@ -168,16 +168,61 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepo.findByEmailIgnoreCase(request.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        // Generate and send OTP
-        otpService.generateAndSendOtp(user.getEmail(), user.getFirstName());
+        // Check account status and handle accordingly
+        switch (user.getStatus()) {
+            case SUSPENDED:
+                log.warn("Login blocked: account SUSPENDED for {}", request.getEmail());
+                throw new AccountStatusException("ACCOUNT_SUSPENDED");
+                
+            case INACTIVE:
+                log.warn("Login blocked: account INACTIVE (deactivated) for {}", request.getEmail());
+                throw new AccountStatusException("ACCOUNT_INACTIVE");
+                
+            case DELETED:
+                log.warn("Login blocked: account DELETED for {}", request.getEmail());
+                throw new AccountStatusException("ACCOUNT_DELETED");
+                
+            case PENDING:
+                // First time login - send OTP for email verification
+                log.info("Account is PENDING, sending OTP for first-time verification: {}", request.getEmail());
+                
+                // Generate and send OTP
+                otpService.generateAndSendOtp(user.getEmail(), user.getFirstName());
 
-        log.info("OTP sent successfully for login: {}", request.getEmail());
+                return OtpResponse.builder()
+                        .message("Please verify your email with the OTP code sent to complete your first login.")
+                        .email(user.getEmail())
+                        .otpSent(true)
+                        .expirationMinutes(15)
+                        .build();
+                
+            case ACTIVE:
+                // Active account - generate tokens directly (no OTP required)
+                log.info("Account is ACTIVE, generating tokens for direct login: {}", request.getEmail());
+                break;
+                
+            default:
+                log.error("Unknown user status: {} for {}", user.getStatus(), request.getEmail());
+                throw new AccountStatusException("Invalid account status");
+        }
+        
+        String accessToken = tokenProvider.generateToken(user);
+        String refreshToken = tokenProvider.generatRefreshToken(user.getEmail());
 
-        return OtpResponse.builder()
-                .message("OTP sent to your email. Please verify to complete login.")
-                .email(user.getEmail())
-                .otpSent(true)
-                .expirationMinutes(15)
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn(jwtExpirationMs)
+                .user(AuthResponse.UserInfo.builder()
+                        .id(user.getId())
+                        .email(user.getEmail())
+                        .firstName(user.getFirstName())
+                        .lastName(user.getLastName())
+                        .phoneNumber(user.getPhoneNumber())
+                        .role(user.getRole())
+                        .profilePicture(user.getProfilePicture())
+                        .build())
                 .build();
     }
 
@@ -203,16 +248,31 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepo.findByEmailIgnoreCase(request.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        // Check if user is INACTIVE
-        if (user.getStatus() == UserStatus.INACTIVE) {
-            log.warn("Login attempt for INACTIVE account: {}", request.getEmail());
-            throw new AccountStatusException("Your account has been deactivated. Please contact support.");
-        }
-
-        // Check if user is SUSPENDED
-        if (user.getStatus() == UserStatus.SUSPENDED) {
-            log.warn("Login attempt for SUSPENDED account: {}", request.getEmail());
-            throw new AccountStatusException("Your account has been suspended. Please contact support.");
+        // Check account status
+        switch (user.getStatus()) {
+            case INACTIVE:
+                log.warn("Login attempt for INACTIVE account: {}", request.getEmail());
+                throw new AccountStatusException("Your account has been deactivated. Please contact support.");
+                
+            case SUSPENDED:
+                log.warn("Login attempt for SUSPENDED account: {}", request.getEmail());
+                throw new AccountStatusException("Your account has been suspended. Please contact support.");
+                
+            case DELETED:
+                log.warn("Login attempt for DELETED account: {}", request.getEmail());
+                throw new AccountStatusException("Your account has been deleted. Please contact support.");
+                
+            case PENDING:
+                log.warn("Pending account attempting admin login: {}", request.getEmail());
+                throw new AccountStatusException("Your account is pending verification.");
+                
+            case ACTIVE:
+                // Continue with admin login
+                break;
+                
+            default:
+                log.error("Unknown user status: {} for {}", user.getStatus(), request.getEmail());
+                throw new AccountStatusException("Invalid account status");
         }
 
         // Check if user is admin
@@ -269,18 +329,35 @@ public class AuthServiceImpl implements AuthService {
             User user = userRepo.findByEmailIgnoreCase(request.getEmail())
                     .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-            // Check account status — block suspended / inactive / deleted accounts
-            if (user.getStatus() == UserStatus.SUSPENDED) {
-                log.warn("Login blocked: account SUSPENDED for {}", request.getEmail());
-                throw new AccountStatusException("ACCOUNT_SUSPENDED");
-            }
-            if (user.getStatus() == UserStatus.INACTIVE) {
-                log.warn("Login blocked: account INACTIVE (deactivated) for {}", request.getEmail());
-                throw new AccountStatusException("ACCOUNT_INACTIVE");
-            }
-            if (user.getStatus() == UserStatus.DELETED) {
-                log.warn("Login blocked: account DELETED for {}", request.getEmail());
-                throw new AccountStatusException("ACCOUNT_DELETED");
+            // Check account status and handle accordingly
+            switch (user.getStatus()) {
+                case SUSPENDED:
+                    log.warn("Login blocked: account SUSPENDED for {}", request.getEmail());
+                    throw new AccountStatusException("ACCOUNT_SUSPENDED");
+                    
+                case INACTIVE:
+                    log.warn("Login blocked: account INACTIVE (deactivated) for {}", request.getEmail());
+                    throw new AccountStatusException("ACCOUNT_INACTIVE");
+                    
+                case DELETED:
+                    log.warn("Login blocked: account DELETED for {}", request.getEmail());
+                    throw new AccountStatusException("ACCOUNT_DELETED");
+                    
+                case PENDING:
+                    // Activate account after successful OTP verification
+                    log.info("Activating account after first OTP verification: {}", request.getEmail());
+                    user.setStatus(UserStatus.ACTIVE);
+                    user.setIsEmailVerified(true);
+                    userRepo.save(user);
+                    break;
+                    
+                case ACTIVE:
+                    // Account already active, continue
+                    break;
+                    
+                default:
+                    log.error("Unknown user status: {} for {}", user.getStatus(), request.getEmail());
+                    throw new AccountStatusException("Invalid account status");
             }
 
             // Generate tokens
@@ -329,13 +406,9 @@ public class AuthServiceImpl implements AuthService {
         User user;
 
         if (existingUser.isPresent()) {
+            // Existing user - don't overwrite their profile picture
+            // They may have uploaded a custom one
             user = existingUser.get();
-            // Update profile picture if changed
-            if (oauth2UserInfo.getProfilePicture() != null &&
-                    !oauth2UserInfo.getProfilePicture().equals(user.getProfilePicture())) {
-                user.setProfilePicture(oauth2UserInfo.getProfilePicture());
-                userRepo.save(user);
-            }
         } else {
             // Check if user exists with same email (different provider)
             Optional<User> existingByEmail = userRepo.findByEmailIgnoreCase(oauth2UserInfo.getEmail());
@@ -345,7 +418,10 @@ public class AuthServiceImpl implements AuthService {
                 user = existingByEmail.get();
                 user.setAuthProvider(request.getProvider());
                 user.setProviderUserId(oauth2UserInfo.getProviderId());
-                user.setProfilePicture(oauth2UserInfo.getProfilePicture());
+                // Only set OAuth profile picture if user doesn't have one already
+                if (user.getProfilePicture() == null || user.getProfilePicture().isEmpty()) {
+                    user.setProfilePicture(oauth2UserInfo.getProfilePicture());
+                }
                 user.setIsEmailVerified(oauth2UserInfo.getEmailVerified());
                 log.info("Linking existing user to {} account", request.getProvider());
             } else {
