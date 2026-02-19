@@ -21,4 +21,5 @@ class RouteNames {
   // Profile Settings
   static const String settings = '/settings';
   static const String editProfile = '/edit-profile';
+  static const String changePassword = '/change-password';
 }

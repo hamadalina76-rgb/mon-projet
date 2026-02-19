@@ -95,10 +95,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
     }
     
-    // Use PUT /couriers/me - API Gateway adds X-User-Id header from JWT
+    // Use PUT /couriers/current_user - API Gateway adds X-User-Id header from JWT
     // Backend finds courier by userId and updates documentation
     await dio.put(
-      '/couriers/me',
+      '/couriers/current_user',
       data: formData,
       options: Options(
         headers: {'Content-Type': 'multipart/form-data'},

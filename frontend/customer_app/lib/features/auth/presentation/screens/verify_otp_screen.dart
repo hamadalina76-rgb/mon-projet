@@ -156,10 +156,10 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
             isError: false,
           );
           
-          // Navigation vers accueil après un court délai pour afficher le snackbar
+          // Navigation vers enableLocation après un court délai pour afficher le snackbar
           await Future.delayed(const Duration(milliseconds: 800));
           if (mounted) {
-            context.go(RouteNames.accueil);
+            context.go(RouteNames.enableLocation);
           }
         } else {
           _showSnackBar(

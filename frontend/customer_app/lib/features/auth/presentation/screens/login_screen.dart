@@ -493,34 +493,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
         
         // Stay connected checkbox
-        Row(
-          children: [
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: Checkbox(
-                value: _rememberMe,
-                onChanged: isLoading ? null : (value) {
-                  setState(() {
-                    _rememberMe = value ?? false;
-                  });
-                },
-                activeColor: AppColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              context.tr('stay_connected'),
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
+       
 
         SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 14)),
 

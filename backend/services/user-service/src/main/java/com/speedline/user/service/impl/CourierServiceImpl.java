@@ -44,7 +44,7 @@ public class CourierServiceImpl implements CourierService {
 
     public CourierServiceImpl(CourierRepository courierRepository,
                              AuthServiceClient authServiceClient,
-                             @Value("${file.upload-dir}") String uploadBaseDir) {
+                             @Value("${file.upload.dir}") String uploadBaseDir) {
         this.courierRepository = courierRepository;
         this.authServiceClient = authServiceClient;
 

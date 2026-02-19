@@ -12,8 +12,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    @Value("${file.upload-dir}")
-    @Value("${file.upload.dir:c:/PFE2026/speedline/backend/services/user-service/uploads/profile-pictures}")
+    @Value("${file.upload.dir:user-service/uploads/profile-pictures}")
     private String uploadDir;
 
     @Override
@@ -33,6 +32,5 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations(resourceLocation)
                 .setCachePeriod(3600); // Cache de 1 heure
-                .addResourceLocations("file:" + uploadDir + "/");
     }
 }

@@ -19,7 +19,7 @@ class ApiEndpoints {
   static const String AUTH_RESET_PASSWORD = '$AUTH_BASE/reset-password';
   static const String AUTH_REFRESH_TOKEN = '$AUTH_BASE/refresh-token';
   static const String AUTH_LOGOUT = '$AUTH_BASE/logout';
-  static const String AUTH_ME = '$AUTH_BASE/me';
+  static const String AUTH_CURRENT_USER = '$AUTH_BASE/current_user';
   static const String AUTH_SOCIAL_LOGIN = '$AUTH_BASE/social-login';
   static const String AUTH_GOOGLE_LOGIN = '$AUTH_BASE/google';
   static const String AUTH_FACEBOOK_LOGIN = '$AUTH_BASE/facebook';

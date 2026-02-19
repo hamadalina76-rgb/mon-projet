@@ -52,9 +52,9 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<OtpResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         log.info("Login endpoint called for email: {}", request.getEmail());
-        OtpResponse response = authService.login(request);
+        Object response = authService.login(request);
         return ResponseEntity.ok(response);
     }
 
@@ -174,9 +174,9 @@ public class AuthController {
      * Get current authenticated user's information
      * Requires JWT token in Authorization header
      */
-    @GetMapping("/me")
+    @GetMapping("/current_user")
     public ResponseEntity<UserInfoResponse> getCurrentUser(@RequestHeader("Authorization") String authHeader) {
-        log.info("GET /auth/me - Getting current user info");
+        log.info("GET /auth/current_user - Getting current user info");
 
         // Extract JWT token from Bearer header
         String token = authHeader.replace("Bearer ", "");

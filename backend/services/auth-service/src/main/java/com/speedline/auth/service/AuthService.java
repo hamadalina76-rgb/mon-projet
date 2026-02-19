@@ -12,7 +12,7 @@ public interface AuthService {
 
     void register(RegisterRequest request);
 
-    OtpResponse login(LoginRequest request);
+    Object login(LoginRequest request);
 
     AuthResponse adminLogin(LoginRequest request);
 

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../config/dependency_injection/injection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/localization/app_localizations.dart';
 
 /// Profile Screen
 /// Displays user information, delivery locations, payment methods, order history
@@ -35,15 +36,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   ];
 
   void _handleLogout() {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: Text(l10n.translate('logout')),
+        content: Text(l10n.translate('are_you_sure_logout')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(l10n.translate('cancel')),
           ),
           TextButton(
             onPressed: () {
@@ -54,7 +56,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
             ),
-            child: const Text('Logout'),
+            child: Text(l10n.translate('logout')),
           ),
         ],
       ),
@@ -76,10 +78,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildProfileContent(User user) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: Text(l10n.translate('profile')),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -221,23 +224,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             
             // Delivery Locations Section
             _buildSection(
-              title: 'DELIVERY LOCATIONS',
-              action: 'Manage All',
+              l10n: l10n,
+              title: 'delivery_addresses',
+              action: 'manage_all',
               onAction: () {
                 // TODO: Navigate to manage locations
               },
               child: Column(
                 children: [
                   _buildLocationItem(
+                    l10n: l10n,
                     icon: Icons.my_location,
-                    title: 'Current Location',
+                    title: 'use_current_location',
                     subtitle: '742 Evergreen Terrace, Springfield...',
                     isLive: true,
                   ),
                   const Divider(height: 1),
                   _buildAddNewItem(
+                    l10n: l10n,
                     icon: Icons.add_location_outlined,
-                    title: 'Add New Favorite',
+                    title: 'add_new_address',
                   ),
                 ],
               ),
@@ -247,8 +253,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             
             // Payment Methods Section
             _buildSection(
-              title: 'PAYMENT METHODS',
-              action: 'Manage',
+              l10n: l10n,
+              title: 'payment_methods',
+              action: 'manage',
               onAction: () {
                 // TODO: Navigate to manage payments
               },
@@ -259,13 +266,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             
             // Order History Section
             _buildSection(
-              title: 'ORDER HISTORY',
-              action: 'View All',
+              l10n: l10n,
+              title: 'order_history',
+              action: 'view_all',
               onAction: () {
                 // TODO: Navigate to full order history
               },
               child: Column(
-                children: _mockOrders.map((order) => _buildOrderItem(order)).toList(),
+                children: _mockOrders.map((order) => _buildOrderItem(order, l10n)).toList(),
               ),
             ),
             
@@ -286,9 +294,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       borderRadius: BorderRadius.circular(25),
                     ),
                   ),
-                  child: const Text(
-                    'Logout',
-                    style: TextStyle(
+                  child: Text(
+                    l10n.translate('logout'),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -305,6 +313,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildSection({
+    required AppLocalizations l10n,
     required String title,
     required String action,
     required VoidCallback onAction,
@@ -320,7 +329,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                title,
+                l10n.translate(title).toUpperCase(),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
@@ -336,7 +345,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(
-                  action,
+                  l10n.translate(action),
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -354,6 +363,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildLocationItem({
+    required AppLocalizations l10n,
     required IconData icon,
     required String title,
     required String subtitle,
@@ -377,7 +387,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       title: Row(
         children: [
           Text(
-            title,
+            l10n.translate(title),
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -424,6 +434,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildAddNewItem({
+    required AppLocalizations l10n,
     required IconData icon,
     required String title,
   }) {
@@ -443,7 +454,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
       ),
       title: Text(
-        title,
+        l10n.translate(title),
         style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
@@ -590,7 +601,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildOrderItem(Map<String, dynamic> order) {
+  Widget _buildOrderItem(Map<String, dynamic> order, AppLocalizations l10n) {
     return Container(
       margin: const EdgeInsets.only(bottom: AppConstants.verticalPadding),
       padding: const EdgeInsets.all(AppConstants.verticalPadding),
@@ -673,7 +684,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   borderRadius: BorderRadius.circular(AppConstants.cardPadding),
                 ),
                 child: Text(
-                  order['status'],
+                  l10n.translate('delivered'),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -706,12 +717,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.refresh, size: 18),
-                        SizedBox(width: 6),
+                      children: [
+                        const Icon(Icons.refresh, size: 18),
+                        const SizedBox(width: 6),
                         Text(
-                          'Reorder',
-                          style: TextStyle(
+                          l10n.translate('reorder'),
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
@@ -735,9 +746,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
                     ),
                   ),
-                  child: const Text(
-                    'Details',
-                    style: TextStyle(
+                  child: Text(
+                    l10n.translate('view_details'),
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),

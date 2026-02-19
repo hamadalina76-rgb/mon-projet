@@ -1,6 +1,8 @@
+import 'package:customer_app/config/routes/route_names.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/localization/app_localizations.dart';
 
 /// Main Scaffold with Bottom Navigation Bar
 /// Wraps the 4 main app screens: Explore, Search, Orders, Profile
@@ -16,13 +18,13 @@ class MainScaffold extends StatelessWidget {
 
   int _calculateSelectedIndex(String path) {
     switch (path) {
-      case '/explore':
+      case RouteNames.explore:
         return 0;
-      case '/search':
+      case RouteNames.search:
         return 1;
-      case '/orders':
+      case RouteNames.orders:
         return 2;
-      case '/profile':
+      case RouteNames.profile:
         return 3;
       default:
         return 0;
@@ -32,22 +34,23 @@ class MainScaffold extends StatelessWidget {
   void _onItemTapped(BuildContext context, int index) {
     switch (index) {
       case 0:
-        context.go('/explore');
+        context.go(RouteNames.explore);
         break;
       case 1:
-        context.go('/search');
+        context.go(RouteNames.search);
         break;
       case 2:
-        context.go('/orders');
+        context.go(RouteNames.orders);
         break;
       case 3:
-        context.go('/profile');
+        context.go(RouteNames.profile);
         break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: child,
       bottomNavigationBar: BottomNavigationBar(
@@ -60,26 +63,26 @@ class MainScaffold extends StatelessWidget {
         selectedFontSize: 12,
         unselectedFontSize: 12,
         elevation: 8,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.explore_outlined),
-            activeIcon: Icon(Icons.explore),
-            label: 'Explore',
+            icon: const Icon(Icons.explore_outlined),
+            activeIcon: const Icon(Icons.explore),
+            label: l10n.translate('explore'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.search_outlined),
-            activeIcon: Icon(Icons.search),
-            label: 'Search',
+            icon: const Icon(Icons.search_outlined),
+            activeIcon: const Icon(Icons.search),
+            label: l10n.translate('search'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long_outlined),
-            activeIcon: Icon(Icons.receipt_long),
-            label: 'Orders',
+            icon: const Icon(Icons.receipt_long_outlined),
+            activeIcon: const Icon(Icons.receipt_long),
+            label: l10n.translate('orders'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
+            icon: const Icon(Icons.person_outline),
+            activeIcon: const Icon(Icons.person),
+            label: l10n.translate('profile'),
           ),
         ],
       ),

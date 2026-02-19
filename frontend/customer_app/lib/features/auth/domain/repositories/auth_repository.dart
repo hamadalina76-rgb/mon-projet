@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
 import '../entities/user.dart';
 import '../entities/otp_result.dart';
+import '../entities/login_result.dart';
 import '../../data/models/login_request.dart';
 import '../../data/models/register_request.dart';
 import '../../data/models/forgot_password_request.dart';
@@ -14,11 +15,15 @@ import '../../data/models/social_login_request.dart';
 /// Définit le contrat entre la couche domain et data.
 /// Retourne Either<Failure, Success> pour gérer les erreurs de manière fonctionnelle.
 abstract class AuthRepository {
-  /// Connexion avec email et mot de passe (envoie OTP)
+  /// Connexion avec email et mot de passe
   /// 
-  /// @returns Right(OtpResult) si succès
+  /// Retourne LoginResult qui peut être:
+  /// - requiresOtp: Compte PENDING, nécessite vérification OTP
+  /// - authenticated: Compte ACTIVE, connexion directe avec tokens
+  /// 
+  /// @returns Right(LoginResult) si succès
   /// @returns Left(Failure) si erreur
-  Future<Either<Failure, OtpResult>> login(LoginRequest request);
+  Future<Either<Failure, LoginResult>> login(LoginRequest request);
 
   /// Vérification du code OTP pour authentification
   /// 

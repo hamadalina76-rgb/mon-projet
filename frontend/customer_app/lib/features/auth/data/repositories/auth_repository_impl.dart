@@ -3,6 +3,7 @@ import '../../../../core/errors/failures.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/entities/otp_result.dart';
+import '../../domain/entities/login_result.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
 import '../datasources/auth_local_datasource.dart';
@@ -12,6 +13,8 @@ import '../models/forgot_password_request.dart';
 import '../models/verify_otp_request.dart';
 import '../models/reset_password_request.dart';
 import '../models/social_login_request.dart';
+import '../models/auth_response.dart';
+import '../models/otp_response.dart';
 
 /// Implémentation du repository d'authentification (Data Layer)
 /// 
@@ -30,20 +33,42 @@ class AuthRepositoryImpl implements AuthRepository {
   });
 
   @override
-  Future<Either<Failure, OtpResult>> login(LoginRequest request) async {
+  Future<Either<Failure, LoginResult>> login(LoginRequest request) async {
     try {
-      // 1. Appel API (envoie OTP)
-      final otpResponse = await remoteDataSource.login(request);
+      // 1. Appel API (peut retourner OtpResponse ou AuthResponse)
+      final response = await remoteDataSource.login(request);
 
-      // 2. Convertir en entity
-      final result = OtpResult(
-        message: otpResponse.message,
-        email: otpResponse.email,
-        otpSent: otpResponse.otpSent,
-        expirationMinutes: otpResponse.expirationMinutes,
-      );
+      // 2. Vérifier le type de réponse
+      if (response is AuthResponse) {
+        // Compte ACTIVE - Connexion directe avec tokens
+        
+        // Sauvegarder les tokens
+        await localDataSource.saveTokens(
+          token: response.token,
+          refreshToken: response.refreshToken,
+        );
 
-      return Right(result);
+        // Sauvegarder l'utilisateur en cache
+        await localDataSource.saveUser(response.user);
+
+        // Convertir en entity
+        final user = _mapUserModelToEntity(response.user);
+
+        return Right(LoginResult.authenticated(user: user));
+      } else if (response is OtpResponse) {
+        // Compte PENDING - OTP requis pour vérification
+        
+        final result = OtpResult(
+          message: response.message,
+          email: response.email,
+          otpSent: response.otpSent,
+          expirationMinutes: response.expirationMinutes,
+        );
+
+        return Right(LoginResult.requiresOtp(otpResult: result));
+      } else {
+        return Left(UnknownFailure('Type de réponse invalide'));
+      }
     } on AuthException catch (e) {
       return Left(AuthFailure(e.message));
     } on NetworkException catch (e) {

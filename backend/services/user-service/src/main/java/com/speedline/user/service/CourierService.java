@@ -79,7 +79,7 @@ public interface CourierService {
 
     /**
      * Mettre à jour le profil d'un livreur par userId (auth-service)
-     * Utilisé par l'endpoint /couriers/me
+     * Utilisé par l'endpoint /couriers/current_user
      * 
      * @param userId ID de l'utilisateur dans auth-service
      * @param request CourierUpdateRequest contenant les champs à modifier
