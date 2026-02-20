@@ -1,124 +1,172 @@
-<!-- Register Component Template - Angular 19 -->
+﻿<!-- Register Component - Phase 1: Simple Signup -->
 <div class="register-container">
-  <mat-card class="register-card">
-    <div class="register-header">
-      <img src="assets/images/logo.png" alt="SpeedLine" class="logo" />
-      <h1>{{ 'auth.register.title' | translate }}</h1>
-      <p>{{ 'auth.register.subtitle' | translate }}</p>
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <img src="assets/image/speedLine-removebg-preview.png" alt="SpeedLine" class="logo-img" />
+      <span class="logo-text">SpeedLine</span>
     </div>
+    <a routerLink="/auth/login" class="back-to-login">
+      <mat-icon>arrow_back</mat-icon>
+      <span>{{ 'auth.register.alreadyMember' | translate }}</span>
+    </a>
+  </div>
 
-    <mat-stepper orientation="vertical" linear>
-      <!-- Step 1: Account Info -->
-      <mat-step [stepControl]="accountForm">
-        <ng-template matStepLabel>Informations du compte</ng-template>
-        <form [formGroup]="accountForm">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Email</mat-label>
-            <input matInput type="email" formControlName="email" />
-            <mat-icon matPrefix>email</mat-icon>
+  <!-- Main Registration Card -->
+  <div class="register-card-wrapper">
+    <mat-card class="register-card">
+      <!-- Partner Badge -->
+      <div class="portal-badge">
+        <mat-icon>storefront</mat-icon>
+        <span>{{ 'auth.register.partnerPortal' | translate }}</span>
+      </div>
+
+      <!-- Title -->
+      <div class="register-header">
+        <h1 class="register-title">{{ 'auth.register.title' | translate }}</h1>
+        <p class="register-subtitle">{{ 'auth.register.signupSubtitle' | translate }}</p>
+      </div>
+
+      <!-- Error Message -->
+      @if (errorMessage()) {
+        <div class="error-alert">
+          <mat-icon>error_outline</mat-icon>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <!-- Success Message -->
+      @if (successMessage()) {
+        <div class="success-alert">
+          <mat-icon>check_circle</mat-icon>
+          <span>{{ successMessage() }}</span>
+        </div>
+      }
+
+      <!-- Registration Form -->
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
+        <!-- Name Fields -->
+        <div class="form-row two-cols">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'auth.register.firstName' | translate }} *</mat-label>
+            <span matTextPrefix><mat-icon>person</mat-icon></span>
+            <input matInput formControlName="firstName" autocomplete="given-name" />
+            @if (registerForm.get('firstName')?.hasError('required') && registerForm.get('firstName')?.touched) {
+              <mat-error>{{ 'auth.register.errors.fieldRequired' | translate }}</mat-error>
+            }
+            @if (registerForm.get('firstName')?.hasError('minlength') && registerForm.get('firstName')?.touched) {
+              <mat-error>{{ 'auth.register.errors.minLength' | translate }}</mat-error>
+            }
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Mot de passe</mat-label>
-            <input matInput [type]="hidePassword() ? 'password' : 'text'" formControlName="password" />
-            <mat-icon matPrefix>lock</mat-icon>
-            <button mat-icon-button matSuffix type="button" (click)="togglePasswordVisibility()">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'auth.register.lastName' | translate }} *</mat-label>
+            <span matTextPrefix><mat-icon>person</mat-icon></span>
+            <input matInput formControlName="lastName" autocomplete="family-name" />
+            @if (registerForm.get('lastName')?.hasError('required') && registerForm.get('lastName')?.touched) {
+              <mat-error>{{ 'auth.register.errors.fieldRequired' | translate }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <!-- Email -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'auth.register.email' | translate }} *</mat-label>
+          <span matTextPrefix><mat-icon>email</mat-icon></span>
+          <input matInput type="email" formControlName="email" autocomplete="email" />
+          @if (registerForm.get('email')?.hasError('required') && registerForm.get('email')?.touched) {
+            <mat-error>{{ 'auth.register.errors.fieldRequired' | translate }}</mat-error>
+          }
+          @if (registerForm.get('email')?.hasError('email') && registerForm.get('email')?.touched) {
+            <mat-error>{{ 'auth.register.errors.emailInvalid' | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        <!-- Phone -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'auth.register.phone' | translate }} *</mat-label>
+          <span matTextPrefix><mat-icon>phone</mat-icon></span>
+          <input matInput type="tel" formControlName="phoneNumber" placeholder="+216 XX XXX XXX" autocomplete="tel" />
+          @if (registerForm.get('phoneNumber')?.hasError('required') && registerForm.get('phoneNumber')?.touched) {
+            <mat-error>{{ 'auth.register.errors.fieldRequired' | translate }}</mat-error>
+          }
+          @if (registerForm.get('phoneNumber')?.hasError('pattern') && registerForm.get('phoneNumber')?.touched) {
+            <mat-error>{{ 'auth.register.errors.phoneInvalid' | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        <!-- Password Fields -->
+        <div class="form-row two-cols">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'auth.register.password' | translate }} *</mat-label>
+            <input matInput [type]="hidePassword() ? 'password' : 'text'" formControlName="password" autocomplete="new-password" />
+            <button matSuffix mat-icon-button type="button" (click)="togglePasswordVisibility()">
               <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
             </button>
+            @if (registerForm.get('password')?.hasError('required') && registerForm.get('password')?.touched) {
+              <mat-error>{{ 'auth.register.errors.fieldRequired' | translate }}</mat-error>
+            }
+            @if (registerForm.get('password')?.hasError('minlength') && registerForm.get('password')?.touched) {
+              <mat-error>{{ 'auth.register.passwordHint' | translate }}</mat-error>
+            }
+            @if (registerForm.get('password')?.hasError('weakPassword') && registerForm.get('password')?.touched) {
+              <mat-error>{{ 'auth.register.errors.weakPassword' | translate }}</mat-error>
+            }
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Confirmer le mot de passe</mat-label>
-            <input matInput type="password" formControlName="confirmPassword" />
-            <mat-icon matPrefix>lock</mat-icon>
-          </mat-form-field>
-
-          <div class="step-actions">
-            <button mat-flat-button color="primary" matStepperNext>Suivant</button>
-          </div>
-        </form>
-      </mat-step>
-
-      <!-- Step 2: Business Info -->
-      <mat-step [stepControl]="businessForm">
-        <ng-template matStepLabel>Informations de l'entreprise</ng-template>
-        <form [formGroup]="businessForm">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Nom de l'établissement</mat-label>
-            <input matInput formControlName="businessName" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Type d'établissement</mat-label>
-            <mat-select formControlName="businessType">
-              <mat-option value="restaurant">Restaurant</mat-option>
-              <mat-option value="grocery">Épicerie</mat-option>
-              <mat-option value="pharmacy">Pharmacie</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Téléphone</mat-label>
-            <input matInput formControlName="phone" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Adresse</mat-label>
-            <input matInput formControlName="address" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Ville</mat-label>
-            <input matInput formControlName="city" />
-          </mat-form-field>
-
-          <div class="step-actions">
-            <button mat-stroked-button matStepperPrevious>Précédent</button>
-            <button mat-flat-button color="primary" matStepperNext>Suivant</button>
-          </div>
-        </form>
-      </mat-step>
-
-      <!-- Step 3: Documents -->
-      <mat-step [stepControl]="documentsForm">
-        <ng-template matStepLabel>Documents légaux</ng-template>
-        <form [formGroup]="documentsForm">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>ICE</mat-label>
-            <input matInput formControlName="ice" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>RC</mat-label>
-            <input matInput formControlName="rc" />
-          </mat-form-field>
-
-          @if (errorMessage()) {
-            <div class="error-message">
-              <mat-icon>error</mat-icon>
-              <span>{{ errorMessage() }}</span>
-            </div>
-          }
-
-          <div class="step-actions">
-            <button mat-stroked-button matStepperPrevious>Précédent</button>
-            <button mat-flat-button color="primary" (click)="onSubmit()" [disabled]="loading()">
-              @if (loading()) {
-                <mat-spinner diameter="20"></mat-spinner>
-              } @else {
-                S'inscrire
-              }
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'auth.register.confirmPassword' | translate }} *</mat-label>
+            <input matInput [type]="hideConfirmPassword() ? 'password' : 'text'" formControlName="confirmPassword" autocomplete="new-password" />
+            <button matSuffix mat-icon-button type="button" (click)="toggleConfirmPasswordVisibility()">
+              <mat-icon>{{ hideConfirmPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
             </button>
-          </div>
-        </form>
-      </mat-step>
-    </mat-stepper>
+            @if (registerForm.hasError('passwordMismatch') && registerForm.get('confirmPassword')?.touched) {
+              <mat-error>{{ 'auth.register.errors.passwordMismatch' | translate }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
 
-    <div class="register-footer">
-      <p>
-        Déjà inscrit ?
-        <a routerLink="/auth/login">Se connecter</a>
-      </p>
-    </div>
-  </mat-card>
+        <!-- Password strength hint -->
+        <div class="password-hint">
+          <mat-icon>info_outline</mat-icon>
+          <span>{{ 'auth.register.passwordStrengthHint' | translate }}</span>
+        </div>
+
+        <!-- Terms Checkbox -->
+        <div class="terms-section">
+          <mat-checkbox formControlName="acceptTerms">
+            {{ 'auth.register.acceptTermsSignup' | translate }}
+          </mat-checkbox>
+        </div>
+
+        <!-- Submit Button -->
+        <button mat-raised-button color="primary" type="submit" class="submit-btn" [disabled]="loading()">
+          @if (loading()) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <span class="btn-content"><mat-icon>person_add</mat-icon> {{ 'auth.register.createAccount' | translate }}</span>
+          }
+        </button>
+
+        <!-- Info box about what happens after -->
+        <div class="info-box">
+          <mat-icon>info_outline</mat-icon>
+          <div>
+            <strong>{{ 'auth.register.whatHappensNext' | translate }}</strong>
+            <p>{{ 'auth.register.afterSignupInfo' | translate }}</p>
+          </div>
+        </div>
+      </form>
+
+      <!-- Login Link -->
+      <div class="register-footer">
+        <p>{{ 'auth.register.alreadyMember' | translate }} <a routerLink="/auth/login">{{ 'auth.register.signIn' | translate }}</a></p>
+      </div>
+    </mat-card>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-text">
+    <p>{{ 'auth.register.needHelp' | translate }} <a href="mailto:partners@speedline.com">{{ 'auth.register.contactUs' | translate }}</a></p>
+  </div>
 </div>

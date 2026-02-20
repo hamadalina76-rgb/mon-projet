@@ -2,21 +2,36 @@
 // SpeedLine Partner Dashboard - Variables
 // ==========================================================================
 
-// Colors - Primary
-$primary-color: #FF6B35;
-$primary-light: #FF8F5E;
-$primary-dark: #E55A2B;
+// ========== Brand Colors ==========
+$speedline-red: #EF4444;
+$speedline-red-light: #F87171;
+$speedline-red-dark: #DC2626;
+$speedline-red-gradient: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
 
-// Colors - Secondary
-$secondary-color: #2D3748;
-$secondary-light: #4A5568;
-$secondary-dark: #1A202C;
+// Colors - Primary (SpeedLine Red)
+$primary-color: $speedline-red;
+$primary-light: $speedline-red-light;
+$primary-dark: $speedline-red-dark;
+$primary-gradient: $speedline-red-gradient;
+
+// Colors - Secondary (Dark Gray)
+$secondary-color: #1F2937;
+$secondary-light: #374151;
+$secondary-dark: #111827;
 
 // Colors - Status
-$success-color: #48BB78;
-$warning-color: #ECC94B;
-$error-color: #F56565;
-$info-color: #4299E1;
+$success-color: #10B981;
+$success-light: #34D399;
+$success-dark: #059669;
+$warning-color: #F59E0B;
+$warning-light: #FBBF24;
+$warning-dark: #D97706;
+$error-color: #EF4444;
+$error-light: #F87171;
+$error-dark: #DC2626;
+$info-color: #3B82F6;
+$info-light: #60A5FA;
+$info-dark: #2563EB;
 
 // Colors - Grayscale
 $white: #FFFFFF;
@@ -36,11 +51,13 @@ $black: #000000;
 $text-primary: $gray-800;
 $text-secondary: $gray-600;
 $text-muted: $gray-500;
+$text-light: $white;
 
 // Background Colors
-$background-default: $gray-50;
+$background-default: #f8f9fa;
 $background-paper: $white;
 $background-dark: $gray-800;
+$background-light: #f8f9fa;
 
 // Spacing
 $spacing-xs: 0.25rem;  // 4px

@@ -1,5 +1,6 @@
 package com.speedline.auth.service;
 
+import com.speedline.auth.client.PartnerServiceClient;
 import com.speedline.auth.client.UserServiceClient;
 import com.speedline.auth.domain.AuthProvider;
 import com.speedline.auth.domain.Role;
@@ -8,6 +9,7 @@ import com.speedline.auth.domain.UserStatus;
 import com.speedline.auth.dto.request.CreateAdminAccountRequest;
 import com.speedline.auth.dto.request.CreateCourierRequest;
 import com.speedline.auth.dto.request.CreateCustomerRequest;
+import com.speedline.auth.dto.request.CreatePartnerRequest;
 import com.speedline.auth.dto.request.LoginRequest;
 import com.speedline.auth.dto.request.RegisterRequest;
 import com.speedline.auth.dto.request.SocialLoginRequest;
@@ -52,6 +54,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final OAuth2Service oauth2Service;
     private final UserServiceClient userServiceClient;
+    private final PartnerServiceClient partnerServiceClient;
     private final OtpService otpService;
 
     @Value("${jwt.expiration}")
@@ -143,6 +146,24 @@ public class AuthServiceImpl implements AuthService {
                 log.error("Full exception details:", e);
                 // Continue - the user account is created, profile can be created later
             }
+        } else if (role == Role.PARTNER) {
+            log.info("Attempting to create partner profile for userId: {}", userId);
+            try {
+                CreatePartnerRequest partnerRequest = CreatePartnerRequest.builder()
+                        .userId(userId)
+                        .email(email)
+                        .firstName(firstName)
+                        .lastName(lastName)
+                        .phoneNumber(phoneNumber)
+                        .build();
+                partnerServiceClient.createPartner(partnerRequest);
+                log.info("Partner profile created successfully for userId: {}", userId);
+            } catch (Exception e) {
+                log.error("FAILED to create partner profile in partner-service for userId: {}. Error: {}",
+                        userId, e.getMessage(), e);
+                log.error("Full exception details:", e);
+                // Continue - the user account is created, profile can be created later
+            }
         }
     }
 
@@ -173,19 +194,19 @@ public class AuthServiceImpl implements AuthService {
             case SUSPENDED:
                 log.warn("Login blocked: account SUSPENDED for {}", request.getEmail());
                 throw new AccountStatusException("ACCOUNT_SUSPENDED");
-                
+
             case INACTIVE:
                 log.warn("Login blocked: account INACTIVE (deactivated) for {}", request.getEmail());
                 throw new AccountStatusException("ACCOUNT_INACTIVE");
-                
+
             case DELETED:
                 log.warn("Login blocked: account DELETED for {}", request.getEmail());
                 throw new AccountStatusException("ACCOUNT_DELETED");
-                
+
             case PENDING:
                 // First time login - send OTP for email verification
                 log.info("Account is PENDING, sending OTP for first-time verification: {}", request.getEmail());
-                
+
                 // Generate and send OTP
                 otpService.generateAndSendOtp(user.getEmail(), user.getFirstName());
 
@@ -195,36 +216,42 @@ public class AuthServiceImpl implements AuthService {
                         .otpSent(true)
                         .expirationMinutes(15)
                         .build();
-                
+
             case ACTIVE:
                 // Active account - generate tokens directly (no OTP required)
                 log.info("Account is ACTIVE, generating tokens for direct login: {}", request.getEmail());
                 break;
-                
+
             default:
                 log.error("Unknown user status: {} for {}", user.getStatus(), request.getEmail());
                 throw new AccountStatusException("Invalid account status");
         }
-        
+
         String accessToken = tokenProvider.generateToken(user);
         String refreshToken = tokenProvider.generatRefreshToken(user.getEmail());
 
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .tokenType("Bearer")
-                .expiresIn(jwtExpirationMs)
-                .user(AuthResponse.UserInfo.builder()
-                        .id(user.getId())
-                        .email(user.getEmail())
-                        .firstName(user.getFirstName())
-                        .lastName(user.getLastName())
-                        .phoneNumber(user.getPhoneNumber())
-                        .role(user.getRole())
-                        .profilePicture(user.getProfilePicture())
-                        .build())
-                .build();
-    }
+            log.info("User logged in successfully without OTP (email already verified): {}", request.getEmail());
+
+            return AuthResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .tokenType("Bearer")
+                    .expiresIn(jwtExpirationMs)
+                    .user(AuthResponse.UserInfo.builder()
+                            .id(user.getId())
+                            .email(user.getEmail())
+                            .firstName(user.getFirstName())
+                            .lastName(user.getLastName())
+                            .phoneNumber(user.getPhoneNumber())
+                            .role(user.getRole())
+                            .profilePicture(user.getProfilePicture())
+                            .partnerId(user.getPartnerId())
+                            .build())
+                    .build();
+        }
+
+
+
 
     @Override
     @Transactional
@@ -253,23 +280,23 @@ public class AuthServiceImpl implements AuthService {
             case INACTIVE:
                 log.warn("Login attempt for INACTIVE account: {}", request.getEmail());
                 throw new AccountStatusException("Your account has been deactivated. Please contact support.");
-                
+
             case SUSPENDED:
                 log.warn("Login attempt for SUSPENDED account: {}", request.getEmail());
                 throw new AccountStatusException("Your account has been suspended. Please contact support.");
-                
+
             case DELETED:
                 log.warn("Login attempt for DELETED account: {}", request.getEmail());
                 throw new AccountStatusException("Your account has been deleted. Please contact support.");
-                
+
             case PENDING:
                 log.warn("Pending account attempting admin login: {}", request.getEmail());
                 throw new AccountStatusException("Your account is pending verification.");
-                
+
             case ACTIVE:
                 // Continue with admin login
                 break;
-                
+
             default:
                 log.error("Unknown user status: {} for {}", user.getStatus(), request.getEmail());
                 throw new AccountStatusException("Invalid account status");
@@ -297,7 +324,9 @@ public class AuthServiceImpl implements AuthService {
                         .email(user.getEmail())
                         .firstName(user.getFirstName())
                         .lastName(user.getLastName())
+                        .phoneNumber(user.getPhoneNumber())
                         .role(user.getRole())
+                        .partnerId(user.getPartnerId())
                         .build())
                 .build();
     }
@@ -334,15 +363,15 @@ public class AuthServiceImpl implements AuthService {
                 case SUSPENDED:
                     log.warn("Login blocked: account SUSPENDED for {}", request.getEmail());
                     throw new AccountStatusException("ACCOUNT_SUSPENDED");
-                    
+
                 case INACTIVE:
                     log.warn("Login blocked: account INACTIVE (deactivated) for {}", request.getEmail());
                     throw new AccountStatusException("ACCOUNT_INACTIVE");
-                    
+
                 case DELETED:
                     log.warn("Login blocked: account DELETED for {}", request.getEmail());
                     throw new AccountStatusException("ACCOUNT_DELETED");
-                    
+
                 case PENDING:
                     // Activate account after successful OTP verification
                     log.info("Activating account after first OTP verification: {}", request.getEmail());
@@ -350,11 +379,11 @@ public class AuthServiceImpl implements AuthService {
                     user.setIsEmailVerified(true);
                     userRepo.save(user);
                     break;
-                    
+
                 case ACTIVE:
                     // Account already active, continue
                     break;
-                    
+
                 default:
                     log.error("Unknown user status: {} for {}", user.getStatus(), request.getEmail());
                     throw new AccountStatusException("Invalid account status");
@@ -379,6 +408,7 @@ public class AuthServiceImpl implements AuthService {
                             .phoneNumber(user.getPhoneNumber())
                             .role(user.getRole())
                             .profilePicture(user.getProfilePicture())
+                            .partnerId(user.getPartnerId())
                             .build())
                     .build();
         }
@@ -406,9 +436,13 @@ public class AuthServiceImpl implements AuthService {
         User user;
 
         if (existingUser.isPresent()) {
-            // Existing user - don't overwrite their profile picture
-            // They may have uploaded a custom one
             user = existingUser.get();
+            // Update profile picture if changed
+            if (oauth2UserInfo.getProfilePicture() != null &&
+                    !oauth2UserInfo.getProfilePicture().equals(user.getProfilePicture())) {
+                user.setProfilePicture(oauth2UserInfo.getProfilePicture());
+                userRepo.save(user);
+            }
         } else {
             // Check if user exists with same email (different provider)
             Optional<User> existingByEmail = userRepo.findByEmailIgnoreCase(oauth2UserInfo.getEmail());
@@ -466,6 +500,7 @@ public class AuthServiceImpl implements AuthService {
                         .phoneNumber(user.getPhoneNumber())
                         .role(user.getRole())
                         .profilePicture(user.getProfilePicture())
+                        .partnerId(user.getPartnerId())
                         .build())
                 .build();
     }
@@ -512,6 +547,7 @@ public class AuthServiceImpl implements AuthService {
                         .phoneNumber(user.getPhoneNumber())
                         .role(user.getRole())
                         .profilePicture(user.getProfilePicture())
+                        .partnerId(user.getPartnerId())
                         .build())
                 .build();
     }
@@ -548,10 +584,8 @@ public class AuthServiceImpl implements AuthService {
         // Verify OTP
         otpService.verifyOtp(email, otpCode);
 
-        // Check if new password is the same as current password
-        if (passwordEncoder.matches(newPassword, user.getPassword())) {
-            throw new RuntimeException("New password cannot be the same as the current password");
-        }
+        // Note: In forgot-password flow, we don't check if new == current.
+        // The user proved identity via OTP; allow setting any new password.
 
         // Update password
         user.setPassword(passwordEncoder.encode(newPassword));
@@ -632,6 +666,12 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    public void sendAdminWelcomeEmail(String email, String fullName, String temporaryPassword) {
+        log.info("Sending welcome email to admin: {}", email);
+        otpService.sendAdminWelcomeEmail(email, fullName, temporaryPassword);
+    }
+
+    @Override
     @Transactional
     public OtpResponse resendOtp(String email) {
         log.info("Resend OTP request for email: {}", email);
@@ -652,4 +692,66 @@ public class AuthServiceImpl implements AuthService {
                 .expirationMinutes(3)
                 .build();
     }
+
+    @Override
+    @Transactional
+    public void changePassword(String email, String currentPassword, String newPassword) {
+        log.info("Change password request for user: {}", email);
+
+        // Récupérer l'utilisateur
+        User user = userRepo.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        // Vérifier que le mot de passe actuel est correct
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            log.warn("Invalid current password for user: {}", email);
+            throw new RuntimeException("Le mot de passe actuel est incorrect");
+        }
+
+        // Vérifier que le nouveau mot de passe est différent de l'ancien
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            log.warn("New password is same as current password for user: {}", email);
+            throw new RuntimeException("Le nouveau mot de passe doit être différent de l'ancien");
+        }
+
+        // Encoder et sauvegarder le nouveau mot de passe
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepo.save(user);
+
+        log.info("Password changed successfully for user: {}", email);
+    }
+
+    @Override
+    public AuthResponse.UserInfo getProfile(String email) {
+        User user = userRepo.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+        return AuthResponse.UserInfo.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phoneNumber(user.getPhoneNumber())
+                .role(user.getRole())
+                .profilePicture(user.getProfilePicture())
+                .partnerId(user.getPartnerId())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void updateProfile(String email, String firstName, String lastName, String phoneNumber) {
+        log.info("Updating profile for user: {}", email);
+
+        User user = userRepo.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
+        // Toujours mettre à jour le téléphone (même si vide → null)
+        user.setPhoneNumber(phoneNumber != null && !phoneNumber.isBlank() ? phoneNumber : null);
+        userRepo.save(user);
+
+        log.info("Profile updated successfully for user: {}", email);
+    }
 }
+

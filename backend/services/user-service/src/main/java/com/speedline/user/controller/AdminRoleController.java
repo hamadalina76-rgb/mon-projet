@@ -16,7 +16,7 @@ import java.util.List;
  * Contrôleur REST pour la gestion des AdminRoles
  */
 @RestController
-@RequestMapping("/api/v1/admin-roles")
+@RequestMapping("/v1/admin-roles")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")

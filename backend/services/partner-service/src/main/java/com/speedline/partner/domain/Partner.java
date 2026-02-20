@@ -50,6 +50,12 @@ public class Partner {
     private String businessName;
 
     /**
+     * Nom de marque (brand name)
+     */
+    @Column(length = 255)
+    private String brandName;
+
+    /**
      * Slug URL unique (ex: "pizza-house-tunis")
      */
     @Column(nullable = false, unique = true, length = 255)
@@ -67,6 +73,12 @@ public class Partner {
      */
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    /**
+     * Description courte pour les listes
+     */
+    @Column(length = 500)
+    private String shortDescription;
 
     /**
      * URL du logo
@@ -91,6 +103,65 @@ public class Partner {
      */
     @Column(length = 255)
     private String email;
+
+    // ==================== INFORMATIONS LÉGALES ====================
+
+    /**
+     * Statut juridique (SARL, SA, Auto-Entrepreneur, etc.)
+     */
+    @Column(length = 100)
+    private String legalStatus;
+
+    /**
+     * Numéro TVA intracommunautaire
+     */
+    @Column(length = 50)
+    private String tva;
+
+    /**
+     * Prénom du représentant légal
+     */
+    @Column(length = 100)
+    private String legalRepFirstName;
+
+    /**
+     * Nom du représentant légal
+     */
+    @Column(length = 100)
+    private String legalRepLastName;
+
+    /**
+     * Position/Fonction du représentant légal
+     */
+    @Column(length = 100)
+    private String position;
+
+    // ==================== INFORMATIONS BANCAIRES ====================
+
+    /**
+     * Nom du titulaire du compte bancaire
+     */
+    @Column(length = 100)
+    private String accountHolderName;
+
+    /**
+     * IBAN du compte bancaire
+     */
+    @Column(length = 50)
+    private String iban;
+
+    /**
+     * Nom de la banque
+     */
+    @Column(length = 100)
+    private String bankName;
+
+    /**
+     * Devise du compte (TND, EUR, USD, etc.)
+     */
+    @Column(length = 10)
+    @Builder.Default
+    private String currency = "TND";
 
     // ==================== ADRESSE ====================
 
@@ -227,6 +298,20 @@ public class Partner {
     @Column(precision = 10, scale = 2)
     private BigDecimal freeDeliveryThreshold;
 
+    // ==================== MODES DE PAIEMENT ====================
+
+    /**
+     * Accepte le paiement en ligne (carte bancaire, etc.)
+     */
+    @Builder.Default
+    private Boolean acceptOnlinePayment = true;
+
+    /**
+     * Accepte le paiement en espèces à la livraison
+     */
+    @Builder.Default
+    private Boolean acceptCashPayment = true;
+
     // ==================== STATISTIQUES ====================
 
     /**
@@ -263,6 +348,44 @@ public class Partner {
     @Column(precision = 5, scale = 2)
     @Builder.Default
     private BigDecimal commissionRate = new BigDecimal("15.00");
+
+    // ==================== DOCUMENTS ====================
+
+    /**
+     * URL du document KBIS
+     */
+    @Column(length = 500)
+    private String kbisUrl;
+
+    /**
+     * URL de la carte d'identité du représentant légal
+     */
+    @Column(length = 500)
+    private String idCardUrl;
+
+    /**
+     * URL de l'attestation d'assurance
+     */
+    @Column(length = 500)
+    private String insuranceUrl;
+
+    /**
+     * URL du RIB (Relevé d'Identité Bancaire)
+     */
+    @Column(length = 500)
+    private String ribUrl;
+
+    /**
+     * URLs des photos du partenaire (JSON array)
+     */
+    @Column(columnDefinition = "TEXT")
+    private String photosJson;
+
+    /**
+     * Notes internes (admin/support uniquement)
+     */
+    @Column(length = 1000)
+    private String internalNotes;
 
     // ==================== CATÉGORIES ====================
 

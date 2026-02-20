@@ -19,14 +19,50 @@
   &.collapsed {
     left: $sidebar-collapsed-width;
   }
+
+  &.mobile {
+    left: 0 !important;
+    right: 0;
+    padding: 0 $spacing-md;
+  }
+}
+
+[dir="rtl"] .header {
+  left: 0;
+  right: $sidebar-width;
+  transition: right $transition-normal;
+
+  &.collapsed {
+    right: $sidebar-collapsed-width;
+  }
+
+  &.mobile {
+    right: 0 !important;
+  }
 }
 
 .header-left {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  min-width: 0;
+
+  .sidebar-toggle {
+    flex-shrink: 0;
+  }
+
   .page-title {
     font-size: 1.25rem;
     font-weight: 600;
     color: $text-primary;
     margin: 0;
+
+    @include mobile {
+      font-size: 1rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 }
 
@@ -59,6 +95,35 @@
   .material-icons {
     font-size: 22px;
     color: $gray-600;
+  }
+}
+
+.lang-action {
+  position: relative;
+}
+
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  .lang-flag {
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  .material-icons {
+    font-size: 18px;
+  }
+}
+
+.lang-dropdown {
+  min-width: 140px;
+  padding: 4px;
+
+  .dropdown-item.active {
+    background: rgba($primary-color, 0.1);
+    color: $primary-color;
   }
 }
 
@@ -187,25 +252,55 @@ hr {
   display: flex;
   gap: $spacing-sm;
   padding: $spacing-sm $spacing-md;
+  cursor: pointer;
+  transition: background-color 0.2s;
 
   &.unread {
     background: rgba($primary-color, 0.05);
+    border-left: 3px solid $primary-color;
+
+    .notif-title {
+      font-weight: 600;
+    }
   }
 
   &:hover {
     background: $gray-50;
   }
 
-  .material-icons {
-    color: $primary-color;
+  .notif-icon-wrapper {
+    position: relative;
+
+    .material-icons {
+      color: $primary-color;
+      font-size: 24px;
+    }
+
+    .unread-dot {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      width: 8px;
+      height: 8px;
+      background-color: #FF6B35;
+      border-radius: 50%;
+      border: 2px solid white;
+    }
   }
 
   .notification-content {
     flex: 1;
 
-    p {
+    .notif-title {
       font-size: 0.875rem;
+      margin: 0 0 4px;
+      color: $text-primary;
+    }
+
+    .notif-message {
+      font-size: 0.8125rem;
       margin: 0 0 $spacing-xs;
+      color: $text-secondary;
     }
 
     .time {
@@ -213,4 +308,26 @@ hr {
       color: $text-muted;
     }
   }
+}
+
+.no-notifications {
+  text-align: center;
+  padding: 40px 20px;
+  color: $gray-400;
+
+  .material-icons {
+    font-size: 48px;
+    color: $gray-300;
+    margin-bottom: 8px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.875rem;
+  }
+}
+
+.notifications-dropdown {
+  min-width: 360px;
+  max-width: 400px;
 }

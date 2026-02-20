@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 30px;
+            text-align: center;
+            color: white;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .message {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .credentials {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 8px;
+        }
+        .credentials h3 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .credential-item {
+            margin: 12px 0;
+            font-size: 15px;
+        }
+        .credential-label {
+            color: #666;
+            font-weight: 600;
+            display: inline-block;
+            width: 180px;
+        }
+        .credential-value {
+            color: #333;
+            font-weight: 500;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            display: inline-block;
+            font-family: 'Courier New', monospace;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+        .warning-icon {
+            font-size: 20px;
+            margin-right: 10px;
+        }
+        .warning-text {
+            color: #856404;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .footer p {
+            margin: 8px 0;
+        }
+        .divider {
+            height: 1px;
+            background: #e0e0e0;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>🚀 Bienvenue sur SpeedLine</h1>
+            <p>Plateforme d'Administration</p>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                Bonjour {{fullName}},
+            </div>
+            
+            <div class="message">
+                Un compte administrateur a été créé pour vous sur la plateforme SpeedLine.
+            </div>
+            
+            <div class="credentials">
+                <h3>Vos identifiants de connexion :</h3>
+                <div class="credential-item">
+                    <span class="credential-label">📧 Email :</span>
+                    <span class="credential-value">{{email}}</span>
+                </div>
+                <div class="credential-item">
+                    <span class="credential-label">🔑 Mot de passe provisoire :</span>
+                    <span class="credential-value">{{temporaryPassword}}</span>
+                </div>
+            </div>
+            
+            <div class="warning">
+                <span class="warning-icon">⚠️</span>
+                <span class="warning-text">
+                    <strong>Important :</strong> Pour des raisons de sécurité, veuillez changer votre mot de passe 
+                    lors de votre première connexion.
+                </span>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div style="text-align: center;">
+                <a href="{{loginUrl}}" class="cta-button">Se connecter maintenant</a>
+            </div>
+            
+            <div style="margin-top: 30px; font-size: 14px; color: #666;">
+                Si vous avez des questions, n'hésitez pas à contacter le super administrateur.
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>SpeedLine</strong> - Votre partenaire de livraison</p>
+            <p>© 2026 SpeedLine. Tous droits réservés.</p>
+        </div>
+    </div>
+</body>
+</html>

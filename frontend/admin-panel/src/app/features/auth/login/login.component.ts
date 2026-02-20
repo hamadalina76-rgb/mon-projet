@@ -227,14 +227,14 @@ export class LoginComponent implements OnInit {
   getErrorTitle(): string {
     const msg = this.errorMessage.toLowerCase();
     if (msg.includes('suspendu') || msg.includes('suspended') || msg.includes('تعليق')) {
-      return 'common.error';
+      return 'auth.accountSuspendedTitle';
     }
     if (msg.includes('désactivé') || msg.includes('deactivated') || msg.includes('تعطيل')) {
-      return 'common.error';
+      return 'auth.accountInactiveTitle';
     }
     if (msg.includes('supprimé') || msg.includes('deleted') || msg.includes('حذف')) {
-      return 'common.error';
+      return 'auth.accountDeletedTitle';
     }
-    return 'common.error';
+    return 'auth.authenticationError';
   }
 }

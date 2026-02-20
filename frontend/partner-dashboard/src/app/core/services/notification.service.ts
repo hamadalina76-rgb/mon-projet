@@ -1,80 +1,72 @@
 // src/app/core/services/notification.service.ts
-import { Injectable } from '@angular/core';
-import { ToastrService } from 'ngx-toastr';
+import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
+import { ApiService } from './api.service';
+
+export interface Notification {
+  id: string;
+  userId: number;
+  type: string;
+  title: string;
+  message: string;
+  data?: any;
+  isRead: boolean;
+  createdAt: string;
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class NotificationService {
-  private audio: HTMLAudioElement | null = null;
+  private api = inject(ApiService);
 
-  constructor(private toastr: ToastrService) {
-    this.initAudio();
+  getNotifications(userId: number, page: number = 0, size: number = 20): Observable<any> {
+    return this.api.get(`notifications/${userId}?page=${page}&size=${size}`);
   }
 
-  private initAudio(): void {
-    if (typeof window !== 'undefined') {
-      this.audio = new Audio('assets/sounds/notification.mp3');
-    }
+  markAsRead(notificationId: string): Observable<any> {
+    return this.api.put(`notifications/${notificationId}/read`, {});
   }
 
-  success(message: string, title = 'Succès'): void {
-    this.toastr.success(message, title);
+  markAllAsRead(userId: number): Observable<any> {
+    return this.api.put(`notifications/${userId}/read-all`, {});
   }
 
-  error(message: string, title = 'Erreur'): void {
-    this.toastr.error(message, title);
+  getUnreadCount(userId: number): Observable<any> {
+    return this.api.get(`notifications/${userId}/unread-count`);
   }
 
-  warning(message: string, title = 'Attention'): void {
-    this.toastr.warning(message, title);
-  }
-
-  info(message: string, title = 'Information'): void {
-    this.toastr.info(message, title);
-  }
-
-  newOrderAlert(orderNumber: string): void {
-    this.playSound();
-    this.toastr.info(
-      `Nouvelle commande #${orderNumber}`,
-      '🔔 Nouvelle commande!',
-      {
-        timeOut: 10000,
-        tapToDismiss: true,
-        closeButton: true,
-      }
-    );
-  }
-
-  playSound(): void {
-    if (this.audio) {
-      this.audio.currentTime = 0;
-      this.audio.play().catch(() => {
-        // Autoplay blocked
-      });
-    }
-  }
-
-  async requestBrowserPermission(): Promise<boolean> {
+  // Browser notification methods for order alerts
+  async requestBrowserPermission(): Promise<void> {
     if (!('Notification' in window)) {
-      return false;
+      console.warn('Browser does not support notifications');
+      return;
     }
 
-    if (Notification.permission === 'granted') {
-      return true;
+    if (Notification.permission !== 'granted') {
+      await Notification.requestPermission();
     }
-
-    const permission = await Notification.requestPermission();
-    return permission === 'granted';
   }
 
-  showBrowserNotification(title: string, body: string): void {
+  showBrowserNotification(title: string, body: string, icon?: string): void {
+    if (!('Notification' in window)) {
+      return;
+    }
+
     if (Notification.permission === 'granted') {
       new Notification(title, {
         body,
-        icon: 'assets/images/logo-icon.png',
+        icon: icon || '/assets/images/logo.svg',
+        badge: '/assets/images/logo-icon.svg'
       });
     }
+  }
+
+  newOrderAlert(orderNumber: string): void {
+    // Play sound notification
+    const audio = new Audio('/assets/sounds/notification.mp3');
+    audio.play().catch(err => console.warn('Could not play notification sound:', err));
+    
+    console.log(`New order received: ${orderNumber}`);
   }
 }

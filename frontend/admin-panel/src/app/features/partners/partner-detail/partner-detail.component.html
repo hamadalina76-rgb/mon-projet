@@ -1,51 +1,387 @@
-<!-- Partner Detail Component Template -->
+<!-- Partner Detail - SpeedLine Operations design -->
 <div class="partner-detail-page">
+  <!-- Breadcrumbs -->
+  <nav class="breadcrumbs" *ngIf="partner()">
+    <a routerLink="/partners">{{ 'partners.title' | translate }}</a>
+    <span class="sep">›</span>
+    <span class="current">{{ partner().brandName || partner().businessName }}</span>
+  </nav>
+
   <header class="page-header">
     <div class="header-left">
-      <button mat-icon-button routerLink="/partners">
+      <button mat-icon-button (click)="goBack()" class="btn-back">
         <mat-icon>arrow_back</mat-icon>
       </button>
-      <h1>Détails du partenaire</h1>
+      <h1 class="page-title">{{ 'partners.detail.title' | translate }}</h1>
     </div>
-    <div class="header-actions">
-      <!-- Action buttons -->
+    <div class="header-actions" *ngIf="partner()">
+      <button mat-raised-button color="warn" (click)="rejectPartner()" *ngIf="partner().status === 'PENDING'">
+        <mat-icon>close</mat-icon>
+        {{ 'partners.approval.reject' | translate }}
+      </button>
+      <button mat-raised-button color="primary" (click)="approvePartner()" *ngIf="partner().status === 'PENDING'">
+        <mat-icon>check</mat-icon>
+        {{ 'partners.approval.approve' | translate }}
+      </button>
+      <button mat-raised-button color="primary" (click)="activatePartner()"
+              *ngIf="partner().status === 'SUSPENDED' || partner().status === 'INACTIVE'">
+        <mat-icon>check_circle</mat-icon>
+        {{ 'partners.activate' | translate }}
+      </button>
     </div>
   </header>
 
-  <div class="partner-content" *ngIf="partner">
-    <!-- Partner info card -->
-    <mat-card class="info-card">
+  <div class="loading-container" *ngIf="loading()">
+    <mat-spinner></mat-spinner>
+  </div>
+
+  <mat-card *ngIf="error()" class="error-card">
+    <mat-icon color="warn">error</mat-icon>
+    <p>{{ error() }}</p>
+    <button mat-button (click)="goBack()">Retour</button>
+  </mat-card>
+
+  <div class="partner-content" *ngIf="partner() && !loading()">
+    <!-- Partner header (logo, name, status, type, ID) -->
+    <div class="partner-header-card">
       <div class="partner-header">
-        <img [src]="partner.logo" alt="Logo" class="partner-logo" />
-        <div class="partner-info">
-          <h2>{{ partner.name }}</h2>
-          <span class="partner-type">{{ partner.type }}</span>
+        <div class="partner-logo-wrap">
+          <img *ngIf="partner().logo" [src]="partner().logo" [alt]="partner().businessName" class="partner-logo-img" />
+          <div *ngIf="!partner().logo" class="partner-logo-placeholder">
+            {{ (partner().brandName || partner().businessName || '?').substring(0, 2).toUpperCase() }}
+          </div>
+          <span class="status-dot" [class]="'dot-' + partner().status?.toLowerCase()"></span>
+        </div>
+        <div class="partner-title-block">
+          <h2 class="partner-name">
+            {{ partner().brandName || partner().businessName }}
+            <span class="status-badge" [ngClass]="'badge-' + partner().status?.toLowerCase()">
+              {{ partner().status }}
+            </span>
+          </h2>
+          <p class="partner-meta">
+            {{ getTypeLabel(partner().type) }} • {{ 'partners.detail.partnerId' | translate }} : {{ getPartnerIdDisplay() }}
+          </p>
+          <div class="partner-badges">
+            <span class="mini-badge verified" *ngIf="partner().isVerified">{{ 'partners.detail.verified' | translate | uppercase }}</span>
+            <span class="mini-badge premium" *ngIf="partner().isPremium">{{ 'partners.detail.premium' | translate | uppercase }}</span>
+            <span class="mini-badge featured" *ngIf="partner().isFeatured">{{ 'partners.detail.featured' | translate | uppercase }}</span>
+          </div>
         </div>
       </div>
-    </mat-card>
+    </div>
 
     <!-- Tabs -->
-    <mat-card class="tabs-card">
-      <mat-tab-group>
-        <mat-tab label="Informations">
-          <!-- General info -->
-        </mat-tab>
-        <mat-tab label="Menu / Produits">
-          <!-- Products list -->
-        </mat-tab>
-        <mat-tab label="Commandes">
-          <!-- Orders list -->
-        </mat-tab>
-        <mat-tab label="Documents">
-          <!-- Documents list -->
-        </mat-tab>
-        <mat-tab label="Paiements">
-          <!-- Payment history -->
-        </mat-tab>
-        <mat-tab label="Avis">
-          <!-- Reviews list -->
-        </mat-tab>
-      </mat-tab-group>
-    </mat-card>
+    <mat-tab-group class="detail-tabs" animationDuration="0ms">
+      <mat-tab [label]="'partners.detail.tabs.general' | translate">
+        <div class="tab-content two-cols">
+          <div class="col-left">
+            <!-- Business Information -->
+            <mat-card class="info-card">
+              <div class="card-head">
+                <h3>{{ 'partners.approval.businessInfo' | translate }}</h3>
+              </div>
+              <mat-divider></mat-divider>
+              <div class="info-rows">
+                <div class="info-row">
+                  <span class="label">{{ 'partners.approval.commercialName' | translate }}</span>
+                  <span class="value">{{ partner().businessName || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.approval.brandName' | translate }}</span>
+                  <span class="value">{{ partner().brandName || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.detail.slug' | translate }}</span>
+                  <span class="value">{{ partner().slug || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.detail.typeCategory' | translate }}</span>
+                  <span class="value">{{ getTypeLabel(partner().type) }}</span>
+                </div>
+                <div class="info-row" *ngIf="partner().description">
+                  <span class="label">{{ 'partners.approval.description' | translate }}</span>
+                  <span class="value">{{ partner().description }}</span>
+                </div>
+                <div class="info-row" *ngIf="partner().shortDescription">
+                  <span class="label">{{ 'partners.detail.shortDescription' | translate }}</span>
+                  <span class="value">{{ partner().shortDescription }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.detail.registeredOn' | translate }}</span>
+                  <span class="value">{{ partner().createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                </div>
+              </div>
+            </mat-card>
+
+            <!-- Legal Information -->
+            <mat-card class="info-card">
+              <h3>{{ 'partners.approval.legalInfo' | translate }}</h3>
+              <mat-divider></mat-divider>
+              <div class="info-rows">
+                <div class="info-row">
+                  <span class="label">{{ 'partners.approval.legalStatus' | translate }}</span>
+                  <span class="value">{{ partner().legalStatus || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.detail.vatNif' | translate }}</span>
+                  <span class="value">{{ partner().tva || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.approval.legalRep' | translate }}</span>
+                  <span class="value">{{ (partner().legalRepFirstName || '') + ' ' + (partner().legalRepLastName || '') || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.approval.position' | translate }}</span>
+                  <span class="value">{{ partner().position || '—' }}</span>
+                </div>
+              </div>
+            </mat-card>
+
+            <!-- Contact Details -->
+            <mat-card class="info-card">
+              <h3>{{ 'partners.detail.contactDetails' | translate }}</h3>
+              <mat-divider></mat-divider>
+              <div class="info-rows contact-rows">
+                <div class="info-row">
+                  <mat-icon>phone</mat-icon>
+                  <span class="value">{{ partner().phoneNumber || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <mat-icon>email</mat-icon>
+                  <span class="value">{{ partner().email || '—' }}</span>
+                </div>
+                <div class="info-row full-width">
+                  <span class="label">{{ 'partners.approval.address' | translate }}</span>
+                  <span class="value">
+                    {{ partner().address || '—' }}<br />
+                    {{ partner().city || '' }}{{ partner().postalCode ? ' ' + partner().postalCode : '' }}<br />
+                    {{ partner().state || '' }}{{ partner().country ? ', ' + partner().country : '' }}
+                  </span>
+                </div>
+              </div>
+            </mat-card>
+
+            <!-- Banking Details -->
+            <mat-card class="info-card">
+              <h3>{{ 'partners.approval.bankInfo' | translate }}</h3>
+              <mat-divider></mat-divider>
+              <div class="info-rows">
+                <div class="info-row">
+                  <span class="label">{{ 'partners.approval.bank' | translate }}</span>
+                  <span class="value">{{ partner().bankName || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.approval.accountHolder' | translate }}</span>
+                  <span class="value">{{ partner().accountHolderName || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.approval.iban' | translate }}</span>
+                  <span class="value">{{ partner().iban ? '••••••••••••' + (partner().iban | slice:-4) : '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.approval.currency' | translate }}</span>
+                  <span class="value">{{ partner().currency || '—' }}</span>
+                </div>
+              </div>
+            </mat-card>
+
+            <!-- Operational Settings -->
+            <mat-card class="info-card">
+              <h3>{{ 'partners.approval.operational' | translate }}</h3>
+              <mat-divider></mat-divider>
+              <div class="info-rows ops-rows">
+                <div class="info-row">
+                  <span class="label">{{ 'partners.detail.minOrder' | translate }}</span>
+                  <span class="value highlight">{{ partner().minimumOrder ?? '—' }} {{ partner().currency || '' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.detail.prepTime' | translate }}</span>
+                  <span class="value">{{ partner().preparationTime ?? '—' }} {{ 'partners.approval.min' | translate }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.approval.deliveryRadius' | translate }}</span>
+                  <span class="value">{{ partner().deliveryRadius != null ? (partner().deliveryRadius / 1000) + ' km' : '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.detail.deliveryFee' | translate }}</span>
+                  <span class="value">{{ partner().deliveryFee ?? '—' }} {{ partner().currency || '' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.detail.freeDeliveryThreshold' | translate }}</span>
+                  <span class="value">{{ partner().freeDeliveryThreshold ?? '—' }} {{ partner().currency || '' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.approval.onlinePayment' | translate }}</span>
+                  <span class="value">{{ partner().acceptOnlinePayment != null ? (partner().acceptOnlinePayment ? ('partners.approval.yes' | translate) : ('partners.approval.no' | translate)) : '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.approval.cashPayment' | translate }}</span>
+                  <span class="value">{{ partner().acceptCashPayment != null ? (partner().acceptCashPayment ? ('partners.approval.yes' | translate) : ('partners.approval.no' | translate)) : '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.detail.accountActive' | translate }}</span>
+                  <span class="value">{{ partner().isActive != null ? (partner().isActive ? ('partners.approval.yes' | translate) : ('partners.approval.no' | translate)) : '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.detail.acceptsOrders' | translate }}</span>
+                  <span class="value">{{ partner().acceptsOrders != null ? (partner().acceptsOrders ? ('partners.approval.yes' | translate) : ('partners.approval.no' | translate)) : '—' }}</span>
+                </div>
+              </div>
+            </mat-card>
+
+            <!-- Opening Hours -->
+            <mat-card class="info-card" *ngIf="partner().openingHoursDisplay && parseOpeningHours().length">
+              <h3>{{ 'partners.approval.openingHours' | translate }}</h3>
+              <mat-divider></mat-divider>
+              <div class="opening-hours-list">
+                <div class="opening-hours-item" *ngFor="let day of parseOpeningHours()">
+                  <span class="day-name">{{ day.day }}</span>
+                  <span class="hours" *ngIf="!day.isClosed">
+                    <span *ngFor="let slot of day.slots; let last = last">
+                      {{ slot.open }} - {{ slot.close }}<span *ngIf="!last">, </span>
+                    </span>
+                  </span>
+                  <span class="hours closed" *ngIf="day.isClosed">{{ 'partners.detail.closed' | translate }}</span>
+                </div>
+              </div>
+            </mat-card>
+
+            <!-- Categories / Tags -->
+            <mat-card class="info-card" *ngIf="(partner().categoryIds && partner().categoryIds.length) || (partner().tags && partner().tags.length)">
+              <h3>{{ 'partners.detail.categoriesTags' | translate }}</h3>
+              <mat-divider></mat-divider>
+              <div class="info-rows">
+                <div class="info-row" *ngIf="partner().categoryIds?.length">
+                  <span class="label">{{ 'partners.detail.categories' | translate }}</span>
+                  <span class="value">{{ partner().categoryIds?.join(', ') }}</span>
+                </div>
+                <div class="info-row" *ngIf="partner().tags?.length">
+                  <span class="label">{{ 'partners.detail.tags' | translate }}</span>
+                  <span class="value">{{ partner().tags?.join(', ') }}</span>
+                </div>
+              </div>
+            </mat-card>
+          </div>
+
+          <div class="col-right">
+            <!-- Location -->
+            <mat-card class="info-card location-card">
+              <h3>{{ 'partners.approval.addressLocation' | translate }}</h3>
+              <mat-divider></mat-divider>
+              <div #mapContainer class="map-container"></div>
+              <p class="address">
+                {{ partner().address }}<br />
+                {{ partner().city }}{{ partner().postalCode ? ', ' + partner().postalCode : '' }}<br />
+                {{ partner().state || '' }}{{ partner().country ? ', ' + partner().country : '' }}
+              </p>
+              <button mat-stroked-button color="primary" class="btn-update-coords">{{ 'partners.detail.updateCoords' | translate }}</button>
+            </mat-card>
+
+            <!-- Store Performance -->
+            <mat-card class="info-card performance-card">
+              <h3>{{ 'partners.detail.performance' | translate }}</h3>
+              <mat-divider></mat-divider>
+              <div class="perf-rating">
+                <span class="rating-value">{{ partner().rating != null ? partner().rating + '/5' : '—' }}</span>
+                <span class="total-ratings" *ngIf="partner().totalRatings != null">({{ partner().totalRatings }} {{ 'partners.detail.reviews' | translate }})</span>
+              </div>
+              <div class="perf-stats">
+                <div class="perf-stat">
+                  <span class="label">{{ 'partners.detail.totalOrders' | translate }}</span>
+                  <span class="value">{{ partner().totalOrders ?? '—' }}</span>
+                </div>
+                <div class="perf-stat">
+                  <span class="label">{{ 'partners.detail.revenue' | translate }}</span>
+                  <span class="value">{{ partner().totalRevenue != null ? (partner().totalRevenue | number:'1.2-2') + ' ' + (partner().currency || '') : '—' }}</span>
+                </div>
+              </div>
+            </mat-card>
+
+            <!-- Media (logo + cover) -->
+            <mat-card class="info-card media-card" *ngIf="partner().logo || partner().coverImage">
+              <h3>{{ 'partners.detail.media' | translate }}</h3>
+              <mat-divider></mat-divider>
+              <div class="media-thumbs">
+                <div class="media-item" *ngIf="partner().logo">
+                  <img [src]="partner().logo" [alt]="'partners.approval.logo' | translate" />
+                  <span class="media-label">{{ 'partners.approval.logo' | translate }}</span>
+                </div>
+                <div class="media-item" *ngIf="partner().coverImage">
+                  <img [src]="partner().coverImage" [alt]="'partners.approval.cover' | translate" />
+                  <span class="media-label">{{ 'partners.detail.coverImage' | translate }}</span>
+                </div>
+              </div>
+            </mat-card>
+
+            <!-- Internal Notes -->
+            <mat-card class="info-card notes-card">
+              <h3>{{ 'partners.detail.internalNotes' | translate }}</h3>
+              <mat-divider></mat-divider>
+              <mat-form-field appearance="outline" class="notes-field">
+                <mat-label>{{ 'partners.detail.addNotePlaceholder' | translate }}</mat-label>
+                <textarea matInput [(ngModel)]="internalNotes" rows="4"></textarea>
+              </mat-form-field>
+              <button mat-flat-button color="primary" (click)="saveNote()">{{ 'partners.detail.saveNote' | translate }}</button>
+            </mat-card>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="'partners.approval.documents' | translate">
+        <div class="tab-content">
+          <div class="documents-grid">
+            <mat-card class="document-card" *ngIf="partner().kbisUrl">
+              <mat-icon>description</mat-icon>
+              <h4>{{ 'partners.approval.kbis' | translate }}</h4>
+              <a [href]="partner().kbisUrl" target="_blank" mat-button>
+                <mat-icon>visibility</mat-icon>
+                {{ 'partners.approval.viewDoc' | translate }}
+              </a>
+            </mat-card>
+            <mat-card class="document-card" *ngIf="partner().idCardUrl">
+              <mat-icon>badge</mat-icon>
+              <h4>{{ 'partners.approval.idCard' | translate }}</h4>
+              <a [href]="partner().idCardUrl" target="_blank" mat-button>
+                <mat-icon>visibility</mat-icon>
+                {{ 'partners.approval.viewDoc' | translate }}
+              </a>
+            </mat-card>
+            <mat-card class="document-card" *ngIf="partner().insuranceUrl">
+              <mat-icon>shield</mat-icon>
+              <h4>{{ 'partners.approval.insurance' | translate }}</h4>
+              <a [href]="partner().insuranceUrl" target="_blank" mat-button>
+                <mat-icon>visibility</mat-icon>
+                {{ 'partners.approval.viewDoc' | translate }}
+              </a>
+            </mat-card>
+            <mat-card class="document-card" *ngIf="partner().ribUrl">
+              <mat-icon>account_balance</mat-icon>
+              <h4>{{ 'partners.approval.rib' | translate }}</h4>
+              <a [href]="partner().ribUrl" target="_blank" mat-button>
+                <mat-icon>visibility</mat-icon>
+                {{ 'partners.approval.viewDoc' | translate }}
+              </a>
+            </mat-card>
+            <div class="no-documents" *ngIf="!partner().kbisUrl && !partner().idCardUrl && !partner().insuranceUrl && !partner().ribUrl">
+              <mat-icon>folder_open</mat-icon>
+              <p>{{ 'partners.detail.noDocuments' | translate }}</p>
+            </div>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="'partners.detail.tabs.menu' | translate">
+        <div class="tab-content">
+          <p class="coming-soon">{{ 'partners.detail.comingSoon' | translate }}</p>
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="'partners.detail.tabs.orders' | translate">
+        <div class="tab-content">
+          <p class="coming-soon">{{ 'partners.detail.comingSoon' | translate }}</p>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
   </div>
 </div>

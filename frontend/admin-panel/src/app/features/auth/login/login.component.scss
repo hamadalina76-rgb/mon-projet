@@ -237,6 +237,26 @@
   margin: 0.25rem 0 0.75rem;
 }
 
+/* ---------- Forgot Password Link ---------- */
+.forgot-password-link {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.25rem;
+  
+  a {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #e31e24;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      color: #b91c1c;
+      text-decoration: underline;
+    }
+  }
+}
+
 /* ---------- Submit button ---------- */
 .submit-btn {
   height: 48px;

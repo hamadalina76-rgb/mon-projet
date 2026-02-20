@@ -29,6 +29,7 @@
     "@angular/router": "^19.0.0",
     "@ngx-translate/core": "^17.0.0",
     "@ngx-translate/http-loader": "^17.0.0",
+    "@stomp/stompjs": "^7.3.0",
     "chart.js": "^4.4.0",
     "date-fns": "^2.30.0",
     "leaflet": "^1.9.4",
@@ -37,6 +38,7 @@
     "ngx-socket-io": "^4.8.0",
     "ngx-toastr": "^19.0.0",
     "rxjs": "^7.8.0",
+    "sockjs-client": "^1.6.1",
     "tslib": "^2.6.0",
     "zone.js": "^0.15.0"
   },
@@ -52,6 +54,7 @@
     "@types/jasmine": "~5.1.0",
     "@types/leaflet": "^1.9.8",
     "@types/node": "^22.0.0",
+    "@types/sockjs-client": "^1.5.4",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.0.0",

@@ -1,8 +1,12 @@
 package com.speedline.partner.service.impl;
 
+import com.speedline.partner.domain.Partner;
 import com.speedline.partner.domain.PartnerStatus;
 import com.speedline.partner.domain.PartnerType;
+import com.speedline.partner.dto.CompletePartnerProfileRequest;
 import com.speedline.partner.dto.PartnerDTO;
+import com.speedline.partner.event.PartnerEvent;
+import com.speedline.partner.event.PartnerEventPublisher;
 import com.speedline.partner.repository.PartnerRepository;
 import com.speedline.partner.service.PartnerService;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Implémentation du service de gestion des partenaires
@@ -25,8 +32,219 @@ import java.util.List;
 public class PartnerServiceImpl implements PartnerService {
 
     private final PartnerRepository partnerRepository;
+    private final PartnerEventPublisher partnerEventPublisher;
+    private final com.speedline.partner.client.AuthServiceClient authServiceClient;
 
-    // TODO: Injecter d'autres services si nécessaire (ex: LocationServiceClient)
+    // ==================== SYNC AUTH-SERVICE ====================
+
+    @Override
+    @Transactional
+    public PartnerDTO createPartnerFromAuth(Long userId, String email, String firstName, 
+                                           String lastName, String phoneNumber) {
+        log.info("Creating partner profile from auth-service for userId: {}", userId);
+        
+        // Vérifier si l'utilisateur a déjà un partner
+        Optional<Partner> existing = partnerRepository.findByUserId(userId);
+        if (existing.isPresent()) {
+            log.warn("Partner profile already exists for userId: {}", userId);
+            return convertToDTO(existing.get());
+        }
+        
+        // Créer un profil partner minimal
+        Partner partner = Partner.builder()
+                .userId(userId)
+                .email(email)
+                .phoneNumber(phoneNumber)
+                .businessName(firstName + " " + lastName) // Temporaire
+                .status(PartnerStatus.PENDING)
+                .isActive(false)
+                .acceptsOrders(false)
+                .isVerified(false)
+                .isPremium(false)
+                .isFeatured(false)
+                .country("Tunisie")
+                .build();
+        
+        partner = partnerRepository.save(partner);
+        log.info("Partner profile created successfully with id: {} for userId: {}", 
+                partner.getId(), userId);
+        
+        return convertToDTO(partner);
+    }
+
+    @Override
+    @Transactional
+    public PartnerDTO completeProfile(Long partnerId, CompletePartnerProfileRequest request) {
+        log.info("Completing profile for partner id: {}", partnerId);
+        
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+        
+        // ======== Business Information ========
+        if (request.getBusinessName() != null) {
+            partner.setBusinessName(request.getBusinessName());
+        }
+        if (request.getBrandName() != null) {
+            partner.setBrandName(request.getBrandName());
+        }
+        if (request.getPartnerType() != null) {
+            partner.setType(request.getPartnerType());
+        }
+        if (request.getDescription() != null) {
+            partner.setDescription(request.getDescription());
+        }
+        if (request.getShortDescription() != null) {
+            partner.setShortDescription(request.getShortDescription());
+        }
+        
+        // ======== Address ========
+        if (request.getAddress() != null) {
+            partner.setAddress(request.getAddress());
+        }
+        if (request.getCity() != null) {
+            partner.setCity(request.getCity());
+        }
+        if (request.getPostalCode() != null) {
+            partner.setPostalCode(request.getPostalCode());
+        }
+        if (request.getState() != null) {
+            partner.setState(request.getState());
+        }
+        if (request.getCountry() != null) {
+            partner.setCountry(request.getCountry());
+        }
+        if (request.getLatitude() != null) {
+            partner.setLatitude(request.getLatitude());
+        }
+        if (request.getLongitude() != null) {
+            partner.setLongitude(request.getLongitude());
+        }
+        
+        // ======== Legal Information ========
+        if (request.getLegalStatus() != null) {
+            partner.setLegalStatus(request.getLegalStatus());
+        }
+        if (request.getTva() != null) {
+            partner.setTva(request.getTva());
+        }
+        if (request.getLegalRepFirstName() != null) {
+            partner.setLegalRepFirstName(request.getLegalRepFirstName());
+        }
+        if (request.getLegalRepLastName() != null) {
+            partner.setLegalRepLastName(request.getLegalRepLastName());
+        }
+        if (request.getPosition() != null) {
+            partner.setPosition(request.getPosition());
+        }
+        
+        // ======== Bank Information ========
+        if (request.getAccountHolderName() != null) {
+            partner.setAccountHolderName(request.getAccountHolderName());
+        }
+        if (request.getIban() != null) {
+            partner.setIban(request.getIban());
+        }
+        if (request.getBankName() != null) {
+            partner.setBankName(request.getBankName());
+        }
+        if (request.getCurrency() != null) {
+            partner.setCurrency(request.getCurrency());
+        }
+        
+        // ======== Operational Configuration ========
+        if (request.getPreparationTime() != null) {
+            partner.setPreparationTime(request.getPreparationTime());
+        }
+        if (request.getMinimumOrder() != null) {
+            // Handle noMinimum flag
+            if (request.getNoMinimum() != null && request.getNoMinimum()) {
+                partner.setMinimumOrder(BigDecimal.ZERO);
+            } else {
+                partner.setMinimumOrder(request.getMinimumOrder());
+            }
+        }
+        if (request.getOpeningHoursJson() != null) {
+            partner.setOpeningHoursJson(request.getOpeningHoursJson());
+        }
+        if (request.getAcceptOnlinePayment() != null) {
+            partner.setAcceptOnlinePayment(request.getAcceptOnlinePayment());
+        }
+        if (request.getAcceptCashPayment() != null) {
+            partner.setAcceptCashPayment(request.getAcceptCashPayment());
+        }
+        
+        // ======== Presentation ========
+        if (request.getFullDescription() != null) {
+            partner.setDescription(request.getFullDescription());
+        }
+        if (request.getTags() != null) {
+            partner.setTags(request.getTags());
+        }
+        
+        // Gérer le statut selon le cas :
+        // - Si statut null : mettre PENDING (première soumission)
+        // - Si DOCUMENTS_MISSING : remettre PENDING pour réexamen après correction
+        // - Si ACTIVE, INACTIVE, SUSPENDED, REJECTED : conserver le statut (mise à jour simple)
+        PartnerStatus currentStatus = partner.getStatus();
+        if (currentStatus == null) {
+            partner.setStatus(PartnerStatus.PENDING);
+        } else if (currentStatus == PartnerStatus.DOCUMENTS_MISSING) {
+            // Remettre en PENDING pour réexamen après correction des documents/informations
+            partner.setStatus(PartnerStatus.PENDING);
+            log.info("Partner status changed from DOCUMENTS_MISSING to PENDING for re-review, partner id: {}", partnerId);
+        }
+        // Si déjà ACTIVE, INACTIVE, SUSPENDED, REJECTED : on conserve le statut (simple mise à jour du profil).
+
+        partner = partnerRepository.save(partner);
+        log.info("Partner profile updated successfully for id: {}, status unchanged: {}", partnerId, partner.getStatus());
+
+        // Notifier les admins (PARTNER_REQUEST_SUBMITTED) lors de :
+        // - La première soumission (statut null)
+        // - La réouverture après DOCUMENTS_MISSING (pour réexamen)
+        // Une simple modification de profil ACTIVE/INACTIVE/etc ne déclenche pas de notification.
+        if (currentStatus == null || currentStatus == PartnerStatus.DOCUMENTS_MISSING || currentStatus == PartnerStatus.PENDING) {
+            try {
+                partnerEventPublisher.publish(PartnerEvent.builder()
+                        .eventType(PartnerEvent.EventType.PARTNER_REQUEST_SUBMITTED)
+                        .partnerId(partner.getId())
+                        .userId(partner.getUserId())
+                        .businessName(partner.getBusinessName())
+                        .brandName(partner.getBrandName())
+                        .email(partner.getEmail())
+                        .status(partner.getStatus().name())
+                        .timestamp(LocalDateTime.now())
+                        .build());
+            } catch (Exception e) {
+                log.warn("Failed to publish partner event for id {}: {}", partnerId, e.getMessage());
+            }
+        }
+
+        // Update auth-service with partner ID using Feign Client
+        try {
+            log.info("========== UPDATING AUTH-SERVICE WITH PARTNER ID ==========");
+            log.info("PartnerId: {}, UserId: {}", partner.getId(), partner.getUserId());
+            
+            var body = Map.of("partnerId", partner.getId());
+            var response = authServiceClient.updatePartnerId(partner.getUserId(), body);
+            
+            log.info("✅ Successfully updated auth-service. Status: {}, Response: {}", 
+                     response.getStatusCode(), response.getBody());
+            log.info("========== AUTH-SERVICE UPDATE COMPLETED ==========");
+        } catch (feign.FeignException e) {
+            log.error("========== FEIGN ERROR UPDATING AUTH-SERVICE ==========");
+            log.error("Status: {}, Reason: {}, Body: {}", 
+                     e.status(), e.getMessage(), e.contentUTF8());
+            log.error("PartnerId: {}, UserId: {}", partner.getId(), partner.getUserId());
+            // Don't throw exception - partner profile is already saved
+        } catch (Exception e) {
+            log.error("========== ERROR UPDATING AUTH-SERVICE ==========");
+            log.error("Error type: {}, Message: {}", e.getClass().getSimpleName(), e.getMessage(), e);
+            log.error("PartnerId: {}, UserId: {}", partner.getId(), partner.getUserId());
+            // Don't throw exception - partner profile is already saved
+        }
+
+        return convertToDTO(partner);
+    }
 
     // ==================== OPÉRATIONS CRUD ====================
 
@@ -42,8 +260,10 @@ public class PartnerServiceImpl implements PartnerService {
     @Override
     @Transactional(readOnly = true)
     public PartnerDTO getPartnerById(Long partnerId) {
-        // TODO: Implémenter la récupération par ID
-        throw new UnsupportedOperationException("À implémenter");
+        log.info("Getting partner by id: {}", partnerId);
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+        return convertToDTO(partner);
     }
 
     @Override
@@ -56,8 +276,10 @@ public class PartnerServiceImpl implements PartnerService {
     @Override
     @Transactional(readOnly = true)
     public PartnerDTO getPartnerByUserId(Long userId) {
-        // TODO: Implémenter la récupération par userId
-        throw new UnsupportedOperationException("À implémenter");
+        log.info("Getting partner by userId: {}", userId);
+        Partner partner = partnerRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Partner not found for userId: " + userId));
+        return convertToDTO(partner);
     }
 
     @Override
@@ -79,8 +301,20 @@ public class PartnerServiceImpl implements PartnerService {
     @Override
     @Transactional
     public PartnerDTO updateImages(Long partnerId, String logo, String coverImage) {
-        // TODO: Implémenter la mise à jour des images
-        throw new UnsupportedOperationException("À implémenter");
+        log.info("Updating images for partner id: {}", partnerId);
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+        
+        if (logo != null) {
+            partner.setLogo(logo);
+        }
+        if (coverImage != null) {
+            partner.setCoverImage(coverImage);
+        }
+        
+        partner = partnerRepository.save(partner);
+        log.info("Images updated for partner id: {}", partnerId);
+        return convertToDTO(partner);
     }
 
     @Override
@@ -109,22 +343,206 @@ public class PartnerServiceImpl implements PartnerService {
     @Override
     @Transactional
     public PartnerDTO approvePartner(Long partnerId) {
-        // TODO: Implémenter l'approbation d'un partenaire
-        throw new UnsupportedOperationException("À implémenter");
+        log.info("Approving partner id: {}", partnerId);
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+
+        // Allow approval from PENDING or DOCUMENTS_MISSING status
+        if (partner.getStatus() != PartnerStatus.PENDING && partner.getStatus() != PartnerStatus.DOCUMENTS_MISSING) {
+            throw new RuntimeException("Partner cannot be approved from current status: " + partner.getStatus() + ". Only PENDING or DOCUMENTS_MISSING status can be approved.");
+        }
+
+        partner.setStatus(PartnerStatus.ACTIVE);
+        partner.setIsActive(true);
+        partner.setIsVerified(true);
+        partner.setAcceptsOrders(true);
+
+        partner = partnerRepository.save(partner);
+        log.info("Partner {} approved successfully", partnerId);
+
+        // Publish Pub/Sub event to notify partner
+        try {
+            partnerEventPublisher.publish(PartnerEvent.builder()
+                    .eventType(PartnerEvent.EventType.PARTNER_APPROVED)
+                    .partnerId(partner.getId())
+                    .userId(partner.getUserId())
+                    .businessName(partner.getBusinessName())
+                    .brandName(partner.getBrandName())
+                    .email(partner.getEmail())
+                    .status(PartnerStatus.ACTIVE.name())
+                    .timestamp(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            log.warn("Failed to publish approval event for partner {}: {}", partnerId, e.getMessage());
+        }
+
+        return convertToDTO(partner);
     }
 
     @Override
     @Transactional
     public void rejectPartner(Long partnerId, String reason) {
-        // TODO: Implémenter le rejet d'un partenaire
-        throw new UnsupportedOperationException("À implémenter");
+        log.info("Rejecting partner id: {} with reason: {}", partnerId, reason);
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+
+        partner.setStatus(PartnerStatus.REJECTED);
+        partner.setIsActive(false);
+        partner.setAcceptsOrders(false);
+
+        partnerRepository.save(partner);
+        log.info("Partner {} rejected", partnerId);
+
+        // Publish Pub/Sub event to notify partner
+        try {
+            partnerEventPublisher.publish(PartnerEvent.builder()
+                    .eventType(PartnerEvent.EventType.PARTNER_REJECTED)
+                    .partnerId(partner.getId())
+                    .userId(partner.getUserId())
+                    .businessName(partner.getBusinessName())
+                    .brandName(partner.getBrandName())
+                    .email(partner.getEmail())
+                    .status(PartnerStatus.REJECTED.name())
+                    .reason(reason)
+                    .timestamp(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            log.warn("Failed to publish rejection event for partner {}: {}", partnerId, e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public PartnerDTO requestMoreInfo(Long partnerId, String message) {
+        log.info("Requesting more info for partner id: {} with message: {}", partnerId, message);
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+
+        partner.setStatus(PartnerStatus.DOCUMENTS_MISSING);
+        partner.setIsActive(false);
+        partner.setAcceptsOrders(false);
+
+        partner = partnerRepository.save(partner);
+        log.info("Partner {} status changed to DOCUMENTS_MISSING", partnerId);
+
+        // Publish Pub/Sub event to notify partner
+        try {
+            partnerEventPublisher.publish(PartnerEvent.builder()
+                    .eventType(PartnerEvent.EventType.PARTNER_INFO_REQUESTED)
+                    .partnerId(partner.getId())
+                    .userId(partner.getUserId())
+                    .businessName(partner.getBusinessName())
+                    .brandName(partner.getBrandName())
+                    .email(partner.getEmail())
+                    .status(PartnerStatus.DOCUMENTS_MISSING.name())
+                    .reason(message)
+                    .timestamp(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            log.warn("Failed to publish info request event for partner {}: {}", partnerId, e.getMessage());
+        }
+
+        return convertToDTO(partner);
     }
 
     @Override
     @Transactional
     public void suspendPartner(Long partnerId, String reason) {
-        // TODO: Implémenter la suspension d'un partenaire
-        throw new UnsupportedOperationException("À implémenter");
+        log.info("Suspending partner id: {} with reason: {}", partnerId, reason);
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+
+        partner.setStatus(PartnerStatus.SUSPENDED);
+        partner.setIsActive(false);
+        partner.setAcceptsOrders(false);
+
+        partnerRepository.save(partner);
+        log.info("Partner {} suspended", partnerId);
+        
+        // Publish Pub/Sub event
+        try {
+            partnerEventPublisher.publish(PartnerEvent.builder()
+                    .eventType(PartnerEvent.EventType.PARTNER_SUSPENDED)
+                    .partnerId(partner.getId())
+                    .userId(partner.getUserId())
+                    .businessName(partner.getBusinessName())
+                    .brandName(partner.getBrandName())
+                    .email(partner.getEmail())
+                    .status(PartnerStatus.SUSPENDED.name())
+                    .reason(reason)
+                    .timestamp(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            log.warn("Failed to publish suspension event for partner {}: {}", partnerId, e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public PartnerDTO activatePartner(Long partnerId) {
+        log.info("Activating partner id: {}", partnerId);
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+
+        partner.setStatus(PartnerStatus.ACTIVE);
+        partner.setIsActive(true);
+        partner.setIsVerified(true);
+        partner.setAcceptsOrders(true);
+
+        partner = partnerRepository.save(partner);
+        log.info("Partner {} activated successfully", partnerId);
+
+        // Publish Pub/Sub event to notify partner (use PARTNER_ACTIVATED, not PARTNER_APPROVED)
+        try {
+            partnerEventPublisher.publish(PartnerEvent.builder()
+                    .eventType(PartnerEvent.EventType.PARTNER_ACTIVATED)
+                    .partnerId(partner.getId())
+                    .userId(partner.getUserId())
+                    .businessName(partner.getBusinessName())
+                    .brandName(partner.getBrandName())
+                    .email(partner.getEmail())
+                    .status(PartnerStatus.ACTIVE.name())
+                    .timestamp(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            log.warn("Failed to publish activation event for partner {}: {}", partnerId, e.getMessage());
+        }
+
+        return convertToDTO(partner);
+    }
+
+    @Override
+    @Transactional
+    public PartnerDTO deactivatePartner(Long partnerId, String reason) {
+        log.info("Deactivating partner id: {} with reason: {}", partnerId, reason);
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+
+        partner.setStatus(PartnerStatus.INACTIVE);
+        partner.setIsActive(false);
+        partner.setAcceptsOrders(false);
+
+        partner = partnerRepository.save(partner);
+        log.info("Partner {} deactivated successfully", partnerId);
+
+        // Publish Pub/Sub event to notify partner
+        try {
+            partnerEventPublisher.publish(PartnerEvent.builder()
+                    .eventType(PartnerEvent.EventType.PARTNER_DEACTIVATED)
+                    .partnerId(partner.getId())
+                    .userId(partner.getUserId())
+                    .businessName(partner.getBusinessName())
+                    .brandName(partner.getBrandName())
+                    .email(partner.getEmail())
+                    .status(PartnerStatus.INACTIVE.name())
+                    .reason(reason)
+                    .timestamp(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            log.warn("Failed to publish deactivation event for partner {}: {}", partnerId, e.getMessage());
+        }
+
+        return convertToDTO(partner);
     }
 
     // ==================== PARAMÈTRES DE LIVRAISON ====================
@@ -198,15 +616,32 @@ public class PartnerServiceImpl implements PartnerService {
     @Override
     @Transactional(readOnly = true)
     public Page<PartnerDTO> getAllActivePartners(Pageable pageable) {
-        // TODO: Implémenter la récupération paginée des partenaires actifs
-        throw new UnsupportedOperationException("À implémenter");
+        log.info("Getting all active partners");
+        return partnerRepository.findByStatus(PartnerStatus.ACTIVE, pageable)
+                .map(this::convertToDTO);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<PartnerDTO> getPartnersByStatus(PartnerStatus status, Pageable pageable) {
-        // TODO: Implémenter la récupération paginée par statut
-        throw new UnsupportedOperationException("À implémenter");
+        log.info("Getting partners by status: {}", status);
+        if (status == null) {
+            return partnerRepository.findAll(pageable)
+                    .map(this::convertToDTO);
+        }
+        return partnerRepository.findByStatus(status, pageable)
+                .map(this::convertToDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PartnerDTO> getPartnersByStatusAndSearch(PartnerStatus status, String search, Pageable pageable) {
+        log.info("Getting partners by status: {} and search: {}", status, search);
+        if (search != null && !search.isBlank()) {
+            return partnerRepository.findByStatusAndSearch(status, search.trim(), pageable)
+                    .map(this::convertToDTO);
+        }
+        return getPartnersByStatus(status, pageable);
     }
 
     @Override
@@ -249,5 +684,116 @@ public class PartnerServiceImpl implements PartnerService {
     public List<String> getAvailableCities() {
         // TODO: Implémenter la récupération des villes disponibles
         throw new UnsupportedOperationException("À implémenter");
+    }
+
+    // ==================== HELPER METHODS ====================
+
+    /**
+     * Convertir Partner entity en PartnerDTO
+     */
+    private PartnerDTO convertToDTO(Partner partner) {
+        if (partner == null) {
+            return null;
+        }
+
+        // Convertir categoryIds (String "1,2,3") en List<Long>
+        List<Long> categoryIdsList = null;
+        if (partner.getCategoryIds() != null && !partner.getCategoryIds().isEmpty()) {
+            categoryIdsList = List.of(partner.getCategoryIds().split(","))
+                    .stream()
+                    .map(String::trim)
+                    .map(Long::parseLong)
+                    .toList();
+        }
+
+        // Convertir tags (String "tag1,tag2") en List<String>
+        List<String> tagsList = null;
+        if (partner.getTags() != null && !partner.getTags().isEmpty()) {
+            tagsList = List.of(partner.getTags().split(","))
+                    .stream()
+                    .map(String::trim)
+                    .toList();
+        }
+
+        return PartnerDTO.builder()
+                .id(partner.getId())
+                .userId(partner.getUserId())
+                .businessName(partner.getBusinessName())
+                .brandName(partner.getBrandName())
+                .slug(partner.getSlug())
+                .type(partner.getType())
+                .description(partner.getDescription())
+                .shortDescription(partner.getShortDescription())
+                .logo(partner.getLogo())
+                .coverImage(partner.getCoverImage())
+                .phoneNumber(partner.getPhoneNumber())
+                .email(partner.getEmail())
+                // Legal Information
+                .legalStatus(partner.getLegalStatus())
+                .tva(partner.getTva())
+                .legalRepFirstName(partner.getLegalRepFirstName())
+                .legalRepLastName(partner.getLegalRepLastName())
+                .position(partner.getPosition())
+                // Bank Information
+                .accountHolderName(partner.getAccountHolderName())
+                .iban(partner.getIban())
+                .bankName(partner.getBankName())
+                .currency(partner.getCurrency())
+                // Address
+                .address(partner.getAddress())
+                .city(partner.getCity())
+                .postalCode(partner.getPostalCode())
+                .state(partner.getState())
+                .country(partner.getCountry())
+                .latitude(partner.getLatitude())
+                .longitude(partner.getLongitude())
+                .deliveryRadius(partner.getDeliveryRadius())
+                // Status
+                .status(partner.getStatus())
+                .isActive(partner.getIsActive())
+                .acceptsOrders(partner.getAcceptsOrders())
+                .isVerified(partner.getIsVerified())
+                .isPremium(partner.getIsPremium())
+                .isFeatured(partner.getIsFeatured())
+                // Delivery Settings
+                .preparationTime(partner.getPreparationTime())
+                .deliveryFee(partner.getDeliveryFee())
+                .minimumOrder(partner.getMinimumOrder())
+                .freeDeliveryThreshold(partner.getFreeDeliveryThreshold())
+                // Payment Methods
+                .acceptOnlinePayment(partner.getAcceptOnlinePayment())
+                .acceptCashPayment(partner.getAcceptCashPayment())
+                // Statistics
+                .rating(partner.getRating())
+                .totalRatings(partner.getTotalRatings())
+                .totalOrders(partner.getTotalOrders())
+                .totalRevenue(partner.getTotalRevenue())
+                // Documents
+                .kbisUrl(partner.getKbisUrl())
+                .idCardUrl(partner.getIdCardUrl())
+                .insuranceUrl(partner.getInsuranceUrl())
+                .ribUrl(partner.getRibUrl())
+                .photosJson(partner.getPhotosJson())
+                // Categories and Tags
+                .categoryIds(categoryIdsList)
+                .tags(tagsList)
+                .openingHoursDisplay(partner.getOpeningHoursJson()) // TODO: Formatter
+                .internalNotes(partner.getInternalNotes())
+                .createdAt(partner.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    public PartnerDTO updateInternalNotes(Long partnerId, String notes) {
+        log.info("Updating internal notes for partner id: {}", partnerId);
+
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+
+        partner.setInternalNotes(notes);
+        Partner saved = partnerRepository.save(partner);
+
+        log.info("Internal notes updated for partner id: {}", partnerId);
+        return convertToDTO(saved);
     }
 }

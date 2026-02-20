@@ -1,122 +1,295 @@
-<!-- Business Info Component Template - Angular 19 -->
-<div class="business-info-page">
-  <header class="page-header">
-    <h1>Informations établissement</h1>
+<!-- Business Profile – design moderne, responsive -->
+<div class="page-wrap">
+  <nav class="breadcrumb">
+    <a routerLink="/dashboard">{{ 'profilePages.breadcrumbSettings' | translate }}</a>
+    <span class="sep">›</span>
+    <a routerLink="/profile">{{ 'profilePages.breadcrumbStoreProfile' | translate }}</a>
+    <span class="sep">›</span>
+    <span class="cur">{{ 'profilePages.breadcrumbBusiness' | translate }}</span>
+  </nav>
+
+  <header class="page-top">
+    <div>
+      <h1>{{ 'profilePages.businessTitle' | translate }}</h1>
+      <p class="page-desc">{{ 'profilePages.businessSubtitle' | translate }}</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn btn-ghost" (click)="loadBusinessInfo()">{{ 'profilePages.cancel' | translate }}</button>
+      <button type="submit" form="business-form" class="btn btn-primary" [disabled]="loading() || saving()">
+        @if (saving()) {
+          <span class="btn-spinner"></span>
+          {{ 'profilePages.saving' | translate }}
+        } @else {
+          <mat-icon>save</mat-icon>
+          {{ 'profilePages.save' | translate }}
+        }
+      </button>
+    </div>
   </header>
 
   @if (loading()) {
-    <div class="loading-container">
+    <div class="loading-wrap">
       <mat-spinner diameter="48"></mat-spinner>
+      <p>{{ 'profilePages.overviewLoading' | translate }}</p>
     </div>
   } @else {
-    <form [formGroup]="businessForm" (ngSubmit)="saveBusinessInfo()">
+    <form id="business-form" [formGroup]="businessForm" (ngSubmit)="saveBusinessInfo()">
       <div class="content-grid">
-        <!-- Left Column -->
-        <div class="left-column">
-          <!-- Cover Image -->
-          <mat-card class="cover-card">
-            <div class="cover-upload" (click)="coverInput.click()">
+        <!-- Colonne principale -->
+        <div class="main-col">
+          <!-- Informations générales -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="section-icon"><mat-icon>store</mat-icon></div>
+                {{ 'profilePages.generalInfo' | translate }}
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="field-grid">
+                <div class="field">
+                  <label>{{ 'profilePages.businessNameLabel' | translate }} <span class="req">*</span></label>
+                  <input type="text" formControlName="businessName" [placeholder]="'profilePages.businessNamePlaceholder' | translate" />
+                  @if (businessForm.get('businessName')?.hasError('required') && businessForm.get('businessName')?.touched) {
+                    <span class="field-error">{{ 'profilePages.requiredField' | translate }}</span>
+                  }
+                </div>
+                <div class="field">
+                  <label>{{ 'profilePages.establishmentType' | translate }} <span class="req">*</span></label>
+                  <select formControlName="type">
+                    @for (t of partnerTypes; track t.value) {
+                      <option [value]="t.value">{{ 'auth.register.partnerTypes.' + t.key | translate }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+              <div class="field">
+                <label>{{ 'profilePages.brandLabel' | translate }}</label>
+                <input type="text" formControlName="brandName" [placeholder]="'profilePages.brandPlaceholder' | translate" />
+              </div>
+              <div class="field">
+                <label>{{ 'profilePages.shortDescLabel' | translate }}</label>
+                <textarea formControlName="shortDescription" rows="3" [placeholder]="'profilePages.shortDescPlaceholder' | translate" maxlength="100"></textarea>
+                <div class="field-hint">{{ businessForm.get('shortDescription')?.value?.length || 0 }} / 100</div>
+              </div>
+              <div class="field">
+                <label>{{ 'profilePages.fullDescLabel' | translate }}</label>
+                <textarea formControlName="description" rows="4" [placeholder]="'profilePages.fullDescPlaceholder' | translate" maxlength="500"></textarea>
+                <div class="field-hint">{{ businessForm.get('description')?.value?.length || 0 }} / 500</div>
+              </div>
+              <div class="field">
+                <label>{{ 'profilePages.tagsLabel' | translate }}</label>
+                <input type="text" formControlName="tags" [placeholder]="'profilePages.tagsPlaceholder' | translate" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Adresse -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="section-icon"><mat-icon>location_on</mat-icon></div>
+                {{ 'profilePages.addressTitle' | translate }}
+              </div>
+            </div>
+            <div class="card-body">
+              <app-map-location-selector
+                [initialLatitude]="initialMapLat() ?? businessForm.get('latitude')?.value"
+                [initialLongitude]="initialMapLng() ?? businessForm.get('longitude')?.value"
+                (locationSelected)="onLocationSelected($event)"
+              />
+              @if (businessForm.get('address')?.value || businessForm.get('city')?.value) {
+                <div class="address-chip">
+                  <mat-icon>place</mat-icon>
+                  <span>{{ businessForm.get('address')?.value }}{{ businessForm.get('postalCode')?.value || businessForm.get('city')?.value ? ', ' : '' }}{{ businessForm.get('postalCode')?.value }}{{ businessForm.get('postalCode')?.value && businessForm.get('city')?.value ? ' ' : '' }}{{ businessForm.get('city')?.value }}{{ businessForm.get('country')?.value ? ', ' + businessForm.get('country')?.value : '' }}</span>
+                </div>
+              }
+              <div class="field-grid contact-row">
+                <div class="field">
+                  <label>{{ 'profilePages.phoneLabel' | translate }}</label>
+                  <input type="tel" formControlName="phoneNumber" [placeholder]="'profilePages.phonePlaceholderBiz' | translate" />
+                </div>
+                <div class="field">
+                  <label>{{ 'profilePages.emailLabel' | translate }}</label>
+                  <input type="email" formControlName="email" [placeholder]="'profilePages.emailPlaceholderBiz' | translate" />
+                  @if (businessForm.get('email')?.invalid && businessForm.get('email')?.touched) {
+                    <span class="field-error">{{ 'profilePages.invalidEmail' | translate }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Paramètres opérationnels -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="section-icon"><mat-icon>settings</mat-icon></div>
+                {{ 'profilePages.opsSettings' | translate }}
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="field-grid ops-row">
+                <div class="slider-group">
+                  <div class="slider-label">
+                    <span>{{ 'profilePages.avgPrepTime' | translate }}</span>
+                    <span class="slider-value">{{ businessForm.get('preparationTime')?.value ?? 30 }} {{ 'profilePages.minLabel' | translate }}</span>
+                  </div>
+                  <input
+                    type="range"
+                    formControlName="preparationTime"
+                    min="5"
+                    max="120"
+                    step="5"
+                  />
+                  <div class="slider-ticks"><span>5 min</span><span>120 min</span></div>
+                </div>
+                <div class="field">
+                  <label>{{ 'profilePages.minOrder' | translate }}</label>
+                  <input type="number" formControlName="minimumOrder" min="0" step="0.01" />
+                </div>
+              </div>
+              <div class="field">
+                <label>{{ 'profilePages.paymentMethods' | translate }}</label>
+                <div class="checks-grid">
+                  <label class="check-item" [class.checked]="businessForm.get('acceptOnlinePayment')?.value">
+                    <input type="checkbox" formControlName="acceptOnlinePayment" />
+                    <div class="check-box">
+                      <mat-icon>check</mat-icon>
+                    </div>
+                    <span class="check-text">{{ 'profilePages.onlinePayment' | translate }}</span>
+                  </label>
+                  <label class="check-item" [class.checked]="businessForm.get('acceptCashPayment')?.value">
+                    <input type="checkbox" formControlName="acceptCashPayment" />
+                    <div class="check-box">
+                      <mat-icon>check</mat-icon>
+                    </div>
+                    <span class="check-text">{{ 'profilePages.cashPayment' | translate }}</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Colonne latérale -->
+        <aside class="side-col">
+          <!-- Carte marque / logo -->
+          <div class="card brand-card">
+            <div class="cover-area" (click)="coverInput.click()">
               <input #coverInput type="file" accept="image/*" hidden (change)="onCoverSelected($event)" />
               @if (coverPreview()) {
-                <img [src]="coverPreview()" alt="Cover" class="cover-preview" />
+                <img [src]="coverPreview()" alt="Bannière" class="cover-img" />
+                <div class="cover-edit-hint"><mat-icon>edit</mat-icon> {{ 'profilePages.editBanner' | translate }}</div>
               } @else {
-                <div class="upload-placeholder">
-                  <mat-icon>panorama</mat-icon>
-                  <span>Photo de couverture</span>
+                <div class="cover-placeholder">
+                  <mat-icon>image</mat-icon>
+                  <span>{{ 'profilePages.banner' | translate }}</span>
                 </div>
               }
             </div>
-          </mat-card>
-
-          <!-- Logo -->
-          <mat-card class="logo-card">
-            <div class="logo-upload" (click)="logoInput.click()">
+            <div class="logo-area" (click)="logoInput.click()">
               <input #logoInput type="file" accept="image/*" hidden (change)="onLogoSelected($event)" />
               @if (logoPreview()) {
-                <img [src]="logoPreview()" alt="Logo" class="logo-preview" />
+                <img [src]="logoPreview()" alt="Logo" class="logo-img" />
               } @else {
                 <div class="logo-placeholder">
                   <mat-icon>store</mat-icon>
                 </div>
               }
+              <div class="logo-edit-hint"><mat-icon>edit</mat-icon> {{ 'profilePages.editLogo' | translate }}</div>
             </div>
-            <span class="logo-label">Logo</span>
-          </mat-card>
-        </div>
-
-        <!-- Right Column -->
-        <div class="right-column">
-          <mat-card class="form-card">
-            <h3>Informations générales</h3>
-
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Nom de l'établissement</mat-label>
-              <input matInput formControlName="name" />
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Description</mat-label>
-              <textarea matInput formControlName="description" rows="3"></textarea>
-            </mat-form-field>
-
-            <div class="form-row">
-              <mat-form-field appearance="outline">
-                <mat-label>Catégorie</mat-label>
-                <mat-select formControlName="category">
-                  @for (cat of categories; track cat.value) {
-                    <mat-option [value]="cat.value">{{ cat.label }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Type de cuisine</mat-label>
-                <mat-select formControlName="cuisine" multiple>
-                  @for (cuisine of cuisines; track cuisine) {
-                    <mat-option [value]="cuisine">{{ cuisine }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
+            <div class="brand-info">
+              <div class="brand-name">{{ businessForm.get('businessName')?.value || ('profilePages.yourBusiness' | translate) }}</div>
+              <div class="brand-meta">{{ 'profilePages.logoMeta' | translate }}</div>
             </div>
-          </mat-card>
+          </div>
 
-          <mat-card class="form-card">
-            <h3>Coordonnées</h3>
-
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Adresse</mat-label>
-              <input matInput formControlName="address" />
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Ville</mat-label>
-              <input matInput formControlName="city" />
-            </mat-form-field>
-
-            <div class="form-row">
-              <mat-form-field appearance="outline">
-                <mat-label>Téléphone</mat-label>
-                <input matInput formControlName="phone" />
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Email</mat-label>
-                <input matInput type="email" formControlName="email" />
-              </mat-form-field>
+          <!-- Légal -->
+          <div class="card" id="legal-form">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="section-icon"><mat-icon>gavel</mat-icon></div>
+                {{ 'profilePages.legalTitle' | translate }}
+              </div>
             </div>
-          </mat-card>
-        </div>
-      </div>
+            <div class="card-body">
+              <div class="field-grid">
+                <div class="field">
+                  <label>{{ 'profilePages.legalStatusLabel' | translate }}</label>
+                  <select formControlName="legalStatus">
+                    <option value="">—</option>
+                    <option value="auto-entrepreneur">{{ 'auth.register.legalStatuses.autoEntrepreneur' | translate }}</option>
+                    <option value="sarl">{{ 'auth.register.legalStatuses.sarl' | translate }}</option>
+                    <option value="sas">{{ 'auth.register.legalStatuses.sas' | translate }}</option>
+                    <option value="association">{{ 'auth.register.legalStatuses.association' | translate }}</option>
+                    <option value="other">{{ 'auth.register.legalStatuses.other' | translate }}</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>{{ 'profilePages.vatLabel' | translate }}</label>
+                  <input type="text" formControlName="tva" />
+                </div>
+              </div>
+              <div class="field-grid">
+                <div class="field">
+                  <label>{{ 'profilePages.legalRepFirst' | translate }}</label>
+                  <input type="text" formControlName="legalRepFirstName" />
+                </div>
+                <div class="field">
+                  <label>{{ 'profilePages.legalRepLast' | translate }}</label>
+                  <input type="text" formControlName="legalRepLastName" />
+                </div>
+              </div>
+              <div class="field">
+                <label>{{ 'profilePages.positionLabel' | translate }}</label>
+                <input type="text" formControlName="position" [placeholder]="'profilePages.positionPlaceholder' | translate" />
+              </div>
+            </div>
+          </div>
 
-      <div class="form-actions">
-        <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
-          @if (saving()) {
-            <mat-spinner diameter="20"></mat-spinner>
-          } @else {
-            Enregistrer
-          }
-        </button>
+          <!-- Informations bancaires -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="section-icon"><mat-icon>account_balance</mat-icon></div>
+                {{ 'profilePages.bankTitle' | translate }}
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="bank-row">
+                <div class="field">
+                  <label>{{ 'profilePages.accountHolder' | translate }}</label>
+                  <input type="text" formControlName="accountHolderName" />
+                </div>
+                <div class="field">
+                  <label>{{ 'profilePages.bankName' | translate }}</label>
+                  <input type="text" formControlName="bankName" />
+                </div>
+                <div class="field">
+                  <label>{{ 'profilePages.ibanLabel' | translate }}</label>
+                  <input type="text" formControlName="iban" [placeholder]="'profilePages.ibanPlaceholder' | translate" />
+                </div>
+                <div class="field">
+                  <label>{{ 'profilePages.currencyLabel' | translate }}</label>
+                  <select formControlName="currency">
+                    <option value="TND">TND</option>
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                  </select>
+                </div>
+              </div>
+              <div class="bank-notice">
+                {{ 'profilePages.bankNotice' | translate }}
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
     </form>
+
+    <div class="help-bar">
+      <span>{{ 'profilePages.needHelp' | translate }} <a href="#" class="link">{{ 'profilePages.contactSupport' | translate }}</a></span>
+    </div>
   }
 </div>

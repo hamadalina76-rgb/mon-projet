@@ -2,7 +2,6 @@ package com.speedline.auth.controller;
 
 import com.speedline.auth.domain.User;
 import com.speedline.auth.domain.Role;
-import com.speedline.auth.domain.User;
 import com.speedline.auth.dto.request.*;
 import com.speedline.auth.dto.response.AuthResponse;
 import com.speedline.auth.dto.response.OtpResponse;
@@ -99,6 +98,23 @@ public class AuthController {
         ));
     }
 
+    /**
+     * Send welcome email with credentials to new admin
+     * POST /api/v1/auth/admin/send-welcome-email
+     */
+    @PostMapping("/admin/send-welcome-email")
+    public ResponseEntity<Map<String, String>> sendAdminWelcomeEmail(@Valid @RequestBody Map<String, String> request) {
+        log.info("Send admin welcome email endpoint called for: {}", request.get("email"));
+
+        String email = request.get("email");
+        String fullName = request.get("fullName");
+        String temporaryPassword = request.get("temporaryPassword");
+
+        authService.sendAdminWelcomeEmail(email, fullName, temporaryPassword);
+
+        return ResponseEntity.ok(Map.of("message", "Welcome email sent successfully"));
+    }
+
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
         log.info("Refresh token endpoint called");
@@ -174,6 +190,9 @@ public class AuthController {
      * Get current authenticated user's information
      * Requires JWT token in Authorization header
      */
+
+
+
     @GetMapping("/current_user")
     public ResponseEntity<UserInfoResponse> getCurrentUser(@RequestHeader("Authorization") String authHeader) {
         log.info("GET /auth/current_user - Getting current user info");
@@ -204,6 +223,90 @@ public class AuthController {
 
         log.info("Returning current user info: {}", response);
         return ResponseEntity.ok(response);
+    }
+    @PostMapping("/change-password")
+    public ResponseEntity<Map<String, String>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "X-User-Email", required = false) String emailHeader) {
+        String email = emailHeader;
+        if (email == null || email.isBlank()) {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "Authorization Bearer token required"));
+            }
+            String token = authHeader.substring(7);
+            if (!jwtTokenProvider.validateToken(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "Invalid or expired token"));
+            }
+            email = jwtTokenProvider.getEmailFromToken(token);
+        }
+        log.info("Change password endpoint called for user: {}", email);
+
+        authService.changePassword(email, request.getCurrentPassword(), request.getNewPassword());
+
+        return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
+    }
+
+    /**
+     * Get current user profile
+     * GET /api/v1/auth/profile
+     * Email is extracted from JWT (Bearer token) or from X-User-Email header
+     */
+    @GetMapping("/profile")
+    public ResponseEntity<AuthResponse.UserInfo> getProfile(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "X-User-Email", required = false) String emailHeader) {
+        String email = emailHeader;
+        if (email == null || email.isBlank()) {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            String token = authHeader.substring(7);
+            if (!jwtTokenProvider.validateToken(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            email = jwtTokenProvider.getEmailFromToken(token);
+        }
+        AuthResponse.UserInfo profile = authService.getProfile(email);
+        return ResponseEntity.ok(profile);
+    }
+
+    /**
+     * Update user profile (firstName, lastName, phoneNumber)
+     * PUT /api/v1/auth/profile
+     * Email is extracted from JWT (Bearer token) or from X-User-Email header
+     */
+    @PutMapping("/profile")
+    public ResponseEntity<Map<String, Object>> updateProfile(
+            @Valid @RequestBody UpdateProfileRequest request,
+            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "X-User-Email", required = false) String emailHeader) {
+        String email = emailHeader;
+        if (email == null || email.isBlank()) {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "Authorization Bearer token required"));
+            }
+            String token = authHeader.substring(7);
+            if (!jwtTokenProvider.validateToken(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "Invalid or expired token"));
+            }
+            email = jwtTokenProvider.getEmailFromToken(token);
+        }
+        log.info("Update profile endpoint called for user: {}", email);
+
+        authService.updateProfile(email, request.getFirstName(), request.getLastName(), request.getPhoneNumber());
+        AuthResponse.UserInfo profile = authService.getProfile(email);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Profile updated successfully",
+                "firstName", profile.getFirstName(),
+                "lastName", profile.getLastName(),
+                "phoneNumber", profile.getPhoneNumber() != null ? profile.getPhoneNumber() : ""
+        ));
     }
 
     @GetMapping("/health")

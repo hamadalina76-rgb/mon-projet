@@ -1,0 +1,67 @@
+<!-- Registration Success Component - Language follows the one chosen on login (persisted in localStorage) -->
+<div class="success-container">
+  <div class="success-card">
+    <div class="success-icon">
+      <mat-icon>check_circle</mat-icon>
+    </div>
+
+    <h1 class="success-title">🎉 {{ 'registrationSuccess.title' | translate }}</h1>
+
+    <p class="success-message">
+      {{ 'registrationSuccess.subtitle' | translate }}
+    </p>
+
+    <div class="info-section">
+      <h2>{{ 'registrationSuccess.nextSteps' | translate }}</h2>
+      <ol class="steps-list">
+        <li>
+          <mat-icon>email</mat-icon>
+          <div>
+            <strong>{{ 'registrationSuccess.step1Title' | translate }}</strong>
+            <p>{{ 'registrationSuccess.step1Desc' | translate }}</p>
+          </div>
+        </li>
+        <li>
+          <mat-icon>assignment</mat-icon>
+          <div>
+            <strong>{{ 'registrationSuccess.step2Title' | translate }}</strong>
+            <p>{{ 'registrationSuccess.step2Desc' | translate }}</p>
+          </div>
+        </li>
+        <li>
+          <mat-icon>verified</mat-icon>
+          <div>
+            <strong>{{ 'registrationSuccess.step3Title' | translate }}</strong>
+            <p>{{ 'registrationSuccess.step3Desc' | translate }}</p>
+          </div>
+        </li>
+        <li>
+          <mat-icon>rocket_launch</mat-icon>
+          <div>
+            <strong>{{ 'registrationSuccess.step4Title' | translate }}</strong>
+            <p>{{ 'registrationSuccess.step4Desc' | translate }}</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <div class="contact-section">
+      <p>{{ 'registrationSuccess.contactQuestion' | translate }}</p>
+      <a href="mailto:partners&#64;speedline.com" class="contact-link">
+        <mat-icon>email</mat-icon>
+        {{ 'registrationSuccess.contactEmail' | translate }}
+      </a>
+    </div>
+
+    <div class="actions">
+      <button mat-raised-button color="primary" routerLink="/auth/login">
+        <mat-icon>login</mat-icon>
+        {{ 'registrationSuccess.backToLogin' | translate }}
+      </button>
+      <button mat-stroked-button routerLink="/">
+        <mat-icon>home</mat-icon>
+        {{ 'registrationSuccess.home' | translate }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -6,6 +6,10 @@
 @use 'assets/styles/mixins' as *;
 @use 'assets/styles/utilities' as *;
 
+/* Third-party Libraries
+   ========================================================================== */
+@import 'mapbox-gl/dist/mapbox-gl.css';
+
 /* Reset & Base
    ========================================================================== */
 *,
@@ -19,6 +23,8 @@
 html {
   font-size: 16px;
   scroll-behavior: smooth;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -29,6 +35,10 @@ body {
   background-color: $background-default;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  width: 100%;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
 }
 
 /* Typography
@@ -278,5 +288,70 @@ a {
   
   &:hover {
     background: $gray-500;
+  }
+}
+
+/* Profile Success Dialog Panel
+   ========================================================================== */
+.profile-success-panel {
+  .mat-mdc-dialog-container .mdc-dialog__surface {
+    border-radius: 16px !important;
+    overflow: hidden;
+  }
+
+  @media (max-width: 480px) {
+    .mat-mdc-dialog-container .mdc-dialog__surface {
+      border-radius: 12px !important;
+    }
+  }
+}
+
+@keyframes scaleIn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* RTL Layout: sidebar on the right (e.g. Arabic)
+   ========================================================================== */
+[dir="rtl"] {
+  .sidebar {
+    left: auto !important;
+    right: 0 !important;
+    border-right: none !important;
+    border-left: 1px solid $gray-200 !important;
+  }
+
+  .sidebar .collapse-btn {
+    right: auto !important;
+    left: -12px !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    margin-right: $sidebar-width !important;
+    transition: margin-right $transition-normal;
+  }
+
+  .main-content.collapsed {
+    margin-right: $sidebar-collapsed-width !important;
+  }
+
+  .header {
+    left: 0 !important;
+    right: $sidebar-width !important;
+    transition: right $transition-normal;
+  }
+
+  .header.collapsed {
+    right: $sidebar-collapsed-width !important;
   }
 }

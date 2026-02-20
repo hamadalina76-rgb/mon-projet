@@ -1,0 +1,267 @@
+// registration-success.component.scss
+@use '../../../../assets/styles/variables' as *;
+
+.success-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: $background-default;
+  padding: 2rem 1rem;
+  position: relative;
+}
+
+.success-card {
+  max-width: 600px;
+  width: 100%;
+  background: $white;
+  border-radius: 16px;
+  padding: 3rem 2.5rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: $primary-gradient;
+    border-radius: 16px 16px 0 0;
+  }
+}
+
+.success-icon {
+  margin-bottom: 1.5rem;
+
+  mat-icon {
+    font-size: 80px;
+    width: 80px;
+    height: 80px;
+    color: $success-color;
+  }
+}
+
+.success-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: $text-primary;
+  margin: 0 0 1rem 0;
+}
+
+.success-message {
+  font-size: 1.125rem;
+  color: $text-secondary;
+  margin: 0 0 2rem 0;
+  line-height: 1.6;
+}
+
+.info-section {
+  text-align: left;
+  background: $background-light;
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: $text-primary;
+    margin: 0 0 1.5rem 0;
+  }
+
+  .steps-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+
+    li {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      mat-icon {
+        color: $primary-color;
+        font-size: 28px;
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+      }
+
+      div {
+        flex: 1;
+
+        strong {
+          display: block;
+          font-size: 1rem;
+          color: $text-primary;
+          margin-bottom: 0.25rem;
+        }
+
+        p {
+          font-size: 0.875rem;
+          color: $text-secondary;
+          margin: 0;
+          line-height: 1.5;
+        }
+      }
+    }
+  }
+}
+
+.contact-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba($primary-color, 0.05);
+  border: 1px solid rgba($primary-color, 0.1);
+  border-radius: 8px;
+
+  p {
+    font-size: 0.938rem;
+    color: $text-secondary;
+    margin: 0 0 0.75rem 0;
+  }
+
+  .contact-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: $primary-color;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.2s;
+
+    &:hover {
+      color: $primary-dark;
+      text-decoration: underline;
+    }
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 2rem;
+    height: 48px;
+    transition: all 0.3s;
+
+    &[color="primary"] {
+      background: $primary-gradient;
+      color: $white;
+      box-shadow: 0 4px 12px rgba($primary-color, 0.3);
+
+      &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba($primary-color, 0.4);
+      }
+    }
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+}
+
+// RTL Support
+[dir="rtl"] {
+  .info-section {
+    text-align: right;
+  }
+
+  .info-section .steps-list li {
+    flex-direction: row-reverse;
+  }
+
+  .actions {
+    flex-direction: row-reverse;
+  }
+
+  .contact-link {
+    flex-direction: row-reverse;
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+}
+
+@media (max-width: 600px) {
+  .success-container {
+    padding: 4rem 1rem 2rem;
+  }
+
+  .success-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .success-icon mat-icon {
+    font-size: 60px;
+    width: 60px;
+    height: 60px;
+  }
+
+  .success-title {
+    font-size: 1.5rem;
+  }
+
+  .success-message {
+    font-size: 1rem;
+  }
+
+  .info-section {
+    padding: 1.5rem;
+
+    h2 {
+      font-size: 1.125rem;
+    }
+
+    .steps-list li {
+      gap: 0.75rem;
+
+      mat-icon {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+      }
+
+      div strong {
+        font-size: 0.938rem;
+      }
+
+      div p {
+        font-size: 0.813rem;
+      }
+    }
+  }
+
+  .actions {
+    flex-direction: column;
+
+    button {
+      width: 100%;
+    }
+  }
+}
+

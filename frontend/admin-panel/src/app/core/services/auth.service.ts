@@ -192,6 +192,18 @@ export class AuthService {
     return this.apiService.post('auth/reset-password', data);
   }
 
+  changePassword(currentPassword: string, newPassword: string): Observable<any> {
+    const email = this.currentUserSignal()?.email || '';
+    return this.http.post(`${environment.apiUrl}/auth/change-password`, {
+      currentPassword,
+      newPassword
+    }, {
+      headers: {
+        'X-User-Email': email
+      }
+    });
+  }
+
   refreshToken(): Observable<LoginResponse> {
     const refreshToken = this.getRefreshToken();
     return this.apiService

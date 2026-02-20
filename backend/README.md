@@ -43,7 +43,7 @@ Bienvenue dans le projet SpeedLine ! Ce document vous guidera dans la compréhen
 └──────────────┴──────────────┴──────────────┴───────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│                  MESSAGE BROKER (Kafka)                     │
+│              MESSAGE BROKER (GCP Pub/Sub)                   │
 │              Event-Driven Communication                     │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -56,7 +56,7 @@ Bienvenue dans le projet SpeedLine ! Ce document vous guidera dans la compréhen
 |-----------|-------------|
 | **Backend** | Java 17, Spring Boot 3.2.0, Spring Cloud 2023.0.0 |
 | **Base de Données** | PostgreSQL (PostGIS), MongoDB, Redis, ClickHouse |
-| **Messaging** | Apache Kafka |
+| **Messaging** | Google Cloud Pub/Sub |
 | **Service Discovery** | Netflix Eureka |
 | **API Gateway** | Spring Cloud Gateway |
 | **Sécurité** | JWT (jjwt 0.12.3), Spring Security |
@@ -164,7 +164,7 @@ com.speedline.<service>/
 ├── exception/                    # Exceptions personnalisées
 ├── config/                       # Configurations
 ├── client/                       # Clients Feign (appels inter-services)
-└── event/                        # Kafka events
+└── event/                        # Pub/Sub events
     ├── producer/                 # Producteurs d'événements
     └── consumer/                 # Consommateurs d'événements
 ```
@@ -339,7 +339,7 @@ PICKED_UP → IN_DELIVERY → DELIVERED
               CANCELLED
 ```
 
-**Kafka Events à produire:**
+**Pub/Sub Events à produire:**
 - `OrderCreatedEvent`
 - `OrderConfirmedEvent`
 - `OrderCancelledEvent`
@@ -425,16 +425,20 @@ PaymentIntent intent = PaymentIntent.create(
 | PUT | `/notifications/{id}/read` | Marquer lu |
 | POST | `/push-tokens` | Enregistrer token |
 
-**Kafka Consumers à implémenter:**
+**Pub/Sub Subscribers à implémenter:**
 ```java
-@KafkaListener(topics = "order-created")
-public void onOrderCreated(OrderCreatedEvent event) {
-    // Notifier client + partenaire
+@ServiceActivator(inputChannel = "orderEventsChannel")
+public MessageHandler onOrderCreated() {
+    return message -> {
+        // Notifier client + partenaire
+    };
 }
 
-@KafkaListener(topics = "delivery-assigned")
-public void onDeliveryAssigned(DeliveryAssignedEvent event) {
-    // Notifier livreur
+@ServiceActivator(inputChannel = "deliveryEventsChannel")
+public MessageHandler onDeliveryAssigned() {
+    return message -> {
+        // Notifier livreur
+    };
 }
 ```
 
@@ -627,7 +631,7 @@ Pour chaque service, suivez cette checklist :
 - [ ] **Exceptions:** Gérer les erreurs métier
 - [ ] **Tests:** Écrire les tests unitaires
 - [ ] **application.yml:** Configurer le service
-- [ ] **Kafka:** Implémenter producers/consumers si nécessaire
+- [ ] **Pub/Sub:** Implémenter publishers/subscribers si nécessaire
 - [ ] **Feign Clients:** Créer les clients pour appels inter-services
 
 ---

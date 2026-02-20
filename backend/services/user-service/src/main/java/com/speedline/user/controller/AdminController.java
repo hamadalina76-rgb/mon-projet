@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
  * Contrôleur REST pour la gestion des Admins
  */
 @RestController
-@RequestMapping("/api/v1/admins")
+@RequestMapping("/v1/admins")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")

@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
  * Contrôleur REST pour la gestion des logs d'activité
  */
 @RestController
-@RequestMapping("/api/v1/admin/activity-logs")
+@RequestMapping("/v1/admin/activity-logs")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")

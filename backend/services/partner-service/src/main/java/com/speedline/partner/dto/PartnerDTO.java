@@ -25,13 +25,28 @@ public class PartnerDTO {
     
     // Informations de base
     private String businessName;
+    private String brandName;
     private String slug;
     private PartnerType type;
     private String description;
+    private String shortDescription;
     private String logo;
     private String coverImage;
     private String phoneNumber;
     private String email;
+    
+    // Informations légales
+    private String legalStatus;
+    private String tva;
+    private String legalRepFirstName;
+    private String legalRepLastName;
+    private String position;
+    
+    // Informations bancaires
+    private String accountHolderName;
+    private String iban;
+    private String bankName;
+    private String currency;
     
     // Adresse
     private String address;
@@ -60,17 +75,32 @@ public class PartnerDTO {
     private BigDecimal minimumOrder;
     private BigDecimal freeDeliveryThreshold;
     
+    // Modes de paiement
+    private Boolean acceptOnlinePayment;
+    private Boolean acceptCashPayment;
+    
     // Statistiques
     private BigDecimal rating;
     private Integer totalRatings;
     private Integer totalOrders;
+    private BigDecimal totalRevenue;
     
+    // Documents
+    private String kbisUrl;
+    private String idCardUrl;
+    private String insuranceUrl;
+    private String ribUrl;
+    private String photosJson;
+
     // Catégories et tags
     private List<Long> categoryIds;
     private List<String> tags;
     
     // Horaires (simplifié pour l'affichage)
     private String openingHoursDisplay;
+
+    // Notes internes (admin)
+    private String internalNotes;
     
     // Timestamps
     private LocalDateTime createdAt;

@@ -9,6 +9,34 @@ spring:
       uri: mongodb://${MONGO_USERNAME:mongo}:${MONGO_PASSWORD:mongo123}@${MONGO_HOST:localhost}:${MONGO_PORT:27017}/speedline_notifications?authSource=admin
       database: speedline_notifications
       auto-index-creation: true # Crée automatiquement les index définis dans les @Document
+  cloud:
+    gcp:
+      project-id: ${GCP_PROJECT_ID:speedline-local}
+      pubsub:
+        emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8090}
+        subscriber:
+          parallel-pull-count: 1
+          max-ack-extension-period: 600
+  thymeleaf:
+    check-template-location: false
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:devwisetunisie@gmail.com}
+    password: ${MAIL_PASSWORD:owiq ixkt efgl wkte}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            enable: false
+          connectiontimeout: 30000
+          timeout: 30000
+          writetimeout: 30000
 
 eureka:
   client:

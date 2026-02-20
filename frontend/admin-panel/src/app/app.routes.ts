@@ -114,8 +114,6 @@ export const routes: Routes = [
       },
       {
         path: 'settings',
-        canActivate: [permissionGuard],
-        data: { permissions: [PERMISSIONS.SETTINGS_VIEW] },
         loadChildren: () =>
           import('./features/settings/settings.routes').then(
             (m) => m.SETTINGS_ROUTES

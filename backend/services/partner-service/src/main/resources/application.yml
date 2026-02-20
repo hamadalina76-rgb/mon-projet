@@ -1,9 +1,17 @@
 server:
   port: 8083
+  tomcat:
+    max-http-post-size: 10MB
+    max-swallow-size: 10MB
 
 spring:
   application:
     name: partner-service
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5MB
+      max-request-size: 20MB
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:5432/speedline_partners
     username: ${DB_USERNAME:postgres}
@@ -22,6 +30,16 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
     validate-on-migrate: true
+  cloud:
+    gcp:
+      project-id: ${GCP_PROJECT_ID:speedline-local}
+      pubsub:
+        emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8090}
+
+# File storage configuration
+file:
+  upload-dir: ./uploads
+  base-url: http://localhost:8083/uploads
 
 eureka:
   client:

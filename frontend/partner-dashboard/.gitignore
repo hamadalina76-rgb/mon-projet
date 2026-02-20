@@ -45,3 +45,13 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+
+# Sensitive configuration
+**/environment.ts
+!**/environment.template.ts
+
+# Mapbox tokens (if stored separately)
+mapbox-token.txt
+.mapbox

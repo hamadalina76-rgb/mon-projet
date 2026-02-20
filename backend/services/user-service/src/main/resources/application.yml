@@ -35,6 +35,8 @@ file:
   # when running from backend/services/user-service, this resolves to
   # backend/services/user-service/uploads (i.e. C:\git\speedline\backend\services\user-service\uploads)
   upload-dir: uploads
+  upload:
+    dir: uploads
 
 # File Upload Configuration
 

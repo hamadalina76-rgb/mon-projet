@@ -5,6 +5,13 @@ export const PROFILE_ROUTES: Routes = [
   {
     path: '',
     loadComponent: () =>
+      import('./profile-overview/profile-overview.component').then(
+        (m) => m.ProfileOverviewComponent
+      ),
+  },
+  {
+    path: 'settings',
+    loadComponent: () =>
       import('./profile-settings/profile-settings.component').then(
         (m) => m.ProfileSettingsComponent
       ),
@@ -26,8 +33,6 @@ export const PROFILE_ROUTES: Routes = [
   {
     path: 'zones',
     loadComponent: () =>
-      import('./delivery-zones/delivery-zones.component').then(
-        (m) => m.DeliveryZonesComponent
-      ),
+      import('./zones/zones.component').then((m) => m.ZonesComponent),
   },
 ];

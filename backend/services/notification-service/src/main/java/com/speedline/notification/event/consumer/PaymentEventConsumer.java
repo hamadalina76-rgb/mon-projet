@@ -1,8 +1,12 @@
 package com.speedline.notification.event.consumer;
 
 /**
- * Kafka Consumer pour événements Payment
+ * GCP Pub/Sub Consumer pour événements Payment
+ * 
+ * TODO: Implémenter avec PubSubInboundChannelAdapter
+ * - Subscription: payment-events-notification-sub
+ * - Topics: payment-completed, payment-failed
  */
 public class PaymentEventConsumer {
-    // TODO: @KafkaListener(topics = "payment-completed", "payment-failed")
+    // TODO: Implémenter avec PubSubInboundChannelAdapter et @ServiceActivator
 }

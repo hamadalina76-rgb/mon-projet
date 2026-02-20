@@ -1,0 +1,22 @@
+<div class="request-more-info-dialog">
+  <h2 mat-dialog-title>{{ 'partners.approval.requestMoreInfoTitle' | translate }}</h2>
+  <mat-dialog-content>
+    <p class="dialog-message">{{ 'partners.approval.requestMoreInfoMessage' | translate }}</p>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ 'partners.approval.requestMoreInfoPlaceholder' | translate }}</mat-label>
+      <textarea
+        matInput
+        [(ngModel)]="message"
+        [placeholder]="'partners.approval.requestMoreInfoPlaceholder' | translate"
+        rows="6"
+        required>
+      </textarea>
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="cancel()">{{ 'partners.approval.requestMoreInfoCancel' | translate }}</button>
+    <button mat-flat-button color="primary" (click)="send()" [disabled]="!message.trim()">
+      {{ 'partners.approval.requestMoreInfoSend' | translate }}
+    </button>
+  </mat-dialog-actions>
+</div>

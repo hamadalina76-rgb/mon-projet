@@ -51,9 +51,9 @@ export interface ForgotPasswordRequest {
 }
 
 export interface ResetPasswordRequest {
-  token: string;
+  email: string;
+  otpCode: string;
   newPassword: string;
-  confirmPassword: string;
 }
 
 export interface AdminActivityLog {

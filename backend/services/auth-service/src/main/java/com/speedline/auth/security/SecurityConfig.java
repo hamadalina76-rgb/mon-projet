@@ -31,6 +31,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private static final String[] PUBLIC_URLS = {
+            "/api/v1/auth/**",
+
             "/api/v1/auth/register/**",
             "/api/v1/auth/login/**",
             "/api/v1/auth/verify-otp/**",
@@ -38,6 +40,9 @@ public class SecurityConfig {
             "/api/v1/auth/forgot-password/**",
             "/api/v1/auth/reset-password/**",
             "/api/v1/auth/verify-email/**",
+            "/users/**",           // Internal endpoint for inter-service communication
+            "/internal/**",        // Internal endpoint for inter-service communication (Feign)
+            "/debug/**",           // Debug endpoints
             "/api/v1/auth/social-login/**",
             "/api/v1/auth/google/**",
             "/api/v1/auth/facebook/**",

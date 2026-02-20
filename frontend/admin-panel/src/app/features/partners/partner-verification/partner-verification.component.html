@@ -5,7 +5,7 @@
       <button mat-icon-button routerLink="/partners">
         <mat-icon>arrow_back</mat-icon>
       </button>
-      <h1>Vérification des documents</h1>
+      <h1>{{ 'partners.verification.title' | translate }}</h1>
     </div>
   </header>
 
@@ -17,14 +17,14 @@
           <mat-icon>description</mat-icon>
           <div>
             <h4>{{ doc.type }}</h4>
-            <span class="document-date">Soumis le {{ doc.submittedAt | date }}</span>
+            <span class="document-date">{{ 'partners.verification.submittedOn' | translate }} {{ doc.submittedAt | date }}</span>
           </div>
         </div>
         <div class="document-actions">
           <button mat-icon-button (click)="viewDocument(doc)">
             <mat-icon>visibility</mat-icon>
           </button>
-          <mat-checkbox [(ngModel)]="doc.verified">Vérifié</mat-checkbox>
+          <mat-checkbox [(ngModel)]="doc.verified">{{ 'partners.verification.verified' | translate }}</mat-checkbox>
         </div>
       </div>
     </mat-card>
@@ -32,7 +32,7 @@
     <!-- Actions -->
     <div class="actions-bar">
       <button mat-flat-button color="primary" (click)="saveVerification()">
-        Enregistrer
+        {{ 'common.save' | translate }}
       </button>
     </div>
   </div>

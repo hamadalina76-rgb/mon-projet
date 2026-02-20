@@ -64,4 +64,23 @@ public interface NotificationRepository extends MongoRepository<Notification, St
      * Trouver les notifications dans une période
      */
     List<Notification> findByUserIdAndCreatedAtBetween(Long userId, LocalDateTime start, LocalDateTime end);
+
+    /**
+     * Trouver les notifications admin (userId=0 broadcast OU userId=adminId)
+     * Utilisé pour afficher les notifications aux admins (demandes partenaires, etc.)
+     */
+    @Query(value = "{ 'userId': { $in: ?0 } }", sort = "{ 'createdAt' : -1 }")
+    Page<Notification> findByUserIdInOrderByCreatedAtDesc(List<Long> userIds, Pageable pageable);
+
+    /**
+     * Compter les notifications non lues pour un admin (userId=0 ou adminId)
+     */
+    @Query(value = "{ 'userId': { $in: ?0 }, 'isRead': false }", count = true)
+    long countByUserIdInAndIsReadFalse(List<Long> userIds);
+
+    /**
+     * Trouver les notifications non lues pour un admin (pour mark all as read)
+     */
+    @Query("{ 'userId': { $in: ?0 }, 'isRead': false }")
+    List<Notification> findByUserIdInAndIsReadFalse(List<Long> userIds);
 }

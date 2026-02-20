@@ -1,7 +1,7 @@
-// src/app/features/auth/register/register.component.ts - Angular 19
+// src/app/features/auth/register/register.component.ts - Phase 1: Simple Signup
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,10 +9,11 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatStepperModule } from '@angular/material/stepper';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TranslateModule } from '@ngx-translate/core';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AuthService } from '@core/services/auth.service';
+import { RegisterRequest } from '@core/models/user.model';
 
 @Component({
   selector: 'app-register',
@@ -27,8 +28,8 @@ import { AuthService } from '@core/services/auth.service';
     MatSelectModule,
     MatButtonModule,
     MatIconModule,
-    MatStepperModule,
     MatProgressSpinnerModule,
+    MatCheckboxModule,
     TranslateModule,
   ],
   templateUrl: './register.component.html',
@@ -38,58 +39,124 @@ export class RegisterComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private translate = inject(TranslateService);
 
-  // Step 1: Account Info
-  accountForm: FormGroup = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(8)]],
-    confirmPassword: ['', Validators.required],
-  });
-
-  // Step 2: Business Info
-  businessForm: FormGroup = this.fb.group({
-    businessName: ['', Validators.required],
-    businessType: ['', Validators.required],
-    phone: ['', Validators.required],
-    address: ['', Validators.required],
-    city: ['', Validators.required],
-  });
-
-  // Step 3: Documents
-  documentsForm: FormGroup = this.fb.group({
-    ice: ['', Validators.required],
-    rc: ['', Validators.required],
-  });
-
-  // Angular 19 Signals
+  // Signals
   hidePassword = signal(true);
+  hideConfirmPassword = signal(true);
   loading = signal(false);
   errorMessage = signal('');
+  successMessage = signal('');
+  currentLang = signal('fr');
+  currentYear = new Date().getFullYear();
 
+  availableLanguages = [
+    { code: 'fr', name: 'Français', flag: '🇫🇷' },
+    { code: 'en', name: 'English', flag: '🇬🇧' },
+    { code: 'ar', name: 'العربية', flag: '🇹🇳' },
+  ];
+
+  // Simple registration form - only fields needed by auth-service
+  registerForm: FormGroup = this.fb.group({
+    firstName: ['', [Validators.required, Validators.minLength(2)]],
+    lastName: ['', [Validators.required, Validators.minLength(2)]],
+    email: ['', [Validators.required, Validators.email]],
+    phoneNumber: ['', [Validators.required, Validators.pattern(/^\+?[0-9]{8,15}$/)]],
+    password: ['', [Validators.required, Validators.minLength(8), this.passwordStrengthValidator]],
+    confirmPassword: ['', Validators.required],
+    acceptTerms: [false, Validators.requiredTrue],
+  }, { validators: this.passwordMatchValidator });
+
+  constructor() {
+    const savedLang = localStorage.getItem('partnerLang') || 'fr';
+    this.currentLang.set(savedLang);
+    this.translate.use(savedLang);
+    this.updateDirection(savedLang);
+  }
+
+  // Validators
+  passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
+    const password = control.get('password');
+    const confirmPassword = control.get('confirmPassword');
+    if (!password || !confirmPassword) return null;
+    return password.value === confirmPassword.value ? null : { passwordMismatch: true };
+  }
+
+  passwordStrengthValidator(control: AbstractControl): ValidationErrors | null {
+    const value = control.value;
+    if (!value) return null;
+    const hasUpperCase = /[A-Z]/.test(value);
+    const hasLowerCase = /[a-z]/.test(value);
+    const hasNumber = /[0-9]/.test(value);
+    if (!hasUpperCase || !hasLowerCase || !hasNumber) {
+      return { weakPassword: true };
+    }
+    return null;
+  }
+
+  // Password visibility
   togglePasswordVisibility(): void {
     this.hidePassword.update(v => !v);
   }
 
+  toggleConfirmPasswordVisibility(): void {
+    this.hideConfirmPassword.update(v => !v);
+  }
+
+  // Language
+  changeLanguage(lang: string): void {
+    this.currentLang.set(lang);
+    this.translate.use(lang);
+    localStorage.setItem('partnerLang', lang);
+    this.updateDirection(lang);
+  }
+
+  updateDirection(lang: string): void {
+    const htmlElement = document.documentElement;
+    if (lang === 'ar') {
+      htmlElement.setAttribute('dir', 'rtl');
+      htmlElement.setAttribute('lang', 'ar');
+    } else {
+      htmlElement.setAttribute('dir', 'ltr');
+      htmlElement.setAttribute('lang', lang);
+    }
+  }
+
+  // Submit
   onSubmit(): void {
-    if (this.accountForm.invalid || this.businessForm.invalid || this.documentsForm.invalid) return;
+    if (this.registerForm.invalid) {
+      Object.keys(this.registerForm.controls).forEach(key => {
+        this.registerForm.controls[key].markAsTouched();
+      });
+      return;
+    }
 
     this.loading.set(true);
     this.errorMessage.set('');
+    this.successMessage.set('');
 
-    const data = {
-      ...this.accountForm.value,
-      ...this.businessForm.value,
-      ...this.documentsForm.value,
+    const formValue = this.registerForm.value;
+
+    const registerData: RegisterRequest = {
+      firstName: formValue.firstName.trim(),
+      lastName: formValue.lastName.trim(),
+      email: formValue.email.trim().toLowerCase(),
+      phoneNumber: formValue.phoneNumber.trim(),
+      password: formValue.password,
+      role: 'PARTNER',
     };
 
-    this.authService.register(data).subscribe({
-      next: () => {
+    this.authService.register(registerData).subscribe({
+      next: (response) => {
         this.loading.set(false);
-        this.router.navigate(['/auth/login']);
+        this.router.navigate(['/auth/registration-success'], {
+          queryParams: { email: registerData.email }
+        });
       },
       error: (err) => {
         this.loading.set(false);
-        this.errorMessage.set(err.error?.message || 'Erreur lors de l\'inscription');
+        const message = err.error?.message || err.error?.error || 'auth.register.error';
+        this.errorMessage.set(message);
       },
     });
   }

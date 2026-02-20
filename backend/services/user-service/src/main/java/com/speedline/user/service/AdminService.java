@@ -270,6 +270,23 @@ public class AdminService {
             Admin savedAdmin = adminRepository.save(admin);
             log.info("Profil admin créé avec succès - ID: {}, userId: {}", savedAdmin.getId(), savedAdmin.getUserId());
             
+            // 3. Envoyer l'email de bienvenue avec les credentiels
+            try {
+                log.info("Envoi de l'email de bienvenue à: {}", request.getEmail());
+                authServiceClient.sendAdminWelcomeEmail(
+                    AuthServiceClient.SendWelcomeEmailRequest.builder()
+                        .email(request.getEmail())
+                        .fullName(request.getFullName())
+                        .temporaryPassword(request.getPassword())
+                        .build()
+                );
+                log.info("Email de bienvenue envoyé avec succès à: {}", request.getEmail());
+            } catch (Exception emailEx) {
+                log.warn("Échec de l'envoi de l'email de bienvenue à {}: {}. Admin créé quand même.", 
+                         request.getEmail(), emailEx.getMessage());
+                // On ne bloque pas la création si l'email échoue
+            }
+            
             return adminMapper.toResponse(savedAdmin);
             
         } catch (Exception e) {
