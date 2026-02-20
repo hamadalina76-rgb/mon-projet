@@ -464,11 +464,23 @@ public class AuthServiceImpl implements AuthService {
 
         if (existingUser.isPresent()) {
             user = existingUser.get();
-            // Update profile picture if changed
-            if (oauth2UserInfo.getProfilePicture() != null &&
-                    !oauth2UserInfo.getProfilePicture().equals(user.getProfilePicture())) {
+            // Only update profile picture from OAuth if:
+            // 1. User doesn't have a custom uploaded picture (check if it's from our server)
+            // 2. AND OAuth provides a picture
+            String currentPicture = user.getProfilePicture();
+            boolean isCustomUpload = currentPicture != null && 
+                                    (currentPicture.contains("/uploads/") || 
+                                     currentPicture.contains("10.0.2.2:8082") ||
+                                     currentPicture.contains("localhost:8082"));
+            
+            if (!isCustomUpload && 
+                oauth2UserInfo.getProfilePicture() != null &&
+                !oauth2UserInfo.getProfilePicture().equals(user.getProfilePicture())) {
                 user.setProfilePicture(oauth2UserInfo.getProfilePicture());
                 userRepo.save(user);
+                log.info("Updated OAuth profile picture for user: {}", user.getEmail());
+            } else if (isCustomUpload) {
+                log.info("Preserving custom uploaded profile picture for user: {}", user.getEmail());
             }
         } else {
             // Check if user exists with same email (different provider)

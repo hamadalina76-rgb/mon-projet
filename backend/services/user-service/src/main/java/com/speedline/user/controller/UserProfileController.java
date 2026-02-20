@@ -31,10 +31,10 @@ public class UserProfileController {
 
     private final AuthServiceClient authServiceClient;
 
-    @Value("${file.upload.dir:c:/PFE2026/speedline/backend/services/user-service/uploads/profile-pictures}")
+    @Value("${file.upload.dir}")
     private String uploadDir;
 
-    @Value("${file.upload.base-url:http://10.0.2.2:8082/uploads}")
+    @Value("${file.upload.base-url}")
     private String baseUrl;
 
     /**

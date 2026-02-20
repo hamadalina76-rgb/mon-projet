@@ -7,7 +7,6 @@ import '../../../../core/utils/responsive_utils.dart';
 import '../../../../core/localization/locale_provider.dart';
 import '../../../../core/localization/localization_extension.dart';
 import '../../../../config/routes/route_names.dart';
-import '../../../auth/presentation/providers/auth_notifier.dart';
 import '../../../../config/dependency_injection/injection.dart';
 
 /// Écran d'accueil / Onboarding
