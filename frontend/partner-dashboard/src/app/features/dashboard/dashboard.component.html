@@ -1,82 +1,306 @@
 <!-- Dashboard Component Template - Angular 19 -->
 <div class="dashboard-page">
-  <header class="page-header">
-    <h1>{{ 'dashboard.title' | translate }}</h1>
-    <span class="greeting">Bonjour, {{ partnerName() }} 👋</span>
-  </header>
 
   <!-- Loading State -->
   @if (loading()) {
-    <div class="loading-overlay">
-      <mat-spinner diameter="40"></mat-spinner>
+    <div class="loading-container">
+      <mat-spinner diameter="48"></mat-spinner>
+      <p>{{ 'DASHBOARD.loading' | translate }}</p>
     </div>
   }
 
-  <!-- Stats Cards -->
-  <div class="stats-grid">
-    <app-stats-card
-      icon="shopping_bag"
-      title="Commandes aujourd'hui"
-      [value]="stats().ordersToday"
-      [trend]="stats().ordersTrend"
-      color="primary">
-    </app-stats-card>
+  <!-- ==================== DOCUMENTS MISSING STATE ==================== -->
+  @if (!loading() && isDocumentsMissing()) {
+    <div class="pending-state">
+      <div class="pending-card">
+        <div class="pending-icon-wrapper">
+          <div class="pending-icon" style="background: rgba(59, 130, 246, 0.1);">
+            <mat-icon style="color: #3b82f6;">info</mat-icon>
+          </div>
+        </div>
 
-    <app-stats-card
-      icon="payments"
-      title="Revenu aujourd'hui"
-      [value]="stats().revenueToday | currency:'MAD'"
-      [trend]="stats().revenueTrend"
-      color="success">
-    </app-stats-card>
+        <h2>{{ 'DASHBOARD.documentsMissing.title' | translate }}</h2>
+        <p class="pending-description">
+          {{ 'DASHBOARD.documentsMissing.description' | translate }}
+        </p>
 
-    <app-stats-card
-      icon="star"
-      title="Note moyenne"
-      [value]="stats().averageRating"
-      color="warning">
-    </app-stats-card>
+        @if (adminMessage()) {
+          <div class="admin-message-box">
+            <mat-icon>message</mat-icon>
+            <div class="admin-message-content">
+              <strong>{{ 'DASHBOARD.documentsMissing.adminMessage' | translate }}</strong>
+              <p>{{ adminMessage() }}</p>
+            </div>
+          </div>
+        }
 
-    <app-stats-card
-      icon="timer"
-      title="Temps de préparation"
-      [value]="stats().avgPrepTime + ' min'"
-      color="info">
-    </app-stats-card>
-  </div>
+        <div class="pending-info-box">
+          <mat-icon>info_outline</mat-icon>
+          <span>{{ 'DASHBOARD.documentsMissing.actionNote' | translate }}</span>
+        </div>
 
-  <!-- Charts Row -->
-  <div class="charts-row">
-    <mat-card class="chart-card">
-      <h3>Commandes cette semaine</h3>
-      <app-orders-chart [data]="stats().ordersChart"></app-orders-chart>
-    </mat-card>
-
-    <mat-card class="recent-orders-card">
-      <div class="card-header">
-        <h3>Commandes récentes</h3>
-        <button mat-stroked-button routerLink="/orders">Voir tout</button>
+        <button class="btn btn-primary" (click)="navigateToCompleteProfile()" style="margin-top: 1.5rem;">
+          <mat-icon>edit</mat-icon>
+          {{ 'DASHBOARD.documentsMissing.updateProfile' | translate }}
+        </button>
       </div>
-      <app-recent-orders [orders]="stats().recentOrders"></app-recent-orders>
-    </mat-card>
-  </div>
-
-  <!-- Popular Products -->
-  <mat-card class="popular-products">
-    <h3>Produits populaires</h3>
-    <div class="products-grid">
-      @for (product of stats().popularProducts; track product.id) {
-        <div class="product-item">
-          <img [src]="product.image" [alt]="product.name" />
-          <span class="product-name">{{ product.name }}</span>
-          <span class="product-orders">{{ product.ordersCount }} commandes</span>
-        </div>
-      } @empty {
-        <div class="empty-state">
-          <mat-icon>inventory_2</mat-icon>
-          <p>Aucun produit populaire</p>
-        </div>
-      }
     </div>
-  </mat-card>
+  }
+
+  <!-- ==================== PENDING APPROVAL STATE ==================== -->
+  @if (!loading() && isPending()) {
+    <div class="pending-state">
+      <div class="pending-card">
+        <div class="pending-icon-wrapper">
+          <div class="pending-icon">
+            <mat-icon>hourglass_top</mat-icon>
+          </div>
+          <div class="pending-pulse"></div>
+        </div>
+
+        <h2>{{ 'DASHBOARD.pending.title' | translate }}</h2>
+        <p class="pending-description">
+          {{ 'DASHBOARD.pending.description' | translate }}
+        </p>
+
+        <div class="pending-timeline">
+          <div class="timeline-step completed">
+            <div class="step-dot">
+              <mat-icon>check</mat-icon>
+            </div>
+            <div class="step-info">
+              <span class="step-title">{{ 'DASHBOARD.pending.step1Title' | translate }}</span>
+              <span class="step-desc">{{ 'DASHBOARD.pending.step1Desc' | translate }}</span>
+            </div>
+          </div>
+
+          <div class="timeline-step completed">
+            <div class="step-dot">
+              <mat-icon>check</mat-icon>
+            </div>
+            <div class="step-info">
+              <span class="step-title">{{ 'DASHBOARD.pending.step2Title' | translate }}</span>
+              <span class="step-desc">{{ 'DASHBOARD.pending.step2Desc' | translate }}</span>
+            </div>
+          </div>
+
+          <div class="timeline-step active">
+            <div class="step-dot">
+              <mat-icon>more_horiz</mat-icon>
+            </div>
+            <div class="step-info">
+              <span class="step-title">{{ 'DASHBOARD.pending.step3Title' | translate }}</span>
+              <span class="step-desc">{{ 'DASHBOARD.pending.step3Desc' | translate }}</span>
+            </div>
+          </div>
+
+          <div class="timeline-step">
+            <div class="step-dot">
+              <mat-icon>storefront</mat-icon>
+            </div>
+            <div class="step-info">
+              <span class="step-title">{{ 'DASHBOARD.pending.step4Title' | translate }}</span>
+              <span class="step-desc">{{ 'DASHBOARD.pending.step4Desc' | translate }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pending-info-box">
+          <mat-icon>mail_outline</mat-icon>
+          <span>{{ 'DASHBOARD.pending.emailNote' | translate }}</span>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ==================== REJECTED STATE ==================== -->
+  @if (!loading() && isRejected()) {
+    <div class="pending-state">
+      <div class="pending-card rejected-card">
+        <div class="pending-icon-wrapper">
+          <div class="pending-icon rejected">
+            <mat-icon>cancel</mat-icon>
+          </div>
+        </div>
+
+        <h2>{{ 'DASHBOARD.rejected.title' | translate }}</h2>
+        <p class="pending-description">
+          {{ 'DASHBOARD.rejected.description' | translate }}
+        </p>
+
+        <button class="btn btn-primary" routerLink="/support">
+          <mat-icon>support_agent</mat-icon>
+          {{ 'DASHBOARD.rejected.contactSupport' | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ==================== SUSPENDED STATE ==================== -->
+  @if (!loading() && isSuspended()) {
+    <div class="pending-state">
+      <div class="pending-card suspended-card">
+        <div class="pending-icon-wrapper">
+          <div class="pending-icon suspended">
+            <mat-icon>gpp_bad</mat-icon>
+          </div>
+        </div>
+
+        <h2>{{ 'DASHBOARD.suspended.title' | translate }}</h2>
+        <p class="pending-description">
+          {{ 'DASHBOARD.suspended.description' | translate }}
+        </p>
+
+        <button class="btn btn-primary" routerLink="/support">
+          <mat-icon>support_agent</mat-icon>
+          {{ 'DASHBOARD.rejected.contactSupport' | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ==================== DEACTIVATED STATE ==================== -->
+  @if (!loading() && isDeactivated()) {
+    <div class="pending-state">
+      <div class="pending-card deactivated-card">
+        <div class="pending-icon-wrapper">
+          <div class="pending-icon deactivated">
+            <mat-icon>block</mat-icon>
+          </div>
+        </div>
+
+        <h2>{{ 'DASHBOARD.deactivated.title' | translate }}</h2>
+        <p class="pending-description">
+          {{ 'DASHBOARD.deactivated.description' | translate }}
+        </p>
+
+        <button class="btn btn-primary" routerLink="/support">
+          <mat-icon>support_agent</mat-icon>
+          {{ 'DASHBOARD.rejected.contactSupport' | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ==================== ACTIVE DASHBOARD STATE ==================== -->
+  @if (!loading() && (isActive() || isApproved())) {
+    <!-- Page Header -->
+    <header class="page-header">
+      <div class="header-left">
+        <h1>{{ 'DASHBOARD.overview' | translate }}</h1>
+        <span class="greeting">{{ 'DASHBOARD.greeting' | translate:{ name: partnerName() } }}</span>
+      </div>
+      <div class="header-right">
+        <div class="accepting-orders-toggle" [class.active]="acceptingOrders()">
+          <div class="toggle-info">
+            <span class="toggle-label">{{ 'DASHBOARD.acceptingOrders' | translate }}</span>
+            <span class="toggle-status" [class.active]="acceptingOrders()">
+              {{ (acceptingOrders() ? 'DASHBOARD.open' : 'DASHBOARD.closed') | translate }}
+            </span>
+          </div>
+          <mat-slide-toggle
+            [checked]="acceptingOrders()"
+            (change)="toggleAcceptingOrders()"
+            color="primary">
+          </mat-slide-toggle>
+        </div>
+      </div>
+    </header>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <app-stats-card
+        icon="shopping_bag"
+        [title]="'DASHBOARD.ordersToday' | translate"
+        [value]="stats().ordersToday"
+        [trend]="stats().ordersTrend"
+        color="primary">
+      </app-stats-card>
+
+      <app-stats-card
+        icon="payments"
+        [title]="'DASHBOARD.revenueToday' | translate"
+        [value]="stats().revenueToday | currency:'MAD':'symbol':'1.2-2'"
+        [trend]="stats().revenueTrend"
+        color="success">
+      </app-stats-card>
+
+      <app-stats-card
+        icon="star"
+        [title]="'DASHBOARD.avgRating' | translate"
+        [value]="stats().averageRating + ' / 5'"
+        color="warning">
+      </app-stats-card>
+
+      <app-stats-card
+        icon="timer"
+        [title]="'DASHBOARD.avgTime' | translate"
+        [value]="stats().avgPrepTime + ' min'"
+        color="info">
+      </app-stats-card>
+    </div>
+
+    <!-- Main Content Row -->
+    <div class="content-row">
+      <!-- Orders Chart -->
+      <div class="card chart-card">
+        <div class="card-header">
+          <h3>{{ 'DASHBOARD.ordersThisWeek' | translate }}</h3>
+        </div>
+        <app-orders-chart [data]="stats().ordersChart"></app-orders-chart>
+      </div>
+
+      <!-- Recent Orders -->
+      <div class="card recent-orders-card">
+        <div class="card-header">
+          <h3>{{ 'DASHBOARD.recentOrders' | translate }}</h3>
+          <a routerLink="/orders" class="view-all-link">
+            {{ 'DASHBOARD.viewAll' | translate }}
+            <mat-icon>arrow_forward</mat-icon>
+          </a>
+        </div>
+
+        @if (hasRecentOrders()) {
+          <div class="orders-table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>{{ 'DASHBOARD.orderNumber' | translate }}</th>
+                  <th>{{ 'DASHBOARD.client' | translate }}</th>
+                  <th>{{ 'DASHBOARD.total' | translate }}</th>
+                  <th>{{ 'DASHBOARD.status' | translate }}</th>
+                  <th>{{ 'DASHBOARD.actions' | translate }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (order of stats().recentOrders; track order.id) {
+                  <tr>
+                    <td class="order-number">#{{ order.orderNumber }}</td>
+                    <td>{{ order.customerName }}</td>
+                    <td class="order-total">{{ order.total | currency:'MAD':'symbol':'1.2-2' }}</td>
+                    <td>
+                      <span class="badge" [ngClass]="'badge-' + order.status?.toLowerCase()">
+                        {{ order.statusLabel || order.status }}
+                      </span>
+                    </td>
+                    <td>
+                      <button class="btn btn-sm btn-outline" [routerLink]="['/orders', order.id]">
+                        <mat-icon>visibility</mat-icon>
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="empty-orders">
+            <mat-icon>receipt_long</mat-icon>
+            <p>{{ 'DASHBOARD.noRecentOrders' | translate }}</p>
+            <span>{{ 'DASHBOARD.noRecentOrdersHint' | translate }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
 </div>

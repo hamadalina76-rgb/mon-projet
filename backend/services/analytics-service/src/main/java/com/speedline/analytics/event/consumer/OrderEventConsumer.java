@@ -1,8 +1,12 @@
 package com.speedline.analytics.event.consumer;
 
 /**
- * Kafka Consumer pour événements Order
+ * GCP Pub/Sub Consumer pour événements Order
+ * 
+ * TODO: Implémenter avec PubSubInboundChannelAdapter
+ * - Subscription: order-events-analytics-sub
+ * - Topic: order-completed
  */
 public class OrderEventConsumer {
-    // TODO: @KafkaListener(topics = "order-completed")
+    // TODO: Implémenter avec PubSubInboundChannelAdapter et @ServiceActivator
 }

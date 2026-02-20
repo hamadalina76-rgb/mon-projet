@@ -1,11 +1,11 @@
 // src/app/app.config.ts
-import { ApplicationConfig, importProvidersFrom } from '@angular/core';
+import { ApplicationConfig, importProvidersFrom, APP_INITIALIZER } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withInterceptors, HttpClient } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideToastr } from 'ngx-toastr';
-import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
-import { Observable } from 'rxjs';
+import { TranslateModule, TranslateLoader, TranslateService } from '@ngx-translate/core';
+import { Observable, firstValueFrom } from 'rxjs';
 import { SocketIoModule, SocketIoConfig } from 'ngx-socket-io';
 
 import { routes } from './app.routes';
@@ -36,8 +36,13 @@ export function HttpLoaderFactory(http: HttpClient) {
   return new CustomTranslateLoader(http);
 }
 
+export function initTranslations(translate: TranslateService) {
+  return () => firstValueFrom(translate.use(environment.defaultLanguage));
+}
+
 export const appConfig: ApplicationConfig = {
   providers: [
+    { provide: APP_INITIALIZER, useFactory: initTranslations, deps: [TranslateService], multi: true },
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(
       withInterceptors([authInterceptor, errorInterceptor, loadingInterceptor])

@@ -1,8 +1,12 @@
 package com.speedline.notification.event.consumer;
 
 /**
- * Kafka Consumer pour événements Order
+ * GCP Pub/Sub Consumer pour événements Order
+ * 
+ * TODO: Implémenter avec PubSubInboundChannelAdapter
+ * - Subscription: order-events-notification-sub
+ * - Topics: order-created, order-confirmed
  */
 public class OrderEventConsumer {
-    // TODO: @KafkaListener(topics = "order-created", "order-confirmed")
+    // TODO: Implémenter avec PubSubInboundChannelAdapter et @ServiceActivator
 }

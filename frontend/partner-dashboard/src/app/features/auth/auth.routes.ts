@@ -1,5 +1,6 @@
 // src/app/features/auth/auth.routes.ts
 import { Routes } from '@angular/router';
+import { incompleteProfileGuard } from '@core/guards/auth.guard';
 
 export const AUTH_ROUTES: Routes = [
   {
@@ -20,10 +21,29 @@ export const AUTH_ROUTES: Routes = [
           import('./register/register.component').then((m) => m.RegisterComponent),
       },
       {
+        path: 'registration-success',
+        loadComponent: () =>
+          import('./registration-success/registration-success.component').then((m) => m.RegistrationSuccessComponent),
+      },
+      {
+        path: 'forgot-password',
+        loadComponent: () =>
+          import('./forgot-password/forgot-password.component').then((m) => m.ForgotPasswordComponent),
+      },
+      {
         path: '',
         redirectTo: 'login',
         pathMatch: 'full',
       },
     ],
+  },
+  {
+    // Complete profile is outside the auth layout (it has its own layout since user is authenticated)
+    path: 'complete-profile',
+    canActivate: [incompleteProfileGuard],
+    loadComponent: () =>
+      import('./complete-profile/complete-profile.component').then(
+        (m) => m.CompleteProfileComponent
+      ),
   },
 ];

@@ -17,7 +17,7 @@ La méthode la plus simple est d'utiliser Docker Compose pour démarrer toutes l
 
 ```bash
 cd speedline/backend
-docker-compose up -d postgres mongodb redis clickhouse kafka zookeeper eureka-server
+docker-compose up -d postgres mongodb redis clickhouse pubsub-emulator eureka-server
 ```
 
 Cela démarre :
@@ -25,8 +25,7 @@ Cela démarre :
 - **MongoDB** sur le port 27017
 - **Redis** sur le port 6379
 - **ClickHouse** sur les ports 8123 et 9000
-- **Kafka** sur le port 9092
-- **Zookeeper** sur le port 2181
+- **Pub/Sub Emulator** sur le port 8085
 - **Eureka Server** sur le port 8761
 
 ### 2. Vérifier que les services sont démarrés
@@ -159,11 +158,9 @@ docker-compose down -v
 | Promotion Service | 8092 |
 | Review Service | 8091 |
 | Support Service | 8093 |
-| Kafka UI | 8090 |
 | PostgreSQL | 5432 |
 | MongoDB | 27017 |
 | Redis | 6379 |
 | ClickHouse HTTP | 8123 |
 | ClickHouse Native | 9000 |
-| Kafka | 9092 |
-| Kafka UI | 8090 |
+| Pub/Sub Emulator | 8085 |

@@ -1,12 +1,43 @@
 <!-- src/app/layout/main-layout/main-layout.component.html - Angular 19 -->
-<div class="app-layout">
+<div class="app-layout" [class.mobile]="isMobile()">
+  @if (isMobile() && sidebarMobileOpen()) {
+    <div class="sidebar-backdrop" (click)="closeSidebarMobile()" role="button" tabindex="0" aria-label="Fermer le menu"></div>
+  }
+
   <app-sidebar 
-    [collapsed]="sidebarCollapsed()" 
-    (collapsedChange)="onSidebarToggle($event)">
+    [collapsed]="sidebarCollapsed()"
+    [mobileOpen]="sidebarMobileOpen()"
+    [isMobile]="isMobile()"
+    (collapsedChange)="onSidebarCollapsedChange($event)">
   </app-sidebar>
 
-  <div class="main-content" [class.collapsed]="sidebarCollapsed()">
-    <app-header [sidebarCollapsed]="sidebarCollapsed()"></app-header>
+  <div class="main-content" [class.collapsed]="sidebarCollapsed()" [class.mobile]="isMobile()">
+    <app-header
+      [sidebarCollapsed]="sidebarCollapsed()"
+      [isMobile]="isMobile()"
+      [sidebarMobileOpen]="sidebarMobileOpen()"
+      (toggleSidebar)="onSidebarToggle()">
+    </app-header>
+
+    @if (showStatusBanner()) {
+      <div class="status-banner" [class.suspended]="isSuspended()" [class.deactivated]="isDeactivated()">
+        <span class="status-icon">
+          @if (isSuspended()) { <span class="material-icons">gpp_bad</span> }
+          @if (isDeactivated()) { <span class="material-icons">block</span> }
+        </span>
+        <div class="status-text">
+          @if (isSuspended()) {
+            <strong>Compte suspendu</strong>
+            <span>Votre compte partenaire a été suspendu. Vous ne pouvez plus recevoir de commandes ni accéder aux fonctionnalités opérationnelles. Veuillez contacter le support.</span>
+          }
+          @if (isDeactivated()) {
+            <strong>Compte désactivé</strong>
+            <span>Votre compte partenaire a été désactivé. Vous ne pouvez plus recevoir de commandes. Pour réactiver votre compte, veuillez contacter le support.</span>
+          }
+        </div>
+        <a routerLink="/support" class="status-cta">Contacter le support</a>
+      </div>
+    }
     
     <main class="page-wrapper">
       <router-outlet></router-outlet>

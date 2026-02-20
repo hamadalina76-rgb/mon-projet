@@ -1,0 +1,5 @@
+# Profil dev - OTP dans la console au lieu d'email (quand SMTP bloqué)
+# Démarrer avec : --spring.profiles.active=dev
+# Ou : MAIL_DEV_MODE=true
+mail:
+  dev-mode: true

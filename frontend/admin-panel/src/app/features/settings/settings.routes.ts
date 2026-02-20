@@ -38,6 +38,13 @@ export const SETTINGS_ROUTES: Routes = [
       ),
   },
   {
+    path: 'change-password',
+    loadComponent: () =>
+      import('./change-password/change-password.component').then(
+        (m) => m.ChangePasswordComponent
+      ),
+  },
+  {
     path: '',
     redirectTo: 'general',
     pathMatch: 'full',

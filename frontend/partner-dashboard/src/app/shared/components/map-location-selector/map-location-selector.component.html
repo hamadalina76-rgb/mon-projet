@@ -1,0 +1,52 @@
+<!-- Map Location Selector Component -->
+<div class="map-location-selector">
+  <!-- Search Bar -->
+  <div class="search-bar">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Rechercher une adresse</mat-label>
+      <input 
+        matInput 
+        [(ngModel)]="searchQuery" 
+        (keyup.enter)="searchLocation()"
+        placeholder="Ex: Avenue Habib Bourguiba, Tunis"
+      />
+      <mat-icon matPrefix>search</mat-icon>
+      <button 
+        mat-icon-button 
+        matSuffix 
+        (click)="searchLocation()"
+        [disabled]="!searchQuery() || loading()"
+      >
+        <mat-icon>arrow_forward</mat-icon>
+      </button>
+    </mat-form-field>
+
+    <button 
+      mat-raised-button 
+      color="accent" 
+      (click)="getCurrentLocation()"
+      [disabled]="loading()"
+      class="geolocate-btn"
+    >
+      <mat-icon>my_location</mat-icon>
+      Ma position
+    </button>
+  </div>
+
+  <!-- Map Container -->
+  <div class="map-container">
+    @if (loading()) {
+      <div class="map-loading">
+        <mat-spinner diameter="50"></mat-spinner>
+        <p>Chargement de la carte...</p>
+      </div>
+    }
+    
+    <div id="map" class="map"></div>
+    
+    <div class="map-instructions">
+      <mat-icon>info</mat-icon>
+      <span>Cliquez sur la carte ou déplacez le marqueur pour définir votre position</span>
+    </div>
+  </div>
+</div>

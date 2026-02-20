@@ -1,8 +1,12 @@
 package com.speedline.notification.event.consumer;
 
 /**
- * Kafka Consumer pour événements Delivery
+ * GCP Pub/Sub Consumer pour événements Delivery
+ * 
+ * TODO: Implémenter avec PubSubInboundChannelAdapter
+ * - Subscription: delivery-events-notification-sub
+ * - Topics: delivery-assigned, delivery-completed
  */
 public class DeliveryEventConsumer {
-    // TODO: @KafkaListener(topics = "delivery-assigned", "delivery-completed")
+    // TODO: Implémenter avec PubSubInboundChannelAdapter et @ServiceActivator
 }

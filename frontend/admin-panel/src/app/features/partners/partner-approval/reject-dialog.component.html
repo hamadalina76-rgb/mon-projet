@@ -1,0 +1,26 @@
+<div class="reject-dialog">
+  <div class="dialog-icon">
+    <mat-icon>cancel</mat-icon>
+  </div>
+  <h2 mat-dialog-title>{{ 'partners.approval.rejectTitle' | translate }}</h2>
+  <mat-dialog-content>
+    <p class="dialog-message">{{ 'partners.approval.rejectMessage' | translate }}</p>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ 'partners.approval.rejectReasonLabel' | translate }}</mat-label>
+      <textarea
+        matInput
+        [(ngModel)]="reason"
+        [placeholder]="'partners.approval.rejectReasonPlaceholder' | translate"
+        rows="4"
+        required>
+      </textarea>
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="onCancel()">{{ 'partners.approval.rejectCancel' | translate }}</button>
+    <button mat-flat-button color="warn" [disabled]="!reason.trim()" (click)="onConfirm()">
+      <mat-icon>close</mat-icon>
+      {{ 'partners.approval.rejectConfirm' | translate }}
+    </button>
+  </mat-dialog-actions>
+</div>

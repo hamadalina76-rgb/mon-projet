@@ -34,6 +34,16 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
     // ==================== RECHERCHE PAR STATUT ====================
 
     Page<Partner> findByStatus(PartnerStatus status, Pageable pageable);
+
+    /**
+     * Recherche admin : par statut (optionnel) et par nom/ville (businessName, brandName, city).
+     * search ne doit pas être null ni vide (à gérer en service).
+     */
+    @Query("SELECT p FROM Partner p WHERE (:status IS NULL OR p.status = :status) AND " +
+           "(LOWER(p.businessName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(COALESCE(p.brandName, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(COALESCE(p.city, '')) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Partner> findByStatusAndSearch(@Param("status") PartnerStatus status, @Param("search") String search, Pageable pageable);
     
     Page<Partner> findByIsActiveTrueAndAcceptsOrdersTrue(Pageable pageable);
     

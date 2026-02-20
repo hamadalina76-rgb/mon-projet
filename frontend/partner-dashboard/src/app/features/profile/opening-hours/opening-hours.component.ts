@@ -3,15 +3,25 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { TranslateModule } from '@ngx-translate/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { RouterLink } from '@angular/router';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ProfileService } from '../services/profile.service';
+import { PartnerService } from '@core/services/partner.service';
+import { AuthService } from '@core/services/auth.service';
+
+/** Format backend (complete-profile, openingHoursDisplay) */
+interface OpeningHoursBackend {
+  day: string;
+  isClosed: boolean;
+  slots: { open: string; close: string }[];
+}
 
 @Component({
   selector: 'app-opening-hours',
@@ -19,13 +29,14 @@ import { ProfileService } from '../services/profile.service';
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    RouterLink,
     MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
     MatButtonModule,
     MatIconModule,
     MatSlideToggleModule,
+    MatDividerModule,
     MatProgressSpinnerModule,
+    MatTooltipModule,
     TranslateModule,
   ],
   templateUrl: './opening-hours.component.html',
@@ -34,9 +45,11 @@ import { ProfileService } from '../services/profile.service';
 export class OpeningHoursComponent implements OnInit {
   private fb = inject(FormBuilder);
   private profileService = inject(ProfileService);
+  private partnerService = inject(PartnerService);
+  private authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
+  private translate = inject(TranslateService);
 
-  // Angular 19 Signals
   loading = signal(false);
   saving = signal(false);
 
@@ -45,13 +58,13 @@ export class OpeningHoursComponent implements OnInit {
   });
 
   days = [
-    { key: 'monday', label: 'Lundi' },
-    { key: 'tuesday', label: 'Mardi' },
-    { key: 'wednesday', label: 'Mercredi' },
-    { key: 'thursday', label: 'Jeudi' },
-    { key: 'friday', label: 'Vendredi' },
-    { key: 'saturday', label: 'Samedi' },
-    { key: 'sunday', label: 'Dimanche' },
+    { key: 'monday' },
+    { key: 'tuesday' },
+    { key: 'wednesday' },
+    { key: 'thursday' },
+    { key: 'friday' },
+    { key: 'saturday' },
+    { key: 'sunday' },
   ];
 
   get daysArray(): FormArray {
@@ -64,14 +77,13 @@ export class OpeningHoursComponent implements OnInit {
   }
 
   initForm(): void {
+    this.daysArray.clear();
     this.days.forEach(day => {
       const dayGroup = this.fb.group({
         day: [day.key],
         isOpen: [true],
         openTime: ['09:00'],
         closeTime: ['22:00'],
-        breakStart: [''],
-        breakEnd: [''],
       });
       this.daysArray.push(dayGroup);
     });
@@ -79,36 +91,82 @@ export class OpeningHoursComponent implements OnInit {
 
   loadOpeningHours(): void {
     this.loading.set(true);
-    this.profileService.getOpeningHours().subscribe({
-      next: (data) => {
-        if (data?.length) {
-          this.daysArray.clear();
-          data.forEach((dayData: any) => {
-            const dayGroup = this.fb.group(dayData);
-            this.daysArray.push(dayGroup);
-          });
+    this.profileService.getCurrentPartner().subscribe({
+      next: (partner) => {
+        const raw = partner?.openingHoursDisplay;
+        if (raw) {
+          try {
+            const backendHours = JSON.parse(raw) as OpeningHoursBackend[];
+            if (Array.isArray(backendHours) && backendHours.length > 0) {
+              // Patcher les contrôles existants (ne jamais clear pour éviter les erreurs de binding)
+              this.days.forEach((day, i) => {
+                const backend = backendHours[i] ?? this.backendDefault(day.key);
+                const slot = backend.slots?.[0];
+                const ctrl = this.daysArray.at(i);
+                if (ctrl) {
+                  ctrl.patchValue({
+                    day: day.key,
+                    isOpen: !backend.isClosed,
+                    openTime: slot?.open || '09:00',
+                    closeTime: slot?.close || '22:00',
+                  });
+                }
+              });
+              this.loading.set(false);
+              return;
+            }
+          } catch {
+            // JSON invalide, garder les valeurs par défaut de initForm
+          }
         }
         this.loading.set(false);
       },
       error: (err) => {
-        console.error('Error loading opening hours:', err);
+        console.error('Error loading partner:', err);
         this.loading.set(false);
-      }
+      },
     });
   }
 
+  private backendDefault(dayKey: string): OpeningHoursBackend {
+    return {
+      day: dayKey,
+      isClosed: false,
+      slots: [{ open: '09:00', close: '22:00' }],
+    };
+  }
+
   saveOpeningHours(): void {
+    const partnerId = this.authService.getPartnerId();
+    if (!partnerId) {
+      this.snackBar.open(this.translate.instant('profilePages.partnerNotFound'), 'OK', { duration: 3000 });
+      return;
+    }
+
+    const backendHours: OpeningHoursBackend[] = this.daysArray.controls.map((ctrl, i) => {
+      const v = ctrl.value;
+      return {
+        day: this.days[i].key,
+        isClosed: !v.isOpen,
+        slots: v.isOpen
+          ? [{ open: v.openTime || '09:00', close: v.closeTime || '22:00' }]
+          : [],
+      };
+    });
+
     this.saving.set(true);
-    this.profileService.updateOpeningHours(this.daysArray.value).subscribe({
+    this.partnerService.completeProfile(partnerId, {
+      openingHoursJson: JSON.stringify(backendHours),
+    }).subscribe({
       next: () => {
         this.saving.set(false);
-        this.snackBar.open('Horaires mis à jour', 'OK', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('profilePages.hoursUpdated'), 'OK', { duration: 3000 });
       },
       error: (err) => {
         console.error('Error saving opening hours:', err);
         this.saving.set(false);
-        this.snackBar.open('Erreur lors de la sauvegarde', 'OK', { duration: 3000 });
-      }
+        this.snackBar.open(this.translate.instant('profilePages.saveError'), 'OK', { duration: 3000 });
+      },
     });
   }
 
@@ -120,8 +178,6 @@ export class OpeningHoursComponent implements OnInit {
           isOpen: source.isOpen,
           openTime: source.openTime,
           closeTime: source.closeTime,
-          breakStart: source.breakStart,
-          breakEnd: source.breakEnd,
         });
       }
     });

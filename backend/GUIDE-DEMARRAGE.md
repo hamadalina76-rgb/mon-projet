@@ -48,7 +48,7 @@ JWT_SECRET=your_jwt_secret_key_here_at_least_256_bits_long
 cd c:\Users\user\Desktop\SpeedLine\speedline\backend
 
 # Démarrer tous les services d'infrastructure
-docker-compose up -d postgres mongodb redis clickhouse kafka zookeeper kafka-ui eureka-server
+docker-compose up -d postgres mongodb redis clickhouse pubsub-emulator eureka-server
 ```
 
 ### 2.3 Vérifier que les services sont démarrés
@@ -62,9 +62,7 @@ Vous devriez voir tous les services avec le statut "Up" :
 - ✅ mongodb
 - ✅ redis
 - ✅ clickhouse
-- ✅ kafka
-- ✅ zookeeper
-- ✅ kafka-ui
+- ✅ pubsub-emulator
 - ✅ eureka-server
 
 ### 2.4 Vérifier les bases de données PostgreSQL
@@ -219,7 +217,6 @@ Vous devriez voir tous les ports des services actifs.
 | Review Service | 8091 | MongoDB (speedline_reviews) |
 | Promotion Service | 8092 | PostgreSQL (speedline_promotions) |
 | Support Service | 8093 | PostgreSQL (speedline_support) |
-| Kafka UI | 8090 | - |
 
 ## 🛠️ Services d'Infrastructure
 
@@ -229,8 +226,7 @@ Vous devriez voir tous les ports des services actifs.
 | MongoDB | 27017 | Base de données NoSQL |
 | Redis | 6379 | Cache et sessions |
 | ClickHouse | 8123, 9000 | Analytics et données volumineuses |
-| Kafka | 9092 | Messagerie asynchrone |
-| Zookeeper | 2181 | Coordination pour Kafka |
+| Pub/Sub Emulator | 8085 | Messagerie asynchrone (émulateur local) |
 
 ## ⚠️ Problèmes Courants et Solutions
 
@@ -327,7 +323,6 @@ docker-compose down -v
 ## 📚 Ressources Utiles
 
 - **Eureka Dashboard** : http://localhost:8761
-- **Kafka UI** : http://localhost:8090
 - **Documentation Spring Boot** : https://spring.io/projects/spring-boot
 - **Documentation Flyway** : https://flywaydb.org/documentation/
 

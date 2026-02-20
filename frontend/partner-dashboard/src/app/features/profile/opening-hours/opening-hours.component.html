@@ -1,79 +1,90 @@
-<!-- Opening Hours Component Template - Angular 19 -->
-<div class="opening-hours-page">
-  <header class="page-header">
-    <h1>Horaires d'ouverture</h1>
+<!-- Horaires d'ouverture – design moderne -->
+<div class="page-wrap">
+  <nav class="breadcrumb">
+    <a routerLink="/dashboard">{{ 'profilePages.breadcrumbSettings' | translate }}</a>
+    <span class="sep">›</span>
+    <a routerLink="/profile">{{ 'profilePages.breadcrumbStoreProfile' | translate }}</a>
+    <span class="sep">›</span>
+    <span class="cur">{{ 'profilePages.breadcrumbHours' | translate }}</span>
+  </nav>
+
+  <header class="page-top">
+    <div>
+      <h1>{{ 'profilePages.hoursTitle' | translate }}</h1>
+      <p class="page-desc">{{ 'profilePages.hoursSubtitle' | translate }}</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn btn-ghost" (click)="loadOpeningHours()">{{ 'profilePages.cancel' | translate }}</button>
+      <button type="submit" form="hours-form" class="btn btn-primary" [disabled]="loading() || saving()">
+        @if (saving()) {
+          <span class="btn-spinner"></span>
+          {{ 'profilePages.saving' | translate }}
+        } @else {
+          <mat-icon>save</mat-icon>
+          {{ 'profilePages.saveChanges' | translate }}
+        }
+      </button>
+    </div>
   </header>
 
   @if (loading()) {
-    <div class="loading-container">
+    <div class="loading-wrap">
       <mat-spinner diameter="48"></mat-spinner>
+      <p>{{ 'profilePages.overviewLoading' | translate }}</p>
     </div>
-  } @else {
-    <mat-card class="hours-card">
-      <form [formGroup]="hoursForm" (ngSubmit)="saveOpeningHours()">
-        <div formArrayName="days" class="days-list">
-          @for (dayCtrl of daysArray.controls; track $index; let i = $index) {
-            <div 
-              [formGroupName]="i"
-              class="day-row"
-              [class.closed]="!dayCtrl.get('isOpen')?.value">
-              
-              <div class="day-label">
-                <mat-slide-toggle formControlName="isOpen"></mat-slide-toggle>
-                <span class="day-name">{{ days[i].label }}</span>
-              </div>
-
-              @if (dayCtrl.get('isOpen')?.value) {
-                <div class="day-hours">
-                  <div class="time-group">
-                    <mat-form-field appearance="outline">
-                      <mat-label>Ouverture</mat-label>
-                      <input matInput type="time" formControlName="openTime" />
-                    </mat-form-field>
-                    
-                    <span class="time-separator">à</span>
-                    
-                    <mat-form-field appearance="outline">
-                      <mat-label>Fermeture</mat-label>
-                      <input matInput type="time" formControlName="closeTime" />
-                    </mat-form-field>
-                  </div>
-
-                  <div class="break-group">
-                    <mat-form-field appearance="outline">
-                      <mat-label>Pause début</mat-label>
-                      <input matInput type="time" formControlName="breakStart" />
-                    </mat-form-field>
-                    
-                    <span class="time-separator">à</span>
-                    
-                    <mat-form-field appearance="outline">
-                      <mat-label>Pause fin</mat-label>
-                      <input matInput type="time" formControlName="breakEnd" />
-                    </mat-form-field>
-                  </div>
-
-                  <button mat-icon-button type="button" (click)="copyToAll(i)" matTooltip="Copier à tous les jours">
-                    <mat-icon>content_copy</mat-icon>
-                  </button>
-                </div>
-              } @else {
-                <span class="closed-label">Fermé</span>
-              }
+  } @else if (daysArray.length > 0) {
+    <form id="hours-form" [formGroup]="hoursForm" (ngSubmit)="saveOpeningHours()">
+      <div class="days-list" formArrayName="days">
+        @for (dayCtrl of daysArray.controls; track $index; let i = $index) {
+          <div
+            [formGroupName]="i"
+            class="day-card"
+            [class.closed]="!dayCtrl.get('isOpen')?.value">
+            <div class="day-card-left">
+              <mat-slide-toggle formControlName="isOpen" color="primary" class="day-toggle"></mat-slide-toggle>
+              <span class="day-name">{{ 'auth.register.days.' + days[i].key | translate }}</span>
             </div>
-          }
-        </div>
 
-        <div class="form-actions">
-          <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
-            @if (saving()) {
-              <mat-spinner diameter="20"></mat-spinner>
+            @if (dayCtrl.get('isOpen')?.value) {
+              <div class="day-fields">
+                <div class="time-field">
+                  <label>{{ 'profilePages.openLabel' | translate }}</label>
+                  <input type="time" formControlName="openTime" />
+                </div>
+                <div class="time-field">
+                  <label>{{ 'profilePages.closeLabel' | translate }}</label>
+                  <input type="time" formControlName="closeTime" />
+                </div>
+              </div>
+              <button
+                type="button"
+                class="btn-copy"
+                (click)="copyToAll(i)"
+                [matTooltip]="'profilePages.copyToAll' | translate">
+                <mat-icon>content_copy</mat-icon>
+              </button>
             } @else {
-              Enregistrer
+              <span class="closed-text">{{ 'profilePages.closedLabel' | translate }}</span>
             }
-          </button>
+          </div>
+        }
+      </div>
+
+      <!-- Jours fériés & exceptions -->
+      <div class="exceptions-card">
+        <div class="exceptions-content">
+          <mat-icon class="exceptions-icon">info</mat-icon>
+          <div>
+            <h3 class="exceptions-title">{{ 'profilePages.exceptionsTitle' | translate }}</h3>
+            <p class="exceptions-desc">{{ 'profilePages.exceptionsDesc' | translate }}</p>
+          </div>
         </div>
-      </form>
-    </mat-card>
+        <button type="button" class="btn btn-ghost btn-outline">
+          {{ 'profilePages.manageExceptions' | translate }}
+        </button>
+      </div>
+    </form>
+  } @else {
+    <p class="no-data">{{ 'profilePages.noHoursConfig' | translate }}</p>
   }
 </div>

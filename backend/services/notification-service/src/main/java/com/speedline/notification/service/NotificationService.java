@@ -55,6 +55,21 @@ public interface NotificationService {
     long getUnreadCount(Long userId);
 
     /**
+     * Récupérer les notifications pour un admin (userId=0 broadcast + userId=adminId)
+     */
+    Page<NotificationDTO> getAdminNotifications(Long adminUserId, Pageable pageable);
+
+    /**
+     * Compter les notifications non lues pour un admin
+     */
+    long getUnreadCountForAdmin(Long adminUserId);
+
+    /**
+     * Marquer toutes les notifications admin comme lues (userId=0 ou adminId)
+     */
+    void markAllAsReadForAdmin(Long adminUserId);
+
+    /**
      * Enregistrer un token push
      */
     void registerPushToken(Long userId, String token, String deviceType, String deviceId);

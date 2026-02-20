@@ -1,46 +1,386 @@
-<!-- Partner Approval Component Template -->
+<!-- Partner Approval Component - Redesigned -->
 <div class="partner-approval-page">
+  <!-- Breadcrumbs -->
+  <nav class="breadcrumb-nav">
+    <a routerLink="/partners" class="breadcrumb-link">{{ 'partners.title' | translate }}</a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">{{ 'partners.approval.title' | translate }}</span>
+  </nav>
+
   <header class="page-header">
     <div class="header-left">
-      <button mat-icon-button routerLink="/partners">
+      <button mat-icon-button routerLink="/partners" class="btn-back">
         <mat-icon>arrow_back</mat-icon>
       </button>
-      <h1>Approbation du partenaire</h1>
+      <h1>{{ 'partners.approval.title' | translate }}</h1>
     </div>
   </header>
 
-  <div class="approval-content" *ngIf="partner">
-    <!-- Business Info -->
-    <mat-card class="section-card">
-      <h3>Informations de l'entreprise</h3>
-      <mat-divider></mat-divider>
-      <!-- Business info fields -->
+  @if (!loading() && partner()) {
+    <!-- Partner Header Card -->
+    <mat-card class="partner-header-card">
+      <div class="partner-header-content">
+        <div class="partner-logo-section">
+          @if (partner().logo) {
+            <img [src]="partner().logo" alt="Logo" class="partner-logo" />
+          } @else {
+            <div class="partner-logo-placeholder">
+              <mat-icon>store</mat-icon>
+            </div>
+          }
+        </div>
+        <div class="partner-header-info">
+          <h2 class="partner-name">{{ partner().businessName || partner().brandName }}</h2>
+          <div class="partner-meta">
+            <span class="partner-id">{{ 'partners.approval.partnerId' | translate }}: {{ partnerIdFormatted() }}</span>
+            <span class="partner-submission">{{ 'partners.approval.submitted' | translate }}: {{ formattedSubmissionDate() }}</span>
+          </div>
+        </div>
+        <div class="partner-status-badge">
+          <mat-chip class="status-chip" [ngClass]="statusBadgeClass()">{{ statusBadgeText() | translate }}</mat-chip>
+        </div>
+      </div>
     </mat-card>
+  }
 
-    <!-- Documents -->
-    <mat-card class="section-card">
-      <h3>Documents légaux</h3>
-      <mat-divider></mat-divider>
-      <!-- Documents grid -->
-    </mat-card>
-
-    <!-- Location -->
-    <mat-card class="section-card">
-      <h3>Localisation</h3>
-      <mat-divider></mat-divider>
-      <!-- Map and address -->
-    </mat-card>
-
-    <!-- Actions -->
-    <div class="actions-bar">
-      <button mat-stroked-button color="warn" (click)="rejectPartner()">
-        <mat-icon>close</mat-icon>
-        Rejeter
-      </button>
-      <button mat-flat-button color="primary" (click)="approvePartner()">
-        <mat-icon>check</mat-icon>
-        Approuver
-      </button>
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>{{ 'partners.approval.loading' | translate }}</p>
     </div>
-  </div>
+  }
+
+  @if (!loading() && partner()) {
+    <div class="approval-layout">
+      <!-- Left: Info cards -->
+      <div class="info-column">
+        <!-- Business Info -->
+        <mat-card class="section-card">
+          <div class="section-header">
+            <mat-icon class="section-icon">store</mat-icon>
+            <h3>{{ 'partners.approval.businessInfo' | translate }}</h3>
+          </div>
+          <mat-divider></mat-divider>
+          <div class="info-grid">
+            <div class="info-item">
+              <label>{{ 'partners.approval.commercialName' | translate }}</label>
+              <span>{{ partner().businessName || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.brandName' | translate }}</label>
+              <span>{{ partner().brandName || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.type' | translate }}</label>
+              <mat-chip class="type-chip">{{ getTypeLabel(partner().type) }}</mat-chip>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.email' | translate }}</label>
+              <span>{{ partner().email || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.phone' | translate }}</label>
+              <span>{{ partner().phoneNumber || '-' }}</span>
+            </div>
+            <div class="info-item full-width">
+              <label>{{ 'partners.approval.description' | translate }}</label>
+              <span>{{ partner().description || partner().shortDescription || '-' }}</span>
+            </div>
+          </div>
+        </mat-card>
+
+        <!-- Legal Info -->
+        <mat-card class="section-card">
+          <div class="section-header">
+            <mat-icon class="section-icon">gavel</mat-icon>
+            <h3>{{ 'partners.approval.legalInfo' | translate }}</h3>
+          </div>
+          <mat-divider></mat-divider>
+          <div class="info-grid">
+            <div class="info-item">
+              <label>{{ 'partners.approval.legalStatus' | translate }}</label>
+              <span>{{ getLegalStatusLabel(partner().legalStatus) }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.vatNumber' | translate }}</label>
+              <span>{{ partner().tva || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.legalRep' | translate }}</label>
+              <span>{{ partner().legalRepFirstName }} {{ partner().legalRepLastName }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.position' | translate }}</label>
+              <span>{{ partner().position || '-' }}</span>
+            </div>
+          </div>
+        </mat-card>
+
+        <!-- Bank Info -->
+        <mat-card class="section-card">
+          <div class="section-header">
+            <mat-icon class="section-icon">account_balance</mat-icon>
+            <h3>{{ 'partners.approval.bankInfo' | translate }}</h3>
+          </div>
+          <mat-divider></mat-divider>
+          <div class="info-grid">
+            <div class="info-item">
+              <label>{{ 'partners.approval.accountHolder' | translate }}</label>
+              <span>{{ partner().accountHolderName || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.iban' | translate }}</label>
+              <span class="iban">{{ partner().iban || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.bank' | translate }}</label>
+              <span>{{ partner().bankName || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.currency' | translate }}</label>
+              <span>{{ partner().currency || 'TND' }}</span>
+            </div>
+          </div>
+        </mat-card>
+
+        <!-- Address & Location -->
+        <mat-card class="section-card">
+          <div class="section-header">
+            <mat-icon class="section-icon">location_on</mat-icon>
+            <h3>{{ 'partners.approval.addressLocation' | translate }}</h3>
+          </div>
+          <mat-divider></mat-divider>
+          <div class="info-grid">
+            <div class="info-item full-width">
+              <label>{{ 'partners.approval.address' | translate }}</label>
+              <span>{{ partner().address || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.city' | translate }}</label>
+              <span>{{ partner().city || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.postalCode' | translate }}</label>
+              <span>{{ partner().postalCode || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.country' | translate }}</label>
+              <span>{{ partner().country || '-' }}</span>
+            </div>
+            @if (partner().latitude && partner().longitude) {
+              <div class="info-item">
+                <label>{{ 'partners.approval.gpsCoords' | translate }}</label>
+                <span>{{ partner().latitude }}, {{ partner().longitude }}</span>
+              </div>
+            }
+          </div>
+        </mat-card>
+
+        <!-- Operational Settings -->
+        <mat-card class="section-card">
+          <div class="section-header">
+            <mat-icon class="section-icon">settings</mat-icon>
+            <h3>{{ 'partners.approval.operational' | translate }}</h3>
+          </div>
+          <mat-divider></mat-divider>
+          <div class="info-grid">
+            <div class="info-item">
+              <label>{{ 'partners.approval.prepTime' | translate }}</label>
+              <span>{{ partner().preparationTime != null ? (partner().preparationTime + ' ' + ('partners.approval.min' | translate)) : '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.minOrder' | translate }}</label>
+              <span>{{ partner().minimumOrder != null && partner().minimumOrder !== 0 ? (partner().minimumOrder + ' TND') : '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.deliveryRadius' | translate }}</label>
+              <span>{{ partner().deliveryRadius != null ? (partner().deliveryRadius + ' ' + ('partners.approval.meters' | translate)) : '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.onlinePayment' | translate }}</label>
+              <span>{{ (partner().acceptOnlinePayment ? 'partners.approval.yes' : 'partners.approval.no') | translate }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'partners.approval.cashPayment' | translate }}</label>
+              <span>{{ (partner().acceptCashPayment ? 'partners.approval.yes' : 'partners.approval.no') | translate }}</span>
+            </div>
+            <div class="info-item full-width">
+              <label>{{ 'partners.approval.openingHours' | translate }}</label>
+              <div class="opening-hours">
+                @for (line of getOpeningHoursDisplay(partner().openingHoursDisplay); track $index) {
+                  <div class="opening-hours-line">{{ line }}</div>
+                }
+              </div>
+            </div>
+          </div>
+        </mat-card>
+
+        <!-- Documents -->
+        <mat-card class="section-card">
+          <div class="section-header">
+            <mat-icon class="section-icon">description</mat-icon>
+            <h3>{{ 'partners.approval.documents' | translate }}</h3>
+          </div>
+          <mat-divider></mat-divider>
+          <div class="documents-grid">
+            <div class="doc-item">
+              <div class="doc-info">
+                <mat-icon>description</mat-icon>
+                <span>{{ 'partners.approval.kbis' | translate }}</span>
+              </div>
+              <div class="doc-actions">
+                @if (partner().kbisUrl) {
+                  <span class="doc-status verified">VERIFIED</span>
+                  <a [href]="partner().kbisUrl" target="_blank" rel="noopener" class="doc-link">
+                    <mat-icon>visibility</mat-icon>
+                    {{ 'partners.approval.viewDoc' | translate }}
+                  </a>
+                } @else {
+                  <span class="doc-status awaiting">AWAITING INFO</span>
+                }
+              </div>
+            </div>
+            <div class="doc-item">
+              <div class="doc-info">
+                <mat-icon>description</mat-icon>
+                <span>{{ 'partners.approval.idCard' | translate }}</span>
+              </div>
+              <div class="doc-actions">
+                @if (partner().idCardUrl) {
+                  <span class="doc-status verified">VERIFIED</span>
+                  <a [href]="partner().idCardUrl" target="_blank" rel="noopener" class="doc-link">
+                    <mat-icon>visibility</mat-icon>
+                    {{ 'partners.approval.viewDoc' | translate }}
+                  </a>
+                } @else {
+                  <span class="doc-status awaiting">AWAITING INFO</span>
+                }
+              </div>
+            </div>
+            <div class="doc-item">
+              <div class="doc-info">
+                <mat-icon>description</mat-icon>
+                <span>{{ 'partners.approval.insurance' | translate }}</span>
+              </div>
+              <div class="doc-actions">
+                @if (partner().insuranceUrl) {
+                  <span class="doc-status verified">VERIFIED</span>
+                  <a [href]="partner().insuranceUrl" target="_blank" rel="noopener" class="doc-link">
+                    <mat-icon>visibility</mat-icon>
+                    {{ 'partners.approval.viewDoc' | translate }}
+                  </a>
+                } @else {
+                  <span class="doc-status awaiting">AWAITING INFO</span>
+                }
+              </div>
+            </div>
+            <div class="doc-item">
+              <div class="doc-info">
+                <mat-icon>description</mat-icon>
+                <span>{{ 'partners.approval.rib' | translate }}</span>
+              </div>
+              <div class="doc-actions">
+                @if (partner().ribUrl) {
+                  <span class="doc-status verified">VERIFIED</span>
+                  <a [href]="partner().ribUrl" target="_blank" rel="noopener" class="doc-link">
+                    <mat-icon>visibility</mat-icon>
+                    {{ 'partners.approval.viewDoc' | translate }}
+                  </a>
+                } @else {
+                  <span class="doc-status awaiting">AWAITING INFO</span>
+                }
+              </div>
+            </div>
+          </div>
+        </mat-card>
+
+        <!-- Photos -->
+        <mat-card class="section-card">
+          <div class="section-header">
+            <mat-icon class="section-icon">photo_library</mat-icon>
+            <h3>{{ 'partners.approval.photos' | translate }}</h3>
+          </div>
+          <mat-divider></mat-divider>
+          <div class="photos-grid">
+            @if (partner().logo) {
+              <div class="photo-item">
+                <label>{{ 'partners.approval.logo' | translate }}</label>
+                <img [src]="partner().logo" alt="Logo" />
+              </div>
+            } @else {
+              <div class="photo-item placeholder">
+                <label>{{ 'partners.approval.logo' | translate }}</label>
+                <div class="photo-placeholder">
+                  <mat-icon>image</mat-icon>
+                  <span>{{ 'partners.approval.noPhoto' | translate }}</span>
+                </div>
+              </div>
+            }
+            @if (partner().coverImage) {
+              <div class="photo-item cover">
+                <label>{{ 'partners.approval.cover' | translate }}</label>
+                <img [src]="partner().coverImage" alt="Cover" />
+              </div>
+            } @else {
+              <div class="photo-item cover placeholder">
+                <label>{{ 'partners.approval.cover' | translate }}</label>
+                <div class="photo-placeholder">
+                  <mat-icon>image</mat-icon>
+                  <span>{{ 'partners.approval.noPhoto' | translate }}</span>
+                </div>
+              </div>
+            }
+            @for (photoUrl of photoUrls(); track $index) {
+              <div class="photo-item">
+                <label>{{ 'partners.approval.photo' | translate }} {{ $index + 1 }}</label>
+                <img [src]="photoUrl" [alt]="'Photo ' + ($index + 1)" />
+              </div>
+            }
+          </div>
+        </mat-card>
+      </div>
+
+      <!-- Right: Map + Actions sticky -->
+      <div class="map-actions-column">
+        <mat-card class="map-card">
+          <div class="section-header">
+            <mat-icon class="section-icon">map</mat-icon>
+            <h3>{{ 'partners.approval.mapTitle' | translate }}</h3>
+          </div>
+          <mat-divider></mat-divider>
+          @if (partner().latitude && partner().longitude) {
+            <div #mapContainer class="map-container"></div>
+          } @else {
+            <div class="map-placeholder">
+              <mat-icon>location_off</mat-icon>
+              <p>{{ 'partners.approval.mapNoLocation' | translate }}</p>
+            </div>
+          }
+        </mat-card>
+
+        @if (partner().status !== 'ACTIVE' && partner().status !== 'APPROVED') {
+          <div class="actions-bar">
+            <button mat-stroked-button color="warn" (click)="rejectPartner()" [disabled]="actionLoading()" class="action-btn reject-btn">
+              <mat-icon>close</mat-icon>
+              {{ 'partners.approval.reject' | translate }}
+            </button>
+            @if (partner().status === 'PENDING' || partner().status === 'DOCUMENTS_MISSING') {
+              <button mat-stroked-button color="primary" (click)="requestMoreInfo()" [disabled]="actionLoading()" class="action-btn request-btn">
+                <mat-icon>info</mat-icon>
+                {{ 'partners.approval.requestMoreInfo' | translate }}
+              </button>
+            }
+            <button mat-flat-button color="primary" (click)="approvePartner()" [disabled]="actionLoading()" class="action-btn approve-btn">
+              @if (actionLoading()) {
+                <mat-spinner diameter="20"></mat-spinner>
+              } @else {
+                <mat-icon>check</mat-icon>
+              }
+              {{ 'partners.approval.approve' | translate }}
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
 </div>

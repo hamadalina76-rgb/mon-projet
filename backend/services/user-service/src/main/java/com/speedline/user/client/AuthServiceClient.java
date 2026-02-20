@@ -63,6 +63,12 @@ public interface AuthServiceClient {
     void changeUserStatus(@PathVariable("userId") Long userId, @RequestParam("status") String status);
 
     /**
+     * Envoie un email de bienvenue avec les credentiels au nouvel admin
+     */
+    @PostMapping("/api/v1/auth/admin/send-welcome-email")
+    void sendAdminWelcomeEmail(@RequestBody SendWelcomeEmailRequest request);
+    
+    /**
      * DTO pour créer un compte admin dans auth-service
      */
     @Data
@@ -87,5 +93,18 @@ public interface AuthServiceClient {
         private Long userId;
         private String email;
         private String role;
+    }
+    
+    /**
+     * DTO pour envoyer l'email de bienvenue
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    class SendWelcomeEmailRequest {
+        private String email;
+        private String fullName;
+        private String temporaryPassword;
     }
 }

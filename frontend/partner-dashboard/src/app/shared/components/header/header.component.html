@@ -1,33 +1,77 @@
 <!-- src/app/shared/components/header/header.component.html - Angular 19 -->
-<header class="header" [class.collapsed]="sidebarCollapsed()">
+<header class="header" [class.collapsed]="sidebarCollapsed()" [class.mobile]="isMobile()">
   <div class="header-left">
+    <button type="button" class="icon-btn sidebar-toggle" (click)="toggleSidebar.emit()" [title]="isSidebarVisible() ? ('nav.closeSidebar' | translate) : ('nav.openSidebar' | translate)">
+      <span class="material-icons">{{ isSidebarVisible() ? 'close' : 'menu' }}</span>
+    </button>
     <h1 class="page-title">
       <ng-content></ng-content>
     </h1>
   </div>
 
   <div class="header-right">
+    <!-- Language -->
+    <div class="header-action lang-action">
+      <button type="button" class="icon-btn lang-btn" (click)="toggleLangMenu()" [title]="'sidebar.language' | translate">
+        <span class="lang-flag">{{ currentLangFlag() }}</span>
+        <span class="material-icons">expand_more</span>
+      </button>
+      @if (showLangMenu()) {
+        <div class="dropdown lang-dropdown">
+          @for (lang of availableLanguages; track lang.code) {
+            <button type="button" class="dropdown-item" [class.active]="currentLang() === lang.code" (click)="selectLanguage(lang.code)">
+              <span class="lang-flag">{{ lang.flag }}</span>
+              <span>{{ lang.name }}</span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+
     <!-- Notifications -->
     <div class="header-action">
       <button class="icon-btn" (click)="toggleNotifications()">
         <span class="material-icons">notifications</span>
-        <span class="notification-badge">3</span>
+        @if (unreadCount() > 0) {
+          <span class="notification-badge">{{ unreadCount() > 99 ? '99+' : unreadCount() }}</span>
+        }
       </button>
 
       @if (showNotifications()) {
         <div class="dropdown notifications-dropdown">
           <div class="dropdown-header">
-            <h4>Notifications</h4>
-            <a href="#">Tout marquer comme lu</a>
+            <h4>{{ 'header.notifications' | translate }}</h4>
+            @if (unreadCount() > 0) {
+              <a (click)="markAllNotificationsRead(); $event.preventDefault()">{{ 'header.markAllRead' | translate }}</a>
+            }
           </div>
           <div class="dropdown-body">
-            <div class="notification-item unread">
-              <span class="material-icons">shopping_bag</span>
-              <div class="notification-content">
-                <p>Nouvelle commande #12345</p>
-                <span class="time">Il y a 2 min</span>
+            @if (notifications().length === 0) {
+              <div class="no-notifications">
+                <span class="material-icons">notifications_none</span>
+                <p>{{ 'header.noNotifications' | translate }}</p>
               </div>
-            </div>
+            } @else {
+              @for (notif of notifications(); track notif.id) {
+                <div class="notification-item" 
+                     [class.unread]="!notif.isRead"
+                     (click)="onNotificationClick(notif)">
+                  <div class="notif-icon-wrapper">
+                    <span class="material-icons">
+                      {{ notif.type === 'PARTNER' || notif.data['action'] === 'PARTNER_APPROVED' ? 'check_circle' : 'notifications' }}
+                    </span>
+                    @if (!notif.isRead) {
+                      <span class="unread-dot"></span>
+                    }
+                  </div>
+                  <div class="notification-content">
+                    <p class="notif-title">{{ notif.title }}</p>
+                    <p class="notif-message">{{ notif.message }}</p>
+                    <span class="time">{{ notif.createdAt | date:'short' }}</span>
+                  </div>
+                </div>
+              }
+            }
           </div>
         </div>
       }
@@ -47,16 +91,16 @@
         <div class="dropdown user-dropdown">
           <a routerLink="/profile" class="dropdown-item">
             <span class="material-icons">person</span>
-            Mon profil
+            {{ 'header.myProfile' | translate }}
           </a>
           <a routerLink="/profile/settings" class="dropdown-item">
             <span class="material-icons">settings</span>
-            Paramètres
+            {{ 'header.settings' | translate }}
           </a>
           <hr />
           <button class="dropdown-item" (click)="logout()">
             <span class="material-icons">logout</span>
-            Déconnexion
+            {{ 'header.logout' | translate }}
           </button>
         </div>
       }

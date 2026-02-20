@@ -1,0 +1,279 @@
+<!-- Store Profile - Design moderne type SpeedLine Partner Portal -->
+<div class="store-profile-page">
+  <nav class="breadcrumb">
+    <a routerLink="/dashboard">{{ 'profilePages.breadcrumbSettings' | translate }}</a>
+    <span class="sep">›</span>
+    <span class="current">{{ 'profilePages.breadcrumbStoreProfile' | translate }}</span>
+  </nav>
+
+  <header class="page-header">
+    <h1>{{ 'profilePages.overviewTitle' | translate }}</h1>
+    <div class="header-actions">
+      <div class="search-wrap">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input
+          type="text"
+          class="search-input"
+          [placeholder]="'profilePages.overviewSearchPlaceholder' | translate"
+          [(ngModel)]="searchQuery"
+        />
+      </div>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="48"></mat-spinner>
+      <p>{{ 'profilePages.overviewLoading' | translate }}</p>
+    </div>
+  }
+
+  @if (error()) {
+    <mat-card class="error-card">
+      <mat-icon color="warn">error_outline</mat-icon>
+      <p>{{ error() }}</p>
+    </mat-card>
+  }
+
+  @if (partner() && !loading()) {
+    <!-- Tabs d'accès (Compte, Entreprise, Horaires, Zones) -->
+    <nav class="profile-tabs">
+      <a class="tab-item" routerLink="settings" routerLinkActive="active">
+        <mat-icon>person</mat-icon>
+        <span>{{ 'profilePages.overviewTabAccount' | translate }}</span>
+      </a>
+      <a class="tab-item" routerLink="business" routerLinkActive="active">
+        <mat-icon>business</mat-icon>
+        <span>{{ 'profilePages.overviewTabBusiness' | translate }}</span>
+      </a>
+      <a class="tab-item" routerLink="hours" routerLinkActive="active">
+        <mat-icon>schedule</mat-icon>
+        <span>{{ 'profilePages.overviewTabHours' | translate }}</span>
+      </a>
+      <a class="tab-item" routerLink="zones" routerLinkActive="active">
+        <mat-icon>place</mat-icon>
+        <span>{{ 'profilePages.overviewTabZones' | translate }}</span>
+      </a>
+    </nav>
+
+    <!-- Carte identité boutique (logo, nom, type, statut ACTIF) -->
+    <div class="store-identity-card">
+      <div class="store-logo-wrap">
+        @if (partner()!.logo) {
+          <img [src]="partner()!.logo" alt="Logo" class="store-logo" />
+        } @else {
+          <div class="store-logo-placeholder">
+            <mat-icon>grid_view</mat-icon>
+          </div>
+        }
+      </div>
+      <div class="store-identity-info">
+        <h2 class="store-name">{{ partner()!.businessName || partner()!.brandName }}</h2>
+        <p class="store-type">{{ (partner()!.type || ('profilePages.partnerType' | translate)) | uppercase }}</p>
+        <span class="status-badge" [ngClass]="getStatusClass(partner()!.status)">
+          {{ getStatusLabel(partner()!.status) | uppercase }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Cartes d'information avec lien Modifier -->
+    <div class="cards-grid">
+      <!-- Informations commerciales -->
+      <mat-card class="info-card">
+        <div class="card-head">
+          <h3><mat-icon>assignment</mat-icon> {{ 'profilePages.overviewCommercialInfo' | translate }}</h3>
+          <a routerLink="business" class="edit-link">{{ 'profilePages.overviewEdit' | translate }}</a>
+        </div>
+        <mat-divider></mat-divider>
+        <div class="info-list">
+          <div class="info-row">
+            <span class="label">{{ 'profilePages.overviewBusinessName' | translate }}</span>
+            <span class="value">{{ partner()!.businessName || '—' }}</span>
+          </div>
+          @if (hasValue(partner()!.brandName)) {
+            <div class="info-row">
+              <span class="label">{{ 'profilePages.overviewBrand' | translate }}</span>
+              <span class="value">{{ partner()!.brandName }}</span>
+            </div>
+          }
+          @if (hasValue(partner()!.shortDescription)) {
+            <div class="info-row full">
+              <span class="label">{{ 'profilePages.overviewShortDesc' | translate }}</span>
+              <span class="value">{{ partner()!.shortDescription }}</span>
+            </div>
+          }
+        </div>
+      </mat-card>
+
+      <!-- Coordonnées (email / téléphone en accent) -->
+      <mat-card class="info-card contact-card">
+        <div class="card-head">
+          <h3><mat-icon>contact_phone</mat-icon> {{ 'profilePages.overviewContact' | translate }}</h3>
+          <a routerLink="business" class="edit-link">{{ 'profilePages.overviewEdit' | translate }}</a>
+        </div>
+        <mat-divider></mat-divider>
+        <div class="info-list">
+          @if (hasValue(partner()!.email)) {
+            <div class="info-row">
+              <span class="label">{{ 'profilePages.email' | translate | uppercase }}</span>
+              <span class="value contact-value"><a [href]="'mailto:' + partner()!.email">{{ partner()!.email }}</a></span>
+            </div>
+          }
+          @if (hasValue(partner()!.phoneNumber)) {
+            <div class="info-row">
+              <span class="label">{{ 'profilePages.phone' | translate | uppercase }}</span>
+              <span class="value contact-value"><a [href]="'tel:' + partner()!.phoneNumber">{{ partner()!.phoneNumber }}</a></span>
+            </div>
+          }
+          @if (!hasValue(partner()!.email) && !hasValue(partner()!.phoneNumber)) {
+            <p class="empty-hint">{{ 'profilePages.overviewNoContact' | translate }} <a routerLink="business">{{ 'profilePages.overviewFillIn' | translate }}</a></p>
+          }
+        </div>
+      </mat-card>
+
+      <!-- Adresse -->
+      <mat-card class="info-card full-width">
+        <div class="card-head">
+          <h3><mat-icon>location_on</mat-icon> {{ 'profilePages.overviewAddress' | translate }}</h3>
+          <a routerLink="business" class="edit-link">{{ 'profilePages.overviewEdit' | translate }}</a>
+        </div>
+        <mat-divider></mat-divider>
+        @if (staticMapUrl()) {
+          <div class="map-preview">
+            <img [src]="staticMapUrl()!" [alt]="'profilePages.overviewMapPosition' | translate" />
+          </div>
+        }
+        <div class="info-list">
+          @if (hasValue(partner()!.address) || hasValue(partner()!.city)) {
+            <div class="info-row full">
+              <span class="label">{{ 'profilePages.overviewAddress' | translate | uppercase }}</span>
+              <span class="value">
+                {{ partner()!.address }}
+                @if (partner()!.postalCode || partner()!.city) {
+                  <br />
+                  {{ partner()!.postalCode }} {{ partner()!.city }}
+                }
+                @if (partner()!.state || partner()!.country) {
+                  <br />
+                  {{ partner()!.state }}{{ partner()!.state && partner()!.country ? ', ' : '' }}{{ partner()!.country || '' }}
+                }
+              </span>
+            </div>
+          }
+          @if (partner()!.latitude != null && partner()!.longitude != null) {
+            <div class="info-row">
+              <span class="label">{{ 'profilePages.overviewGpsCoords' | translate | uppercase }}</span>
+              <span class="value">{{ partner()!.latitude }}°N, {{ partner()!.longitude }}°E</span>
+            </div>
+          }
+          @if (!hasValue(partner()!.address) && !hasValue(partner()!.city)) {
+            <p class="empty-hint">{{ 'profilePages.overviewNoAddress' | translate }} <a routerLink="business">{{ 'profilePages.overviewEdit' | translate }}</a></p>
+          }
+        </div>
+      </mat-card>
+
+      <!-- Informations légales -->
+      <mat-card class="info-card">
+        <div class="card-head">
+          <h3><mat-icon>gavel</mat-icon> {{ 'profilePages.overviewLegal' | translate }}</h3>
+          <a routerLink="business" class="edit-link">{{ 'profilePages.overviewEdit' | translate }}</a>
+        </div>
+        <mat-divider></mat-divider>
+        <div class="info-list">
+          @if (hasValue(partner()!.legalStatus)) {
+            <div class="info-row">
+              <span class="label">{{ 'profilePages.overviewLegalStatus' | translate }}</span>
+              <span class="value">{{ partner()!.legalStatus }}</span>
+            </div>
+          }
+          @if (hasValue(partner()!.tva)) {
+            <div class="info-row">
+              <span class="label">{{ 'profilePages.overviewVat' | translate }}</span>
+              <span class="value">{{ partner()!.tva }}</span>
+            </div>
+          }
+          @if (hasValue(partner()!.legalRepFirstName) || hasValue(partner()!.legalRepLastName)) {
+            <div class="info-row">
+              <span class="label">{{ 'profilePages.overviewLegalRep' | translate }}</span>
+              <span class="value">{{ partner()!.legalRepFirstName }} {{ partner()!.legalRepLastName }}</span>
+            </div>
+          }
+          @if (!hasValue(partner()!.legalStatus) && !hasValue(partner()!.legalRepFirstName)) {
+            <p class="empty-hint">{{ 'profilePages.overviewNoLegal' | translate }} <a routerLink="business">{{ 'profilePages.overviewFillIn' | translate }}</a></p>
+          }
+        </div>
+      </mat-card>
+
+      <!-- Informations bancaires -->
+      <mat-card class="info-card">
+        <div class="card-head">
+          <h3><mat-icon>account_balance</mat-icon> {{ 'profilePages.overviewBank' | translate }}</h3>
+          <a routerLink="business" class="edit-link">{{ 'profilePages.overviewEdit' | translate }}</a>
+        </div>
+        <mat-divider></mat-divider>
+        <div class="info-list">
+          @if (hasValue(partner()!.bankName)) {
+            <div class="info-row">
+              <span class="label">{{ 'profilePages.overviewBankName' | translate }}</span>
+              <span class="value">{{ partner()!.bankName }}</span>
+            </div>
+          }
+          @if (hasValue(partner()!.accountHolderName)) {
+            <div class="info-row">
+              <span class="label">{{ 'profilePages.overviewAccountHolder' | translate }}</span>
+              <span class="value">{{ partner()!.accountHolderName }}</span>
+            </div>
+          }
+          @if (hasValue(partner()!.iban)) {
+            <div class="info-row">
+              <span class="label">IBAN</span>
+              <span class="value">{{ partner()!.iban }}</span>
+            </div>
+          }
+          @if (!hasValue(partner()!.bankName) && !hasValue(partner()!.iban)) {
+            <p class="empty-hint">{{ 'profilePages.overviewNoBank' | translate }} <a routerLink="business">{{ 'profilePages.overviewFillIn' | translate }}</a></p>
+          }
+        </div>
+      </mat-card>
+
+      <!-- Horaires d'ouverture -->
+      <mat-card class="info-card">
+        <div class="card-head">
+          <h3><mat-icon>schedule</mat-icon> {{ 'profilePages.overviewOpeningHours' | translate }}</h3>
+          <a routerLink="hours" class="edit-link">{{ 'profilePages.overviewEdit' | translate }}</a>
+        </div>
+        <mat-divider></mat-divider>
+        @if (openingHoursParsed().length) {
+          <div class="opening-hours-list">
+            @for (day of openingHoursParsed(); track day.day) {
+              <div class="hours-row">
+                <span class="day">{{ getDayLabel(day.day) }}</span>
+                @if (day.isClosed) {
+                  <span class="hours closed">{{ 'profilePages.overviewClosed' | translate }}</span>
+                } @else {
+                  <span class="hours">
+                    @for (slot of day.slots; track slot.open + slot.close) {
+                      {{ slot.open }} – {{ slot.close }}
+                    }
+                  </span>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="empty-hint">{{ 'profilePages.overviewNoHours' | translate }} <a routerLink="hours">{{ 'profilePages.overviewDefineHours' | translate }}</a></p>
+        }
+      </mat-card>
+
+      <!-- Zones de livraison -->
+      <mat-card class="info-card">
+        <div class="card-head">
+          <h3><mat-icon>place</mat-icon> {{ 'profilePages.overviewDeliveryZones' | translate }}</h3>
+          <a routerLink="zones" class="edit-link">{{ 'profilePages.overviewEdit' | translate }}</a>
+        </div>
+        <mat-divider></mat-divider>
+        <p class="empty-hint">{{ 'profilePages.overviewZonesHint' | translate }} <a routerLink="zones">{{ 'profilePages.overviewManageZones' | translate }}</a></p>
+      </mat-card>
+    </div>
+  }
+</div>

@@ -39,5 +39,37 @@ public interface AuthService {
      */
     Long createAdminAccount(CreateAdminAccountRequest request);
 
+    /**
+     * Envoie un email de bienvenue avec les credentiels au nouvel admin
+     * @param email Email du nouvel admin
+     * @param fullName Nom complet de l'admin
+     * @param temporaryPassword Mot de passe provisoire
+     */
+    void sendAdminWelcomeEmail(String email, String fullName, String temporaryPassword);
+
+    /**
+     * Change le mot de passe de l'utilisateur connecté
+     * @param email Email de l'utilisateur connecté
+     * @param currentPassword Mot de passe actuel
+     * @param newPassword Nouveau mot de passe
+     */
+    void changePassword(String email, String currentPassword, String newPassword);
+
+    /**
+     * Récupère le profil de l'utilisateur connecté
+     * @param email Email de l'utilisateur
+     * @return Profil (firstName, lastName, phoneNumber, etc.)
+     */
+    AuthResponse.UserInfo getProfile(String email);
+
+    /**
+     * Met à jour le profil utilisateur (firstName, lastName, phoneNumber)
+     * @param email Email de l'utilisateur connecté
+     * @param firstName Prénom
+     * @param lastName Nom
+     * @param phoneNumber Téléphone (optionnel)
+     */
+    void updateProfile(String email, String firstName, String lastName, String phoneNumber);
+
     OtpResponse resendOtp(String email);
 }

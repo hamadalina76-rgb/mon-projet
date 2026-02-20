@@ -35,5 +35,6 @@ public class AuthResponse {
         private String phoneNumber;
         private Role role;
         private String profilePicture;
+        private Long partnerId; // For PARTNER role users
     }
 }

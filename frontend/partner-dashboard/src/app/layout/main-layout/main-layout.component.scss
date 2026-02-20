@@ -4,6 +4,18 @@
 .app-layout {
   min-height: 100vh;
   background: $background-default;
+
+  &.mobile {
+    overflow-x: hidden;
+  }
+}
+
+.sidebar-backdrop {
+  @include overlay(0.4);
+  position: fixed;
+  z-index: $z-fixed - 1;
+  cursor: pointer;
+  transition: opacity $transition-normal;
 }
 
 .main-content {
@@ -13,9 +25,94 @@
   &.collapsed {
     margin-left: $sidebar-collapsed-width;
   }
+
+  &.mobile {
+    margin-left: 0 !important;
+  }
+}
+
+[dir="rtl"] .main-content {
+  margin-left: 0;
+  margin-right: $sidebar-width;
+  transition: margin-right $transition-normal;
+
+  &.collapsed {
+    margin-right: $sidebar-collapsed-width;
+  }
+
+  &.mobile {
+    margin-right: 0 !important;
+  }
+}
+
+.status-banner {
+  position: sticky;
+  top: $header-height;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  margin: 0 1.5rem 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-size: 0.875rem;
+
+  @include mobile {
+    margin: 0 0.75rem;
+    padding: 0.6rem 1rem;
+    font-size: 0.8125rem;
+  }
+
+  .status-icon {
+    flex-shrink: 0;
+    .material-icons {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  .status-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    strong { font-weight: 600; }
+    span { opacity: 0.95; line-height: 1.4; }
+  }
+
+  .status-cta {
+    flex-shrink: 0;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 6px;
+    font-weight: 600;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.2s;
+    &:hover { background: #fff; }
+  }
+
+  &.suspended {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: #fff;
+  }
+
+  &.deactivated {
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    color: #fff;
+  }
 }
 
 .page-wrapper {
   padding-top: $header-height;
   min-height: calc(100vh - #{$header-height});
+  overflow-x: hidden;
+
+  @include mobile {
+    padding-left: 0;
+    padding-right: 0;
+  }
 }

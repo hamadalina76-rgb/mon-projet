@@ -1,11 +1,13 @@
 package com.speedline.payment.event.producer;
 
 /**
- * Kafka Producer pour événements Payment
+ * GCP Pub/Sub Producer pour événements Payment
  * - PaymentProcessedEvent
  * - PaymentFailedEvent
  * - RefundProcessedEvent
+ * 
+ * TODO: Implémenter avec PubSubTemplate.publish("payment-events", ...)
  */
 public class PaymentEventProducer {
-    // TODO: Implémenter
+    // TODO: Implémenter avec PubSubTemplate
 }

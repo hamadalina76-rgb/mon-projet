@@ -2,6 +2,7 @@ package com.speedline.auth.service;
 
 import com.speedline.auth.domain.Otp;
 import com.speedline.auth.repository.OtpRepository;
+import com.speedline.auth.util.EmailTemplateLoader;
 import jakarta.annotation.PostConstruct;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -19,6 +20,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -31,12 +34,19 @@ public class OtpService {
 
     private final OtpRepository otpRepository;
     private final JavaMailSender mailSender;
+    private final EmailTemplateLoader templateLoader;
     
     @Value("${spring.mail.username}")
     private String fromEmail;
     
     @Value("${otp.expiration.minutes:15}")
     private int otpExpirationMinutes;
+    
+    @Value("${frontend.url:http://localhost:4300}")
+    private String frontendUrl;
+    
+    @Value("${mail.dev-mode:true}")
+    private boolean mailDevMode;
     
     private static final int MAX_ATTEMPTS = 3;
     private static final SecureRandom random = new SecureRandom();
@@ -83,12 +93,16 @@ public class OtpService {
         otpRepository.save(otp);
         log.info("OTP generated for user {}: {}", email, otpCode);
         
-        // Send OTP via email
+        // Send OTP via email (or log in dev mode if SMTP blocked)
+        if (mailDevMode) {
+            log.warn("MAIL_DEV_MODE=true : OTP non envoyé par email. Utilisez ce code pour {} : {}", email, otpCode);
+            return;
+        }
         try {
             sendOtpEmail(email, firstName, otpCode);
             log.info("OTP sent successfully to {}", email);
         } catch (MessagingException e) {
-            log.error("Error sending OTP to {}: {}", email, e.getMessage(), e);
+            log.error("Failed to send email to: {}. Error: {} - Vérifiez firewall, port 587, ou activez MAIL_DEV_MODE=true", email, e.getMessage());
             throw new OtpEmailException("Failed to send OTP email", e);
         }
     }
@@ -191,6 +205,48 @@ public class OtpService {
         } catch (Exception e) {
             log.error("Failed to send email to: {}. Error: {}", email, e.getMessage());
             throw e;
+        }
+    }
+
+    /**
+     * Send welcome email with credentials to new admin
+     */
+    public void sendAdminWelcomeEmail(String email, String fullName, String temporaryPassword) {
+        log.info("Sending welcome email to new admin: {}", email);
+        
+        if (mailDevMode) {
+            log.warn("MAIL_DEV_MODE=true : Email admin non envoyé. Credentials pour {} : password={}", email, temporaryPassword);
+            return;
+        }
+        
+        try {
+            // Charger et formater le template
+            Map<String, String> variables = new HashMap<>();
+            variables.put("fullName", fullName);
+            variables.put("email", email);
+            variables.put("temporaryPassword", temporaryPassword);
+            variables.put("loginUrl", frontendUrl + "/auth/login");
+            
+            String emailContent = templateLoader.loadAndFormat("admin-welcome-email.html", variables);
+            
+            // Créer et envoyer l'email
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            
+            helper.setFrom(fromEmail);
+            helper.setTo(email);
+            helper.setSubject("Bienvenue sur SpeedLine - Vos identifiants administrateur");
+            helper.setText(emailContent, true);
+            
+            mailSender.send(message);
+            
+            log.info("Welcome email sent successfully to: {}", email);
+        } catch (IOException e) {
+            log.error("Failed to load email template. Error: {}", e.getMessage());
+            throw new OtpEmailException("Failed to load email template", e);
+        } catch (MessagingException e) {
+            log.error("Failed to send welcome email to: {}. Error: {}", email, e.getMessage());
+            throw new OtpEmailException("Failed to send welcome email", e);
         }
     }
     

@@ -1,4 +1,4 @@
--- V11: Add identity document columns to couriers table
+-- V12: Add identity document columns to couriers table
 -- Add new columns for CIN number and front/back images
 
 -- Add identity_number column

@@ -11,9 +11,19 @@ public enum PartnerStatus {
     PENDING,
     
     /**
+     * Informations/documents complémentaires demandés par l'admin
+     */
+    DOCUMENTS_MISSING,
+    
+    /**
      * Compte actif et validé
      */
     ACTIVE,
+    
+    /**
+     * Compte inactif (désactivé)
+     */
+    INACTIVE,
     
     /**
      * Compte suspendu temporairement

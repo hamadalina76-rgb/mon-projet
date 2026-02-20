@@ -42,6 +42,13 @@ public class User {
     @Column(nullable = false)
     private UserStatus status;
 
+    /**
+     * Partner ID (for PARTNER role users)
+     * Null for non-partner users
+     */
+    @Column(name = "partner_id")
+    private Long partnerId;
+
     @Column(name = "is_email_verified")
     private Boolean isEmailVerified = false;
 

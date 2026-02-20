@@ -11,29 +11,75 @@
   border-right: 1px solid $gray-200;
   display: flex;
   flex-direction: column;
-  transition: width $transition-normal;
+  transition: width $transition-normal, transform $transition-normal;
   z-index: $z-fixed;
 
   &.collapsed {
     width: $sidebar-collapsed-width;
   }
+
+  &.mobile {
+    width: min(280px, 85vw);
+    transform: translateX(-100%);
+    box-shadow: $shadow-xl;
+
+    &.mobile-open {
+      transform: translateX(0);
+    }
+
+    &.collapsed {
+      width: min(280px, 85vw);
+    }
+  }
+}
+
+[dir="rtl"] .sidebar.mobile {
+  transform: translateX(100%);
+
+  &.mobile-open {
+    transform: translateX(0);
+  }
+}
+
+// RTL: sidebar on the right
+[dir="rtl"] .sidebar {
+  left: auto;
+  right: 0;
+  border-right: none;
+  border-left: 1px solid $gray-200;
 }
 
 .sidebar-header {
-  height: $header-height;
+  min-height: $header-height;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: $spacing-md;
+  gap: 0.75rem;
+  padding: $spacing-md 1rem;
   border-bottom: 1px solid $gray-200;
+  flex-shrink: 0;
+
+  .logo {
+    height: 36px;
+    width: auto;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  .brand-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: $primary-color;
+    letter-spacing: -0.025em;
+    white-space: nowrap;
+  }
+}
+
+.sidebar.collapsed .sidebar-header {
+  justify-content: center;
+  padding: $spacing-sm;
 
   .logo {
     height: 32px;
-  }
-
-  .logo-icon {
-    height: 32px;
-    width: 32px;
   }
 }
 
@@ -88,6 +134,33 @@
     border-radius: $border-radius-full;
   }
 
+  .lock-icon {
+    margin-left: auto;
+    font-size: 16px;
+    color: $gray-400;
+  }
+
+  [dir="rtl"] & .badge,
+  [dir="rtl"] & .lock-icon {
+    margin-left: 0;
+    margin-right: auto;
+  }
+
+  &.locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+
+    &:hover {
+      background: transparent;
+      color: $text-secondary;
+    }
+
+    .material-icons {
+      color: $gray-400;
+    }
+  }
+
   .collapsed & {
     justify-content: center;
     padding: $spacing-sm;
@@ -117,4 +190,9 @@
   &:hover {
     background: $gray-50;
   }
+}
+
+[dir="rtl"] .collapse-btn {
+  right: auto;
+  left: -12px;
 }

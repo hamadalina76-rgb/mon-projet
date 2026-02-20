@@ -1,0 +1,68 @@
+<div class="success-dialog">
+
+  <!-- Header icon -->
+  <div class="success-header">
+    <div class="success-icon-ring">
+      <mat-icon>check_circle</mat-icon>
+    </div>
+    <h2>{{ 'profileSuccess.title' | translate }}</h2>
+    <h3>{{ 'profileSuccess.congratulations' | translate }}</h3>
+    <p class="subtitle">{{ 'profileSuccess.subtitle' | translate }}</p>
+  </div>
+
+  <!-- Next steps -->
+  <div class="info-section steps-section">
+    <div class="section-header">
+      <mat-icon>checklist</mat-icon>
+      <strong>{{ 'profileSuccess.nextStepsTitle' | translate }}</strong>
+    </div>
+    <ul class="steps-list">
+      <li>
+        <mat-icon class="step-icon">schedule</mat-icon>
+        {{ 'profileSuccess.step1' | translate }}
+      </li>
+      <li>
+        <mat-icon class="step-icon">notifications</mat-icon>
+        {{ 'profileSuccess.step2' | translate }}
+      </li>
+      <li>
+        <mat-icon class="step-icon">rocket_launch</mat-icon>
+        {{ 'profileSuccess.step3' | translate }}
+      </li>
+    </ul>
+  </div>
+
+  <!-- Waiting -->
+  <div class="info-section waiting-section">
+    <div class="section-header">
+      <mat-icon>lightbulb</mat-icon>
+      <strong>{{ 'profileSuccess.waitingTitle' | translate }}</strong>
+    </div>
+    <p>{{ 'profileSuccess.waitingText' | translate }}</p>
+    <p class="note">
+      <mat-icon>info</mat-icon>
+      {{ 'profileSuccess.waitingNote' | translate }}
+    </p>
+  </div>
+
+  <!-- Help -->
+  <div class="info-section help-section">
+    <div class="section-header">
+      <mat-icon>support_agent</mat-icon>
+      <strong>{{ 'profileSuccess.helpTitle' | translate }}</strong>
+    </div>
+    <p>
+      {{ 'profileSuccess.helpText' | translate }}
+      <a [href]="'mailto:' + ('profileSuccess.helpEmail' | translate)">
+        {{ 'profileSuccess.helpEmail' | translate }}
+      </a>
+    </p>
+  </div>
+
+  <!-- Action -->
+  <button mat-flat-button color="primary" class="cta-btn" (click)="close()">
+    <mat-icon>dashboard</mat-icon>
+    {{ 'profileSuccess.goToDashboard' | translate }}
+  </button>
+
+</div>

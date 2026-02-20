@@ -1,9 +1,13 @@
 package com.speedline.review.event.consumer;
 
 /**
- * Kafka Consumer pour événements Order
+ * GCP Pub/Sub Consumer pour événements Order
  * Écoute order-completed pour solliciter un avis
+ * 
+ * TODO: Implémenter avec PubSubInboundChannelAdapter
+ * - Subscription: order-events-review-sub
+ * - Topic: order-completed
  */
 public class OrderEventConsumer {
-    // TODO: @KafkaListener(topics = "order-completed")
+    // TODO: Implémenter avec PubSubInboundChannelAdapter et @ServiceActivator
 }

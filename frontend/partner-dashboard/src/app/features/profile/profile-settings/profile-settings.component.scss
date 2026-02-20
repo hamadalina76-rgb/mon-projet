@@ -1,18 +1,74 @@
-// Profile Settings Component Styles
+// Profile Settings - Paramètres du compte (design aligné profil)
 @use 'assets/styles/variables' as *;
 
 .profile-settings-page {
-  padding: 1.5rem;
-  max-width: 800px;
+  padding: 0 $spacing-lg 2rem;
+  max-width: 720px;
+  margin: 0 auto;
+
+  @media (max-width: $breakpoint-tablet) {
+    padding: 0 $spacing-md 1.5rem;
+  }
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: $text-secondary;
+    text-decoration: none;
+    font-weight: 500;
+    &:hover {
+      color: $primary-color;
+    }
+    mat-icon {
+      font-size: 1.2rem;
+      width: 1.2rem;
+      height: 1.2rem;
+    }
+  }
+
+  a:not(.back-link) {
+    color: $text-secondary;
+    text-decoration: none;
+    &:hover {
+      color: $primary-color;
+    }
+  }
+
+  .sep {
+    color: $gray-400;
+  }
+
+  .current {
+    color: $text-primary;
+    font-weight: 500;
+  }
 }
 
 .page-header {
   margin-bottom: 1.5rem;
 
   h1 {
-    margin: 0;
+    margin: 0 0 0.35rem;
     font-size: 1.5rem;
-    font-weight: 600;
+    font-weight: 700;
+    color: $text-primary;
+  }
+
+  .page-subtitle {
+    margin: 0;
+    font-size: 0.9375rem;
+    color: $text-secondary;
+    line-height: 1.5;
   }
 }
 
@@ -23,25 +79,113 @@
 }
 
 .settings-card {
-  padding: 1.5rem;
+  padding: 1.5rem 1.75rem;
+  border-radius: $border-radius-lg;
+  box-shadow: $shadow-sm;
+  border: 1px solid $gray-200;
+  background: $white;
 
   h3 {
-    margin: 0 0 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.75rem;
     font-size: 1rem;
     font-weight: 600;
+    color: $text-primary;
+
+    mat-icon {
+      color: $primary-color;
+      font-size: 1.25rem;
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
+
+  mat-divider {
+    margin-bottom: 1.25rem;
   }
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+.settings-form {
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
 
-  @media (max-width: 600px) {
-    grid-template-columns: 1fr;
+    @media (max-width: 600px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .field,
+  .full-width {
+    width: 100%;
+  }
+
+  .full-width {
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+
+  // Champs Material: focus en rouge (couleur app)
+  ::ng-deep .mat-mdc-form-field {
+    .mat-focused .mdc-notched-outline .mdc-notched-outline__leading,
+    .mat-focused .mdc-notched-outline .mdc-notched-outline__notch,
+    .mat-focused .mdc-notched-outline .mdc-notched-outline__trailing {
+      border-color: $primary-color !important;
+    }
+    .mat-focused .mat-mdc-floating-label {
+      color: $primary-color !important;
+    }
   }
 }
 
-.full-width {
-  width: 100%;
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+  padding-top: 0.5rem;
+}
+
+// Bouton Enregistrer / Changer mot de passe - rouge (pas bleu)
+.btn-save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: $white;
+  background: $primary-gradient;
+  border: none;
+  border-radius: $border-radius-md;
+  cursor: pointer;
+  transition: box-shadow $transition-fast, transform $transition-fast;
+  box-shadow: 0 4px 12px rgba($primary-color, 0.3);
+
+  mat-icon {
+    font-size: 1.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  &:hover:not(:disabled) {
+    box-shadow: 0 6px 16px rgba($primary-color, 0.4);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  mat-spinner ::ng-deep circle {
+    stroke: $white;
+  }
 }

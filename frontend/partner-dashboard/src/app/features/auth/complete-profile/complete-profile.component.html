@@ -1,0 +1,686 @@
+<!-- Complete Profile Component - Phase 2: Partner Profile Setup -->
+<div class="profile-container">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <img src="assets/image/speedLine-removebg-preview.png" alt="SpeedLine" class="logo-img" />
+      <span class="logo-text">SpeedLine</span>
+    </div>
+    <div class="header-actions">
+      <button mat-button class="save-btn" (click)="saveProgress()">
+        <mat-icon>save</mat-icon>
+        {{ 'completeProfile.saveProgress' | translate }}
+      </button>
+      <button mat-button class="logout-btn" (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        {{ 'auth.login.logout' | translate }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Welcome Banner -->
+  <div class="welcome-banner">
+    <div class="welcome-content">
+      <h1>{{ 'completeProfile.welcomeTitle' | translate }}, {{ userName() }} 👋</h1>
+      <p>{{ 'completeProfile.welcomeSubtitle' | translate }}</p>
+    </div>
+  </div>
+
+  <!-- Main Card -->
+  <div class="profile-card-wrapper">
+    <mat-card class="profile-card">
+      @if (errorMessage()) {
+        <div class="error-alert">
+          <mat-icon>error_outline</mat-icon>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      @if (!translationsReady()) {
+        <div class="loading-container">
+          <mat-spinner diameter="40"></mat-spinner>
+        </div>
+      } @else {
+        <mat-stepper linear #stepper class="registration-stepper">
+
+          <!-- ============== STEP 1: Business Info ============== -->
+          <mat-step [stepControl]="step1Form" [label]="'completeProfile.steps.business' | translate">
+            <form [formGroup]="step1Form" class="step-form">
+              <h2 class="step-title">
+                <mat-icon>storefront</mat-icon>
+                {{ 'auth.register.step1.title' | translate }}
+              </h2>
+
+              <!-- Partner Type -->
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'auth.register.step1.partnerType' | translate }} *</mat-label>
+                <mat-select formControlName="partnerType">
+                  @for (type of partnerTypes; track type.value) {
+                    <mat-option [value]="type.value">{{ type.label }}</mat-option>
+                  }
+                </mat-select>
+                @if (step1Form.get('partnerType')?.hasError('required') && step1Form.get('partnerType')?.touched) {
+                  <mat-error>{{ 'auth.register.errors.fieldRequired' | translate }}</mat-error>
+                }
+              </mat-form-field>
+
+              @if (step1Form.get('partnerType')?.value === 'other') {
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>{{ 'auth.register.step1.otherType' | translate }}</mat-label>
+                  <input matInput formControlName="otherType" />
+                </mat-form-field>
+              }
+
+              <!-- Business Name -->
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'auth.register.step1.businessName' | translate }} *</mat-label>
+                <span matTextPrefix><mat-icon>business</mat-icon></span>
+                <input matInput formControlName="businessName" />
+                @if (step1Form.get('businessName')?.hasError('required') && step1Form.get('businessName')?.touched) {
+                  <mat-error>{{ 'auth.register.errors.fieldRequired' | translate }}</mat-error>
+                }
+              </mat-form-field>
+
+              <!-- Brand Name -->
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'auth.register.step1.brandName' | translate }} *</mat-label>
+                <span matTextPrefix><mat-icon>branding_watermark</mat-icon></span>
+                <input matInput formControlName="brandName" />
+                @if (step1Form.get('brandName')?.hasError('required') && step1Form.get('brandName')?.touched) {
+                  <mat-error>{{ 'auth.register.errors.fieldRequired' | translate }}</mat-error>
+                }
+              </mat-form-field>
+
+              <div class="step-actions">
+                <span></span>
+                <button mat-raised-button color="primary" matStepperNext [disabled]="step1Form.invalid">
+                  {{ 'auth.register.next' | translate }}
+                  <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </div>
+            </form>
+          </mat-step>
+
+          <!-- ============== STEP 2: Address & Location ============== -->
+          <mat-step [stepControl]="step2Form" [label]="'completeProfile.steps.address' | translate">
+            <form [formGroup]="step2Form" class="step-form">
+              <h2 class="step-title">
+                <mat-icon>place</mat-icon>
+                {{ 'auth.register.step2.title' | translate }}
+              </h2>
+
+              <!-- Map -->
+              <div class="map-section">
+                <h3>{{ 'auth.register.step2.selectLocation' | translate }}</h3>
+                <div class="helper-text">
+                  <mat-icon>info_outline</mat-icon>
+                  <span>{{ 'auth.register.step2.mapHelper' | translate }}</span>
+                </div>
+                <app-map-location-selector
+                  [initialLatitude]="36.8065"
+                  [initialLongitude]="10.1815"
+                  (locationSelected)="onLocationSelected($event)"
+                ></app-map-location-selector>
+              </div>
+
+              <!-- Adresse remplie automatiquement par Mapbox -->
+              @if (step2Form.get('fullAddress')?.value) {
+                <div class="address-chip">
+                  <mat-icon>place</mat-icon>
+                  <span>
+                    {{ step2Form.get('fullAddress')?.value }}
+                    @if (step2Form.get('postalCode')?.value || step2Form.get('city')?.value) {
+                      — {{ step2Form.get('postalCode')?.value }}{{ step2Form.get('postalCode')?.value && step2Form.get('city')?.value ? ' ' : '' }}{{ step2Form.get('city')?.value }}
+                    }
+                    @if (step2Form.get('country')?.value) {
+                      — {{ step2Form.get('country')?.value }}
+                    }
+                  </span>
+                </div>
+              }
+
+              <div class="step-actions">
+                <button mat-button matStepperPrevious>
+                  <mat-icon>arrow_back</mat-icon>
+                  {{ 'auth.register.back' | translate }}
+                </button>
+                <button mat-raised-button color="primary" matStepperNext [disabled]="step2Form.invalid">
+                  {{ 'auth.register.next' | translate }}
+                  <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </div>
+            </form>
+          </mat-step>
+
+          <!-- ============== STEP 3: Legal Info ============== -->
+          <mat-step [stepControl]="step3Form" [label]="'completeProfile.steps.legal' | translate">
+            <form [formGroup]="step3Form" class="step-form">
+              <h2 class="step-title">
+                <mat-icon>gavel</mat-icon>
+                {{ 'auth.register.step3.title' | translate }}
+              </h2>
+
+              <!-- Legal Status -->
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'auth.register.step3.legalStatus' | translate }} *</mat-label>
+                <mat-select formControlName="legalStatus">
+                  @for (status of legalStatuses; track status.value) {
+                    <mat-option [value]="status.value">{{ status.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <!-- TVA -->
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'auth.register.step3.tva' | translate }}</mat-label>
+                <span matTextPrefix><mat-icon>receipt</mat-icon></span>
+                <input matInput formControlName="tva" />
+              </mat-form-field>
+
+              <!-- Legal Representative -->
+              <h3 class="section-label">{{ 'auth.register.step3.legalRep' | translate }}</h3>
+              <div class="form-row two-cols">
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ 'auth.register.firstName' | translate }} *</mat-label>
+                  <input matInput formControlName="legalRepFirstName" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ 'auth.register.lastName' | translate }} *</mat-label>
+                  <input matInput formControlName="legalRepLastName" />
+                </mat-form-field>
+              </div>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'auth.register.step3.position' | translate }} *</mat-label>
+                <input matInput formControlName="position" placeholder="Gérant, Directeur, Président..." />
+              </mat-form-field>
+
+              <!-- Documents Upload -->
+              <div class="documents-section">
+                <h3>{{ 'documents.title' | translate }}</h3>
+                <p class="info-text">{{ 'documents.subtitle' | translate }}</p>
+
+                <div class="document-list">
+                  <!-- Kbis Document -->
+                  <div class="document-item">
+                    <div class="document-header">
+                      <span>{{ 'documents.kbis' | translate }}</span>
+                      <button mat-stroked-button type="button" (click)="kbisInput.click()">
+                        <mat-icon>cloud_upload</mat-icon>
+                        {{ documentsFiles['kbis'] ? ('documents.change' | translate) : ('documents.upload' | translate) }}
+                      </button>
+                      <input #kbisInput type="file" hidden accept=".pdf,.jpg,.png,.jpeg" (change)="onFileSelect($event, 'kbis')" />
+                    </div>
+                    @if (uploadProgress()['kbis'] !== undefined) {
+                      <mat-progress-bar mode="determinate" [value]="uploadProgress()['kbis']"></mat-progress-bar>
+                    }
+                    @if (uploadedDocuments()['kbis']) {
+                      <div class="document-preview">
+                        <mat-icon>description</mat-icon>
+                        <span class="file-name">
+                          {{ uploadedDocuments()['kbis']!.file?.name || ('documents.currentFile' | translate) }}
+                        </span>
+                        <button mat-icon-button type="button" (click)="viewDocument('kbis')" matTooltip="Voir">
+                          <mat-icon>visibility</mat-icon>
+                        </button>
+                        <button mat-icon-button type="button" (click)="removeDocument('kbis')" matTooltip="Supprimer">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      </div>
+                    }
+                  </div>
+
+                  <!-- ID Card -->
+                  <div class="document-item">
+                    <div class="document-header">
+                      <span>{{ 'documents.idCard' | translate }}</span>
+                      <button mat-stroked-button type="button" (click)="idCardInput.click()">
+                        <mat-icon>cloud_upload</mat-icon>
+                        {{ documentsFiles['idCard'] ? ('documents.change' | translate) : ('documents.upload' | translate) }}
+                      </button>
+                      <input #idCardInput type="file" hidden accept=".pdf,.jpg,.png,.jpeg" (change)="onFileSelect($event, 'idCard')" />
+                    </div>
+                    @if (uploadProgress()['idCard'] !== undefined) {
+                      <mat-progress-bar mode="determinate" [value]="uploadProgress()['idCard']"></mat-progress-bar>
+                    }
+                    @if (uploadedDocuments()['idCard']) {
+                      <div class="document-preview">
+                        <mat-icon>badge</mat-icon>
+                        <span class="file-name">
+                          {{ uploadedDocuments()['idCard']!.file?.name || ('documents.currentFile' | translate) }}
+                        </span>
+                        <button mat-icon-button type="button" (click)="viewDocument('idCard')" matTooltip="Voir">
+                          <mat-icon>visibility</mat-icon>
+                        </button>
+                        <button mat-icon-button type="button" (click)="removeDocument('idCard')" matTooltip="Supprimer">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      </div>
+                    }
+                  </div>
+
+                  <!-- Insurance -->
+                  <div class="document-item">
+                    <div class="document-header">
+                      <span>{{ 'documents.insurance' | translate }}</span>
+                      <button mat-stroked-button type="button" (click)="insuranceInput.click()">
+                        <mat-icon>cloud_upload</mat-icon>
+                        {{ documentsFiles['insurance'] ? ('documents.change' | translate) : ('documents.upload' | translate) }}
+                      </button>
+                      <input #insuranceInput type="file" hidden accept=".pdf,.jpg,.png,.jpeg" (change)="onFileSelect($event, 'insurance')" />
+                    </div>
+                    @if (uploadProgress()['insurance'] !== undefined) {
+                      <mat-progress-bar mode="determinate" [value]="uploadProgress()['insurance']"></mat-progress-bar>
+                    }
+                    @if (uploadedDocuments()['insurance']) {
+                      <div class="document-preview">
+                        <mat-icon>verified_user</mat-icon>
+                        <span class="file-name">
+                          {{ uploadedDocuments()['insurance']!.file?.name || ('documents.currentFile' | translate) }}
+                        </span>
+                        <button mat-icon-button type="button" (click)="viewDocument('insurance')" matTooltip="Voir">
+                          <mat-icon>visibility</mat-icon>
+                        </button>
+                        <button mat-icon-button type="button" (click)="removeDocument('insurance')" matTooltip="Supprimer">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      </div>
+                    }
+                  </div>
+
+                  <!-- RIB -->
+                  <div class="document-item">
+                    <div class="document-header">
+                      <span>{{ 'documents.rib' | translate }}</span>
+                      <button mat-stroked-button type="button" (click)="ribInput.click()">
+                        <mat-icon>cloud_upload</mat-icon>
+                        {{ documentsFiles['rib'] ? ('documents.change' | translate) : ('documents.upload' | translate) }}
+                      </button>
+                      <input #ribInput type="file" hidden accept=".pdf,.jpg,.png,.jpeg" (change)="onFileSelect($event, 'rib')" />
+                    </div>
+                    @if (uploadProgress()['rib'] !== undefined) {
+                      <mat-progress-bar mode="determinate" [value]="uploadProgress()['rib']"></mat-progress-bar>
+                    }
+                    @if (uploadedDocuments()['rib']) {
+                      <div class="document-preview">
+                        <mat-icon>account_balance</mat-icon>
+                        <span class="file-name">
+                          {{ uploadedDocuments()['rib']!.file?.name || ('documents.currentFile' | translate) }}
+                        </span>
+                        <button mat-icon-button type="button" (click)="viewDocument('rib')" matTooltip="Voir">
+                          <mat-icon>visibility</mat-icon>
+                        </button>
+                        <button mat-icon-button type="button" (click)="removeDocument('rib')" matTooltip="Supprimer">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-actions">
+                <button mat-button matStepperPrevious>
+                  <mat-icon>arrow_back</mat-icon>
+                  {{ 'auth.register.back' | translate }}
+                </button>
+                <button mat-raised-button color="primary" matStepperNext [disabled]="step3Form.invalid">
+                  {{ 'auth.register.next' | translate }}
+                  <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </div>
+            </form>
+          </mat-step>
+
+          <!-- ============== STEP 4: Bank Info ============== -->
+          <mat-step [stepControl]="step4Form" [label]="'completeProfile.steps.bank' | translate">
+            <form [formGroup]="step4Form" class="step-form">
+              <h2 class="step-title">
+                <mat-icon>account_balance</mat-icon>
+                {{ 'auth.register.step4.title' | translate }}
+              </h2>
+
+              <div class="info-box">
+                <mat-icon>info_outline</mat-icon>
+                <p>{{ 'auth.register.step4.bankInfo' | translate }}</p>
+              </div>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'auth.register.step4.accountHolder' | translate }} *</mat-label>
+                <span matTextPrefix><mat-icon>person</mat-icon></span>
+                <input matInput formControlName="accountHolderName" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'auth.register.step4.iban' | translate }} *</mat-label>
+                <span matTextPrefix><mat-icon>credit_card</mat-icon></span>
+                <input matInput formControlName="iban" placeholder="TN59 XXXX XXXX XXXX XXXX XX" />
+                @if (step4Form.get('iban')?.hasError('invalidIban') && step4Form.get('iban')?.touched) {
+                  <mat-error>{{ 'auth.register.step4.ibanInvalid' | translate }}</mat-error>
+                }
+              </mat-form-field>
+
+              <div class="form-row two-cols">
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ 'auth.register.step4.bankName' | translate }} *</mat-label>
+                  <span matTextPrefix><mat-icon>account_balance</mat-icon></span>
+                  <input matInput formControlName="bankName" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ 'auth.register.step4.currency' | translate }} *</mat-label>
+                  <mat-select formControlName="currency">
+                    @for (c of currencies; track c) {
+                      <mat-option [value]="c">{{ c }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="step-actions">
+                <button mat-button matStepperPrevious>
+                  <mat-icon>arrow_back</mat-icon>
+                  {{ 'auth.register.back' | translate }}
+                </button>
+                <button mat-raised-button color="primary" matStepperNext [disabled]="step4Form.invalid">
+                  {{ 'auth.register.next' | translate }}
+                  <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </div>
+            </form>
+          </mat-step>
+
+          <!-- ============== STEP 5: Configuration ============== -->
+          <mat-step [stepControl]="step5Form" [label]="'completeProfile.steps.config' | translate">
+            <form [formGroup]="step5Form" class="step-form">
+              <h2 class="step-title">
+                <mat-icon>settings</mat-icon>
+                {{ 'auth.register.step5.title' | translate }}
+              </h2>
+
+              <!-- Opening Hours -->
+              <div class="opening-hours-section">
+                <div class="section-title">{{ 'auth.register.step5.openingHours' | translate }}</div>
+                @for (day of openingHours; track day.day; let i = $index) {
+                  <div class="day-row">
+                    <div class="day-header">
+                      <span class="day-name">{{ day.day }}</span>
+                      <mat-checkbox [(ngModel)]="day.isClosed" [ngModelOptions]="{standalone: true}">
+                        {{ 'auth.register.step5.closed' | translate }}
+                      </mat-checkbox>
+                    </div>
+                    @if (!day.isClosed) {
+                      <div class="time-slots">
+                        @for (slot of day.slots; track $index; let j = $index) {
+                          <div class="time-slot">
+                            <input type="time" [(ngModel)]="slot.open" [ngModelOptions]="{standalone: true}" />
+                            <span>→</span>
+                            <input type="time" [(ngModel)]="slot.close" [ngModelOptions]="{standalone: true}" />
+                            @if (day.slots.length > 1) {
+                              <button mat-icon-button type="button" (click)="removeTimeSlot(i, j)">
+                                <mat-icon>remove_circle_outline</mat-icon>
+                              </button>
+                            }
+                            @if (j === day.slots.length - 1) {
+                              <button mat-icon-button type="button" (click)="addTimeSlot(i)">
+                                <mat-icon>add_circle_outline</mat-icon>
+                              </button>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- Preparation Time -->
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'auth.register.step5.preparationTime' | translate }} *</mat-label>
+                <mat-select formControlName="preparationTime">
+                  @for (time of preparationTimes; track time.value) {
+                    <mat-option [value]="time.value">{{ time.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <!-- Payment Options -->
+              <div class="form-section">
+                <span class="section-label">{{ 'auth.register.step5.paymentOptions' | translate }}</span>
+                <mat-checkbox formControlName="acceptOnlinePayment">
+                  {{ 'auth.register.step5.onlinePayment' | translate }}
+                </mat-checkbox>
+                <mat-checkbox formControlName="acceptCashPayment">
+                  {{ 'auth.register.step5.cashPayment' | translate }}
+                </mat-checkbox>
+              </div>
+
+              <!-- Minimum Order -->
+              <div class="form-section">
+                <span class="section-label">{{ 'auth.register.step5.minimumOrder' | translate }}</span>
+                <mat-checkbox formControlName="noMinimum">
+                  {{ 'auth.register.step5.noMinimum' | translate }}
+                </mat-checkbox>
+                @if (!step5Form.get('noMinimum')?.value) {
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>{{ 'auth.register.step5.minimumAmount' | translate }} (TND)</mat-label>
+                    <input matInput type="number" formControlName="minimumOrder" min="0" />
+                  </mat-form-field>
+                }
+              </div>
+
+              <div class="step-actions">
+                <button mat-button matStepperPrevious>
+                  <mat-icon>arrow_back</mat-icon>
+                  {{ 'auth.register.back' | translate }}
+                </button>
+                <button mat-raised-button color="primary" matStepperNext [disabled]="step5Form.invalid">
+                  {{ 'auth.register.next' | translate }}
+                  <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </div>
+            </form>
+          </mat-step>
+
+          <!-- ============== STEP 6: Photos & Presentation ============== -->
+          <mat-step [stepControl]="step6Form" [label]="'completeProfile.steps.presentation' | translate">
+            <form [formGroup]="step6Form" class="step-form">
+              <h2 class="step-title">
+                <mat-icon>photo_library</mat-icon>
+                {{ 'auth.register.step7.title' | translate }}
+              </h2>
+
+              <!-- Logo Upload -->
+              <div class="documents-section">
+                <h3>{{ 'auth.register.step7.logo' | translate }}</h3>
+                <p class="info-text">{{ 'auth.register.step7.logoHint' | translate }}</p>
+                <button mat-stroked-button type="button" (click)="logoInput.click()">
+                  <mat-icon>cloud_upload</mat-icon>
+                  {{ uploadedImages().logo ? ('documents.change' | translate) : ('documents.upload' | translate) }}
+                </button>
+                <input #logoInput type="file" hidden accept=".jpg,.png,.jpeg,.webp" (change)="onFileSelect($event, 'logo')" />
+                @if (uploadProgress()['logo'] !== undefined) {
+                  <mat-progress-bar mode="determinate" [value]="uploadProgress()['logo']"></mat-progress-bar>
+                }
+                @if (uploadedImages().logo) {
+                  <div class="image-preview-container">
+                    <div class="image-preview-card">
+                      <img [src]="uploadedImages().logo!.preview" alt="Logo" />
+                      <button mat-mini-fab class="remove-btn" type="button" (click)="removeImage('logo')">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Cover Image Upload -->
+              <div class="documents-section">
+                <h3>{{ 'auth.register.step7.cover' | translate }}</h3>
+                <p class="info-text">{{ 'auth.register.step7.coverHint' | translate }}</p>
+                <button mat-stroked-button type="button" (click)="coverInput.click()">
+                  <mat-icon>cloud_upload</mat-icon>
+                  {{ uploadedImages().cover ? ('documents.change' | translate) : ('documents.upload' | translate) }}
+                </button>
+                <input #coverInput type="file" hidden accept=".jpg,.png,.jpeg,.webp" (change)="onFileSelect($event, 'cover')" />
+                @if (uploadProgress()['cover'] !== undefined) {
+                  <mat-progress-bar mode="determinate" [value]="uploadProgress()['cover']"></mat-progress-bar>
+                }
+                @if (uploadedImages().cover) {
+                  <div class="image-preview-container">
+                    <div class="image-preview-card cover-preview">
+                      <img [src]="uploadedImages().cover!.preview" alt="Cover" />
+                      <button mat-mini-fab class="remove-btn" type="button" (click)="removeImage('cover')">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Additional Photos -->
+              <div class="documents-section">
+                <h3>{{ 'auth.register.step7.photos' | translate }}</h3>
+                <p class="info-text">{{ 'auth.register.step7.photosHint' | translate }}</p>
+                @if (uploadedImages().photos.length < 5) {
+                  <button mat-stroked-button type="button" (click)="photosInput.click()">
+                    <mat-icon>add_photo_alternate</mat-icon>
+                    {{ 'documents.upload' | translate }} ({{ uploadedImages().photos.length }}/5)
+                  </button>
+                  <input #photosInput type="file" hidden accept=".jpg,.png,.jpeg,.webp" (change)="onFileSelect($event, 'photos')" />
+                }
+                @if (uploadedImages().photos.length > 0) {
+                  <div class="photos-grid">
+                    @for (photo of uploadedImages().photos; track $index; let i = $index) {
+                      <div class="image-preview-card">
+                        <img [src]="photo.preview" alt="Photo {{ i + 1 }}" />
+                        <button mat-mini-fab class="remove-btn" type="button" (click)="removeImage('photos', i)">
+                          <mat-icon>close</mat-icon>
+                        </button>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- Description -->
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'auth.register.step7.shortDescription' | translate }} *</mat-label>
+                <input matInput formControlName="shortDescription" />
+                <mat-hint>{{ step6Form.get('shortDescription')?.value?.length || 0 }}/100</mat-hint>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>{{ 'auth.register.step7.fullDescription' | translate }} *</mat-label>
+                <textarea matInput formControlName="fullDescription" rows="4"></textarea>
+                <mat-hint>{{ step6Form.get('fullDescription')?.value?.length || 0 }}/500</mat-hint>
+              </mat-form-field>
+
+              <!-- Tags -->
+              <div class="form-section">
+                <span class="section-label">{{ 'auth.register.step7.tags' | translate }}</span>
+                <div class="tags-container">
+                  @for (tag of availableTags; track tag) {
+                    <mat-chip-option [selected]="isTagSelected(tag)" (click)="toggleTag(tag)">
+                      {{ tag }}
+                    </mat-chip-option>
+                  }
+                </div>
+              </div>
+
+              <div class="step-actions">
+                <button mat-button matStepperPrevious>
+                  <mat-icon>arrow_back</mat-icon>
+                  {{ 'auth.register.back' | translate }}
+                </button>
+                <button mat-raised-button color="primary" matStepperNext [disabled]="step6Form.invalid">
+                  {{ 'auth.register.next' | translate }}
+                  <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </div>
+            </form>
+          </mat-step>
+
+          <!-- ============== STEP 7: Validation ============== -->
+          <mat-step [stepControl]="step7Form" [label]="'completeProfile.steps.validation' | translate">
+            <form [formGroup]="step7Form" class="step-form">
+              <h2 class="step-title">
+                <mat-icon>check_circle</mat-icon>
+                {{ 'auth.register.step8.title' | translate }}
+              </h2>
+
+              <!-- Summary -->
+              <div class="summary-section">
+                <h3>{{ 'auth.register.step8.summary' | translate }}</h3>
+                <div class="summary-grid">
+                  <div>
+                    <strong>{{ 'auth.register.step1.businessName' | translate }}</strong>
+                    {{ step1Form.get('businessName')?.value }}
+                  </div>
+                  <div>
+                    <strong>{{ 'auth.register.step1.brandName' | translate }}</strong>
+                    {{ step1Form.get('brandName')?.value }}
+                  </div>
+                  <div>
+                    <strong>{{ 'auth.register.step2.city' | translate }}</strong>
+                    {{ step2Form.get('city')?.value }}
+                  </div>
+                  <div>
+                    <strong>{{ 'auth.register.step3.legalStatus' | translate }}</strong>
+                    {{ step3Form.get('legalStatus')?.value }}
+                  </div>
+                  <div>
+                    <strong>{{ 'auth.register.step4.bankName' | translate }}</strong>
+                    {{ step4Form.get('bankName')?.value }}
+                  </div>
+                  <div>
+                    <strong>{{ 'auth.register.step5.preparationTime' | translate }}</strong>
+                    {{ getPreparationTimeLabel(step5Form.get('preparationTime')?.value) }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Terms -->
+              <div class="terms-section">
+                <mat-checkbox formControlName="acceptTerms">
+                  {{ 'auth.register.step8.acceptTerms' | translate }}
+                </mat-checkbox>
+                <mat-checkbox formControlName="acceptPrivacy">
+                  {{ 'auth.register.step8.acceptPrivacy' | translate }}
+                </mat-checkbox>
+                <mat-checkbox formControlName="acceptCommission">
+                  {{ 'auth.register.step8.acceptCommission' | translate }}
+                </mat-checkbox>
+                <mat-checkbox formControlName="certifyInformation">
+                  {{ 'auth.register.step8.certifyInformation' | translate }}
+                </mat-checkbox>
+                <mat-checkbox formControlName="acceptMarketing">
+                  {{ 'auth.register.step8.acceptMarketing' | translate }}
+                </mat-checkbox>
+              </div>
+
+              <div class="step-actions">
+                <button mat-button matStepperPrevious>
+                  <mat-icon>arrow_back</mat-icon>
+                  {{ 'auth.register.back' | translate }}
+                </button>
+                <button mat-raised-button color="primary" type="button" (click)="onSubmit()" [disabled]="step7Form.invalid || loading()">
+                  @if (loading()) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                    <span class="btn-content"><mat-icon>check</mat-icon> {{ 'completeProfile.submit' | translate }}</span>
+                  }
+                </button>
+              </div>
+            </form>
+          </mat-step>
+
+        </mat-stepper>
+      }
+    </mat-card>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-text">
+    <p>© {{ currentYear }} SpeedLine. {{ 'auth.register.needHelp' | translate }} <a href="mailto:partners&#64;speedline.com">{{ 'auth.register.contactUs' | translate }}</a></p>
+  </div>
+</div>

@@ -2,6 +2,7 @@ package com.speedline.partner.service;
 
 import com.speedline.partner.domain.PartnerStatus;
 import com.speedline.partner.domain.PartnerType;
+import com.speedline.partner.dto.CompletePartnerProfileRequest;
 import com.speedline.partner.dto.PartnerDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +20,31 @@ import java.util.List;
  * - Statistiques
  */
 public interface PartnerService {
+
+    // ==================== SYNC AUTH-SERVICE ====================
+
+    /**
+     * Créer un profil partner initial depuis auth-service
+     * Appelé lors de l'inscription avec role=PARTNER
+     * 
+     * @param userId ID de l'utilisateur propriétaire (auth-service)
+     * @param email Email du partenaire
+     * @param firstName Prénom
+     * @param lastName Nom
+     * @param phoneNumber Téléphone
+     * @return PartnerDTO avec status=PENDING, isProfileComplete=false
+     */
+    PartnerDTO createPartnerFromAuth(Long userId, String email, String firstName, 
+                                     String lastName, String phoneNumber);
+
+    /**
+     * Compléter le profil partner (Phase 2 - après login)
+     * 
+     * @param partnerId ID du partner
+     * @param request Données complètes du profil
+     * @return PartnerDTO mis à jour
+     */
+    PartnerDTO completeProfile(Long partnerId, CompletePartnerProfileRequest request);
 
     // ==================== OPÉRATIONS CRUD ====================
 
@@ -168,6 +194,47 @@ public interface PartnerService {
      */
     void suspendPartner(Long partnerId, String reason);
 
+    /**
+     * Activer un partenaire (Admin only)
+     * Change le statut à ACTIVE et permet la réception de commandes
+     * 
+     * @param partnerId ID du partenaire
+     * @return PartnerDTO avec status=ACTIVE, isActive=true
+     * @throws PartnerNotFoundException si non trouvé
+     */
+    PartnerDTO activatePartner(Long partnerId);
+
+    /**
+     * Désactiver un partenaire (Admin only)
+     * Change le statut à INACTIVE et arrête la réception de commandes
+     * 
+     * @param partnerId ID du partenaire
+     * @param reason Raison de la désactivation
+     * @return PartnerDTO avec status=INACTIVE, isActive=false
+     * @throws PartnerNotFoundException si non trouvé
+     */
+    PartnerDTO deactivatePartner(Long partnerId, String reason);
+
+    /**
+     * Demander des informations complémentaires à un partenaire (Admin only)
+     * Change le statut à DOCUMENTS_MISSING et notifie le partenaire
+     * 
+     * @param partnerId ID du partenaire
+     * @param message Message détaillant les informations/documents manquants
+     * @return PartnerDTO avec status=DOCUMENTS_MISSING
+     * @throws PartnerNotFoundException si non trouvé
+     */
+    PartnerDTO requestMoreInfo(Long partnerId, String message);
+
+    /**
+     * Mettre à jour les notes internes d'un partenaire (Admin only)
+     *
+     * @param partnerId ID du partenaire
+     * @param notes Contenu des notes internes
+     * @return PartnerDTO mis à jour
+     */
+    PartnerDTO updateInternalNotes(Long partnerId, String notes);
+
     // ==================== PARAMÈTRES DE LIVRAISON ====================
 
     /**
@@ -279,6 +346,16 @@ public interface PartnerService {
      * @return Page<PartnerDTO>
      */
     Page<PartnerDTO> getPartnersByStatus(PartnerStatus status, Pageable pageable);
+
+    /**
+     * Obtenir les partenaires par statut et recherche (nom, marque, ville) – liste admin paginée.
+     *
+     * @param status Statut optionnel (null = tous)
+     * @param search Texte de recherche optionnel (businessName, brandName, city)
+     * @param pageable Pagination
+     * @return Page<PartnerDTO>
+     */
+    Page<PartnerDTO> getPartnersByStatusAndSearch(PartnerStatus status, String search, Pageable pageable);
 
     /**
      * Obtenir les partenaires par type

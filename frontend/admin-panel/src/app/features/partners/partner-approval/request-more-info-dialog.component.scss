@@ -1,0 +1,137 @@
+// Request More Info Dialog - Uses global design variables
+@use '../../../../assets/styles/variables' as v;
+
+.request-more-info-dialog {
+  padding: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+
+  h2[mat-dialog-title] {
+    margin: 0 0 v.$spacing-md;
+    font-size: 1.375rem; // Increased for better visibility
+    font-weight: 700;
+    color: v.$gray-900;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    padding: v.$spacing-lg v.$spacing-lg 0;
+  }
+
+  .dialog-message {
+    margin-bottom: v.$spacing-md;
+    color: v.$gray-700;
+    font-size: 0.9375rem; // Increased for better visibility
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  .full-width {
+    width: 100%;
+  }
+
+  mat-dialog-content {
+    padding: 0 v.$spacing-lg v.$spacing-md;
+    max-height: 70vh;
+    overflow-y: auto;
+
+    mat-form-field {
+      width: 100%;
+
+      textarea {
+        font-size: 0.9375rem;
+        line-height: 1.5;
+        color: v.$gray-900;
+        resize: vertical;
+        min-height: 120px;
+      }
+    }
+  }
+
+  mat-dialog-actions {
+    padding: v.$spacing-md v.$spacing-lg v.$spacing-lg;
+    margin: 0;
+    display: flex;
+    justify-content: flex-end;
+    gap: v.$spacing-sm;
+    flex-wrap: wrap;
+
+    button {
+      font-weight: 600;
+      font-size: 0.9375rem;
+      padding: 0.625rem 1.25rem;
+      border-radius: v.$border-radius-md;
+      transition: all v.$transition-fast;
+      min-width: 100px;
+
+      &[mat-button] {
+        color: v.$gray-700;
+
+        &:hover {
+          background: v.$gray-100;
+          color: v.$gray-900;
+        }
+      }
+
+      &[mat-flat-button] {
+        background: v.$primary-color;
+        color: v.$white;
+
+        &:hover:not(:disabled) {
+          background: v.$primary-dark;
+        }
+
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      }
+    }
+  }
+
+  // Responsive design
+  @media (max-width: v.$breakpoint-tablet) {
+    h2[mat-dialog-title] {
+      font-size: 1.25rem;
+      padding: v.$spacing-md v.$spacing-md 0;
+    }
+
+    mat-dialog-content {
+      padding: 0 v.$spacing-md v.$spacing-md;
+
+      mat-form-field textarea {
+        font-size: 0.875rem;
+        min-height: 100px;
+      }
+    }
+
+    mat-dialog-actions {
+      padding: v.$spacing-md;
+      flex-direction: column-reverse;
+      gap: v.$spacing-xs;
+
+      button {
+        width: 100%;
+        min-width: auto;
+      }
+    }
+  }
+
+  @media (max-width: v.$breakpoint-mobile) {
+    h2[mat-dialog-title] {
+      font-size: 1.125rem;
+      padding: v.$spacing-sm v.$spacing-sm 0;
+    }
+
+    .dialog-message {
+      font-size: 0.875rem;
+    }
+
+    mat-dialog-content {
+      padding: 0 v.$spacing-sm v.$spacing-sm;
+    }
+
+    mat-dialog-actions {
+      padding: v.$spacing-sm;
+    }
+  }
+}

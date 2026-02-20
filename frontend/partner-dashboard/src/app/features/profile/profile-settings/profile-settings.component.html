@@ -1,85 +1,106 @@
-<!-- Profile Settings Component Template - Angular 19 -->
+<!-- Profile Settings -->
 <div class="profile-settings-page">
+  <nav class="breadcrumb">
+    <a routerLink="/dashboard">{{ 'profilePages.breadcrumbSettings' | translate }}</a>
+    <span class="sep">›</span>
+    <a routerLink="/profile">{{ 'profilePages.breadcrumbStoreProfile' | translate }}</a>
+    <span class="sep">›</span>
+    <span class="current">{{ 'profilePages.breadcrumbAccount' | translate }}</span>
+  </nav>
+
   <header class="page-header">
-    <h1>{{ 'profile.settings' | translate }}</h1>
+    <h1>{{ 'profilePages.pageTitle' | translate }}</h1>
+    <p class="page-subtitle">{{ 'profilePages.pageSubtitle' | translate }}</p>
   </header>
 
-  @if (loading()) {
-    <div class="loading-container">
-      <mat-spinner diameter="48"></mat-spinner>
-    </div>
-  } @else {
-    <div class="settings-grid">
-      <!-- Personal Info -->
-      <mat-card class="settings-card">
-        <h3>Informations personnelles</h3>
-        <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
-          <div class="form-row">
-            <mat-form-field appearance="outline">
-              <mat-label>Prénom</mat-label>
-              <input matInput formControlName="firstName" />
-            </mat-form-field>
-
-            <mat-form-field appearance="outline">
-              <mat-label>Nom</mat-label>
-              <input matInput formControlName="lastName" />
-            </mat-form-field>
-          </div>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Email</mat-label>
-            <input matInput type="email" formControlName="email" />
+  <div class="settings-grid">
+    <!-- Informations personnelles -->
+    <mat-card class="settings-card">
+      <h3><mat-icon>person</mat-icon> {{ 'profilePages.personalInfo' | translate }}</h3>
+      <mat-divider></mat-divider>
+      <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" class="settings-form">
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="field">
+            <mat-label>{{ 'profilePages.firstName' | translate }}</mat-label>
+            <input matInput formControlName="firstName" />
+            @if (profileForm.get('firstName')?.hasError('required') && profileForm.get('firstName')?.touched) {
+              <mat-error>{{ 'profilePages.requiredField' | translate }}</mat-error>
+            }
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Téléphone</mat-label>
-            <input matInput formControlName="phone" />
+          <mat-form-field appearance="outline" class="field">
+            <mat-label>{{ 'profilePages.lastName' | translate }}</mat-label>
+            <input matInput formControlName="lastName" />
+            @if (profileForm.get('lastName')?.hasError('required') && profileForm.get('lastName')?.touched) {
+              <mat-error>{{ 'profilePages.requiredField' | translate }}</mat-error>
+            }
           </mat-form-field>
+        </div>
 
-          <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'profilePages.email' | translate }}</mat-label>
+          <input matInput formControlName="email" />
+          <mat-hint>{{ 'profilePages.emailReadOnlyHint' | translate }}</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'profilePages.phone' | translate }}</mat-label>
+          <input matInput formControlName="phoneNumber" [placeholder]="'profilePages.phonePlaceholder' | translate" />
+        </mat-form-field>
+
+        <div class="card-actions">
+          <button type="submit" class="btn-save" [disabled]="saving()">
             @if (saving()) {
               <mat-spinner diameter="20"></mat-spinner>
             } @else {
-              Enregistrer
+              <mat-icon>save</mat-icon>
+              {{ 'profilePages.save' | translate }}
             }
           </button>
-        </form>
-      </mat-card>
+        </div>
+      </form>
+    </mat-card>
 
-      <!-- Change Password -->
-      <mat-card class="settings-card">
-        <h3>Changer le mot de passe</h3>
-        <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Mot de passe actuel</mat-label>
-            <input matInput [type]="hideCurrentPassword() ? 'password' : 'text'" formControlName="currentPassword" />
-            <button mat-icon-button matSuffix type="button" (click)="hideCurrentPassword.set(!hideCurrentPassword())">
-              <mat-icon>{{ hideCurrentPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
-            </button>
-          </mat-form-field>
+    <!-- Changer le mot de passe -->
+    <mat-card class="settings-card">
+      <h3><mat-icon>lock</mat-icon> {{ 'profilePages.changePassword' | translate }}</h3>
+      <mat-divider></mat-divider>
+      <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="settings-form">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'profilePages.currentPassword' | translate }}</mat-label>
+          <input matInput [type]="hideCurrentPassword() ? 'password' : 'text'" formControlName="currentPassword" />
+          <button mat-icon-button matSuffix type="button" (click)="hideCurrentPassword.set(!hideCurrentPassword())" tabindex="-1">
+            <mat-icon>{{ hideCurrentPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+        </mat-form-field>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Nouveau mot de passe</mat-label>
-            <input matInput [type]="hideNewPassword() ? 'password' : 'text'" formControlName="newPassword" />
-            <button mat-icon-button matSuffix type="button" (click)="hideNewPassword.set(!hideNewPassword())">
-              <mat-icon>{{ hideNewPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
-            </button>
-          </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'profilePages.newPassword' | translate }}</mat-label>
+          <input matInput [type]="hideNewPassword() ? 'password' : 'text'" formControlName="newPassword" />
+          <button mat-icon-button matSuffix type="button" (click)="hideNewPassword.set(!hideNewPassword())" tabindex="-1">
+            <mat-icon>{{ hideNewPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          @if (passwordForm.get('newPassword')?.hasError('minlength') && passwordForm.get('newPassword')?.touched) {
+            <mat-error>{{ 'profilePages.passwordMinChars' | translate }}</mat-error>
+          }
+        </mat-form-field>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Confirmer le mot de passe</mat-label>
-            <input matInput [type]="hideNewPassword() ? 'password' : 'text'" formControlName="confirmPassword" />
-          </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>{{ 'profilePages.confirmNewPassword' | translate }}</mat-label>
+          <input matInput [type]="hideNewPassword() ? 'password' : 'text'" formControlName="confirmPassword" />
+        </mat-form-field>
 
-          <button mat-flat-button color="primary" type="submit" [disabled]="changingPassword()">
+        <div class="card-actions">
+          <button type="submit" class="btn-save" [disabled]="changingPassword()">
             @if (changingPassword()) {
               <mat-spinner diameter="20"></mat-spinner>
             } @else {
-              Changer mot de passe
+              <mat-icon>lock_reset</mat-icon>
+              {{ 'profilePages.changePassword' | translate }}
             }
           </button>
-        </form>
-      </mat-card>
-    </div>
-  }
+        </div>
+      </form>
+    </mat-card>
+  </div>
 </div>

@@ -3,9 +3,13 @@ import { Injectable, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { ApiService } from './api.service';
-import { User, LoginRequest, LoginResponse, RegisterRequest } from '@core/models/user.model';
+import { 
+  User, LoginRequest, AuthResponse, OtpResponse, 
+  RegisterRequest, RegisterResponse, VerifyOtpRequest 
+} from '@core/models/user.model';
 
 const TOKEN_KEY = 'auth_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
 const USER_KEY = 'user_data';
 
 @Injectable({
@@ -35,21 +39,98 @@ export class AuthService {
     }
   }
 
-  login(credentials: LoginRequest): Observable<LoginResponse> {
-    return this.apiService.post<LoginResponse>('auth/partner/login', credentials).pipe(
+  // ==================== PHASE 1: REGISTRATION ====================
+  
+  /**
+   * Register a new partner account
+   * POST /api/v1/auth/register
+   * Only creates auth account (email, password, name, phone, role=PARTNER)
+   */
+  register(data: RegisterRequest): Observable<RegisterResponse> {
+    return this.apiService.post<RegisterResponse>('v1/auth/register', data);
+  }
+
+  /**
+   * Check if email already exists
+   * GET /api/v1/auth/check-email?email=xxx
+   */
+  checkEmail(email: string): Observable<{ exists: boolean }> {
+    return this.apiService.get<{ exists: boolean }>('v1/auth/check-email', { email });
+  }
+
+  // ==================== PHASE 2: LOGIN (OTP FLOW) ====================
+
+  /**
+   * Step 1: Send login request → backend returns either:
+   *   - AuthResponse (JWT tokens) if email already verified
+   *   - OtpResponse (OTP sent) if email not yet verified (first login)
+   * POST /api/v1/auth/login
+   */
+  login(credentials: LoginRequest): Observable<OtpResponse | AuthResponse> {
+    return this.apiService.post<OtpResponse | AuthResponse>('v1/auth/login', credentials).pipe(
+      tap((response: any) => {
+        // If backend returned tokens directly (email already verified), save them
+        if (response.access_token) {
+          this.setToken(response.access_token);
+          this.setRefreshToken(response.refresh_token);
+          if (response.user) {
+            this.setUser(response.user);
+          }
+        }
+      })
+    );
+  }
+
+  /**
+   * Step 2: Verify OTP → get JWT tokens
+   * POST /api/v1/auth/verify-otp
+   */
+  verifyOtp(data: VerifyOtpRequest): Observable<AuthResponse> {
+    return this.apiService.post<AuthResponse>('v1/auth/verify-otp', data).pipe(
       tap((response) => {
-        this.setToken(response.token);
+        this.setToken(response.access_token);
+        this.setRefreshToken(response.refresh_token);
         this.setUser(response.user);
       })
     );
   }
 
-  register(data: RegisterRequest): Observable<LoginResponse> {
-    return this.apiService.post<LoginResponse>('auth/partner/register', data);
+  /**
+   * Resend OTP
+   * POST /api/v1/auth/resend-otp
+   */
+  resendOtp(email: string): Observable<OtpResponse> {
+    return this.apiService.post<OtpResponse>('v1/auth/resend-otp', { email });
   }
 
+  // ==================== FORGOT / RESET PASSWORD ====================
+
+  /**
+   * Request password reset code (sent by email)
+   * POST /api/v1/auth/forgot-password
+   */
+  requestPasswordReset(email: string): Observable<{ message?: string; email?: string }> {
+    return this.apiService.post<{ message?: string; email?: string }>('v1/auth/forgot-password', { email });
+  }
+
+  /**
+   * Reset password with OTP code received by email
+   * POST /api/v1/auth/reset-password
+   */
+  resetPassword(data: { email: string; otpCode: string; newPassword: string }): Observable<{ message?: string }> {
+    return this.apiService.post<{ message?: string }>('v1/auth/reset-password', data);
+  }
+
+  // ==================== SESSION MANAGEMENT ====================
+
   logout(): void {
+    const token = this.getToken();
+    if (token) {
+      // Notify backend (fire and forget)
+      this.apiService.post('v1/auth/logout', {}).subscribe({ error: () => {} });
+    }
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     this.currentUserSignal.set(null);
     this.router.navigate(['/auth/login']);
@@ -63,9 +144,24 @@ export class AuthService {
     localStorage.setItem(TOKEN_KEY, token);
   }
 
+  setRefreshToken(token: string): void {
+    localStorage.setItem(REFRESH_TOKEN_KEY, token);
+  }
+
   setUser(user: User): void {
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     this.currentUserSignal.set(user);
+  }
+
+  /**
+   * Update the stored user (e.g., after profile completion)
+   */
+  updateStoredUser(updates: Partial<User>): void {
+    const current = this.currentUserSignal();
+    if (current) {
+      const updated = { ...current, ...updates };
+      this.setUser(updated);
+    }
   }
 
   isAuthenticated(): boolean {
@@ -81,20 +177,30 @@ export class AuthService {
     }
   }
 
+  /**
+   * Check if user needs to complete partner profile
+   */
+  isProfileComplete(): boolean {
+    const user = this.currentUserSignal();
+    return !!user?.partnerId;
+  }
+
   getUserRole(): string | null {
     const user = this.currentUserSignal();
     return user?.role || null;
   }
 
-  getPartnerId(): string | null {
+  getPartnerId(): number | null {
     const user = this.currentUserSignal();
     return user?.partnerId || null;
   }
 
-  refreshToken(): Observable<LoginResponse> {
-    return this.apiService.post<LoginResponse>('auth/refresh', {}).pipe(
+  refreshToken(): Observable<AuthResponse> {
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    return this.apiService.post<AuthResponse>('v1/auth/refresh', { refreshToken }).pipe(
       tap((response) => {
-        this.setToken(response.token);
+        this.setToken(response.access_token);
+        this.setRefreshToken(response.refresh_token);
       })
     );
   }
