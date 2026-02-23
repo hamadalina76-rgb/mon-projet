@@ -137,18 +137,21 @@ export class LoginComponent implements OnInit {
       error: (err) => {
         this.loading = false;
         console.error('Login error:', err);
+        const code = err.error?.code || '';
         const serverMsg = err.error?.message || err.message || '';
         
-        // Map specific backend error codes to translated messages
+        // Map backend error code (priorité) puis message
         let errorKey = 'auth.invalidCredentials';
         
-        if (serverMsg === 'ACCOUNT_SUSPENDED' || serverMsg.includes('SUSPENDED') || serverMsg.includes('suspended')) {
+        if (code === 'ACCOUNT_SUSPENDED' || serverMsg.includes('SUSPENDED') || serverMsg.includes('suspendu')) {
           errorKey = 'auth.accountSuspended';
-        } else if (serverMsg === 'ACCOUNT_INACTIVE' || serverMsg.includes('INACTIVE') || serverMsg.includes('deactivated')) {
+        } else if (code === 'ACCOUNT_INACTIVE' || serverMsg.includes('INACTIVE') || serverMsg.includes('désactivé') || serverMsg.includes('deactivated')) {
           errorKey = 'auth.accountInactive';
-        } else if (serverMsg === 'ACCOUNT_DELETED' || serverMsg.includes('DELETED')) {
+        } else if (code === 'ACCOUNT_DELETED' || serverMsg.includes('DELETED') || serverMsg.includes('supprimé')) {
           errorKey = 'auth.accountDeleted';
-        } else if (serverMsg.includes('Access denied')) {
+        } else if (code === 'ACCOUNT_PENDING' || serverMsg.includes('PENDING') || serverMsg.includes('vérification')) {
+          errorKey = 'auth.accountPending';
+        } else if (code === 'ACCESS_DENIED' || serverMsg.includes('Access denied') || serverMsg.includes('accès refusé')) {
           errorKey = 'auth.accessDenied';
         }
         
@@ -221,6 +224,9 @@ export class LoginComponent implements OnInit {
     if (msg.includes('supprimé') || msg.includes('deleted') || msg.includes('حذف')) {
       return 'delete_forever';
     }
+    if (msg.includes('vérification') || msg.includes('verification') || msg.includes('انتظار')) {
+      return 'schedule';
+    }
     return 'error_outline';
   }
 
@@ -234,6 +240,9 @@ export class LoginComponent implements OnInit {
     }
     if (msg.includes('supprimé') || msg.includes('deleted') || msg.includes('حذف')) {
       return 'auth.accountDeletedTitle';
+    }
+    if (msg.includes('vérification') || msg.includes('verification') || msg.includes('انتظار')) {
+      return 'auth.accountPendingTitle';
     }
     return 'auth.authenticationError';
   }

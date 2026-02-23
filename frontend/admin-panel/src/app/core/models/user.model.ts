@@ -46,6 +46,16 @@ export interface BackendUserInfo {
   profilePicture?: string;
 }
 
+/** Response of GET /api/v1/auth/profile */
+export interface ProfileResponse {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber?: string;
+  profilePicture?: string;
+}
+
 export interface ForgotPasswordRequest {
   email: string;
 }

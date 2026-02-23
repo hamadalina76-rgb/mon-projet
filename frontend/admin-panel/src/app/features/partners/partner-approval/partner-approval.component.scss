@@ -625,7 +625,6 @@
   flex-direction: column;
   gap: v.$spacing-lg;
   position: sticky;
-  top: calc(v.$header-height + v.$spacing-md);
   min-width: 0; // ✅ FIX: empêche le débordement
 
   @media (max-width: 1024px) {

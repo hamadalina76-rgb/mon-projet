@@ -149,6 +149,17 @@ public class AdminController {
         AdminResponse admin = adminService.changeStatus(id, status);
         return ResponseEntity.ok(admin);
     }
+
+    /**
+     * Synchronise le statut de l'admin vers auth-service (correction des désynchronisations)
+     * POST /api/admins/{id}/sync-auth-status
+     */
+    @PostMapping("/{id}/sync-auth-status")
+    public ResponseEntity<AdminResponse> syncStatusToAuth(@PathVariable Long id) {
+        log.info("POST /api/admins/{}/sync-auth-status", id);
+        AdminResponse admin = adminService.syncStatusToAuth(id);
+        return ResponseEntity.ok(admin);
+    }
     
     /**
      * Met à jour la dernière connexion d'un admin

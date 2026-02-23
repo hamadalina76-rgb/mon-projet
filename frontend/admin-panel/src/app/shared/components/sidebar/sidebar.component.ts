@@ -1,8 +1,11 @@
 // src/app/shared/components/sidebar/sidebar.component.ts
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, computed, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Subject, takeUntil } from 'rxjs';
+import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from '@core/services/auth.service';
 import { ThemeService } from '@core/services/theme.service';
 
@@ -17,16 +20,30 @@ interface NavItem {
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterModule, TranslateModule],
+  imports: [CommonModule, RouterModule, TranslateModule, MatTooltipModule],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss'],
 })
-export class SidebarComponent {
+export class SidebarComponent implements OnInit, OnDestroy {
   @Input() mobileOpen = false;
+  @Input() collapsed = false;
   @Output() closeMobile = new EventEmitter<void>();
+  @Output() toggle = new EventEmitter<void>();
 
   private authService = inject(AuthService);
   themeService = inject(ThemeService);
+  private translate = inject(TranslateService);
+  private destroy$ = new Subject<void>();
+
+  currentLang = signal(this.translate.currentLang || 'fr');
+
+  /** Chevron inversé en RTL (arabe) */
+  chevronExpand = computed(() =>
+    this.currentLang() === 'ar' ? 'chevron_left' : 'chevron_right'
+  );
+  chevronCollapse = computed(() =>
+    this.currentLang() === 'ar' ? 'chevron_right' : 'chevron_left'
+  );
 
   sections = ['nav.mainMenu', 'nav.operations', 'nav.system'];
 
@@ -54,6 +71,17 @@ export class SidebarComponent {
     { label: 'nav.monitoring', icon: 'monitor_heart', route: '/monitoring', permission: 'monitoring:view', section: 'nav.system' },
   ];
 
+  ngOnInit(): void {
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((e) => this.currentLang.set(e.lang));
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   hasPermission(permission: string): boolean {
     return this.authService.hasPermission(permission);
   }
@@ -68,5 +96,10 @@ export class SidebarComponent {
 
   onNavClick(): void {
     this.closeMobile.emit();
+  }
+
+  onToggle(): void {
+    this.closeMobile.emit();
+    this.toggle.emit();
   }
 }

@@ -46,14 +46,38 @@
             </div>
 
             @if (dayCtrl.get('isOpen')?.value) {
-              <div class="day-fields">
-                <div class="time-field">
-                  <label>{{ 'profilePages.openLabel' | translate }}</label>
-                  <input type="time" formControlName="openTime" />
-                </div>
-                <div class="time-field">
-                  <label>{{ 'profilePages.closeLabel' | translate }}</label>
-                  <input type="time" formControlName="closeTime" />
+              <div class="day-fields-wrap">
+                <div formArrayName="slots" class="day-fields-list">
+                  @for (slotCtrl of getSlotsArray(i).controls; track $index; let j = $index) {
+                    <div [formGroupName]="j" class="day-fields slot-row">
+                      <div class="time-field">
+                        <label>{{ 'profilePages.openLabel' | translate }}</label>
+                        <input type="time" formControlName="openTime" />
+                      </div>
+                      <div class="time-field">
+                        <label>{{ 'profilePages.closeLabel' | translate }}</label>
+                        <input type="time" formControlName="closeTime" />
+                      </div>
+                      @if (getSlotsArray(i).length > 1) {
+                        <button
+                          type="button"
+                          class="btn-slot-remove"
+                          (click)="removeSlot(i, j)"
+                          [matTooltip]="'profilePages.removeSlot' | translate">
+                          <mat-icon>remove_circle_outline</mat-icon>
+                        </button>
+                      }
+                      @if (j === getSlotsArray(i).length - 1) {
+                        <button
+                          type="button"
+                          class="btn-slot-add"
+                          (click)="addSlot(i)"
+                          [matTooltip]="'profilePages.addSlot' | translate">
+                          <mat-icon>add_circle_outline</mat-icon>
+                        </button>
+                      }
+                    </div>
+                  }
                 </div>
               </div>
               <button
@@ -79,9 +103,9 @@
             <p class="exceptions-desc">{{ 'profilePages.exceptionsDesc' | translate }}</p>
           </div>
         </div>
-        <button type="button" class="btn btn-ghost btn-outline">
+        <a [routerLink]="['/profile/exceptions']" class="btn btn-ghost btn-outline">
           {{ 'profilePages.manageExceptions' | translate }}
-        </button>
+        </a>
       </div>
     </form>
   } @else {

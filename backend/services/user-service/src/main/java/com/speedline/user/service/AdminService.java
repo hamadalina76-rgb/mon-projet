@@ -168,18 +168,12 @@ public class AdminService {
         admin.setStatus(newStatus);
         Admin updatedAdmin = adminRepository.save(admin);
         
-        // Synchroniser le statut dans auth-service
+        // Synchroniser le statut dans auth-service (obligatoire - bloque la connexion si échec)
         if (admin.getUserId() != null) {
-            try {
-                String authStatus = mapToAuthStatus(newStatus);
-                log.info("Synchronisation du statut auth pour userId {} → {}", admin.getUserId(), authStatus);
-                authServiceClient.changeUserStatus(admin.getUserId(), authStatus);
-                log.info("✓ Synchronisation réussie du statut auth pour userId {}", admin.getUserId());
-            } catch (Exception e) {
-                log.error("✗ ERREUR: Impossible de synchroniser le statut dans auth-service pour userId {}: {}", 
-                        admin.getUserId(), e.getMessage(), e);
-                // Ne pas faire échouer l'opération mais logger l'erreur complète
-            }
+            String authStatus = mapToAuthStatus(newStatus);
+            log.info("Synchronisation du statut auth pour userId {} → {}", admin.getUserId(), authStatus);
+            authServiceClient.changeUserStatus(admin.getUserId(), authStatus);
+            log.info("✓ Synchronisation réussie du statut auth pour userId {}", admin.getUserId());
         } else {
             log.warn("⚠ Admin {} n'a pas de userId, synchronisation auth-service impossible", id);
         }
@@ -217,6 +211,29 @@ public class AdminService {
     @Transactional(readOnly = true)
     public long countByStatus(AdminStatus status) {
         return adminRepository.countByStatus(status);
+    }
+
+    /**
+     * Synchronise le statut actuel de l'admin vers auth-service.
+     * Utile pour corriger les comptes désynchronisés (ex: admin INACTIVE dans user-service
+     * mais encore ACTIVE dans auth-service).
+     */
+    public AdminResponse syncStatusToAuth(Long id) {
+        log.info("Synchronisation du statut auth pour l'admin ID: {}", id);
+
+        Admin admin = adminRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Admin non trouvé avec l'ID: " + id));
+
+        if (admin.getUserId() == null) {
+            throw new RuntimeException("Cet admin n'a pas de compte d'authentification lié.");
+        }
+
+        String authStatus = mapToAuthStatus(admin.getStatus());
+        log.info("Envoi du statut {} vers auth-service pour userId {}", authStatus, admin.getUserId());
+        authServiceClient.changeUserStatus(admin.getUserId(), authStatus);
+        log.info("✓ Synchronisation réussie du statut auth pour admin {}", id);
+
+        return adminMapper.toResponse(admin);
     }
     
     /**

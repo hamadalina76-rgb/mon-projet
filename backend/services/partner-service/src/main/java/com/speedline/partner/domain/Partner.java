@@ -265,6 +265,13 @@ public class Partner {
     private String openingHoursJson;
 
     /**
+     * Exceptions d'horaires : jours fériés et fermetures exceptionnelles (JSON)
+     * Format: [{"date":"2025-12-25","label":"Noël","type":"CLOSED"}, ...]
+     */
+    @Column(columnDefinition = "TEXT")
+    private String scheduleExceptionsJson;
+
+    /**
      * Actuellement ouvert (calculé)
      */
     @Transient

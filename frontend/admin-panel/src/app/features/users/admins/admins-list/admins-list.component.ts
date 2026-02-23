@@ -13,6 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
+import { ListPageComponent } from '@shared/components/list-page/list-page.component';
 import { ToastrService } from 'ngx-toastr';
 import { AdminService } from '@core/services/admin.service';
 import { Admin, AdminRole, AdminStatus } from '@core/models/admin.model';
@@ -34,6 +35,7 @@ import { ConfirmationDialogComponent, ConfirmationDialogData } from '@shared/com
     MatTooltipModule,
     MatChipsModule,
     TranslateModule,
+    ListPageComponent,
   ],
   templateUrl: './admins-list.component.html',
   styleUrls: ['./admins-list.component.scss'],
@@ -60,7 +62,6 @@ export class AdminsListComponent implements OnInit {
   expandedAdminId: string | null = null;
 
   AdminStatus = AdminStatus;
-  Math = Math;
 
   ngOnInit(): void {
     this.loadRoles();
@@ -117,7 +118,9 @@ export class AdminsListComponent implements OnInit {
     this.applyFilters();
   }
 
-  onPageChange(): void {
+  onPageChange(event: { page: number; pageSize: number }): void {
+    this.currentPage = event.page;
+    this.itemsPerPage = event.pageSize;
     this.loadAdmins();
   }
 
@@ -278,32 +281,7 @@ export class AdminsListComponent implements OnInit {
   }
 
   get paginatedAdmins(): Admin[] {
-    // Pas de pagination côté client car déjà fait côté backend
     return this.filteredAdmins();
-  }
-
-  previousPage(): void {
-    if (this.currentPage > 1) {
-      this.currentPage--;
-      this.onPageChange();
-    }
-  }
-
-  nextPage(): void {
-    if (this.currentPage < this.totalPages) {
-      this.currentPage++;
-      this.onPageChange();
-    }
-  }
-
-  goToFirstPage(): void {
-    this.currentPage = 1;
-    this.onPageChange();
-  }
-
-  goToLastPage(): void {
-    this.currentPage = this.totalPages;
-    this.onPageChange();
   }
 
   /**

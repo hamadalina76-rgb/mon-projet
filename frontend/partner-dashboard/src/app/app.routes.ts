@@ -1,6 +1,7 @@
 // src/app/app.routes.ts
 import { Routes } from '@angular/router';
 import { authGuard, profileCompleteGuard } from '@core/guards/auth.guard';
+import { partnerGuard } from '@core/guards/partner.guard';
 
 export const routes: Routes = [
   {
@@ -10,7 +11,7 @@ export const routes: Routes = [
   },
   {
     path: '',
-    canActivate: [authGuard, profileCompleteGuard],
+    canActivate: [authGuard, partnerGuard, profileCompleteGuard],
     loadComponent: () =>
       import('./layout/main-layout/main-layout.component').then(
         (m) => m.MainLayoutComponent

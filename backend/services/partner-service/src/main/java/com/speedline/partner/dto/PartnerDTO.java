@@ -98,6 +98,7 @@ public class PartnerDTO {
     
     // Horaires (simplifié pour l'affichage)
     private String openingHoursDisplay;
+    private String scheduleExceptionsDisplay; // JSON des exceptions (jours fériés, fermetures)
 
     // Notes internes (admin)
     private String internalNotes;

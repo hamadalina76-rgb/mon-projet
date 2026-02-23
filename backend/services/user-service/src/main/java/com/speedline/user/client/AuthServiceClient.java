@@ -53,13 +53,13 @@ public interface AuthServiceClient {
     /**
      * Supprime un utilisateur dans auth-service
      */
-    @DeleteMapping("/users/{userId}")
+    @DeleteMapping("/api/v1/auth/users/{userId}")
     void deleteUser(@PathVariable("userId") Long userId);
 
     /**
      * Change le statut d'un utilisateur dans auth-service
      */
-    @PutMapping("/users/{userId}/status")
+    @PutMapping("/api/v1/auth/users/{userId}/status")
     void changeUserStatus(@PathVariable("userId") Long userId, @RequestParam("status") String status);
 
     /**

@@ -1,0 +1,108 @@
+<app-list-page
+  [title]="'zones.title'"
+  [showBackButton]="true"
+  backLink="/dashboard"
+  [loading]="loading()"
+  [empty]="zones().length === 0"
+  [emptyMessage]="'zones.list.noZones'"
+  emptyIcon="map"
+  [totalItems]="totalItems"
+  [currentPage]="currentPage"
+  [itemsPerPage]="itemsPerPage"
+  [showPagination]="totalItems > 0"
+  [itemsPerPageLabel]="'zones.list.itemsPerPage'"
+  [ofLabel]="'zones.list.of'"
+  (pageChange)="onPageChange($event)"
+>
+  <div headerAction class="header-actions">
+    <button type="button" class="btn-export" (click)="onExportZones()" [disabled]="exporting()" [matTooltip]="'zones.editor.exportZones' | translate">
+      <mat-icon>download</mat-icon>
+      {{ 'zones.editor.exportZones' | translate }}
+    </button>
+    <label class="btn-import" [matTooltip]="'zones.editor.importZones' | translate">
+      <mat-icon>upload</mat-icon>
+      {{ 'zones.editor.importZones' | translate }}
+      <input type="file" accept=".json,.geojson" (change)="onImportZones($event)" #fileImport hidden />
+    </label>
+    <a routerLink="map-editor" class="btn-add-zone">
+      <mat-icon>add</mat-icon>
+      {{ 'zones.addZone' | translate }}
+    </a>
+  </div>
+
+
+  <div filters class="filters-bar">
+    <div class="search-box">
+      <span class="material-icons-round search-icon">search</span>
+      <input
+        type="text"
+        class="search-input"
+        [placeholder]="'zones.list.searchPlaceholder' | translate"
+        [(ngModel)]="searchText"
+        (ngModelChange)="onSearchChange()"
+      />
+    </div>
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange()">
+        <mat-option value="all">{{ 'zones.list.allStatuses' | translate }}</mat-option>
+        <mat-option value="true">{{ 'common.active' | translate }}</mat-option>
+        <mat-option value="false">{{ 'zones.inactive' | translate }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <a emptyAction routerLink="map-editor" class="btn-add-zone">
+    <mat-icon>add_location_alt</mat-icon>
+    {{ 'zones.list.openEditor' | translate }}
+  </a>
+
+  <table table class="data-table">
+    <thead>
+      <tr>
+        <th class="col-name">{{ 'zones.name' | translate | uppercase }}</th>
+        <th class="col-city">{{ 'zones.city' | translate | uppercase }}</th>
+        <th class="col-type">{{ 'zones.type' | translate | uppercase }}</th>
+        <th class="col-fee">{{ 'zones.feeTnd' | translate | uppercase }}</th>
+        <th class="col-status">{{ 'zones.status' | translate | uppercase }}</th>
+        <th class="col-actions">{{ 'common.actions' | translate | uppercase }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (zone of zones(); track zone.id) {
+        <tr class="table-row">
+          <td class="col-name">{{ zone.name }}</td>
+          <td class="col-city">{{ zone.city || '-' }}</td>
+          <td class="col-type">
+            <span class="type-badge" [ngClass]="'type-' + zone.type">
+              {{ getZoneTypeLabel(zone.type) }}
+            </span>
+          </td>
+          <td class="col-fee">{{ zone.deliveryFee ?? 0 }}</td>
+          <td class="col-status">
+            <span class="status-badge" [class.active]="zone.isActive">
+              {{ zone.isActive ? ('zones.active' | translate) : ('zones.inactive' | translate) }}
+            </span>
+          </td>
+          <td class="col-actions">
+            <div class="action-buttons">
+              <button
+                class="action-btn"
+                [routerLink]="[zone.id, 'map-edit']"
+                [matTooltip]="'zones.editOnMap' | translate"
+              >
+                <span class="material-icons-round">edit</span>
+              </button>
+              <button
+                class="action-btn action-btn-danger"
+                (click)="onDeleteZone($event, zone)"
+                [matTooltip]="'zones.editor.deleteZone' | translate"
+              >
+                <span class="material-icons-round">delete</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</app-list-page>

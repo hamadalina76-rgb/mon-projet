@@ -12,6 +12,9 @@ const TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 const USER_KEY = 'user_data';
 
+/** Rôles autorisés pour le tableau de bord partenaire (exclut CUSTOMER, COURIER, ADMIN) */
+const PARTNER_ROLES = ['PARTNER', 'PARTNER_OWNER', 'PARTNER_MANAGER', 'PARTNER_STAFF'];
+
 @Injectable({
   providedIn: 'root',
 })
@@ -30,13 +33,27 @@ export class AuthService {
 
   private loadStoredUser(): void {
     const userData = localStorage.getItem(USER_KEY);
-    if (userData) {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (userData && token) {
       try {
-        this.currentUserSignal.set(JSON.parse(userData));
+        const user = JSON.parse(userData);
+        const role = user?.role;
+        if (!role || !PARTNER_ROLES.includes(role)) {
+          this.clearStorageOnly();
+          return;
+        }
+        this.currentUserSignal.set(user);
       } catch {
-        this.logout();
+        this.clearStorageOnly();
       }
     }
+  }
+
+  private clearStorageOnly(): void {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    this.currentUserSignal.set(null);
   }
 
   // ==================== PHASE 1: REGISTRATION ====================
@@ -70,12 +87,14 @@ export class AuthService {
     return this.apiService.post<OtpResponse | AuthResponse>('v1/auth/login', credentials).pipe(
       tap((response: any) => {
         // If backend returned tokens directly (email already verified), save them
-        if (response.access_token) {
+        if (response.access_token && response.user) {
+          const role = response.user?.role;
+          if (!role || !PARTNER_ROLES.includes(role)) {
+            throw new Error('ACCESS_DENIED'); // Compte admin/client/livreur : accès refusé
+          }
           this.setToken(response.access_token);
           this.setRefreshToken(response.refresh_token);
-          if (response.user) {
-            this.setUser(response.user);
-          }
+          this.setUser(response.user);
         }
       })
     );
@@ -88,6 +107,10 @@ export class AuthService {
   verifyOtp(data: VerifyOtpRequest): Observable<AuthResponse> {
     return this.apiService.post<AuthResponse>('v1/auth/verify-otp', data).pipe(
       tap((response) => {
+        const role = response.user?.role;
+        if (!role || !PARTNER_ROLES.includes(role)) {
+          throw new Error('ACCESS_DENIED'); // Compte admin/client/livreur : accès refusé
+        }
         this.setToken(response.access_token);
         this.setRefreshToken(response.refresh_token);
         this.setUser(response.user);

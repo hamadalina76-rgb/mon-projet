@@ -69,6 +69,17 @@
   }
 }
 
+[data-type='success'] .dialog-icon {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05));
+  color: #22c55e;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+
+  &::before {
+    background: rgba(34, 197, 94, 0.1);
+    border: 2px solid rgba(34, 197, 94, 0.3);
+  }
+}
+
 h2 {
   margin: 0 0 $spacing-md;
   color: $text-primary;

@@ -1,0 +1,88 @@
+<div class="page-wrap">
+  <nav class="breadcrumb">
+    <a routerLink="/dashboard">{{ 'profilePages.breadcrumbSettings' | translate }}</a>
+    <span class="sep">›</span>
+    <a routerLink="/profile">{{ 'profilePages.breadcrumbStoreProfile' | translate }}</a>
+    <span class="sep">›</span>
+    <a routerLink="/profile/hours">{{ 'profilePages.breadcrumbHours' | translate }}</a>
+    <span class="sep">›</span>
+    <span class="cur">{{ 'profilePages.exceptionsPageTitle' | translate }}</span>
+  </nav>
+
+  <header class="page-top">
+    <div>
+      <h1>{{ 'profilePages.exceptionsPageTitle' | translate }}</h1>
+      <p class="page-desc">{{ 'profilePages.exceptionsPageSubtitle' | translate }}</p>
+    </div>
+    <div class="header-actions">
+      <a routerLink="/profile/hours" class="btn btn-ghost">{{ 'profilePages.cancel' | translate }}</a>
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="loading() || saving()"
+        (click)="save()">
+        @if (saving()) {
+          <span class="btn-spinner"></span>
+          {{ 'profilePages.saving' | translate }}
+        } @else {
+          <mat-icon>save</mat-icon>
+          {{ 'profilePages.saveChanges' | translate }}
+        }
+      </button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-wrap">
+      <mat-spinner diameter="48"></mat-spinner>
+      <p>{{ 'profilePages.overviewLoading' | translate }}</p>
+    </div>
+  } @else {
+    <div class="exceptions-section">
+      <div class="add-row card">
+        <h3 class="add-title">{{ 'profilePages.addException' | translate }}</h3>
+        <div class="add-fields">
+          <div class="field">
+            <label for="new-date">{{ 'profilePages.exceptionDate' | translate }}</label>
+            <input id="new-date" type="date" [(ngModel)]="newDate" />
+          </div>
+          <div class="field">
+            <label for="new-label">{{ 'profilePages.exceptionLabel' | translate }}</label>
+            <input id="new-label" type="text" [(ngModel)]="newLabel" [placeholder]="'profilePages.exceptionLabelPlaceholder' | translate" />
+          </div>
+          <button type="button" class="btn btn-primary btn-add" (click)="addException()">
+            <mat-icon>add</mat-icon>
+            {{ 'profilePages.addException' | translate }}
+          </button>
+        </div>
+      </div>
+
+      <div class="list-card card">
+        <h3 class="list-title">{{ 'profilePages.exceptionsTitle' | translate }}</h3>
+        @if (exceptions().length === 0) {
+          <p class="no-exceptions">{{ 'profilePages.noExceptions' | translate }}</p>
+        } @else {
+          <ul class="exceptions-list">
+            @for (ex of exceptions(); track ex.date; let i = $index) {
+              <li class="exception-item">
+                <div class="exception-info">
+                  <span class="exception-date">{{ formatDateDisplay(ex.date) }}</span>
+                  @if (ex.label) {
+                    <span class="exception-label">{{ ex.label }}</span>
+                  }
+                </div>
+                <button
+                  type="button"
+                  class="btn-remove"
+                  (click)="removeException(i)"
+                  [matTooltip]="'profilePages.deleteException' | translate">
+                  <mat-icon>delete_outline</mat-icon>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  }
+</div>

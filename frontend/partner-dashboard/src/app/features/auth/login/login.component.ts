@@ -152,7 +152,11 @@ export class LoginComponent {
       },
       error: (err) => {
         this.loading.set(false);
-        this.errorMessage.set(err.error?.message || 'auth.login.error');
+        if (err?.message === 'ACCESS_DENIED') {
+          this.errorMessage.set(this.translate.instant('auth.login.accessDenied'));
+        } else {
+          this.errorMessage.set(err?.error?.message || this.translate.instant('auth.login.error'));
+        }
       },
     });
   }
@@ -192,7 +196,11 @@ export class LoginComponent {
       },
       error: (err) => {
         this.loading.set(false);
-        this.errorMessage.set(err.error?.message || 'auth.login.otpInvalid');
+        if (err?.message === 'ACCESS_DENIED') {
+          this.errorMessage.set(this.translate.instant('auth.login.accessDenied'));
+        } else {
+          this.errorMessage.set(err?.error?.message || this.translate.instant('auth.login.otpInvalid'));
+        }
       },
     });
   }

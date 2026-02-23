@@ -1,215 +1,136 @@
-<!-- Partners List - same design as Admins List -->
-<div class="partners-page">
-  <!-- Header -->
-  <div class="page-header">
-    <div class="header-left">
-      <button class="btn-back" routerLink="/dashboard">
-        <span class="material-icons-round">arrow_back</span>
-      </button>
-      <h1 class="page-title">{{ 'partners.title' | translate }}</h1>
+<app-list-page
+  [title]="'partners.title'"
+  [showBackButton]="true"
+  backLink="/dashboard"
+  [loading]="loading()"
+  [empty]="paginatedPartners.length === 0"
+  [emptyMessage]="'partners.noPartners'"
+  emptyIcon="store"
+  [totalItems]="totalItems"
+  [currentPage]="currentPage"
+  [itemsPerPage]="itemsPerPage"
+  [itemsPerPageOptions]="[20, 50, 100]"
+  [showPagination]="totalItems > 0"
+  [itemsPerPageLabel]="'partners.itemsPerPage'"
+  [ofLabel]="'partners.of'"
+  (pageChange)="onPageChange($event)"
+>
+  <div filters class="filters-bar">
+    <div class="search-box">
+      <span class="material-icons-round search-icon">search</span>
+      <input
+        type="text"
+        class="search-input"
+        [placeholder]="'partners.searchPlaceholder' | translate"
+        [(ngModel)]="searchText"
+        (ngModelChange)="onSearchChange()"
+      />
     </div>
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange()">
+        <mat-option value="all">{{ 'partners.allStatuses' | translate }}</mat-option>
+        <mat-option value="PENDING">{{ 'common.pending' | translate }}</mat-option>
+        <mat-option value="ACTIVE">{{ 'common.active' | translate }}</mat-option>
+        <mat-option value="REJECTED">{{ 'partners.rejected' | translate }}</mat-option>
+        <mat-option value="SUSPENDED">{{ 'partners.suspended' | translate }}</mat-option>
+      </mat-select>
+    </mat-form-field>
   </div>
 
-  <!-- Content Card -->
-  <div class="content-card">
-    <!-- Filters Bar -->
-    <div class="filters-bar">
-      <!-- Search -->
-      <div class="search-box">
-        <span class="material-icons-round search-icon">search</span>
-        <input
-          type="text"
-          class="search-input"
-          [placeholder]="'partners.searchPlaceholder' | translate"
-          [(ngModel)]="searchText"
-          (ngModelChange)="onSearchChange()"
-        />
-      </div>
-
-      <!-- Status Filter -->
-      <mat-form-field appearance="outline" class="filter-field">
-        <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange()">
-          <mat-option value="all">{{ 'partners.allStatuses' | translate }}</mat-option>
-          <mat-option value="PENDING">{{ 'common.pending' | translate }}</mat-option>
-          <mat-option value="ACTIVE">{{ 'common.active' | translate }}</mat-option>
-          <mat-option value="REJECTED">{{ 'partners.rejected' | translate }}</mat-option>
-          <mat-option value="SUSPENDED">{{ 'partners.suspended' | translate }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-    </div>
-
-    <!-- Table -->
-    <div class="table-container">
-      @if (loading()) {
-        <div class="loading-state">
-          <span class="material-icons-round spin">refresh</span>
-          <p>{{ 'common.loading' | translate }}</p>
-        </div>
-      } @else if (paginatedPartners.length === 0) {
-        <div class="empty-state">
-          <span class="material-icons-round">store</span>
-          <p>{{ 'partners.noPartners' | translate }}</p>
-        </div>
-      } @else {
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th class="col-partner">{{ 'partners.partner' | translate | uppercase }}</th>
-              <th class="col-type">{{ 'partners.type' | translate | uppercase }}</th>
-              <th class="col-city">{{ 'partners.city' | translate | uppercase }}</th>
-              <th class="col-date">{{ 'partners.registrationDate' | translate | uppercase }}</th>
-              <th class="col-status">{{ 'partners.status' | translate | uppercase }}</th>
-              <th class="col-actions">{{ 'partners.actions' | translate | uppercase }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (partner of paginatedPartners; track partner.id) {
-              <tr class="table-row">
-                <!-- Partner Info -->
-                <td class="col-partner">
-                  <div class="partner-info">
-                    @if (partner.logo) {
-                      <img [src]="partner.logo" [alt]="partner.brandName || partner.businessName" class="partner-avatar-img" />
-                    } @else {
-                      <div class="partner-avatar" [style.background-color]="getTypeColor(partner.type)">
-                        {{ getInitials(partner.brandName || partner.businessName) }}
-                      </div>
-                    }
-                    <div class="partner-details">
-                      <div class="partner-name">{{ partner.brandName || partner.businessName }}</div>
-                      @if (partner.brandName && partner.businessName !== partner.brandName) {
-                        <div class="partner-secondary">{{ partner.businessName }}</div>
-                      } @else if (partner.email) {
-                        <div class="partner-secondary">{{ partner.email }}</div>
-                      }
-                    </div>
-                  </div>
-                </td>
-
-                <!-- Type -->
-                <td class="col-type">
-                  <span class="type-badge" [style.background-color]="getTypeColor(partner.type)">
-                    {{ getTypeLabel(partner.type) }}
-                  </span>
-                </td>
-
-                <!-- City -->
-                <td class="col-city">
-                  {{ partner.city || '-' }}
-                </td>
-
-                <!-- Registration Date -->
-                <td class="col-date">
-                  {{ partner.createdAt | date:'dd/MM/yyyy' }}
-                </td>
-
-                <!-- Status -->
-                <td class="col-status">
-                  <span class="status-dot" [style.background-color]="getStatusColor(partner.status)"></span>
-                  <span class="status-label">{{ getStatusLabel(partner.status) }}</span>
-                </td>
-
-                <!-- Actions -->
-                <td class="col-actions">
-                  <div class="action-buttons">
-                    <button
-                      class="action-btn"
-                      [routerLink]="[partner.id]"
-                      [matTooltip]="'partners.view' | translate"
-                    >
-                      <span class="material-icons-round">visibility</span>
-                    </button>
-                    @if (partner.status === 'PENDING') {
-                      <button
-                        class="action-btn"
-                        [routerLink]="[partner.id, 'approval']"
-                        [matTooltip]="'partners.review' | translate"
-                      >
-                        <span class="material-icons-round">fact_check</span>
-                      </button>
-                    }
-                    <button
-                      class="action-btn"
-                      [matMenuTriggerFor]="statusMenu"
-                      [matTooltip]="'partners.changeStatus' | translate"
-                    >
-                      <span class="material-icons-round">more_vert</span>
-                    </button>
-                    <mat-menu #statusMenu="matMenu">
-                      @if (partner.status !== 'ACTIVE') {
-                        <button mat-menu-item (click)="activatePartner(partner)">
-                          <span class="material-icons-round" style="color: #10B981">check_circle</span>
-                          <span>{{ 'partners.activate' | translate }}</span>
-                        </button>
-                      }
-                      @if (partner.status === 'ACTIVE') {
-                        <button mat-menu-item (click)="deactivatePartner(partner)">
-                          <span class="material-icons-round" style="color: #94A3B8">block</span>
-                          <span>{{ 'partners.deactivate' | translate }}</span>
-                        </button>
-                      }
-                      @if (partner.status !== 'SUSPENDED') {
-                        <button mat-menu-item (click)="suspendPartner(partner)">
-                          <span class="material-icons-round" style="color: #EF4444">gpp_bad</span>
-                          <span>{{ 'partners.suspend' | translate }}</span>
-                        </button>
-                      }
-                    </mat-menu>
-                  </div>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+  <table table class="data-table">
+    <thead>
+      <tr>
+        <th class="col-partner">{{ 'partners.partner' | translate | uppercase }}</th>
+        <th class="col-type">{{ 'partners.type' | translate | uppercase }}</th>
+        <th class="col-city">{{ 'partners.city' | translate | uppercase }}</th>
+        <th class="col-date">{{ 'partners.registrationDate' | translate | uppercase }}</th>
+        <th class="col-status" scope="col">{{ 'common.status' | translate | uppercase }}</th>
+        <th class="col-actions">{{ 'partners.actions' | translate | uppercase }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (partner of paginatedPartners; track partner.id) {
+        <tr class="table-row">
+          <td class="col-partner">
+            <div class="partner-info">
+              @if (partner.logo) {
+                <img [src]="partner.logo" [alt]="partner.brandName || partner.businessName" class="partner-avatar-img" />
+              } @else {
+                <div class="partner-avatar" [style.background-color]="getTypeColor(partner.type)">
+                  {{ getInitials(partner.brandName || partner.businessName) }}
+                </div>
+              }
+              <div class="partner-details">
+                <div class="partner-name">{{ partner.brandName || partner.businessName }}</div>
+                @if (partner.brandName && partner.businessName !== partner.brandName) {
+                  <div class="partner-secondary">{{ partner.businessName }}</div>
+                } @else if (partner.email) {
+                  <div class="partner-secondary">{{ partner.email }}</div>
+                }
+              </div>
+            </div>
+          </td>
+          <td class="col-type">
+            <span class="type-badge" [style.background-color]="getTypeColor(partner.type)">
+              {{ getTypeLabel(partner.type) }}
+            </span>
+          </td>
+          <td class="col-city">{{ partner.city || '-' }}</td>
+          <td class="col-date">{{ partner.createdAt | date:'dd/MM/yyyy' }}</td>
+          <td class="col-status">
+            <span class="status-badge" [ngClass]="'status-' + (partner.status || '').toLowerCase()">
+              {{ getStatusLabel(partner.status) }}
+            </span>
+          </td>
+          <td class="col-actions">
+            <div class="action-buttons">
+              <button
+                class="action-btn"
+                [routerLink]="[partner.id]"
+                [matTooltip]="'partners.view' | translate"
+              >
+                <span class="material-icons-round">visibility</span>
+              </button>
+              @if (partner.status === 'PENDING') {
+                <button
+                  class="action-btn"
+                  [routerLink]="[partner.id, 'approval']"
+                  [matTooltip]="'partners.review' | translate"
+                >
+                  <span class="material-icons-round">fact_check</span>
+                </button>
+              }
+              <button
+                class="action-btn"
+                [matMenuTriggerFor]="statusMenu"
+                [matTooltip]="'partners.changeStatus' | translate"
+              >
+                <span class="material-icons-round">more_vert</span>
+              </button>
+              <mat-menu #statusMenu="matMenu">
+                @if (partner.status !== 'ACTIVE') {
+                  <button mat-menu-item (click)="activatePartner(partner)">
+                    <span class="material-icons-round" style="color: #10B981">check_circle</span>
+                    <span>{{ 'partners.activate' | translate }}</span>
+                  </button>
+                }
+                @if (partner.status === 'ACTIVE') {
+                  <button mat-menu-item (click)="deactivatePartner(partner)">
+                    <span class="material-icons-round" style="color: #94A3B8">block</span>
+                    <span>{{ 'partners.deactivate' | translate }}</span>
+                  </button>
+                }
+                @if (partner.status !== 'SUSPENDED') {
+                  <button mat-menu-item (click)="suspendPartner(partner)">
+                    <span class="material-icons-round" style="color: #EF4444">gpp_bad</span>
+                    <span>{{ 'partners.suspend' | translate }}</span>
+                  </button>
+                }
+              </mat-menu>
+            </div>
+          </td>
+        </tr>
       }
-    </div>
-
-    <!-- Pagination -->
-    @if (totalItems > 0) {
-      <div class="pagination">
-        <div class="pagination-info">
-          <span>{{ 'partners.itemsPerPage' | translate }}:</span>
-          <select [(ngModel)]="itemsPerPage" (change)="applyFilters()" class="items-select">
-            <option [value]="20">20</option>
-            <option [value]="50">50</option>
-            <option [value]="100">100</option>
-          </select>
-          <span class="page-range">
-            {{ (currentPage - 1) * itemsPerPage + 1 }} - {{ Math.min(currentPage * itemsPerPage, totalItems) }} {{ 'partners.of' | translate }} {{ totalItems }}
-          </span>
-        </div>
-
-        <div class="pagination-controls">
-          <button
-            class="page-btn"
-            (click)="goToFirstPage()"
-            [disabled]="currentPage === 1"
-          >
-            <span class="material-icons-round">first_page</span>
-          </button>
-          <button
-            class="page-btn"
-            (click)="previousPage()"
-            [disabled]="currentPage === 1"
-          >
-            <span class="material-icons-round">chevron_left</span>
-          </button>
-          <button
-            class="page-btn"
-            (click)="nextPage()"
-            [disabled]="currentPage === totalPages"
-          >
-            <span class="material-icons-round">chevron_right</span>
-          </button>
-          <button
-            class="page-btn"
-            (click)="goToLastPage()"
-            [disabled]="currentPage === totalPages"
-          >
-            <span class="material-icons-round">last_page</span>
-          </button>
-        </div>
-      </div>
-    }
-  </div>
-</div>
+    </tbody>
+  </table>
+</app-list-page>

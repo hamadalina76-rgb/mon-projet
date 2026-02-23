@@ -31,6 +31,13 @@ export const PROFILE_ROUTES: Routes = [
       ),
   },
   {
+    path: 'exceptions',
+    loadComponent: () =>
+      import('./schedule-exceptions/schedule-exceptions.component').then(
+        (m) => m.ScheduleExceptionsComponent
+      ),
+  },
+  {
     path: 'zones',
     loadComponent: () =>
       import('./zones/zones.component').then((m) => m.ZonesComponent),

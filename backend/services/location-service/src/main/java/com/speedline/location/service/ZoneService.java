@@ -1,11 +1,13 @@
 package com.speedline.location.service;
 
 import com.speedline.location.domain.Zone;
+import com.speedline.location.dto.ZoneDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Service pour la gestion des zones de livraison
@@ -25,7 +27,7 @@ public interface ZoneService {
      * @return ZoneDTO avec id généré
      * @throws InvalidBoundaryException si le polygone est invalide
      */
-    ZoneDTO createZone(String name, String description, Zone.ZoneType type,
+    ZoneDTO createZone(String name, String description, String city, Zone.ZoneType type,
                        String boundaryJson, BigDecimal deliveryFee,
                        Integer minDeliveryTime, Integer maxDeliveryTime);
 
@@ -81,9 +83,11 @@ public interface ZoneService {
      * Obtenir les zones avec pagination
      * 
      * @param pageable Pagination
+     * @param search Filtre optionnel par nom ou ville (null ou vide = toutes)
+     * @param isActive Filtre optionnel par statut (null = toutes, true = actives, false = inactives)
      * @return Page<ZoneDTO>
      */
-    Page<ZoneDTO> getAllZones(Pageable pageable);
+    Page<ZoneDTO> getAllZones(Pageable pageable, String search, Boolean isActive);
 
     /**
      * Obtenir les zones par type
@@ -123,16 +127,17 @@ public interface ZoneService {
     BigDecimal getDeliveryFeeForPoint(BigDecimal latitude, BigDecimal longitude);
 
     /**
-     * DTO pour les zones
+     * Exporter toutes les zones en GeoJSON FeatureCollection (sans pagination)
+     *
+     * @return GeoJSON FeatureCollection en chaîne JSON
      */
-    record ZoneDTO(
-            Long id,
-            String name,
-            String description,
-            Zone.ZoneType type,
-            BigDecimal deliveryFee,
-            Integer minDeliveryTime,
-            Integer maxDeliveryTime,
-            Boolean isActive
-    ) {}
+    String exportZonesAsGeoJson();
+
+    /**
+     * Importer des zones depuis un GeoJSON FeatureCollection
+     *
+     * @param geojson GeoJSON FeatureCollection en chaîne JSON
+     * @return Résultat de l'import { "created": N, "failed": M }
+     */
+    Map<String, Integer> importZonesFromGeoJson(String geojson);
 }

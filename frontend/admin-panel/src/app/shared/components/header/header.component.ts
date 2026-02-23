@@ -207,8 +207,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
         this.authService.logout();
         break;
       case 'profile':
-        // TODO: navigate to profile page when created
-        console.log('Profile navigation not yet implemented');
+        this.router.navigate(['/settings/profile']);
         break;
       case 'settings':
         this.router.navigate(['/settings/change-password']);

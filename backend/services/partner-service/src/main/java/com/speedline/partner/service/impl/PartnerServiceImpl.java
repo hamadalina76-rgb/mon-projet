@@ -166,6 +166,9 @@ public class PartnerServiceImpl implements PartnerService {
         if (request.getOpeningHoursJson() != null) {
             partner.setOpeningHoursJson(request.getOpeningHoursJson());
         }
+        if (request.getScheduleExceptionsJson() != null) {
+            partner.setScheduleExceptionsJson(request.getScheduleExceptionsJson());
+        }
         if (request.getAcceptOnlinePayment() != null) {
             partner.setAcceptOnlinePayment(request.getAcceptOnlinePayment());
         }
@@ -778,6 +781,7 @@ public class PartnerServiceImpl implements PartnerService {
                 .categoryIds(categoryIdsList)
                 .tags(tagsList)
                 .openingHoursDisplay(partner.getOpeningHoursJson()) // TODO: Formatter
+                .scheduleExceptionsDisplay(partner.getScheduleExceptionsJson())
                 .internalNotes(partner.getInternalNotes())
                 .createdAt(partner.getCreatedAt())
                 .build();

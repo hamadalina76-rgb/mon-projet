@@ -24,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -279,19 +278,23 @@ public class AuthServiceImpl implements AuthService {
         switch (user.getStatus()) {
             case INACTIVE:
                 log.warn("Login attempt for INACTIVE account: {}", request.getEmail());
-                throw new AccountStatusException("Your account has been deactivated. Please contact support.");
+                throw new AccountStatusException("ACCOUNT_INACTIVE",
+                        "Votre compte a été désactivé. Veuillez contacter un administrateur.");
 
             case SUSPENDED:
                 log.warn("Login attempt for SUSPENDED account: {}", request.getEmail());
-                throw new AccountStatusException("Your account has been suspended. Please contact support.");
+                throw new AccountStatusException("ACCOUNT_SUSPENDED",
+                        "Votre compte a été suspendu. Veuillez contacter un administrateur.");
 
             case DELETED:
                 log.warn("Login attempt for DELETED account: {}", request.getEmail());
-                throw new AccountStatusException("Your account has been deleted. Please contact support.");
+                throw new AccountStatusException("ACCOUNT_DELETED",
+                        "Votre compte a été supprimé. Veuillez contacter un administrateur.");
 
             case PENDING:
                 log.warn("Pending account attempting admin login: {}", request.getEmail());
-                throw new AccountStatusException("Your account is pending verification.");
+                throw new AccountStatusException("ACCOUNT_PENDING",
+                        "Votre compte est en attente de vérification.");
 
             case ACTIVE:
                 // Continue with admin login
@@ -306,6 +309,30 @@ public class AuthServiceImpl implements AuthService {
         if (user.getRole() != Role.ADMIN && user.getRole() != Role.SUPER_ADMIN) {
             log.warn("Non-admin user attempted admin login: {}", request.getEmail());
             throw new AccountStatusException("Access denied. Only administrators can log in here.");
+        }
+
+        // Double-check: user-service est la source de vérité pour le statut admin (INACTIVE/SUSPENDED)
+        try {
+            UserServiceClient.AdminProfileResponse adminProfile = userServiceClient.getAdminByUserId(user.getId());
+            if (adminProfile != null && adminProfile.getStatus() != null) {
+                String profileStatus = adminProfile.getStatus().toUpperCase();
+                if ("INACTIVE".equals(profileStatus)) {
+                    log.warn("Login blocked: admin profile INACTIVE in user-service for {}", request.getEmail());
+                    throw new AccountStatusException("ACCOUNT_INACTIVE",
+                            "Votre compte a été désactivé. Veuillez contacter un administrateur.");
+                }
+                if ("SUSPENDED".equals(profileStatus)) {
+                    log.warn("Login blocked: admin profile SUSPENDED in user-service for {}", request.getEmail());
+                    throw new AccountStatusException("ACCOUNT_SUSPENDED",
+                            "Votre compte a été suspendu. Veuillez contacter un administrateur.");
+                }
+            }
+        } catch (AccountStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("Could not verify admin status from user-service for {}: {}. Proceeding with auth DB status.",
+                    request.getEmail(), e.getMessage());
+            // Fail open: si user-service injoignable, on autorise (auth DB déjà vérifié)
         }
 
         // Generate tokens

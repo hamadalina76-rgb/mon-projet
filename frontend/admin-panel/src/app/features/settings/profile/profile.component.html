@@ -1,0 +1,112 @@
+<!-- Profile Component -->
+<div class="profile-container">
+  <mat-card class="profile-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>person</mat-icon>
+        {{ 'settings.profile' | translate }}
+      </mat-card-title>
+      <mat-card-subtitle>{{ 'settings.profileSubtitle' | translate }}</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (loadingData()) {
+        <div class="loading-state">
+          <mat-spinner diameter="40"></mat-spinner>
+          <p>{{ 'common.loading' | translate }}</p>
+        </div>
+      } @else {
+        <form [formGroup]="profileForm" (ngSubmit)="onSubmit()" class="profile-form">
+          <!-- Avatar + Identity -->
+          <section class="settings-section identity-section">
+            <h3>{{ 'settings.identitySection' | translate }}</h3>
+            <div class="avatar-row">
+              <div class="avatar-block">
+                @if (admin()?.avatar) {
+                  <img [src]="admin()!.avatar" alt="" class="avatar-img" />
+                } @else {
+                  <span class="avatar-initials">{{ initials() }}</span>
+                }
+              </div>
+              <div class="form-fields">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>{{ 'settings.firstName' | translate }}</mat-label>
+                  <mat-icon matPrefix>badge</mat-icon>
+                  <input matInput formControlName="firstName" />
+                  @if (profileForm.get('firstName')?.touched && profileForm.get('firstName')?.invalid) {
+                    <mat-error>{{ 'settings.firstNameRequired' | translate }}</mat-error>
+                  }
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>{{ 'settings.lastName' | translate }}</mat-label>
+                  <mat-icon matPrefix>badge</mat-icon>
+                  <input matInput formControlName="lastName" />
+                  @if (profileForm.get('lastName')?.touched && profileForm.get('lastName')?.invalid) {
+                    <mat-error>{{ 'settings.lastNameRequired' | translate }}</mat-error>
+                  }
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>{{ 'auth.email' | translate }}</mat-label>
+                  <mat-icon matPrefix>email</mat-icon>
+                  <input matInput formControlName="email" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>{{ 'settings.phoneNumber' | translate }}</mat-label>
+                  <mat-icon matPrefix>phone</mat-icon>
+                  <input matInput formControlName="phoneNumber" type="tel" />
+                </mat-form-field>
+              </div>
+            </div>
+          </section>
+
+          <!-- Account (read-only) -->
+          <section class="settings-section account-section">
+            <h3>{{ 'settings.accountSection' | translate }}</h3>
+            <div class="readonly-fields">
+              <div class="readonly-item">
+                <span class="label">{{ 'settings.role' | translate }}</span>
+                <span class="value">{{ getRoleLabel(admin()?.role) }}</span>
+              </div>
+              <div class="readonly-item">
+                <span class="label">{{ 'common.status' | translate }}</span>
+                <span class="value">{{ admin()?.status ?? '—' }}</span>
+              </div>
+              <div class="readonly-item">
+                <span class="label">{{ 'settings.lastLogin' | translate }}</span>
+                <span class="value">{{ getLastLoginDisplay() }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Security link -->
+          <section class="settings-section security-section">
+            <a mat-stroked-button [routerLink]="['/settings/change-password']" class="change-password-link">
+              <mat-icon>lock</mat-icon>
+              {{ 'settings.changePassword' | translate }}
+            </a>
+          </section>
+
+          <!-- Submit -->
+          <div class="form-actions">
+            <button
+              mat-flat-button
+              color="primary"
+              type="submit"
+              [disabled]="loading() || profileForm.invalid"
+              class="submit-btn"
+            >
+              @if (loading()) {
+                <mat-spinner diameter="20" color="accent"></mat-spinner>
+              } @else {
+                <ng-container>
+                  <mat-icon>save</mat-icon>
+                  <span>{{ 'common.save' | translate }}</span>
+                </ng-container>
+              }
+            </button>
+          </div>
+        </form>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

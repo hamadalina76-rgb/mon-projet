@@ -135,6 +135,16 @@ export class AdminService {
   }
 
   /**
+   * Récupère l'admin connecté par son userId (auth user id)
+   * GET /admins/by-user/{userId}
+   */
+  getAdminByUserId(userId: number): Observable<Admin> {
+    return this.http.get<AdminResponse>(`${this.apiUrl}/by-user/${userId}`).pipe(
+      map(this.mapAdminResponseToAdmin)
+    );
+  }
+
+  /**
    * Crée un nouvel admin
    */
   createAdmin(admin: Partial<Admin>): Observable<Admin> {

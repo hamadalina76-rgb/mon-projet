@@ -1,11 +1,22 @@
 <!-- Sidebar -->
-<aside class="sidebar" [class.mobile-open]="mobileOpen">
+<aside class="sidebar" [class.mobile-open]="mobileOpen" [class.collapsed]="collapsed">
   <!-- Overlay for mobile -->
   @if (mobileOpen) {
     <div class="sidebar-overlay" (click)="closeMobile.emit()"></div>
   }
 
-  <div class="sidebar-inner">
+  <div class="sidebar-inner" [class.collapsed]="collapsed">
+    <!-- Bouton replier/ouvrir -->
+    <button
+      type="button"
+      class="btn-toggle-sidebar"
+      (click)="onToggle()"
+      [attr.aria-label]="(collapsed ? 'nav.expandSidebar' : 'nav.collapseSidebar') | translate"
+      [matTooltip]="(collapsed ? 'nav.expandSidebar' : 'nav.collapseSidebar') | translate"
+    >
+      <span class="material-icons-round">{{ collapsed ? chevronExpand() : chevronCollapse() }}</span>
+    </button>
+
     <!-- Logo -->
     <div class="sidebar-header">
       <img src="assets/image/speedLineLogo.png" alt="SpeedLine" class="logo" />
