@@ -71,6 +71,10 @@ export class OpeningHoursComponent implements OnInit {
     return this.hoursForm.get('days') as FormArray;
   }
 
+  getSlotsArray(dayIndex: number): FormArray {
+    return this.daysArray.at(dayIndex).get('slots') as FormArray;
+  }
+
   ngOnInit(): void {
     this.initForm();
     this.loadOpeningHours();
@@ -82,8 +86,9 @@ export class OpeningHoursComponent implements OnInit {
       const dayGroup = this.fb.group({
         day: [day.key],
         isOpen: [true],
-        openTime: ['09:00'],
-        closeTime: ['22:00'],
+        slots: this.fb.array([
+          this.fb.group({ openTime: ['09:00'], closeTime: ['22:00'] }),
+        ]),
       });
       this.daysArray.push(dayGroup);
     });
@@ -98,19 +103,25 @@ export class OpeningHoursComponent implements OnInit {
           try {
             const backendHours = JSON.parse(raw) as OpeningHoursBackend[];
             if (Array.isArray(backendHours) && backendHours.length > 0) {
-              // Patcher les contrôles existants (ne jamais clear pour éviter les erreurs de binding)
               this.days.forEach((day, i) => {
                 const backend = backendHours[i] ?? this.backendDefault(day.key);
-                const slot = backend.slots?.[0];
-                const ctrl = this.daysArray.at(i);
-                if (ctrl) {
-                  ctrl.patchValue({
-                    day: day.key,
-                    isOpen: !backend.isClosed,
-                    openTime: slot?.open || '09:00',
-                    closeTime: slot?.close || '22:00',
-                  });
-                }
+                const slotsArray = this.getSlotsArray(i);
+                slotsArray.clear();
+                const slots = backend.slots?.length
+                  ? backend.slots
+                  : [{ open: '09:00', close: '22:00' }];
+                slots.forEach(slot => {
+                  slotsArray.push(
+                    this.fb.group({
+                      openTime: [slot.open || '09:00'],
+                      closeTime: [slot.close || '22:00'],
+                    })
+                  );
+                });
+                this.daysArray.at(i).patchValue({
+                  day: day.key,
+                  isOpen: !backend.isClosed,
+                });
               });
               this.loading.set(false);
               return;
@@ -149,7 +160,10 @@ export class OpeningHoursComponent implements OnInit {
         day: this.days[i].key,
         isClosed: !v.isOpen,
         slots: v.isOpen
-          ? [{ open: v.openTime || '09:00', close: v.closeTime || '22:00' }]
+          ? (v.slots || []).map((s: { openTime: string; closeTime: string }) => ({
+              open: s.openTime || '09:00',
+              close: s.closeTime || '22:00',
+            }))
           : [],
       };
     });
@@ -170,16 +184,33 @@ export class OpeningHoursComponent implements OnInit {
     });
   }
 
+  addSlot(dayIndex: number): void {
+    const slotsArray = this.getSlotsArray(dayIndex);
+    slotsArray.push(this.fb.group({ openTime: ['09:00'], closeTime: ['22:00'] }));
+  }
+
+  removeSlot(dayIndex: number, slotIndex: number): void {
+    const slotsArray = this.getSlotsArray(dayIndex);
+    if (slotsArray.length > 1) {
+      slotsArray.removeAt(slotIndex);
+    }
+  }
+
   copyToAll(index: number): void {
     const source = this.daysArray.at(index).value;
+    const sourceSlots = source.slots || [{ openTime: '09:00', closeTime: '22:00' }];
     this.daysArray.controls.forEach((ctrl, i) => {
-      if (i !== index) {
-        ctrl.patchValue({
-          isOpen: source.isOpen,
-          openTime: source.openTime,
-          closeTime: source.closeTime,
-        });
-      }
+      if (i === index) return;
+      const slotsArray = this.getSlotsArray(i);
+      slotsArray.clear();
+      sourceSlots.forEach((s: { openTime: string; closeTime: string }) => {
+        slotsArray.push(
+          this.fb.group({ openTime: [s.openTime], closeTime: [s.closeTime] })
+        );
+      });
+      ctrl.patchValue({
+        isOpen: source.isOpen,
+      });
     });
   }
 }

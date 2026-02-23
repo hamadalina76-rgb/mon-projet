@@ -12,12 +12,13 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Entité Zone - Zones de livraison
+ * Entité Zone - Zones de livraison.
+ * Table avec préfixe MS et nom en majuscules : ADM_ZONES.
  */
 @Entity
-@Table(name = "zones", indexes = {
-    @Index(name = "idx_zone_name", columnList = "name"),
-    @Index(name = "idx_zone_type", columnList = "type")
+@Table(name = "ADM_ZONES", indexes = {
+    @Index(name = "IDX_ADM_ZONE_NAME", columnList = "name"),
+    @Index(name = "IDX_ADM_ZONE_TYPE", columnList = "type")
 })
 @Data
 @Builder
@@ -34,6 +35,12 @@ public class Zone {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    /**
+     * Ville de la zone
+     */
+    @Column(length = 100)
+    private String city;
 
     /**
      * Type de zone

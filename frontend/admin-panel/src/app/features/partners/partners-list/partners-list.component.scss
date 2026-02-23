@@ -1,585 +1,100 @@
-// Partners List - same design as Admins List
-@use 'sass:color';
+// Partners List - styles spécifiques (partner-info, avatar, status-dot)
+// Le layout, table, pagination viennent de list-page (shared)
 @use '../../../../assets/styles/variables' as v;
 
-$primary: v.$primary-color;
-
-.partners-page {
-  padding: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-// Header
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.btn-back {
-  width: 2.5rem;
-  height: 2.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: white;
-  border: 1px solid v.$gray-200;
-  border-radius: 0.5rem;
-  color: v.$gray-600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
-
-  .material-icons-round {
-    font-size: 1.25rem;
+:host ::ng-deep {
+  .partner-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
-  &:hover {
-    background: v.$gray-50;
-    border-color: v.$gray-300;
-    color: v.$gray-900;
-    transform: translateX(-2px);
-  }
-}
-
-.page-title {
-  font-size: 1.875rem;
-  font-weight: 600;
-  color: v.$gray-900;
-  margin: 0;
-}
-
-// Content Card
-.content-card {
-  background: white;
-  border-radius: 0.75rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-}
-
-// Filters Bar
-.filters-bar {
-  display: flex;
-  gap: 1rem;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.search-box {
-  flex: 1;
-  max-width: 400px;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 1rem;
-  background: #f8fafc;
-  border-radius: 0.5rem;
-  border: 1px solid #e2e8f0;
-
-  .search-icon {
-    color: #94a3b8;
-    font-size: 1.25rem;
-  }
-
-  .search-input {
-    flex: 1;
-    border: none;
-    background: transparent;
-    outline: none;
+  .partner-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
     font-size: 0.875rem;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .partner-avatar-img {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.5rem;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .partner-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .partner-name {
+    font-weight: 500;
     color: #1e293b;
-    font-family: inherit;
+    font-size: 0.875rem;
+  }
 
-    &::placeholder {
-      color: #94a3b8;
+  .partner-secondary {
+    font-size: 0.8125rem;
+    color: #64748b;
+  }
+
+  .col-status {
+    min-width: 6rem;
+    white-space: nowrap;
+  }
+
+  thead th.col-status {
+    min-width: 6rem;
+    visibility: visible;
+    overflow: visible;
+  }
+
+  .col-status .status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: v.$border-radius-full;
+    font-size: 0.75rem;
+    font-weight: 500;
+
+    &.status-active {
+      background: rgba(#10B981, 0.15);
+      color: #10B981;
     }
-  }
-}
-
-.filter-field {
-  width: 180px;
-
-  ::ng-deep {
-    .mat-mdc-form-field-flex {
-      height: 42px;
+    &.status-pending {
+      background: rgba(#F59E0B, 0.15);
+      color: #F59E0B;
     }
-
-    .mat-mdc-text-field-wrapper {
-      background: #f8fafc;
+    &.status-rejected {
+      background: rgba(#94A3B8, 0.2);
+      color: #64748B;
     }
-
-    .mat-mdc-form-field-subscript-wrapper {
-      display: none;
+    &.status-suspended {
+      background: rgba(#EF4444, 0.15);
+      color: #EF4444;
     }
-  }
-}
-
-// Table
-.table-container {
-  min-height: 400px;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-
-  thead {
-    background: #f8fafc;
-
-    th {
-      padding: 0.875rem 1.5rem;
-      text-align: left;
-      font-size: 0.6875rem;
-      font-weight: 600;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      border-bottom: 1px solid #e2e8f0;
+    &.status-closed {
+      background: rgba(#64748B, 0.2);
+      color: #64748B;
     }
-  }
-
-  tbody {
-    tr {
-      border-bottom: 1px solid #f1f5f9;
-      transition: background 0.15s ease;
-
-      &:hover {
-        background: #f8fafc;
-      }
-    }
-
-    td {
-      padding: 1rem 1.5rem;
-      font-size: 0.875rem;
-      color: #475569;
-      vertical-align: middle;
-    }
-  }
-}
-
-// Partner Info Column (same as admin-info)
-.partner-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.partner-avatar {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 0.875rem;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.partner-avatar-img {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.5rem;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.partner-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-
-.partner-name {
-  font-weight: 500;
-  color: #1e293b;
-  font-size: 0.875rem;
-}
-
-.partner-secondary {
-  font-size: 0.8125rem;
-  color: #64748b;
-}
-
-// Type Badge (same as role-badge)
-.type-badge {
-  display: inline-block;
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.375rem;
-  color: white;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-}
-
-// Status
-.col-status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.status-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-}
-
-.status-label {
-  font-size: 0.875rem;
-  color: #475569;
-}
-
-// Actions
-.action-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.action-btn {
-  width: 2rem;
-  height: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: #f1f5f9;
-  border-radius: 0.375rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  color: #64748b;
-
-  .material-icons-round {
-    font-size: 1.125rem;
-  }
-
-  &:hover {
-    background: #e2e8f0;
-    color: #334155;
-  }
-}
-
-// States
-.loading-state,
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  color: #94a3b8;
-
-  .material-icons-round {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-  }
-
-  p {
-    font-size: 0.9375rem;
-    margin: 0;
-  }
-}
-
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-// Pagination
-.pagination {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #e2e8f0;
-  font-size: 0.875rem;
-  color: #64748b;
-}
-
-.pagination-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.items-select {
-  padding: 0.25rem 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.375rem;
-  background: white;
-  font-size: 0.875rem;
-  color: #475569;
-  cursor: pointer;
-  font-family: inherit;
-
-  &:focus {
-    outline: none;
-    border-color: $primary;
-  }
-}
-
-.pagination-controls {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.page-btn {
-  width: 2rem;
-  height: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  border-radius: 0.375rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  color: #64748b;
-
-  .material-icons-round {
-    font-size: 1.25rem;
-  }
-
-  &:hover:not(:disabled) {
-    background: #f1f5f9;
-    color: #334155;
-  }
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
   }
 }
 
 // Dark Mode
-:host-context(html.dark) {
-  .partners-page {
-    color: v.$gray-100;
-  }
-
-  .page-title {
-    color: v.$white;
-  }
-
-  .btn-back {
-    background: v.$gray-800;
-    border-color: v.$gray-700;
-    color: v.$gray-400;
-
-    &:hover {
-      background: v.$gray-700;
-      border-color: v.$gray-600;
-      color: v.$gray-200;
-    }
-  }
-
-  .content-card {
-    background: v.$gray-800;
-  }
-
-  .filters-bar {
-    border-bottom-color: v.$gray-700;
-  }
-
-  .search-box {
-    background: v.$gray-900;
-    border-color: v.$gray-700;
-
-    .search-input {
-      color: v.$gray-100;
-    }
-  }
-
-  .filter-field ::ng-deep .mat-mdc-text-field-wrapper {
-    background: v.$gray-900;
-  }
-
-  .data-table {
-    thead {
-      background: v.$gray-900;
-
-      th {
-        color: v.$gray-400;
-        border-bottom-color: v.$gray-700;
-      }
-    }
-
-    tbody {
-      tr {
-        border-bottom-color: v.$gray-700;
-
-        &:hover {
-          background: v.$gray-700;
-        }
-      }
-
-      td {
-        color: v.$gray-300;
-      }
-    }
-  }
-
+:host-context(html.dark) ::ng-deep {
   .partner-name {
     color: v.$white;
   }
 
   .partner-secondary {
     color: v.$gray-400;
-  }
-
-  .action-btn {
-    background: v.$gray-700;
-    color: v.$gray-400;
-
-    &:hover {
-      background: v.$gray-600;
-      color: v.$gray-100;
-    }
-  }
-
-  .pagination {
-    border-top-color: v.$gray-700;
-    color: v.$gray-400;
-  }
-
-  .items-select {
-    background: v.$gray-700;
-    border-color: v.$gray-600;
-    color: v.$gray-100;
-  }
-
-  .page-btn {
-    color: v.$gray-400;
-
-    &:hover:not(:disabled) {
-      background: v.$gray-700;
-      color: v.$gray-100;
-    }
-  }
-}
-
-// Responsive
-@media (max-width: 1023px) {
-  .partners-page {
-    padding: 1.5rem 1rem;
-  }
-
-  .filters-bar {
-    flex-wrap: wrap;
-    padding: 1rem;
-  }
-
-  .search-box {
-    max-width: 100%;
-    flex: 1 1 100%;
-  }
-
-  .filter-field {
-    flex: 1;
-    min-width: 140px;
-  }
-
-  .table-container {
-    overflow-x: auto;
-  }
-
-  .data-table {
-    min-width: 700px;
-  }
-
-  .page-title {
-    font-size: 1.5rem;
-  }
-}
-
-@media (max-width: 639px) {
-  .partners-page {
-    padding: 1rem 0.75rem;
-  }
-
-  .page-header {
-    flex-wrap: wrap;
-  }
-
-  .header-left {
-    flex: 1;
-    min-width: 200px;
-  }
-
-  .page-title {
-    font-size: 1.25rem;
-  }
-
-  .filters-bar {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .search-box,
-  .filter-field {
-    width: 100%;
-    max-width: 100%;
-  }
-
-  .content-card {
-    border-radius: 0.5rem;
-  }
-
-  .data-table {
-    thead th {
-      padding: 0.75rem 0.75rem;
-      font-size: 0.625rem;
-    }
-
-    tbody td {
-      padding: 0.75rem;
-      font-size: 0.8125rem;
-    }
-  }
-
-  .partner-avatar,
-  .partner-avatar-img {
-    width: 2rem;
-    height: 2rem;
-    font-size: 0.75rem;
-  }
-
-  .partner-name {
-    font-size: 0.8125rem;
-  }
-
-  .partner-secondary {
-    font-size: 0.75rem;
-  }
-
-  .pagination {
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
-  }
-
-  .pagination-info {
-    flex-wrap: wrap;
-    justify-content: center;
   }
 }

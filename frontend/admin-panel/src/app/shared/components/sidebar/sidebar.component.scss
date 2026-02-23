@@ -1,5 +1,6 @@
 $primary: #E31E24;
 $sidebar-width: 16rem;
+$sidebar-collapsed-width: 4rem;
 
 .sidebar {
   width: $sidebar-width;
@@ -8,6 +9,13 @@ $sidebar-width: 16rem;
   top: 0;
   flex-shrink: 0;
   z-index: 40;
+  transition: width 0.25s ease;
+
+  @media (min-width: 1024px) {
+    &.collapsed {
+      width: $sidebar-collapsed-width;
+    }
+  }
 }
 
 .sidebar-overlay {
@@ -15,6 +23,7 @@ $sidebar-width: 16rem;
 }
 
 .sidebar-inner {
+  position: relative;
   width: $sidebar-width;
   height: 100vh;
   background: #fff;
@@ -22,6 +31,77 @@ $sidebar-width: 16rem;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: width 0.25s ease;
+
+  @media (min-width: 1024px) {
+    &.collapsed {
+      width: $sidebar-collapsed-width;
+
+      .sidebar-header .brand-name,
+      .section-label,
+      .nav-label,
+      .theme-label {
+        opacity: 0;
+        visibility: hidden;
+        width: 0;
+        overflow: hidden;
+      }
+
+      .sidebar-header {
+        justify-content: center;
+        padding: 1rem 0.5rem;
+      }
+
+      .nav-item {
+        justify-content: center;
+        padding: 0.5rem;
+      }
+
+      .nav-section {
+        margin-bottom: 0.5rem;
+      }
+
+      .theme-btn {
+        justify-content: center;
+        padding: 0.5rem;
+      }
+    }
+  }
+}
+
+// Bouton replier/ouvrir
+.btn-toggle-sidebar {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  color: #64748b;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.15s ease;
+
+  .material-icons-round {
+    font-size: 1.25rem;
+  }
+
+  &:hover {
+    background: #e2e8f0;
+    color: $primary;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sidebar-inner.collapsed .btn-toggle-sidebar {
+    right: 50%;
+    transform: translateX(50%);
+  }
 }
 
 // Header
@@ -235,6 +315,19 @@ $sidebar-width: 16rem;
   .sidebar-inner {
     border-right: none;
     border-left: 1px solid #e2e8f0;
+  }
+
+  .btn-toggle-sidebar {
+    right: auto;
+    left: 0.75rem;
+  }
+
+  @media (min-width: 1024px) {
+    .sidebar-inner.collapsed .btn-toggle-sidebar {
+      right: auto;
+      left: 50%;
+      transform: translateX(-50%);
+    }
   }
 
   :host-context(html.dark) & {

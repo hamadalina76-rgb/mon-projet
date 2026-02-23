@@ -252,8 +252,8 @@
                   <span class="hours closed">{{ 'profilePages.overviewClosed' | translate }}</span>
                 } @else {
                   <span class="hours">
-                    @for (slot of day.slots; track slot.open + slot.close) {
-                      {{ slot.open }} – {{ slot.close }}
+                    @for (slot of day.slots; track slot.open + slot.close; let last = $last) {
+                      {{ slot.open }} – {{ slot.close }}{{ !last ? ' | ' : '' }}
                     }
                   </span>
                 }

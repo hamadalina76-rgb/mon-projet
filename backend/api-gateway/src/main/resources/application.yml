@@ -29,22 +29,7 @@ spring:
           filters:
             - StripPrefix=1
             - AuthenticationFilter
-
-        # User Service - Direct courier endpoints (without /api prefix)
-        - id: user-service-couriers-direct
-          uri: lb://user-service
-          predicates:
-            - Path=/couriers/**
-          filters:
-            - AuthenticationFilter
-
-        # User Service - Direct courier endpoints (without /api prefix)
-        - id: user-service-couriers-direct
-          uri: lb://user-service
-          predicates:
-            - Path=/couriers/**
-          filters:
-            - AuthenticationFilter
+            - RoleAuthorizationFilter
 
         # User Service - Direct courier endpoints (without /api prefix)
         - id: user-service-couriers-direct
@@ -61,6 +46,7 @@ spring:
             - Path=/api/partners/**, /api/products/**, /api/categories/**
           filters:
             - StripPrefix=1
+            - RoleAuthorizationFilter
 
         # Partner Service - Admin Endpoints
         - id: partner-service-admin
@@ -70,6 +56,7 @@ spring:
           filters:
             - StripPrefix=2
             - AuthenticationFilter
+            - RoleAuthorizationFilter
 
         # Order Service
         - id: order-service

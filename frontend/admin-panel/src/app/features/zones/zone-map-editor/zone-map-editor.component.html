@@ -1,0 +1,373 @@
+<div class="zone-map-editor-layout" [class.font-display]="true">
+  <!-- Left Sidebar: Zones List -->
+  <aside class="sidebar-left glass-panel" [class.collapsed]="sidebarCollapsed()">
+    <button
+      type="button"
+      class="btn-toggle-sidebar"
+      (click)="toggleSidebar()"
+      [attr.aria-label]="(sidebarCollapsed() ? 'zones.editor.expandSidebar' : 'zones.editor.collapseSidebar') | translate"
+      [matTooltip]="(sidebarCollapsed() ? 'zones.editor.expandSidebar' : 'zones.editor.collapseSidebar') | translate"
+    >
+      <span class="material-symbols-outlined">{{ sidebarCollapsed() ? chevronLeftExpand() : chevronLeftCollapse() }}</span>
+    </button>
+    <div class="sidebar-header">
+      <a routerLink="/zones" class="btn-back-to-list" [matTooltip]="'zones.editor.backToList' | translate">
+        <span class="material-symbols-outlined">{{ backIcon }}</span>
+        <span class="btn-back-label">{{ 'zones.editor.backToList' | translate }}</span>
+      </a>
+      <div class="logo-block">
+        <div class="logo-icon">
+          <span class="material-symbols-outlined">map</span>
+        </div>
+        <div>
+          <h1 class="brand-title">{{ 'zones.editor.title' | translate }}</h1>
+          <p class="brand-subtitle">{{ 'zones.editor.subtitle' | translate }}</p>
+        </div>
+      </div>
+      <button class="btn-new-zone" type="button" (click)="createNewZone()">
+        <span class="material-symbols-outlined">add_location_alt</span>
+        {{ 'zones.editor.newZone' | translate }}
+      </button>
+      <div class="search-wrap">
+        <span class="material-symbols-outlined search-icon">search</span>
+        <input
+          class="search-input"
+          type="text"
+          [placeholder]="'zones.editor.searchPlaceholder' | translate"
+          [(ngModel)]="zoneSearch"
+          (ngModelChange)="onSearchChange()"
+        />
+      </div>
+      <div class="filter-active-wrap">
+        <button
+          type="button"
+          class="filter-btn"
+          [class.active]="zoneActiveFilter === 'all'"
+          (click)="setActiveFilter('all')"
+        >
+          {{ 'zones.editor.filterAll' | translate }}
+        </button>
+        <button
+          type="button"
+          class="filter-btn"
+          [class.active]="zoneActiveFilter === 'active'"
+          (click)="setActiveFilter('active')"
+        >
+          {{ 'zones.editor.filterActive' | translate }}
+        </button>
+        <button
+          type="button"
+          class="filter-btn"
+          [class.active]="zoneActiveFilter === 'inactive'"
+          (click)="setActiveFilter('inactive')"
+        >
+          {{ 'zones.editor.filterInactive' | translate }}
+        </button>
+      </div>
+    </div>
+
+    <div class="zones-scroll">
+      @for (zone of getDisplayedZones(); track zone.id) {
+        <div
+          class="zone-card"
+          [class.selected]="selectedZone()?.id === zone.id"
+          [class.inactive]="!zone.isActive"
+          [class.border-primary]="zone.type === ZoneType.PREMIUM"
+          [class.border-standard]="zone.type === ZoneType.DELIVERY || zone.type === ZoneType.EXPRESS"
+          [class.border-restricted]="zone.type === ZoneType.RESTRICTED"
+          [class.collapsed]="!isZoneCardExpanded(zone)"
+          (click)="selectZone(zone)"
+        >
+          <div class="zone-card-header">
+            <h3 class="zone-name">{{ zone.name }}</h3>
+            <div class="zone-card-actions">
+              <button
+                type="button"
+                class="btn-expand"
+                (click)="toggleZoneCardExpand($event, zone)"
+                [attr.aria-label]="(isZoneCardExpanded(zone) ? 'zones.editor.collapse' : 'zones.editor.expand') | translate"
+                [matTooltip]="(isZoneCardExpanded(zone) ? 'zones.editor.collapse' : 'zones.editor.expand') | translate"
+              >
+                <span class="material-symbols-outlined">{{ isZoneCardExpanded(zone) ? 'expand_less' : 'expand_more' }}</span>
+              </button>
+              <button
+                type="button"
+                class="toggle-btn"
+                [class.active]="zone.isActive"
+                [class.inactive]="!zone.isActive"
+                (click)="toggleZoneActive($event, zone)"
+              >
+                <span class="toggle-dot"></span>
+              </button>
+            </div>
+          </div>
+          @if (isZoneCardExpanded(zone)) {
+            <p class="zone-city">{{ zone.city || '-' }}</p>
+            <div class="zone-footer">
+              <span
+                class="fee-badge"
+                [class.badge-primary]="zone.type === ZoneType.PREMIUM"
+                [class.badge-standard]="zone.type === ZoneType.DELIVERY || zone.type === ZoneType.EXPRESS"
+                [class.badge-restricted]="zone.type === ZoneType.RESTRICTED"
+              >
+                {{ (zone.deliveryFee ?? 0) | number:'1.3-3' }} TND
+              </span>
+              <span class="type-label">{{ getZoneTypeLabel(zone.type) }}</span>
+              <button
+                type="button"
+                class="btn-delete-zone"
+                (click)="onDeleteZone($event, zone)"
+                [matTooltip]="'zones.editor.deleteZone' | translate"
+              >
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </aside>
+
+  <!-- Map Area (center, flex grow) -->
+  <div class="map-area">
+    <div class="map-backdrop">
+      <div #mapContainer class="map-container"></div>
+      <div class="map-overlay"></div>
+      @if (drawingMode()) {
+        <div class="drawing-hint">
+          <span class="material-symbols-outlined">touch_app</span>
+          <span>
+            @if (selectedZone()) {
+              {{ 'zones.editor.drawingHintEdit' | translate }}
+            } @else {
+              {{ 'zones.editor.drawingHint' | translate }}
+            }
+          </span>
+        </div>
+      }
+    </div>
+
+    <!-- Floating UI: Search Bar, Legend, Tools -->
+  <div class="floating-ui">
+    <!-- Top Search Bar -->
+    <div class="top-search-wrap">
+      <div class="top-search-bar">
+        <span class="material-symbols-outlined">location_on</span>
+        <input
+          type="text"
+          class="top-search-input"
+          [placeholder]="'zones.editor.searchAddress' | translate"
+          [(ngModel)]="geocodeQuery"
+          (keydown.enter)="onGeocodeSearch()"
+          [attr.dir]="isRtl() ? 'auto' : 'ltr'"
+        />
+        <button type="button" class="btn-geolocate" (click)="onGeolocate()" [matTooltip]="'zones.editor.myLocation' | translate">
+          <span class="material-symbols-outlined">my_location</span>
+        </button>
+        <div class="search-divider"></div>
+        <button type="button" class="btn-search-submit" (click)="onGeocodeSearch()">{{ 'zones.editor.search' | translate }}</button>
+      </div>
+    </div>
+
+    <!-- Bottom Left: Legend -->
+    <div class="legend-panel glass-panel">
+      <h4 class="legend-title">{{ 'zones.editor.mapLegend' | translate }}</h4>
+      <div class="legend-items">
+        <div class="legend-item">
+          <span class="legend-dot dot-standard"></span>
+          <span>{{ 'zones.editor.standardZone' | translate }}</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot dot-primary"></span>
+          <span>{{ 'zones.editor.premiumZone' | translate }}</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot dot-restricted"></span>
+          <span>{{ 'zones.editor.restrictedZone' | translate }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Drawing Tools -->
+    <div class="tools-panel">
+      <div class="tools-group">
+        <button
+          type="button"
+          class="tool-btn"
+          [class.active]="drawingMode()"
+          (click)="toggleDrawingMode()"
+          [matTooltip]="'zones.editor.drawMode' | translate"
+        >
+          <span class="material-symbols-outlined">polyline</span>
+        </button>
+        <button
+          type="button"
+          class="tool-btn"
+          [disabled]="polygonCoordinates().length === 0"
+          (click)="removeLastPoint()"
+          [matTooltip]="'zones.editor.undoPoint' | translate"
+        >
+          <span class="material-symbols-outlined">undo</span>
+        </button>
+        <button type="button" class="tool-btn" (click)="clearPolygon()" [matTooltip]="'zones.editor.clearPolygon' | translate">
+          <span class="material-symbols-outlined">delete</span>
+        </button>
+      </div>
+      <div class="tools-group">
+        <button type="button" class="tool-btn" (click)="mapboxService.zoomIn()" [matTooltip]="'zones.editor.zoomIn' | translate">
+          <span class="material-symbols-outlined">add</span>
+        </button>
+        <button type="button" class="tool-btn" (click)="mapboxService.zoomOut()" [matTooltip]="'zones.editor.zoomOut' | translate">
+          <span class="material-symbols-outlined">remove</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  </div>
+  <!-- end map-area -->
+
+  <!-- Right Panel: Zone Details -->
+  <aside class="sidebar-right glass-panel" [class.collapsed]="rightSidebarCollapsed()">
+    <button
+      type="button"
+      class="btn-toggle-sidebar-right"
+      (click)="toggleRightSidebar()"
+      [attr.aria-label]="(rightSidebarCollapsed() ? 'zones.editor.expandRightPanel' : 'zones.editor.collapseRightPanel') | translate"
+      [matTooltip]="(rightSidebarCollapsed() ? 'zones.editor.expandRightPanel' : 'zones.editor.collapseRightPanel') | translate"
+    >
+      <span class="material-symbols-outlined">{{ rightSidebarCollapsed() ? chevronRightExpand() : chevronRightCollapse() }}</span>
+    </button>
+    <div class="panel-header">
+      <h2 class="panel-title">{{ 'zones.editor.zoneDetails' | translate }}</h2>
+    </div>
+    <p class="panel-subtitle">{{ 'zones.editor.editBoundary' | translate }}</p>
+
+    <div class="panel-actions-top">
+      <button
+        type="button"
+        class="btn-save"
+        (click)="onSubmit()"
+        [disabled]="zoneForm.invalid || saving() || polygonCoordinates().length < 3"
+        [matTooltip]="'zones.editor.saveZone' | translate"
+      >
+        @if (saving()) {
+          <span class="spinner"></span>
+        } @else {
+          <span class="material-symbols-outlined">save</span>
+          {{ 'zones.editor.saveChanges' | translate }}
+        }
+      </button>
+      @if (selectedZone()) {
+        <button
+          type="button"
+          class="btn-delete"
+          (click)="onDeleteZone($event, selectedZone()!)"
+          [matTooltip]="'zones.editor.deleteZone' | translate"
+        >
+          <span class="material-symbols-outlined">delete</span>
+        </button>
+      }
+      <button type="button" class="btn-cancel" (click)="onClosePanel()">{{ 'zones.editor.cancel' | translate }}</button>
+    </div>
+
+    <div class="panel-content">
+      @if (overlapWarning()) {
+        <div class="overlap-warning">
+          <span class="material-symbols-outlined">warning</span>
+          <div>
+            <p class="warning-title">{{ 'zones.editor.potentialOverlap' | translate }}</p>
+            <p class="warning-text">{{ overlapWarning() }}</p>
+          </div>
+        </div>
+      }
+
+      @if (validationError()) {
+        <div class="validation-error">
+          <span class="material-symbols-outlined">error</span>
+          {{ validationError() }}
+        </div>
+      }
+
+      <form [formGroup]="zoneForm" (ngSubmit)="onSubmit()" class="zone-form">
+        <div class="form-group">
+          <label>{{ 'zones.editor.zoneNameLabel' | translate }}</label>
+          <input type="text" formControlName="name" class="form-input" />
+          @if (nameExistsError()) {
+            <span class="field-error">{{ 'zones.editor.nameUnique' | translate }}</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label>{{ 'zones.editor.cityLabel' | translate }}</label>
+          <select formControlName="city" class="form-select">
+            @for (ville of tunisianCities; track ville) {
+              <option [value]="ville">{{ ville }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>{{ 'zones.editor.zoneType' | translate }}</label>
+          <div class="type-buttons">
+            <button
+              type="button"
+              class="type-btn"
+              [class.selected]="zoneForm.get('type')?.value === ZoneType.DELIVERY"
+              (click)="zoneForm.patchValue({ type: ZoneType.DELIVERY })"
+            >
+              <span class="material-symbols-outlined">room_service</span>
+              {{ 'zones.editor.standard' | translate }}
+            </button>
+            <button
+              type="button"
+              class="type-btn"
+              [class.selected]="zoneForm.get('type')?.value === ZoneType.PREMIUM"
+              (click)="zoneForm.patchValue({ type: ZoneType.PREMIUM })"
+            >
+              <span class="material-symbols-outlined">diamond</span>
+              {{ 'zones.editor.premium' | translate }}
+            </button>
+            <button
+              type="button"
+              class="type-btn"
+              [class.selected]="zoneForm.get('type')?.value === ZoneType.RESTRICTED"
+              (click)="zoneForm.patchValue({ type: ZoneType.RESTRICTED })"
+            >
+              <span class="material-symbols-outlined">block</span>
+              {{ 'zones.editor.restricted' | translate }}
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>{{ 'zones.editor.baseFee' | translate }}</label>
+          <div class="fee-input-wrap">
+            <input
+              type="number"
+              formControlName="deliveryFee"
+              class="form-input fee-input"
+              step="0.500"
+            />
+            <span class="fee-suffix">TND</span>
+          </div>
+        </div>
+
+        @if (zoneAreaKm2() > 0 || polygonCoordinates().length >= 3) {
+          <div class="zone-stats">
+            <h4>{{ 'zones.editor.zoneStats' | translate }}</h4>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <p class="stat-label">{{ 'zones.editor.surfaceArea' | translate }}</p>
+                <p class="stat-value">{{ zoneAreaKm2() | number:'1.1-2' }} km²</p>
+              </div>
+              <div class="stat-card">
+                <p class="stat-label">{{ 'zones.editor.points' | translate }}</p>
+                <p class="stat-value">{{ polygonCoordinates().length }}</p>
+              </div>
+            </div>
+          </div>
+        }
+      </form>
+    </div>
+  </aside>
+</div>

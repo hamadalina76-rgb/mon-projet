@@ -13,9 +13,14 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialog } from '@angular/material/dialog';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ToastrService } from 'ngx-toastr';
 import { AuthService } from '@core/services/auth.service';
+import {
+  ConfirmationDialogComponent,
+  ConfirmationDialogData,
+} from '@shared/components/confirmation-dialog/confirmation-dialog.component';
 
 @Component({
   selector: 'app-change-password',
@@ -39,6 +44,7 @@ export class ChangePasswordComponent {
   private authService = inject(AuthService);
   private toastr = inject(ToastrService);
   private translate = inject(TranslateService);
+  private dialog = inject(MatDialog);
 
   changePasswordForm: FormGroup = this.fb.group({
     currentPassword: ['', [Validators.required]],
@@ -75,11 +81,16 @@ export class ChangePasswordComponent {
       .subscribe({
         next: () => {
           this.loading = false;
-          this.toastr.success(
-            this.translate.instant('settings.passwordChangedSuccess'),
-            this.translate.instant('common.confirm'),
-          );
           this.changePasswordForm.reset();
+          this.dialog.open(ConfirmationDialogComponent, {
+            data: {
+              type: 'success',
+              title: this.translate.instant('common.confirm'),
+              message: this.translate.instant('settings.passwordChangedSuccess'),
+              confirmLabel: 'common.confirm',
+            } as ConfirmationDialogData,
+            width: '400px',
+          });
         },
         error: (err) => {
           this.loading = false;

@@ -15,6 +15,13 @@ export interface OpeningHours {
   }[];
 }
 
+/** Exception d'horaires : jour férié ou fermeture exceptionnelle */
+export interface ScheduleException {
+  date: string; // YYYY-MM-DD
+  label?: string;
+  type: 'CLOSED';
+}
+
 export interface Documents {
   kbis?: File | string;
   idCard?: File | string;
@@ -208,5 +215,6 @@ export interface PartnerProfileDto {
   tags?: string[];
   categoryIds?: number[];
   openingHoursDisplay?: string;
+  scheduleExceptionsDisplay?: string; // JSON: ScheduleException[]
   createdAt?: string;
 }

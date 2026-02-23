@@ -1,0 +1,94 @@
+<div class="list-page">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      @if (showBackButton) {
+        <button class="btn-back" [routerLink]="backLink">
+          <span class="material-icons-round">arrow_back</span>
+        </button>
+      }
+      <h1 class="page-title">{{ title | translate }}</h1>
+    </div>
+    <div class="header-right">
+      <ng-content select="[headerAction]"></ng-content>
+    </div>
+  </div>
+
+  <!-- Content Card -->
+  <div class="content-card">
+    <!-- Filters Bar (optional) -->
+    <ng-content select="[filters]"></ng-content>
+
+    <!-- Table Container -->
+    <div class="table-container">
+      @if (loading) {
+        <div class="loading-state">
+          <span class="material-icons-round spin">refresh</span>
+          <p>{{ 'common.loading' | translate }}</p>
+        </div>
+      } @else if (empty) {
+        <div class="empty-state">
+          <span class="material-icons-round">{{ emptyIcon }}</span>
+          <p>{{ emptyMessage | translate }}</p>
+          <ng-content select="[emptyAction]"></ng-content>
+        </div>
+      } @else {
+        <ng-content select="[table]"></ng-content>
+      }
+    </div>
+
+    <!-- Pagination -->
+    @if (showPagination && totalItems > 0 && !loading) {
+      <div class="pagination">
+        <div class="pagination-info">
+          <span>{{ itemsPerPageLabel | translate }}:</span>
+          <select
+            [value]="itemsPerPage"
+            (change)="onItemsPerPageChange(+$any($event.target).value)"
+            class="items-select"
+          >
+            @for (opt of itemsPerPageOptions; track opt) {
+              <option [value]="opt">{{ opt }}</option>
+            }
+          </select>
+          <span class="page-range">
+            {{ (currentPage - 1) * itemsPerPage + 1 }} -
+            {{ Math.min(currentPage * itemsPerPage, totalItems) }}
+            {{ ofLabel | translate }} {{ totalItems }}
+          </span>
+        </div>
+
+        <div class="pagination-controls">
+          <button
+            class="page-btn"
+            (click)="goToFirstPage()"
+            [disabled]="currentPage === 1"
+          >
+            <span class="material-icons-round">first_page</span>
+          </button>
+          <button
+            class="page-btn"
+            (click)="previousPage()"
+            [disabled]="currentPage === 1"
+          >
+            <span class="material-icons-round">chevron_left</span>
+          </button>
+          <button
+            class="page-btn"
+            (click)="nextPage()"
+            [disabled]="currentPage === totalPages"
+          >
+            <span class="material-icons-round">chevron_right</span>
+          </button>
+          <button
+            class="page-btn"
+            (click)="goToLastPage()"
+            [disabled]="currentPage === totalPages"
+          >
+            <span class="material-icons-round">last_page</span>
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

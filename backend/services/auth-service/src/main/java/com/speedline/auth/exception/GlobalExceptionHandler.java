@@ -81,12 +81,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccountStatusException.class)
     public ResponseEntity<Map<String, Object>> handleAccountStatusException(AccountStatusException ex) {
-        log.warn("Account status exception: {}", ex.getMessage());
+        log.warn("Account status exception: {} - {}", ex.getCode(), ex.getMessage());
         
         Map<String, Object> response = new HashMap<>();
         response.put("timestamp", LocalDateTime.now());
         response.put("status", HttpStatus.FORBIDDEN.value());
         response.put("error", "Forbidden");
+        response.put("code", ex.getCode());
         response.put("message", ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);

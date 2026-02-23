@@ -2,7 +2,9 @@
   <!-- Sidebar -->
   <app-sidebar
     [mobileOpen]="sidebarMobileOpen()"
+    [collapsed]="sidebarCollapsed()"
     (closeMobile)="closeMobileSidebar()"
+    (toggle)="onSidebarToggle()"
   ></app-sidebar>
 
   <!-- Main Area -->

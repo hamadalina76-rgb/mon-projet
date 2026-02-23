@@ -10,6 +10,7 @@ import {
   LoginResponse,
   ForgotPasswordRequest,
   ResetPasswordRequest,
+  ProfileResponse,
 } from '@core/models/user.model';
 import { AdminRole, ROLE_PERMISSIONS, Permission } from '@core/models/role.model';
 import { environment } from '@environments/environment';
@@ -18,6 +19,9 @@ const TOKEN_KEY = 'admin_token';
 const REFRESH_TOKEN_KEY = 'admin_refresh_token';
 const USER_KEY = 'admin_user';
 const REMEMBER_KEY = 'admin_remember';
+
+/** Rôles autorisés pour le panneau admin (exclut PARTNER, CUSTOMER, COURIER, etc.) */
+const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'FINANCE_ADMIN', 'SUPPORT_ADMIN', 'CONTENT_MODERATOR'];
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -44,7 +48,6 @@ export class AuthService {
   }
 
   private loadStoredUser(): void {
-    // Try localStorage first, then sessionStorage
     const userData =
       localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY);
     const token =
@@ -53,6 +56,11 @@ export class AuthService {
     if (userData && token) {
       try {
         const user: AdminUser = JSON.parse(userData);
+        const role = user?.role;
+        if (!role || !ADMIN_ROLES.includes(role)) {
+          this.clearStorage();
+          return;
+        }
         this.currentUserSignal.set(user);
       } catch {
         this.clearStorage();
@@ -201,6 +209,24 @@ export class AuthService {
       headers: {
         'X-User-Email': email
       }
+    });
+  }
+
+  /**
+   * GET /api/v1/auth/profile - returns current user profile (firstName, lastName, phoneNumber, etc.)
+   */
+  getProfile(): Observable<ProfileResponse> {
+    return this.apiService.get<ProfileResponse>('auth/profile');
+  }
+
+  /**
+   * PUT /api/v1/auth/profile - update firstName, lastName, phoneNumber
+   */
+  updateProfile(firstName: string, lastName: string, phoneNumber?: string): Observable<ProfileResponse> {
+    return this.apiService.put<ProfileResponse>('auth/profile', {
+      firstName,
+      lastName,
+      phoneNumber: phoneNumber ?? ''
     });
   }
 

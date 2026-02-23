@@ -17,6 +17,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { ToastrService } from 'ngx-toastr';
 import { PartnersService } from '../services/partners.service';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '@shared/components/confirmation-dialog/confirmation-dialog.component';
+import { ListPageComponent } from '@shared/components/list-page/list-page.component';
 
 @Component({
   selector: 'app-partners-list',
@@ -33,6 +34,7 @@ import { ConfirmationDialogComponent, ConfirmationDialogData } from '@shared/com
     MatMenuModule,
     MatTooltipModule,
     TranslateModule,
+    ListPageComponent,
   ],
   templateUrl: './partners-list.component.html',
   styleUrls: ['./partners-list.component.scss'],
@@ -170,27 +172,9 @@ export class PartnersListComponent implements OnInit, OnDestroy {
       .substring(0, 2);
   }
 
-  previousPage(): void {
-    if (this.currentPage > 1) {
-      this.currentPage--;
-      this.loadPartners();
-    }
-  }
-
-  nextPage(): void {
-    if (this.currentPage < this.totalPages) {
-      this.currentPage++;
-      this.loadPartners();
-    }
-  }
-
-  goToFirstPage(): void {
-    this.currentPage = 1;
-    this.loadPartners();
-  }
-
-  goToLastPage(): void {
-    this.currentPage = this.totalPages;
+  onPageChange(event: { page: number; pageSize: number }): void {
+    this.currentPage = event.page;
+    this.itemsPerPage = event.pageSize;
     this.loadPartners();
   }
 

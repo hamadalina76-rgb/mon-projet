@@ -2,7 +2,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { ApiService } from './api.service';
-import { PartnerProfileDto } from '@core/models/partner.model';
+import { PartnerProfileDto, ScheduleException } from '@core/models/partner.model';
 
 export interface PartnerRegistrationRequest {
   // Step 1: Account & Business Info
@@ -153,5 +153,15 @@ export class PartnerService {
    */
   updatePartner(id: number, data: any): Observable<any> {
     return this.apiService.put(`partners/${id}`, data);
+  }
+
+  /**
+   * Update schedule exceptions (jours fériés, fermetures exceptionnelles)
+   * PUT /api/partners/{id}/complete-profile with scheduleExceptionsJson only
+   */
+  updateScheduleExceptions(partnerId: number, exceptions: ScheduleException[]): Observable<any> {
+    return this.apiService.put(`partners/${partnerId}/complete-profile`, {
+      scheduleExceptionsJson: JSON.stringify(exceptions),
+    });
   }
 }

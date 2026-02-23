@@ -11,8 +11,10 @@ export interface ConfirmationDialogData {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  type?: 'info' | 'warning' | 'danger';
+  type?: 'info' | 'warning' | 'danger' | 'success';
   icon?: string;
+  /** When true or type is 'success', only the confirm button is shown (no cancel). */
+  successOnly?: boolean;
 }
 
 @Component({
@@ -29,9 +31,11 @@ export interface ConfirmationDialogData {
         <p>{{ data.message | translate }}</p>
       </mat-dialog-content>
       <mat-dialog-actions align="end">
-        <button mat-button (click)="onCancel()">
-          {{ (data.cancelLabel || 'common.cancel') | translate }}
-        </button>
+        @if (!isSuccessOnly()) {
+          <button mat-button (click)="onCancel()">
+            {{ (data.cancelLabel || 'common.cancel') | translate }}
+          </button>
+        }
         <button
           mat-flat-button
           [color]="getButtonColor()"
@@ -80,6 +84,11 @@ export interface ConfirmationDialogData {
         color: #ef4444;
       }
 
+      [data-type='success'] .dialog-icon {
+        background: rgba(34, 197, 94, 0.1);
+        color: #22c55e;
+      }
+
       h2 {
         margin: 0 0 0.5rem;
       }
@@ -102,19 +111,27 @@ export class ConfirmationDialogComponent {
     @Inject(MAT_DIALOG_DATA) public data: ConfirmationDialogData
   ) {}
 
+  isSuccessOnly(): boolean {
+    return this.data.type === 'success' || this.data.successOnly === true;
+  }
+
   getDefaultIcon(): string {
     switch (this.data.type) {
       case 'warning':
         return 'warning';
       case 'danger':
         return 'error';
+      case 'success':
+        return 'check_circle';
       default:
         return 'help';
     }
   }
 
   getButtonColor(): 'primary' | 'accent' | 'warn' {
-    return this.data.type === 'danger' ? 'warn' : 'primary';
+    if (this.data.type === 'danger') return 'warn';
+    if (this.data.type === 'success') return 'primary';
+    return 'primary';
   }
 
   onConfirm(): void {

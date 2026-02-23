@@ -28,6 +28,7 @@ export class AdminLayoutComponent {
 
   isLoading = this.loadingService.isLoading;
   sidebarMobileOpen = signal(false);
+  sidebarCollapsed = signal(false);
 
   constructor() {
     this.inactivityService.start();
@@ -39,5 +40,10 @@ export class AdminLayoutComponent {
 
   closeMobileSidebar(): void {
     this.sidebarMobileOpen.set(false);
+  }
+
+  onSidebarToggle(): void {
+    this.closeMobileSidebar();
+    this.sidebarCollapsed.update((v) => !v);
   }
 }

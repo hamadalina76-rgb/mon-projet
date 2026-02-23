@@ -17,6 +17,20 @@ export const ZONES_ROUTES: Routes = [
       ),
   },
   {
+    path: 'map-editor',
+    loadComponent: () =>
+      import('./zone-map-editor/zone-map-editor.component').then(
+        (m) => m.ZoneMapEditorComponent
+      ),
+  },
+  {
+    path: ':id/map-edit',
+    loadComponent: () =>
+      import('./zone-map-editor/zone-map-editor.component').then(
+        (m) => m.ZoneMapEditorComponent
+      ),
+  },
+  {
     path: ':id/edit',
     loadComponent: () =>
       import('./zone-editor/zone-editor.component').then(

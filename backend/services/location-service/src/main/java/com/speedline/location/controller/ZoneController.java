@@ -1,17 +1,203 @@
 package com.speedline.location.controller;
 
+import com.speedline.location.domain.Zone;
+import com.speedline.location.dto.*;
+import com.speedline.location.service.ZoneService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 
 /**
  * REST Controller pour Zone
- * 
- * Endpoints:
- * GET    /zones - Liste zones
- * POST   /zones - Créer zone
- * GET    /zones/{id}/contains - Vérifier si point dans zone
  */
 @RestController
 @RequestMapping("/zones")
+@RequiredArgsConstructor
+@Slf4j
 public class ZoneController {
-    // TODO: Implémenter
+
+    private final ZoneService zoneService;
+
+    /**
+     * Liste paginée des zones (optionnel: filtre par nom/ville et par statut actif/inactif)
+     */
+    @GetMapping
+    public ResponseEntity<Page<ZoneDTO>> getAllZones(
+            @PageableDefault(size = 20, sort = {"isActive", "updatedAt"}, direction = Sort.Direction.DESC) Pageable pageable,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean isActive) {
+        log.debug("Récupération des zones paginées, search={}, isActive={}", search, isActive);
+        return ResponseEntity.ok(zoneService.getAllZones(pageable, search, isActive));
+    }
+
+    /**
+     * Liste des zones actives
+     */
+    @GetMapping("/active")
+    public ResponseEntity<List<ZoneDTO>> getActiveZones() {
+        log.debug("Récupération de toutes les zones actives");
+        return ResponseEntity.ok(zoneService.getActiveZones());
+    }
+
+    /**
+     * Zones par type
+     */
+    @GetMapping("/type/{type}")
+    public ResponseEntity<List<ZoneDTO>> getZonesByType(
+            @PathVariable Zone.ZoneType type) {
+        log.debug("Récupération des zones par type: {}", type);
+        return ResponseEntity.ok(zoneService.getZonesByType(type));
+    }
+
+    /**
+     * Détails d'une zone
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<ZoneDTO> getZoneById(@PathVariable Long id) {
+        log.debug("Récupération de la zone ID: {}", id);
+        return ResponseEntity.ok(zoneService.getZoneById(id));
+    }
+
+    /**
+     * Créer une nouvelle zone
+     */
+    @PostMapping
+    public ResponseEntity<ZoneDTO> createZone(@Valid @RequestBody ZoneCreateRequest request) {
+        log.info("Création d'une nouvelle zone: {}", request.getName());
+        ZoneDTO zone = zoneService.createZone(
+                request.getName(),
+                request.getDescription(),
+                request.getCity(),
+                request.getType(),
+                request.getBoundaryJson(),
+                request.getDeliveryFee(),
+                request.getMinDeliveryTime(),
+                request.getMaxDeliveryTime()
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(zone);
+    }
+
+    /**
+     * Mettre à jour une zone
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<ZoneDTO> updateZone(
+            @PathVariable Long id,
+            @Valid @RequestBody ZoneUpdateRequest request) {
+        log.info("Mise à jour de la zone ID: {}", id);
+        ZoneDTO zone = zoneService.updateZone(
+                id,
+                request.getName(),
+                request.getDescription(),
+                request.getDeliveryFee(),
+                request.getBoundaryJson()
+        );
+        return ResponseEntity.ok(zone);
+    }
+
+    /**
+     * Activer/Désactiver une zone
+     */
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ZoneDTO> setActiveStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, Boolean> request) {
+        Boolean isActive = request.get("isActive");
+        if (isActive == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        log.info("Changement du statut de la zone ID: {} -> {}", id, isActive);
+        return ResponseEntity.ok(zoneService.setActiveStatus(id, isActive));
+    }
+
+    /**
+     * Supprimer une zone
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteZone(@PathVariable Long id) {
+        log.info("Suppression de la zone ID: {}", id);
+        zoneService.deleteZone(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Vérifier si un point est dans une zone
+     */
+    @GetMapping("/{id}/contains")
+    public ResponseEntity<Map<String, Boolean>> isPointInZone(
+            @PathVariable Long id,
+            @RequestParam BigDecimal latitude,
+            @RequestParam BigDecimal longitude) {
+        log.debug("Vérification si le point est dans la zone ID: {}", id);
+        boolean contains = zoneService.isPointInZone(id, latitude, longitude);
+        return ResponseEntity.ok(Map.of("contains", contains));
+    }
+
+    /**
+     * Trouver la zone pour un point
+     */
+    @GetMapping("/find")
+    public ResponseEntity<ZoneDTO> findZoneForPoint(
+            @RequestParam BigDecimal latitude,
+            @RequestParam BigDecimal longitude) {
+        log.debug("Recherche de zone pour le point: lat={}, lon={}", latitude, longitude);
+        ZoneDTO zone = zoneService.findZoneForPoint(latitude, longitude);
+        if (zone == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(zone);
+    }
+
+    /**
+     * Obtenir les frais de livraison pour un point
+     */
+    @GetMapping("/delivery-fee")
+    public ResponseEntity<Map<String, BigDecimal>> getDeliveryFeeForPoint(
+            @RequestParam BigDecimal latitude,
+            @RequestParam BigDecimal longitude) {
+        log.debug("Récupération des frais de livraison pour le point: lat={}, lon={}", latitude, longitude);
+        BigDecimal fee = zoneService.getDeliveryFeeForPoint(latitude, longitude);
+        if (fee == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(Map.of("deliveryFee", fee));
+    }
+
+    /**
+     * Exporter toutes les zones en GeoJSON (sans pagination)
+     */
+    @GetMapping(value = "/export", produces = "application/geo+json")
+    public ResponseEntity<String> exportZones() {
+        log.info("Export GeoJSON de toutes les zones");
+        String geojson = zoneService.exportZonesAsGeoJson();
+        String filename = "zones-" + LocalDate.now() + ".geojson";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("application/geo+json"))
+                .body(geojson);
+    }
+
+    /**
+     * Importer des zones depuis un GeoJSON FeatureCollection
+     */
+    @PostMapping(value = "/import", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<Map<String, Integer>> importZones(@RequestBody String geojson) {
+        log.info("Import GeoJSON de zones");
+        Map<String, Integer> result = zoneService.importZonesFromGeoJson(geojson);
+        return ResponseEntity.ok(result);
+    }
 }

@@ -1,0 +1,206 @@
+.profile-container {
+  max-width: 640px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.profile-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+
+  mat-card-header {
+    padding: 1.5rem 1.5rem 0;
+
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #111827;
+
+      mat-icon {
+        color: #e31e24;
+      }
+    }
+
+    mat-card-subtitle {
+      margin-top: 0.5rem;
+      color: #6b7280;
+      font-size: 0.875rem;
+    }
+  }
+
+  mat-card-content {
+    padding: 1.5rem;
+  }
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  color: #6b7280;
+
+  p {
+    margin: 0;
+    font-size: 0.875rem;
+  }
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
+  .full-width {
+    width: 100%;
+  }
+
+  mat-form-field {
+    mat-icon {
+      color: #9ca3af;
+    }
+  }
+}
+
+.settings-section {
+  h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+  }
+}
+
+.identity-section {
+  .avatar-row {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .avatar-block {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .avatar-initials {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #6b7280;
+  }
+
+  .form-fields {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+.account-section {
+  .readonly-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .readonly-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    .label {
+      min-width: 140px;
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+
+    .value {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #111827;
+    }
+  }
+}
+
+.security-section {
+  .change-password-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+
+  .submit-btn {
+    height: 42px;
+    padding: 0 2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #e31e24 !important;
+    color: #fff !important;
+
+    &:hover:not(:disabled) {
+      background: #b91c1c !important;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    mat-spinner {
+      margin-right: 0.25rem;
+    }
+  }
+}
+
+.dark {
+  .profile-card {
+    background: #1f2937;
+    border-color: #374151;
+
+    mat-card-title {
+      color: #f9fafb;
+    }
+
+    mat-card-subtitle {
+      color: #9ca3af;
+    }
+  }
+
+  .settings-section h3 {
+    color: #e5e7eb;
+  }
+
+  .account-section .readonly-item .value {
+    color: #f9fafb;
+  }
+}

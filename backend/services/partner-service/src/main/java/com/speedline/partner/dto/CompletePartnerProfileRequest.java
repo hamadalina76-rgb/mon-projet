@@ -53,6 +53,7 @@ public class CompletePartnerProfileRequest {
     private BigDecimal minimumOrder;
     private Boolean noMinimum;
     private String openingHoursJson; // JSON string
+    private String scheduleExceptionsJson; // JSON: [{"date":"YYYY-MM-DD","label":"...","type":"CLOSED"}]
     
     // ======== Presentation ========
     private String shortDescription;
