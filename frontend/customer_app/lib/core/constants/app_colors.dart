@@ -6,7 +6,8 @@ class AppColors {
   // Couleurs principales
   static const Color primary = Color(0xFFE63946); // Rouge SpeedLine
   static const Color primaryDark = Color(0xFFD32F2F);
-  static const Color secondary = Color(0xFF2196F3); // Bleu pour Facebook
+  static const Color secondaryDark = Color.fromARGB(255, 222, 86, 86);
+  static const Color secondary = Color.fromARGB(255, 242, 130, 130); 
   
   // Backgrounds
   static const Color background = Color(0xFFF8F7F7); // Gris très clair rosé

@@ -1,51 +1,518 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/utils/responsive_utils.dart';
 import '../../../../core/localization/app_localizations.dart';
 
 /// Explore Screen
 /// Main screen for browsing restaurants and food options
-class ExploreScreen extends StatelessWidget {
+class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
 
   @override
+  State<ExploreScreen> createState() => _ExploreScreenState();
+}
+
+class _ExploreScreenState extends State<ExploreScreen> {
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.translate('explore')),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
+    
+    // Set status bar color
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: AppColors.primary,
+        statusBarIconBrightness: Brightness.light,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.explore_outlined,
-              size: 80,
-              color: AppColors.textSecondary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              l10n.translate('explore'),
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+    );
+    
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Red gradient background section with location and categories
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          AppColors.primary,
+                          AppColors.secondaryDark,
+                          AppColors.secondary,
+                        ],
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.all(
+                            ResponsiveUtils.getResponsiveSpacing(context, AppConstants.horizontalPadding),
+                          ),
+                          child: Column(
+                            children: [
+                              SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+                              Center(child: _LocationHeader(l10n: l10n)),
+                              SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 14)),
+                              _CategoriesSection(l10n: l10n),
+                              SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 5)),
+                            ],
+                          ),
+                        ),
+                        // Wavy bottom edge
+                        CustomPaint(
+                          painter: _WavePainter(),
+                          size: Size(
+                            MediaQuery.of(context).size.width,
+                            ResponsiveUtils.getResponsiveSize(context, 30),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.translate('coming_soon'),
-              style: const TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary,
+              
+              SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+              
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: ResponsiveUtils.getResponsiveSpacing(context, AppConstants.horizontalPadding),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Special for you Section
+                    _SpecialForYouSection(l10n: l10n),
+                    
+                    SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+                    
+                    // Free Delivery Banner
+                    _FreeDeliveryBanner(l10n: l10n),
+                    
+                    SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+/// Location Header
+class _LocationHeader extends StatelessWidget {
+  final AppLocalizations l10n;
+
+  const _LocationHeader({required this.l10n});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: ResponsiveUtils.getResponsiveSpacing(context, 16),
+        vertical: ResponsiveUtils.getResponsiveSpacing(context, 10),
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(25),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.location_on,
+            color: Colors.white,
+            size: ResponsiveUtils.getResponsiveFontSize(context, 18),
+          ),
+          SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 6)),
+          Text(
+            l10n.translate('default_location'),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 6)),
+          Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Colors.white,
+            size: ResponsiveUtils.getResponsiveFontSize(context, 18),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Categories Section
+class _CategoriesSection extends StatelessWidget {
+  final AppLocalizations l10n;
+
+  const _CategoriesSection({required this.l10n});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Top category (Restaurants)
+        _CircularCategoryCard(
+          imagePath: 'assets/icons/restaurant.png',
+          label: l10n.translate('restaurants'),
+          borderColor: AppColors.primaryDark,
+        ),
+        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+        // Bottom two categories
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _CircularCategoryCard(
+              imagePath: 'assets/icons/panier-de-courses.png',
+              label: l10n.translate('groceries'),
+              borderColor: AppColors.primaryDark,
+            ),
+            SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 20)),
+            Padding(
+              padding: EdgeInsets.only(
+                top: ResponsiveUtils.getResponsiveSpacing(context, 30),
+              ),
+              child: _CircularCategoryCard(
+                imagePath: 'assets/icons/expedition-rapide.png',
+                label: l10n.translate('service_courier'),
+                borderColor: AppColors.primaryDark,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Circular Category Card with colored border
+class _CircularCategoryCard extends StatelessWidget {
+  final String imagePath;
+  final String label;
+  final Color borderColor;
+
+  const _CircularCategoryCard({
+    required this.imagePath,
+    required this.label,
+    required this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        Column(
+          children: [
+            Container(
+              width: ResponsiveUtils.getResponsiveSize(context, 110),
+              height: ResponsiveUtils.getResponsiveSize(context, 110),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFFF5E6D3),
+                  width: 5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.shadow.withValues(alpha: 0.2),
+                    blurRadius: 25,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: borderColor,
+                    width: 4,
+                  ),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(
+                    ResponsiveUtils.getResponsiveSpacing(context, 24),
+                  ),
+                  child: Image.asset(
+                    imagePath,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 15)),
+          ],
+        ),
+        Positioned(
+          bottom: 0,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: ResponsiveUtils.getResponsiveSpacing(context, 16),
+              vertical: ResponsiveUtils.getResponsiveSpacing(context, 6),
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: borderColor,
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.shadow.withValues(alpha: 0.15),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 12),
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Special for you Section
+class _SpecialForYouSection extends StatelessWidget {
+  final AppLocalizations l10n;
+
+  const _SpecialForYouSection({required this.l10n});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.translate('special_for_you'),
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+        Row(
+          children: [
+            Expanded(
+              child: _SpecialCard(
+                imagePath: 'assets/icons/promotion.png',
+                label: l10n.translate('promotions'),
+                color: const Color(0xFFFF6B6B),
+              ),
+            ),
+            SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+            Expanded(
+              child: _SpecialCard(
+                icon: Icons.store_rounded,
+                label: l10n.translate('stores'),
+                color: const Color(0xFFFFC107),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Special Card
+class _SpecialCard extends StatelessWidget {
+  final IconData? icon;
+  final String? imagePath;
+  final String label;
+  final Color color;
+
+  const _SpecialCard({
+    this.icon,
+    this.imagePath,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(
+        ResponsiveUtils.getResponsiveSpacing(context, 14),
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(
+              ResponsiveUtils.getResponsiveSpacing(context, 8),
+            ),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: imagePath != null
+                ? Image.asset(
+                    imagePath!,
+                    width: ResponsiveUtils.getResponsiveFontSize(context, 28),
+                    height: ResponsiveUtils.getResponsiveFontSize(context, 28),
+                  )
+                : Icon(
+                    icon!,
+                    color: color,
+                    size: ResponsiveUtils.getResponsiveFontSize(context, 28),
+                  ),
+          ),
+          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+          Text(
+            label,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 12),
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Free Delivery Banner
+class _FreeDeliveryBanner extends StatelessWidget {
+  final AppLocalizations l10n;
+
+  const _FreeDeliveryBanner({required this.l10n});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: ResponsiveUtils.getResponsiveSpacing(context, 12),
+        vertical: ResponsiveUtils.getResponsiveSpacing(context, 8),
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.translate('free_delivery_first_order'),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
+                  ),
+                ),
+                SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 2)),
+                Text(
+                  l10n.translate('order_and_enjoy'),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: ResponsiveUtils.getResponsiveFontSize(context, 11),
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+          Image.asset(
+            'assets/images/free-delivery.png',
+            width: ResponsiveUtils.getResponsiveFontSize(context, 150),
+            height: ResponsiveUtils.getResponsiveFontSize(context, 100),
+            fit: BoxFit.contain,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Wave Painter for bottom edge of gradient
+class _WavePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.background
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    
+    // Start from top left
+    path.lineTo(0, 0);
+    
+    // Create a single modern curved shape
+    path.cubicTo(
+      size.width * 0.25, 0,           // First control point
+      size.width * 0.35, size.height, // Second control point (curve down)
+      size.width * 0.5, size.height,  // End point (center bottom)
+    );
+    
+    path.cubicTo(
+      size.width * 0.70, size.height, // Continue curve
+      size.width * 0.80, 0,           // Control point (curve up)
+      size.width, 0,                  // End at top right
+    );
+    
+    // Complete the path
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+    
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

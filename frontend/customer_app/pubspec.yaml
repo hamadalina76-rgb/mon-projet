@@ -113,6 +113,15 @@ flutter:
 
   assets:
     - assets/images/speedline_logo.png
+    - assets/images/pizza-margarita.png
+    - assets/images/sushi-combo.png
+    - assets/images/free-delivery.png
+
+    - assets/icons/expedition-rapide.png
+    - assets/icons/restaurant.png
+    - assets/icons/panier-de-courses.png
+    - assets/icons/promotion.png
+    
     - assets/icons/google_logo.png
     - assets/animations/
     - .env.development
