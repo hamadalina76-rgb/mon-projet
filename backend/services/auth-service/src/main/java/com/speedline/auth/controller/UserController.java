@@ -1,5 +1,6 @@
 package com.speedline.auth.controller;
 
+import com.speedline.auth.domain.Role;
 import com.speedline.auth.domain.User;
 import com.speedline.auth.dto.request.UpdateUserRequest;
 import com.speedline.auth.dto.response.UserInfoResponse;
@@ -10,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * Contrôleur pour les opérations relatives aux utilisateurs
@@ -23,6 +26,22 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final UserService userService;
+
+    /**
+     * Recherche d'utilisateurs par nom, email ou téléphone (pour admin - recherche clients).
+     * GET /api/v1/auth/users/search?q=...&role=CUSTOMER
+     */
+    @GetMapping("/search")
+    public ResponseEntity<List<Long>> searchUserIds(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "CUSTOMER") String role) {
+        if (q == null || q.isBlank()) {
+            return ResponseEntity.ok(List.of());
+        }
+        Role r = Role.valueOf(role);
+        List<Long> ids = userRepository.findUserIdsBySearchAndRole(q.trim(), r);
+        return ResponseEntity.ok(ids);
+    }
 
     /**
      * Récupérer les informations d'un utilisateur par son ID

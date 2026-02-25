@@ -48,6 +48,12 @@ public interface AuthService {
     void sendAdminWelcomeEmail(String email, String fullName, String temporaryPassword);
 
     /**
+     * Envoie l'email de réinitialisation de mot de passe à l'utilisateur (admin déclenche pour un client).
+     * @param userId ID de l'utilisateur (client) qui recevra l'email
+     */
+    void sendResetPasswordEmailByUserId(Long userId);
+
+    /**
      * Change le mot de passe de l'utilisateur connecté
      * @param email Email de l'utilisateur connecté
      * @param currentPassword Mot de passe actuel

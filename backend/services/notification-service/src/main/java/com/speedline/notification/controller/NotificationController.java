@@ -2,8 +2,10 @@ package com.speedline.notification.controller;
 
 import com.speedline.notification.domain.NotificationChannel;
 import com.speedline.notification.domain.NotificationType;
+import com.speedline.notification.dto.SendEmailRequest;
 import com.speedline.notification.dto.SendNotificationRequest;
 import com.speedline.notification.service.NotificationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -31,6 +33,28 @@ import java.util.Map;
 public class NotificationController {
 
     private final NotificationService notificationService;
+
+    /**
+     * Admin: send email to a user (e.g. client).
+     * POST /notifications/send-to-user (v1: /api/v1/notifications/send-to-user)
+     */
+    @PostMapping("/send-to-user")
+    public ResponseEntity<?> sendEmailToUser(@Valid @RequestBody SendEmailRequest request) {
+        log.info("Sending email to user: {}", request.getEmail());
+        try {
+            String templateName = request.getTemplateName() != null ? request.getTemplateName() : "generic-message";
+            Map<String, Object> variables = request.getVariables() != null ? request.getVariables() : new java.util.HashMap<>();
+            if (request.getBody() != null && !request.getBody().isBlank()) {
+                variables.put("body", request.getBody());
+            }
+            notificationService.sendEmail(request.getEmail(), request.getSubject(), templateName, variables);
+            return ResponseEntity.ok(Map.of("message", "Email sent successfully"));
+        } catch (Exception e) {
+            log.error("Failed to send email to {}: {}", request.getEmail(), e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to send email: " + e.getMessage()));
+        }
+    }
 
     /**
      * Send a notification

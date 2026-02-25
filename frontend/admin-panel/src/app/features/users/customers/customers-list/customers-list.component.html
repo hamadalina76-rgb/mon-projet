@@ -1,46 +1,127 @@
-<!-- Customers List Component Template -->
-<div class="customers-list-page">
-  <header class="page-header">
-    <h1>{{ 'users.customers.title' | translate }}</h1>
-    <div class="header-actions">
-      <button mat-stroked-button (click)="exportCustomers()">
-        <mat-icon>download</mat-icon>
-        {{ 'common.export' | translate }}
-      </button>
+<app-list-page
+  [title]="'users.customers.title'"
+  [showBackButton]="true"
+  backLink="/dashboard"
+  [loading]="loading()"
+  [empty]="paginatedCustomers.length === 0"
+  [emptyMessage]="'users.customers.noCustomers'"
+  emptyIcon="group"
+  [totalItems]="totalItems"
+  [currentPage]="currentPage"
+  [itemsPerPage]="itemsPerPage"
+  [itemsPerPageOptions]="[20, 50, 100]"
+  [showPagination]="totalItems > 0"
+  [itemsPerPageLabel]="'partners.itemsPerPage'"
+  [ofLabel]="'partners.of'"
+  (pageChange)="onPageChange($event)"
+>
+  <div filters class="filters-bar">
+    <div class="search-box">
+      <span class="material-icons-round search-icon">search</span>
+      <input
+        type="text"
+        class="search-input"
+        [placeholder]="'users.customers.filterSearch' | translate"
+        [(ngModel)]="searchFilter"
+        (ngModelChange)="applyFilters()"
+      />
     </div>
-  </header>
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>{{ 'common.status' | translate }}</mat-label>
+        <mat-select [(ngModel)]="selectedStatus" (selectionChange)="applyFilters()">
+        <mat-option value="ALL">{{ 'common.all' | translate }}</mat-option>
+        <mat-option value="ACTIVE">{{ 'common.active' | translate }}</mat-option>
+        <mat-option value="INACTIVE">{{ 'common.inactive' | translate }}</mat-option>
+        <mat-option value="SUSPENDED">{{ 'users.customers.status.suspended' | translate }}</mat-option>
+        <mat-option value="DELETED">{{ 'users.customers.status.deleted' | translate }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <button mat-stroked-button (click)="exportCustomers('xlsx')" class="export-btn">
+      <span class="material-icons-round">download</span>
+      {{ 'common.export' | translate }} Excel
+    </button>
+  </div>
 
-  <!-- Filters -->
-  <mat-card class="filters-card">
-    <div class="filters-row">
-      <mat-form-field appearance="outline">
-        <mat-label>{{ 'common.search' | translate }}</mat-label>
-        <input matInput [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange($event)" />
-        <mat-icon matPrefix>search</mat-icon>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>{{ 'common.status' | translate }}</mat-label>
-        <mat-select [(value)]="statusFilter" (selectionChange)="filterByStatus($event.value)">
-          <mat-option value="ALL">{{ 'common.all' | translate }}</mat-option>
-          <mat-option value="ACTIVE">{{ 'common.active' | translate }}</mat-option>
-          <mat-option value="BLOCKED">{{ 'common.inactive' | translate }}</mat-option>
-        </mat-select>
-      </mat-form-field>
+  <!-- Chart: new customers by month -->
+  @if (chartData().labels.length > 0) {
+    <div class="chart-section">
+      <h3 class="chart-title">{{ 'users.customers.newByMonth' | translate }}</h3>
+      <div class="chart-bars">
+        @for (label of chartData().labels; track label; let i = $index) {
+          <div class="chart-bar-wrap">
+            <span class="chart-label">{{ label }}</span>
+            <div class="chart-bar" [style.height.%]="(chartData().values[i] / chartMax) * 80"></div>
+            <span class="chart-value">{{ chartData().values[i] }}</span>
+          </div>
+        }
+      </div>
     </div>
-  </mat-card>
+  }
 
-  <!-- Data Table -->
-  <mat-card class="table-card">
-    <app-data-table
-      [data]="customers"
-      [columns]="columns"
-      [actions]="actions"
-      [loading]="loading"
-      [totalItems]="totalCustomers"
-      [pageSize]="pageSize"
-      (actionClick)="onAction($event)"
-      (pageChange)="onPageChange($event)">
-    </app-data-table>
-  </mat-card>
-</div>
+  <table table class="data-table">
+    <thead>
+      <tr>
+        <th class="col-name">{{ 'users.customers.name' | translate | uppercase }}</th>
+        <th class="col-email">{{ 'users.customers.email' | translate | uppercase }}</th>
+        <th class="col-phone">{{ 'users.customers.phone' | translate | uppercase }}</th>
+        <th class="col-city">{{ 'users.customers.city' | translate | uppercase }}</th>
+        <th class="col-status">{{ 'common.status' | translate | uppercase }}</th>
+        <th class="col-date">{{ 'users.customers.registeredAt' | translate | uppercase }}</th>
+        <th class="col-orders">{{ 'users.customers.ordersCount' | translate | uppercase }}</th>
+        <th class="col-actions">{{ 'common.actions' | translate | uppercase }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (c of paginatedCustomers; track c.id) {
+        <tr class="table-row">
+          <td class="col-name">{{ getFullName(c) }}</td>
+          <td class="col-email">{{ c.email || '-' }}</td>
+          <td class="col-phone">{{ c.phoneNumber || '-' }}</td>
+          <td class="col-city">{{ getCity(c) }}</td>
+          <td class="col-status">
+            <span class="status-badge" [ngClass]="'status-' + (c.status || '').toLowerCase()">
+              {{ getStatusLabel(c.status || '') }}
+            </span>
+          </td>
+          <td class="col-date">{{ c.createdAt | date:'dd/MM/yyyy' }}</td>
+          <td class="col-orders">{{ c.totalOrders ?? 0 }}</td>
+          <td class="col-actions">
+            <div class="action-buttons">
+              <button
+                class="action-btn"
+                [routerLink]="['/users/customers', c.id]"
+                [matTooltip]="'common.view' | translate"
+              >
+                <span class="material-icons-round">visibility</span>
+              </button>
+              @if (c.status === 'SUSPENDED' || c.status === 'INACTIVE') {
+                <button class="action-btn" (click)="unblockCustomer(c)" [matTooltip]="'common.unblock' | translate">
+                  <span class="material-icons-round">check_circle</span>
+                </button>
+              } @else if (c.status === 'ACTIVE') {
+                <button class="action-btn" (click)="blockCustomer(c)" [matTooltip]="'common.block' | translate">
+                  <span class="material-icons-round">block</span>
+                </button>
+              }
+              <button class="action-btn" [matMenuTriggerFor]="menu" [matTooltip]="'common.more' | translate">
+                <span class="material-icons-round">more_vert</span>
+              </button>
+              <mat-menu #menu="matMenu">
+                <button mat-menu-item [routerLink]="['/users/customers', c.id]">
+                  <span class="material-icons-round">visibility</span>
+                  <span>{{ 'common.view' | translate }}</span>
+                </button>
+                @if (c.status !== 'DELETED') {
+                  <button mat-menu-item (click)="deleteCustomer(c)">
+                    <span class="material-icons-round" style="color: #EF4444">delete</span>
+                    <span>{{ 'common.delete' | translate }}</span>
+                  </button>
+                }
+              </mat-menu>
+            </div>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</app-list-page>

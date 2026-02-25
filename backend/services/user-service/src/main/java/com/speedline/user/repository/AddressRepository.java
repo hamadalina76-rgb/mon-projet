@@ -98,6 +98,15 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
     @Query("SELECT DISTINCT a.city FROM Address a WHERE a.isActive = true ORDER BY a.city")
     List<String> findDistinctCities();
 
+    /**
+     * IDs des clients dont une adresse a une ville contenant le terme (pour recherche admin).
+     * @param citySearch Terme de recherche (ex: "Tunis", "Paris")
+     * @return Liste des customerIds distincts
+     */
+    @Query("SELECT DISTINCT a.customerId FROM Address a WHERE a.isActive = true AND " +
+           "LOWER(COALESCE(a.city, '')) LIKE LOWER(CONCAT('%', :citySearch, '%'))")
+    List<Long> findCustomerIdsByCityContaining(@Param("citySearch") String citySearch);
+
     // ==================== STATISTIQUES ====================
 
     /**

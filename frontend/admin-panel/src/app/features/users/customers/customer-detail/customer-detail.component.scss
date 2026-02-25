@@ -1,37 +1,660 @@
-// Customer Detail Component Styles
+@use 'sass:color';
 @use '../../../../../assets/styles/variables' as v;
 
+$primary: v.$primary-color;
+$success: #10B981;
+$danger: #EF4444;
+$info: #3B82F6;
+
 .customer-detail-page {
-  padding: 1.5rem;
+  padding: 1rem;
+  max-width: 1280px;
+  margin: 0 auto;
+  box-sizing: border-box;
+
+  @media (min-width: 600px) {
+    padding: 1.5rem;
+  }
+  @media (min-width: 960px) {
+    padding: 2rem;
+  }
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
+.loading-state,
+.not-found {
+  text-align: center;
+  padding: 3rem;
+  color: v.$text-secondary;
+}
 
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+// Breadcrumb
+.breadcrumb {
+  margin-bottom: 1rem;
+  font-size: 0.8125rem;
+  color: v.$text-secondary;
+
+  @media (min-width: 600px) {
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
   }
 
-  h1 {
-    margin: 0;
+  a {
+    color: $primary;
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+  .sep {
+    margin: 0 0.35rem;
+    color: v.$gray-400;
+  }
+  .current {
+    color: v.$text-primary;
+    font-weight: 500;
+    word-break: break-word;
+  }
+}
+
+// Profile Section
+.profile-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem 0;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid v.$gray-200;
+
+  @media (min-width: 600px) {
+    gap: 1.5rem;
+    padding: 1.5rem 0;
+    margin-bottom: 1.5rem;
+  }
+  @media (min-width: 900px) {
+    gap: 2rem;
+  }
+}
+
+.profile-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+
+  @media (min-width: 600px) {
+    width: auto;
+  }
+}
+
+.avatar-wrapper {
+  position: relative;
+}
+
+.avatar {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, $primary 0%, color.adjust($primary, $lightness: -15%) 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+}
+
+.avatar-status {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px v.$gray-200;
+
+  &.status-active { background: $success; }
+  &.status-inactive { background: v.$gray-400; }
+  &.status-suspended { background: $danger; }
+  &.status-deleted { background: v.$gray-500; }
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+
+  &.large {
+    padding: 0.35rem 0.9rem;
+  }
+
+  &.status-active {
+    background: rgba($success, 0.15);
+    color: $success;
+  }
+  &.status-inactive {
+    background: rgba(v.$gray-400, 0.2);
+    color: v.$gray-600;
+  }
+  &.status-suspended {
+    background: rgba($danger, 0.15);
+    color: $danger;
+  }
+  &.status-deleted {
+    background: rgba(v.$gray-500, 0.2);
+    color: v.$gray-600;
+  }
+}
+
+.profile-center {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  text-align: center;
+
+  @media (min-width: 600px) {
+    min-width: 200px;
+    text-align: left;
+  }
+}
+
+.customer-name {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: v.$text-primary;
+  line-height: 1.3;
+  word-break: break-word;
+
+  @media (min-width: 600px) {
     font-size: 1.5rem;
   }
 }
 
-.customer-content {
+.customer-email {
+  margin: 0;
+  font-size: 0.875rem;
+  color: v.$text-secondary;
+  word-break: break-all;
+
+  @media (min-width: 600px) {
+    font-size: 0.9375rem;
+  }
+}
+
+.customer-id {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.75rem;
+  color: v.$text-muted;
+
+  @media (min-width: 600px) {
+    font-size: 0.8125rem;
+  }
+}
+
+.profile-actions {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: stretch;
+  width: 100%;
+
+  @media (min-width: 480px) {
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+  }
+
+  button {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+
+    @media (min-width: 480px) {
+      width: auto;
+      min-height: auto;
+      justify-content: flex-start;
+    }
+  }
+}
+
+.btn-reset { color: v.$gray-600; }
+.btn-notify {
+  min-width: 0;
+
+  @media (min-width: 480px) {
+    min-width: 160px;
+  }
+}
+
+// Metrics Cards
+.metrics-cards {
   display: grid;
-  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+
+  @media (min-width: 480px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+  }
 }
 
-.info-card {
-  padding: 1.5rem;
-}
-
-.tabs-card {
+.metric-card {
+  background: v.$background-paper;
+  border-radius: 12px;
   padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid v.$gray-200;
+  position: relative;
+
+  @media (min-width: 768px) {
+    padding: 1.25rem;
+  }
+}
+
+.metric-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
+
+  mat-icon {
+    font-size: 1.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    color: white;
+  }
+
+  &.orders { background: $primary; }
+  &.value { background: $primary; }
+  &.membership { background: $primary; }
+}
+
+.metric-value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: v.$text-primary;
+  line-height: 1.2;
+
+  @media (min-width: 768px) {
+    font-size: 1.5rem;
+  }
+}
+
+.metric-label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: v.$text-muted;
+  text-transform: uppercase;
+  margin-top: 0.25rem;
+}
+
+.metric-sub {
+  display: block;
+  font-size: 0.8125rem;
+  color: v.$text-secondary;
+  margin-top: 0.5rem;
+}
+
+.metric-trend {
+  display: block;
+  font-size: 0.8125rem;
+  margin-top: 0.5rem;
+
+  &.positive {
+    color: $success;
+    font-weight: 500;
+  }
+}
+
+// Tabs Section
+.tabs-section {
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+
+  @media (min-width: 768px) {
+    margin-bottom: 2rem;
+  }
+
+  ::ng-deep .mat-mdc-tab-group {
+    .mat-mdc-tab-header {
+      border-bottom: 1px solid v.$gray-200;
+    }
+    .mat-mdc-tab-header .mat-mdc-tab-list {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      &::-webkit-scrollbar { display: none; }
+    }
+    .mat-mdc-tab .mdc-tab {
+      flex: 0 0 auto;
+      min-width: 0;
+    }
+    .mat-mdc-tab {
+      min-width: 0;
+      flex: 0 0 auto;
+      .mdc-tab__content {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      .mat-mdc-tab-labels .mat-mdc-tab .mdc-tab__text-label {
+        font-weight: 500;
+        font-size: 0.75rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+    @media (min-width: 600px) {
+      .mat-mdc-tab .mdc-tab__text-label {
+        font-size: 0.875rem;
+      }
+    }
+    .mat-mdc-tab.mdc-tab--active {
+      .mdc-tab__indicator { background-color: $primary; }
+      .tab-icon, .mdc-tab__text-label { color: $primary; }
+    }
+    .tab-icon {
+      color: v.$text-muted;
+      font-size: 1.25rem;
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
+}
+
+.tab-content {
+  padding: 1.5rem 0;
+  min-height: 200px;
+}
+
+.empty-message,
+.info-text {
+  color: v.$text-secondary;
+  font-size: 0.9375rem;
+  margin: 0;
+}
+
+// Tab content - horizontal scroll for table on small screens
+.tab-content.has-table {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.orders-table {
+  width: 100%;
+  min-width: 500px;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  margin-bottom: 1rem;
+
+  @media (min-width: 600px) {
+    font-size: 0.875rem;
+    min-width: 0;
+  }
+
+  th, td {
+    padding: 0.5rem 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid v.$gray-200;
+  }
+
+  @media (min-width: 600px) {
+    th, td {
+      padding: 0.75rem 1rem;
+    }
+  }
+
+  th {
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: v.$text-muted;
+    text-transform: uppercase;
+  }
+
+  @media (min-width: 600px) {
+    th {
+      font-size: 0.6875rem;
+    }
+  }
+
+  .order-ref {
+    color: $primary;
+    font-weight: 500;
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+
+  .order-status-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+
+    &.status-delivered {
+      background: rgba($success, 0.15);
+      color: $success;
+    }
+    &.status-in-transit, &.status-intransit {
+      background: rgba($info, 0.15);
+      color: $info;
+    }
+    &.status-cancelled, &.status-pending {
+      background: rgba($danger, 0.15);
+      color: $danger;
+    }
+  }
+}
+
+.btn-full-history {
+  margin-top: 0.5rem;
+}
+
+// Address List
+.address-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  &.compact li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid v.$gray-100;
+    font-size: 0.875rem;
+
+    mat-icon {
+      color: v.$text-muted;
+      font-size: 1.125rem;
+      width: 1.125rem;
+      height: 1.125rem;
+      flex-shrink: 0;
+    }
+    .badge-primary {
+      margin-left: 0.5rem;
+      padding: 0.15rem 0.5rem;
+      background: rgba($primary, 0.15);
+      color: $primary;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      border-radius: 4px;
+    }
+  }
+}
+
+.address-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid v.$gray-200;
+
+  .addr-icon {
+    color: v.$text-muted;
+    flex-shrink: 0;
+  }
+  .addr-details {
+    flex: 1;
+  }
+  .addr-text {
+    display: block;
+    font-size: 0.9375rem;
+    color: v.$text-primary;
+  }
+  .addr-badge {
+    display: inline-block;
+    margin-top: 0.35rem;
+    padding: 0.15rem 0.5rem;
+    background: rgba($primary, 0.15);
+    color: $primary;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    border-radius: 4px;
+  }
+}
+
+// Activity List
+.activity-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  &.compact li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid v.$gray-100;
+    font-size: 0.875rem;
+
+    mat-icon {
+      color: v.$text-muted;
+      font-size: 1.125rem;
+      width: 1.125rem;
+      height: 1.125rem;
+      flex-shrink: 0;
+    }
+    small {
+      display: block;
+      color: v.$text-muted;
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+    }
+  }
+}
+
+.activity-item {
+  display: flex;
+  gap: 1rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid v.$gray-200;
+
+  .act-icon {
+    color: v.$text-muted;
+    flex-shrink: 0;
+  }
+  .act-action {
+    font-weight: 600;
+    margin-right: 0.35rem;
+  }
+  small {
+    display: block;
+    color: v.$text-muted;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+  }
+}
+
+// Bottom Cards
+.bottom-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+
+  @media (min-width: 768px) {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+}
+
+.card {
+  background: v.$background-paper;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid v.$gray-200;
+  min-width: 0;
+
+  @media (min-width: 768px) {
+    padding: 1.25rem;
+  }
+
+  h3 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: v.$text-muted;
+    text-transform: uppercase;
+  }
+
+  @media (min-width: 768px) {
+    h3 {
+      margin: 0 0 1rem 0;
+      font-size: 0.875rem;
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 599px) {
+  .profile-section {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .status-badge.large {
+    font-size: 0.65rem;
+    padding: 0.3rem 0.7rem;
+  }
+
+  .address-item,
+  .activity-item {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+
+  .addr-text,
+  .activity-item span {
+    word-break: break-word;
+  }
 }

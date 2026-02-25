@@ -30,6 +30,11 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> 
      * Récupère les logs par type de ressource
      */
     Page<ActivityLog> findByResourceOrderByTimestampDesc(String resource, Pageable pageable);
+
+    /**
+     * Récupère les logs par ressource et ID de ressource (ex: customers/123)
+     */
+    Page<ActivityLog> findByResourceAndResourceIdOrderByTimestampDesc(String resource, String resourceId, Pageable pageable);
     
     /**
      * Recherche avancée avec filtres

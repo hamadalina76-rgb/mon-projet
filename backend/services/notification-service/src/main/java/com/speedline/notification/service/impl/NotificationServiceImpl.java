@@ -82,7 +82,9 @@ public class NotificationServiceImpl implements NotificationService {
         try {
             // Create Thymeleaf context with variables
             Context context = new Context();
-            context.setVariables(variables);
+            if (variables != null) {
+                context.setVariables(variables);
+            }
             
             // Ensure template name has .html extension if not present
             String templatePath = templateName.endsWith(".html") ? templateName : templateName + ".html";

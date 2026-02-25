@@ -115,6 +115,17 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Welcome email sent successfully"));
     }
 
+    /**
+     * Admin triggers reset password email for a user (e.g. client).
+     * POST /api/v1/auth/admin/users/{userId}/send-reset-password
+     */
+    @PostMapping("/admin/users/{userId}/send-reset-password")
+    public ResponseEntity<Map<String, String>> sendResetPasswordEmail(@PathVariable Long userId) {
+        log.info("Admin send reset password email for userId: {}", userId);
+        authService.sendResetPasswordEmailByUserId(userId);
+        return ResponseEntity.ok(Map.of("message", "Reset password email sent successfully"));
+    }
+
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
         log.info("Refresh token endpoint called");
