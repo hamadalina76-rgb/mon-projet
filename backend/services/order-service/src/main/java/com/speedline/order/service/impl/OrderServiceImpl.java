@@ -117,15 +117,66 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public Page<OrderResponse> getCustomerOrders(Long customerId, Pageable pageable) {
-        // TODO: Implémenter la récupération des commandes d'un client
-        throw new UnsupportedOperationException("À implémenter");
+        return orderRepository.findByCustomerId(customerId, pageable).map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<OrderResponse> getActiveOrdersByCustomer(Long customerId) {
-        // TODO: Implémenter la récupération des commandes actives d'un client
-        throw new UnsupportedOperationException("À implémenter");
+        List<com.speedline.order.domain.OrderStatus> active = List.of(
+            com.speedline.order.domain.OrderStatus.PENDING,
+            com.speedline.order.domain.OrderStatus.CONFIRMED,
+            com.speedline.order.domain.OrderStatus.PREPARING,
+            com.speedline.order.domain.OrderStatus.READY_FOR_PICKUP,
+            com.speedline.order.domain.OrderStatus.PICKED_UP,
+            com.speedline.order.domain.OrderStatus.IN_DELIVERY
+        );
+        return orderRepository.findByCustomerIdAndStatusIn(customerId, active).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    private OrderResponse toResponse(com.speedline.order.domain.Order o) {
+        return OrderResponse.builder()
+                .id(o.getId())
+                .orderNumber(o.getOrderNumber())
+                .customerId(o.getCustomerId())
+                .partnerId(o.getPartnerId())
+                .courierId(o.getCourierId())
+                .customerName(o.getCustomerName())
+                .customerPhone(o.getCustomerPhone())
+                .partnerName(o.getPartnerName())
+                .partnerAddress(o.getPartnerAddress())
+                .partnerPhone(o.getPartnerPhone())
+                .courierName(o.getCourierName())
+                .courierPhone(o.getCourierPhone())
+                .status(o.getStatus())
+                .statusLabel(o.getStatus() != null ? o.getStatus().name() : null)
+                .type(o.getType())
+                .subtotal(o.getSubtotal())
+                .deliveryFee(o.getDeliveryFee())
+                .serviceFee(o.getServiceFee())
+                .tax(o.getTax())
+                .discount(o.getDiscount())
+                .promoCode(o.getPromoCode())
+                .tip(o.getTip())
+                .total(o.getTotal())
+                .deliveryInstructions(o.getDeliveryInstructions())
+                .paymentMethod(o.getPaymentMethod())
+                .paymentStatus(o.getPaymentStatus())
+                .orderTime(o.getOrderTime())
+                .estimatedDeliveryTime(o.getEstimatedDeliveryTime())
+                .actualDeliveryTime(o.getActualDeliveryTime())
+                .isScheduled(o.getIsScheduled())
+                .scheduledDeliveryTime(o.getScheduledDeliveryTime())
+                .customerNotes(o.getCustomerNotes())
+                .cancellationReason(o.getCancellationReason())
+                .createdAt(o.getCreatedAt())
+                .updatedAt(o.getUpdatedAt())
+                .deliveryTimeMinutes(o.getDeliveryTimeMinutes())
+                .isCancellable(o.isCancellable())
+                .isCompleted(o.isCompleted())
+                .build();
     }
 
     // ==================== RECHERCHE PARTENAIRE ====================

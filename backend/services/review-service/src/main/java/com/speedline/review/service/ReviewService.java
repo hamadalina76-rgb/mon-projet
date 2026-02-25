@@ -38,6 +38,11 @@ public interface ReviewService {
     ReviewDTO getOrderReview(Long orderId);
 
     /**
+     * Récupérer les avis d'un client (paginé, pour admin - fiche client)
+     */
+    Page<ReviewDTO> getCustomerReviews(Long customerId, Pageable pageable);
+
+    /**
      * Répondre à un avis
      */
     ReviewDTO respondToReview(String reviewId, Long respondedBy, String response);

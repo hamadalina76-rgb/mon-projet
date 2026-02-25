@@ -1,36 +1,260 @@
-<!-- Customer Detail Component Template -->
 <div class="customer-detail-page">
-  <header class="page-header">
-    <div class="header-left">
-      <button mat-icon-button routerLink="/users/customers">
-        <mat-icon>arrow_back</mat-icon>
-      </button>
-      <h1>Détails du client</h1>
+  @if (loading()) {
+    <div class="loading-state">
+      <p>{{ 'common.loading' | translate }}</p>
     </div>
-    <div class="header-actions">
-      <!-- Action buttons -->
-    </div>
-  </header>
+  } @else if (customer()) {
+    @let c = customer()!;
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+      <a routerLink="/users/customers">{{ 'users.customers.title' | translate }}</a>
+      <span class="sep">›</span>
+      <span class="current">{{ getFullName(c) }}</span>
+    </nav>
 
-  <div class="customer-content" *ngIf="customer">
-    <!-- Customer info card -->
-    <mat-card class="info-card">
-      <!-- Customer information -->
-    </mat-card>
+    <!-- Profile Section -->
+    <section class="profile-section">
+      <div class="profile-left">
+        <div class="avatar-wrapper">
+          @if (getProfilePictureUrl(c.profilePicture); as picUrl) {
+            @if (!avatarLoadError()) {
+              <img [src]="picUrl" alt="" class="avatar" (error)="avatarLoadError.set(true)" />
+            }
+            @if (avatarLoadError()) {
+              <div class="avatar-placeholder">{{ getInitials(c) }}</div>
+            }
+          } @else {
+            <div class="avatar-placeholder">{{ getInitials(c) }}</div>
+          }
+          <span class="avatar-status" [ngClass]="'status-' + (c.status || '').toLowerCase()"></span>
+        </div>
+        <span class="status-badge large" [ngClass]="'status-' + (c.status || '').toLowerCase()">
+          {{ (c.status || '').toUpperCase() }} {{ 'users.customers.customer' | translate }}
+        </span>
+      </div>
+      <div class="profile-center">
+        <h1 class="customer-name">{{ getFullName(c) }}</h1>
+        <p class="customer-email">{{ c.email }}</p>
+        <p class="customer-id">{{ 'users.customers.customerId' | translate }} #{{ getCustomerIdFormatted(c) }}</p>
+      </div>
+      <div class="profile-actions">
+        <button mat-stroked-button class="btn-reset" (click)="resetPassword()">
+          <mat-icon>lock_reset</mat-icon>
+          {{ 'users.customers.actions.resetPassword' | translate }}
+        </button>
+        <button mat-raised-button color="warn" class="btn-notify" (click)="sendNotification()">
+          <mat-icon>send</mat-icon>
+          {{ 'users.customers.actions.sendNotification' | translate }}
+        </button>
+        @if (c.status === 'SUSPENDED' || c.status === 'INACTIVE') {
+          <button mat-stroked-button color="primary" (click)="unblock()">
+            <mat-icon>check_circle</mat-icon>
+            {{ 'common.unblock' | translate }}
+          </button>
+        } @else if (c.status === 'ACTIVE') {
+          <button mat-stroked-button color="warn" (click)="block()">
+            <mat-icon>block</mat-icon>
+            {{ 'common.block' | translate }}
+          </button>
+        }
+        @if (c.status !== 'DELETED') {
+          <button mat-stroked-button color="warn" (click)="deleteCustomer()">
+            <mat-icon>delete</mat-icon>
+            {{ 'common.delete' | translate }}
+          </button>
+        }
+      </div>
+    </section>
+
+    <!-- Metrics Cards -->
+    <section class="metrics-cards">
+      <div class="metric-card">
+        <span class="metric-icon orders">
+          <mat-icon>shopping_bag</mat-icon>
+        </span>
+        <span class="metric-value">{{ c.totalOrders ?? 0 }}</span>
+        <span class="metric-label">{{ 'users.customers.ordersCount' | translate }}</span>
+        @if (ordersTotal() > 0) {
+          <span class="metric-trend positive">+{{ ordersTotal() }} {{ 'users.customers.total' | translate }}</span>
+        }
+      </div>
+      <div class="metric-card">
+        <span class="metric-icon value">
+          <mat-icon>account_balance_wallet</mat-icon>
+        </span>
+        <span class="metric-value">{{ formatCurrency(c.totalSpent ?? 0) }}</span>
+        <span class="metric-label">{{ 'users.customers.lifetimeValue' | translate }}</span>
+        <span class="metric-sub">{{ 'users.customers.avgOrder' | translate }} {{ formatCurrency(getAvgOrder(c)) }}</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-icon membership">
+          <mat-icon>star</mat-icon>
+        </span>
+        <span class="metric-value">{{ c.createdAt | date:'MMM d, y' }}</span>
+        <span class="metric-label">{{ 'users.customers.membership' | translate }}</span>
+        <span class="metric-trend positive">{{ 'users.customers.loyalFor' | translate }} {{ getMembershipYears(c) }} {{ 'users.customers.years' | translate }}</span>
+      </div>
+    </section>
 
     <!-- Tabs -->
-    <mat-card class="tabs-card">
-      <mat-tab-group>
-        <mat-tab label="Commandes">
-          <!-- Orders list -->
+    <section class="tabs-section">
+      <mat-tab-group animationDuration="0ms" mat-stretch-tabs>
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">receipt_long</mat-icon>
+            {{ 'users.customers.tabs.orderHistory' | translate }}
+          </ng-template>
+          <div class="tab-content" [class.has-table]="orders().length > 0">
+            @if (orders().length === 0) {
+              <p class="empty-message">{{ 'users.customers.noOrders' | translate }}</p>
+            } @else {
+              <table class="orders-table">
+                <thead>
+                  <tr>
+                    <th>{{ 'users.customers.orderReference' | translate }}</th>
+                    <th>{{ 'users.customers.transactionDate' | translate }}</th>
+                    <th>{{ 'common.status' | translate }}</th>
+                    <th>{{ 'users.customers.quantity' | translate }}</th>
+                    <th>{{ 'users.customers.totalAmount' | translate }}</th>
+                    <th>{{ 'common.actions' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (o of orders(); track $any(o).id) {
+                    <tr>
+                      <td>
+                        @if ($any(o).id) {
+                          <a class="order-ref" [routerLink]="['/orders', $any(o).id]">
+                            #{{ $any(o).orderNumber || $any(o).id }}
+                          </a>
+                        } @else {
+                          <span>#{{ $any(o).orderNumber || '-' }}</span>
+                        }
+                      </td>
+                      <td>{{ $any(o).orderTime || $any(o).createdAt | date:'MMM d, y' }}</td>
+                      <td>
+                        <span class="order-status-badge" [ngClass]="'status-' + ($any(o).status || '').toLowerCase().replace(' ', '-')">
+                          {{ $any(o).status }}
+                        </span>
+                      </td>
+                      <td>{{ $any(o).itemCount ?? $any(o).quantity ?? '-' }} {{ 'users.customers.items' | translate }}</td>
+                      <td>{{ formatCurrency($any(o).total ?? $any(o).totalAmount ?? 0) }}</td>
+                      <td>
+                        @if ($any(o).id) {
+                          <button mat-icon-button [routerLink]="['/orders', $any(o).id]" [matTooltip]="'common.view' | translate">
+                            <mat-icon>visibility</mat-icon>
+                          </button>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+              <button mat-stroked-button color="primary" class="btn-full-history" [routerLink]="['/orders']" [queryParams]="{ customerId: c.id }">
+                {{ 'users.customers.viewFullOrderHistory' | translate }}
+              </button>
+            }
+          </div>
         </mat-tab>
-        <mat-tab label="Adresses">
-          <!-- Addresses list -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">location_on</mat-icon>
+            {{ 'users.customers.tabs.savedAddresses' | translate }}
+          </ng-template>
+          <div class="tab-content">
+            @if (c.addresses && $any(c.addresses).length > 0) {
+              <ul class="address-list">
+                @for (addr of c.addresses; track $any(addr).id) {
+                  <li class="address-item">
+                    <mat-icon class="addr-icon">{{ $any(addr).type === 'WORK' ? 'work' : 'home' }}</mat-icon>
+                    <div class="addr-details">
+                      <span class="addr-text">{{ $any(addr).formattedAddress || formatAddress($any(addr)) }}</span>
+                      @if ($any(addr).isDefault) {
+                        <span class="addr-badge">{{ 'users.customers.primary' | translate }}</span>
+                      }
+                    </div>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="empty-message">{{ 'users.customers.noAddresses' | translate }}</p>
+            }
+          </div>
         </mat-tab>
-        <mat-tab label="Historique">
-          <!-- Activity history -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">credit_card</mat-icon>
+            {{ 'users.customers.tabs.paymentMethods' | translate }}
+          </ng-template>
+          <div class="tab-content">
+            <p class="info-text">{{ 'users.customers.paymentMethodsValue' | translate }}</p>
+          </div>
+        </mat-tab>
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">history</mat-icon>
+            {{ 'users.customers.tabs.logs' | translate }}
+          </ng-template>
+          <div class="tab-content">
+            @if (logs().length === 0) {
+              <p class="empty-message">{{ 'users.customers.noLogs' | translate }}</p>
+            } @else {
+              <ul class="activity-list">
+                @for (log of logs(); track $any(log).id) {
+                  <li class="activity-item">
+                    <mat-icon class="act-icon">info</mat-icon>
+                    <div>
+                      <span class="act-action">{{ $any(log).action }}</span>
+                      {{ $any(log).details }}
+                      <small>{{ $any(log).timestamp | date:'short' }} • {{ $any(log).adminName }}</small>
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
         </mat-tab>
       </mat-tab-group>
-    </mat-card>
-  </div>
+    </section>
+
+    <!-- Two-column bottom -->
+    <section class="bottom-cards">
+      <div class="card addresses-card">
+        <h3>{{ 'users.customers.primaryAddresses' | translate }}</h3>
+        @if (c.addresses && $any(c.addresses).length > 0) {
+          <ul class="address-list compact">
+            @for (addr of c.addresses; track $any(addr).id) {
+              <li>
+                <mat-icon>{{ $any(addr).type === 'WORK' ? 'work' : 'home' }}</mat-icon>
+                {{ $any(addr).formattedAddress || formatAddress($any(addr)) }}
+                @if ($any(addr).isDefault) {
+                  <span class="badge-primary">{{ 'users.customers.primary' | translate }}</span>
+                }
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="empty-message">{{ 'users.customers.noAddresses' | translate }}</p>
+        }
+      </div>
+      <div class="card activity-card">
+        <h3>{{ 'users.customers.recentActivity' | translate }}</h3>
+        @if (logs().length > 0) {
+          <ul class="activity-list compact">
+            @for (log of logs(); track $any(log).id) {
+              <li>
+                <mat-icon>info</mat-icon>
+                <span>{{ $any(log).action }}: {{ $any(log).details }}</span>
+                <small>{{ $any(log).timestamp | date:'short' }}</small>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="empty-message">{{ 'users.customers.noLogs' | translate }}</p>
+        }
+      </div>
+    </section>
+  } @else {
+    <p class="not-found">{{ 'users.customers.notFound' | translate }}</p>
+  }
 </div>

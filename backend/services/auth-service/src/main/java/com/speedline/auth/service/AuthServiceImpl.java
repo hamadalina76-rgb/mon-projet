@@ -712,6 +712,15 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
+    public void sendResetPasswordEmailByUserId(Long userId) {
+        log.info("Admin triggering reset password email for userId: {}", userId);
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + userId));
+        forgotPassword(user.getEmail());
+    }
+
+    @Override
+    @Transactional
     public OtpResponse resendOtp(String email) {
         log.info("Resend OTP request for email: {}", email);
 

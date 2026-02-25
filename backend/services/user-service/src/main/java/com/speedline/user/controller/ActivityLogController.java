@@ -99,4 +99,21 @@ public class ActivityLogController {
         Page<ActivityLogResponse> logs = activityLogService.getLogsByResource(resource, pageable);
         return ResponseEntity.ok(logs);
     }
+
+    /**
+     * Récupère les logs pour une ressource et un ID (ex: client 123)
+     * GET /api/v1/admin/activity-logs/by-resource/customers/123
+     */
+    @GetMapping("/by-resource/{resource}/{resourceId}")
+    public ResponseEntity<Page<ActivityLogResponse>> getLogsByResourceAndResourceId(
+            @PathVariable String resource,
+            @PathVariable String resourceId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size
+    ) {
+        log.info("GET /api/v1/admin/activity-logs/by-resource/{}/{}", resource, resourceId);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ActivityLogResponse> logs = activityLogService.getLogsByResourceAndResourceId(resource, resourceId, pageable);
+        return ResponseEntity.ok(logs);
+    }
 }

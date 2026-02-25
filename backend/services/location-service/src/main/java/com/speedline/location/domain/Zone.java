@@ -13,12 +13,12 @@ import java.time.LocalDateTime;
 
 /**
  * Entité Zone - Zones de livraison.
- * Table avec préfixe MS et nom en majuscules : ADM_ZONES.
+ * Table : adm_zones (minuscules pour compatibilité validation Hibernate / PostgreSQL).
  */
 @Entity
-@Table(name = "ADM_ZONES", indexes = {
-    @Index(name = "IDX_ADM_ZONE_NAME", columnList = "name"),
-    @Index(name = "IDX_ADM_ZONE_TYPE", columnList = "type")
+@Table(name = "adm_zones", indexes = {
+    @Index(name = "idx_adm_zone_name", columnList = "name"),
+    @Index(name = "idx_adm_zone_type", columnList = "type")
 })
 @Data
 @Builder

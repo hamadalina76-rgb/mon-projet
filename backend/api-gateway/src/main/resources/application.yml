@@ -25,7 +25,7 @@ spring:
         - id: user-service
           uri: lb://user-service
           predicates:
-            - Path=/api/v1/admins/**, /api/v1/admin-roles/**, /api/v1/admin/activity-logs/**, /api/users/**, /api/customers/**, /api/couriers/**, /api/addresses/**
+            - Path=/api/v1/admins/**, /api/v1/admin-roles/**, /api/v1/admin/activity-logs/**, /api/v1/admin/customers/**, /api/users/**, /api/customers/**, /api/couriers/**, /api/addresses/**
           filters:
             - StripPrefix=1
             - AuthenticationFilter
@@ -38,6 +38,12 @@ spring:
             - Path=/couriers/**
           filters:
             - AuthenticationFilter
+
+        # User Service - Uploads (static files: profile pictures, etc.)
+        - id: user-service-uploads
+          uri: lb://user-service
+          predicates:
+            - Path=/uploads/**
 
         # Partner Service
         - id: partner-service

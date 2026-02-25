@@ -74,6 +74,16 @@ public class ActivityLogService {
         return activityLogRepository.findByResourceOrderByTimestampDesc(resource, pageable)
                 .map(this::mapToResponse);
     }
+
+    /**
+     * Récupère les logs pour une ressource et un ID donné (ex: client 123)
+     */
+    @Transactional(readOnly = true)
+    public Page<ActivityLogResponse> getLogsByResourceAndResourceId(String resource, String resourceId, Pageable pageable) {
+        log.info("Fetching logs for resource: {} / {}", resource, resourceId);
+        return activityLogRepository.findByResourceAndResourceIdOrderByTimestampDesc(resource, resourceId, pageable)
+                .map(this::mapToResponse);
+    }
     
     /**
      * Recherche avancée avec filtres

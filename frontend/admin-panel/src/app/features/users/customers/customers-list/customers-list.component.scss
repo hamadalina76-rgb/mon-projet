@@ -1,43 +1,121 @@
-// Customers List Component Styles
 @use '../../../../../assets/styles/variables' as v;
-@use '../../../../../assets/styles/mixins' as m;
 
-.customers-list-page {
-  padding: 1.5rem;
+.chart-section {
+  margin-bottom: v.$spacing-xl;
+  padding: v.$spacing-lg;
+  background: v.$background-paper;
+  border-radius: v.$border-radius-lg;
+  box-shadow: v.$shadow-sm;
 }
 
-.page-header {
+.chart-title {
+  margin: 0 0 v.$spacing-md 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: v.$text-primary;
+}
+
+.chart-bars {
   display: flex;
-  justify-content: space-between;
+  align-items: flex-end;
+  gap: v.$spacing-sm;
+  min-height: 120px;
+}
+
+.chart-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  margin-bottom: 1.5rem;
+  gap: v.$spacing-xs;
+}
 
-  h1 {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: 600;
-  }
+.chart-label {
+  font-size: 0.7rem;
+  color: v.$text-muted;
+}
 
-  .header-actions {
-    display: flex;
-    gap: 0.5rem;
+.chart-bar {
+  width: 100%;
+  max-width: 32px;
+  min-height: 4px;
+  background: v.$primary-color;
+  border-radius: v.$border-radius-sm  v.$border-radius-sm 0 0;
+  transition: height 0.3s ease;
+}
+
+.chart-value {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: v.$text-secondary;
+}
+
+.export-btn {
+  margin-left: auto;
+}
+
+// Table responsive : largeurs min pour éviter troncature des en-têtes
+:host ::ng-deep .data-table {
+  .col-name { min-width: 120px; }
+  .col-email { min-width: 160px; }
+  .col-phone { min-width: 110px; }
+  .col-city { min-width: 100px; }
+  .col-status { min-width: 90px; }
+  .col-date { min-width: 105px; }
+  .col-orders { min-width: 70px; }
+  .col-actions { min-width: 120px; }
+}
+
+:host ::ng-deep {
+  .col-status .status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: v.$border-radius-full;
+    font-size: 0.75rem;
+    font-weight: 500;
+
+    &.status-active {
+      background: rgba(#10B981, 0.15);
+      color: #10B981;
+    }
+    &.status-inactive {
+      background: rgba(#94A3B8, 0.2);
+      color: #64748B;
+    }
+    &.status-suspended {
+      background: rgba(#EF4444, 0.15);
+      color: #EF4444;
+    }
+    &.status-deleted {
+      background: rgba(#64748B, 0.2);
+      color: #64748B;
+    }
   }
 }
 
-.filters-card {
-  margin-bottom: 1.5rem;
-}
-
-.filters-row {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-
-  mat-form-field {
-    min-width: 200px;
+// Mode sombre — page clients
+:host-context(html.dark) {
+  .chart-section {
+    background: v.$gray-800;
+    box-shadow: none;
   }
 }
 
-.table-card {
-  overflow: hidden;
+:host-context(html.dark) ::ng-deep {
+  .chart-title {
+    color: v.$white;
+  }
+  .chart-label,
+  .chart-value {
+    color: v.$gray-400;
+  }
+  .export-btn {
+    color: v.$gray-200;
+    border-color: v.$gray-600;
+    &:hover {
+      background: v.$gray-700;
+      border-color: v.$gray-500;
+      color: v.$gray-100;
+    }
+  }
 }

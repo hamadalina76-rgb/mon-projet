@@ -11,6 +11,8 @@ import com.speedline.user.dto.UserProfileUpdateRequest;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * Feign Client pour communiquer avec Auth Service
  * Permet de récupérer et mettre à jour les informations utilisateur
@@ -19,6 +21,15 @@ import org.springframework.web.bind.annotation.*;
  */
 @FeignClient(name = "auth-service", configuration = FeignConfig.class)
 public interface AuthServiceClient {
+
+    /**
+     * Recherche d'IDs utilisateur par nom, email ou téléphone (pour recherche clients admin).
+     * @param q Terme de recherche
+     * @param role Rôle (ex: CUSTOMER)
+     * @return Liste des IDs utilisateur correspondants
+     */
+    @GetMapping("/api/v1/auth/users/search")
+    List<Long> searchUserIds(@RequestParam("q") String q, @RequestParam(value = "role", defaultValue = "CUSTOMER") String role);
 
     /**
      * Récupérer les informations d'un utilisateur par son ID
@@ -67,7 +78,13 @@ public interface AuthServiceClient {
      */
     @PostMapping("/api/v1/auth/admin/send-welcome-email")
     void sendAdminWelcomeEmail(@RequestBody SendWelcomeEmailRequest request);
-    
+
+    /**
+     * Déclenche l'envoi de l'email de réinitialisation de mot de passe (admin pour un utilisateur/client).
+     */
+    @PostMapping("/api/v1/auth/admin/users/{userId}/send-reset-password")
+    void sendResetPasswordEmail(@PathVariable("userId") Long userId);
+
     /**
      * DTO pour créer un compte admin dans auth-service
      */

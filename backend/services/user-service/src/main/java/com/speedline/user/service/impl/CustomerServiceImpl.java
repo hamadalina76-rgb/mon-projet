@@ -68,7 +68,11 @@ public class CustomerServiceImpl implements CustomerService {
     public CustomerDTO getCustomerById(Long customerId) {
         log.debug("Recherche du client par ID: {}", customerId);
         Customer customer = findCustomerById(customerId);
-        return mapToDTO(customer);
+        CustomerDTO dto = mapToDTO(customer);
+        List<AddressDTO> addresses = getCustomerAddresses(customerId);
+        dto.setAddresses(addresses);
+        addresses.stream().filter(AddressDTO::getIsDefault).findFirst().ifPresent(dto::setDefaultAddress);
+        return dto;
     }
 
     @Override

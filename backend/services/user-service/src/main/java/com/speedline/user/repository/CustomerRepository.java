@@ -180,4 +180,28 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
      */
     @Query("SELECT c FROM Customer c WHERE c.userId IN :userIds")
     List<Customer> findByUserIdIn(@Param("userIds") List<Long> userIds);
+
+    /**
+     * Liste admin avec filtres (statut, recherche globale, plage de dates).
+     * dateFrom/dateTo ne doivent pas être null (utiliser LocalDateTime.MIN/MAX en sentinelle).
+     * Quand status est null (filtre "Tous"), affiche tous les clients y compris DELETED.
+     * customerIdsFilter : null = pas de filtre par IDs. Liste vide = aucun résultat. Liste non vide = c.id IN.
+     */
+    @Query("SELECT DISTINCT c FROM Customer c LEFT JOIN c.addresses a ON a.isActive = true " +
+           "WHERE (:status IS NULL OR c.status = :status) " +
+           "AND c.createdAt >= :dateFrom AND c.createdAt <= :dateTo " +
+           "AND (:customerIdsFilter IS NULL OR c.id IN :customerIdsFilter)")
+    Page<Customer> findWithFilters(
+        @Param("status") CustomerStatus status,
+        @Param("customerIdsFilter") java.util.List<Long> customerIdsFilter,
+        @Param("dateFrom") LocalDateTime dateFrom,
+        @Param("dateTo") LocalDateTime dateTo,
+        Pageable pageable
+    );
+
+    /**
+     * Clients créés entre deux dates (pour stats par mois: passer début et fin d'année)
+     */
+    @Query("SELECT c FROM Customer c WHERE c.createdAt >= :from AND c.createdAt < :to ORDER BY c.createdAt")
+    List<Customer> findByCreatedAtBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

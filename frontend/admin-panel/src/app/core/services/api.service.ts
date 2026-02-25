@@ -12,7 +12,10 @@ export class ApiService {
 
   constructor(private http: HttpClient) {}
 
-  get<T>(endpoint: string, params?: HttpParams): Observable<T> {
+  get<T>(endpoint: string, params?: HttpParams, options?: { responseType?: 'blob' }): Observable<T> {
+    if (options?.responseType === 'blob') {
+      return this.http.get(`${this.apiUrl}/${endpoint}`, { params, responseType: 'blob' }) as Observable<T>;
+    }
     return this.http.get<T>(`${this.apiUrl}/${endpoint}`, { params });
   }
 

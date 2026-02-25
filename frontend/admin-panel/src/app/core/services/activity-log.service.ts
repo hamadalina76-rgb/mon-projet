@@ -47,6 +47,13 @@ export class ActivityLogService {
   }
 
   /**
+   * Get activity logs for a resource and resource id (e.g. customers/123)
+   */
+  getActivityLogsByResource(resource: string, resourceId: string, page = 0, size = 25): Observable<any> {
+    return this.api.get(`admin/activity-logs/by-resource/${resource}/${resourceId}?page=${page}&size=${size}`);
+  }
+
+  /**
    * Get local logs (useful for debugging)
    */
   getLocalLogs(): AdminActivityLog[] {

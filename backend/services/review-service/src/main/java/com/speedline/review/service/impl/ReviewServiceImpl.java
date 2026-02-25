@@ -1,5 +1,6 @@
 package com.speedline.review.service.impl;
 
+import com.speedline.review.domain.Review;
 import com.speedline.review.domain.Review.TargetType;
 import com.speedline.review.repository.ReviewRepository;
 import com.speedline.review.repository.RatingRepository;
@@ -59,6 +60,30 @@ public class ReviewServiceImpl implements ReviewService {
     public ReviewDTO getOrderReview(Long orderId) {
         // TODO: Implémenter la récupération de l'avis d'une commande
         throw new UnsupportedOperationException("À implémenter");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ReviewDTO> getCustomerReviews(Long customerId, Pageable pageable) {
+        return reviewRepository.findByCustomerId(customerId, pageable).map(this::toDTO);
+    }
+
+    private ReviewDTO toDTO(Review r) {
+        return new ReviewDTO(
+                r.getId(),
+                r.getOrderId(),
+                r.getCustomerId(),
+                r.getCustomerName(),
+                r.getTargetType(),
+                r.getTargetId(),
+                r.getRating(),
+                r.getComment(),
+                r.getImageUrls(),
+                r.getResponse(),
+                r.getResponseDate(),
+                r.getIsVerified(),
+                r.getCreatedAt()
+        );
     }
 
     @Override

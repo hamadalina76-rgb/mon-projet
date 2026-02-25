@@ -33,6 +33,11 @@ public interface ReviewRepository extends MongoRepository<Review, String> {
     List<Review> findByCustomerId(Long customerId);
 
     /**
+     * Trouver les avis d'un client avec pagination (pour admin - fiche client)
+     */
+    Page<Review> findByCustomerId(Long customerId, Pageable pageable);
+
+    /**
      * Trouver les avis vérifiés d'une entité
      */
     @Query("{ 'targetType': ?0, 'targetId': ?1, 'isVerified': true, 'isVisible': true }")
