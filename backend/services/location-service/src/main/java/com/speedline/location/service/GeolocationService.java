@@ -1,5 +1,7 @@
 package com.speedline.location.service;
 
+import com.speedline.location.dto.ReverseGeocodeResponse;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -31,7 +33,7 @@ public interface GeolocationService {
     /**
      * Géocodage inverse (coordonnées -> adresse)
      */
-    String reverseGeocode(BigDecimal latitude, BigDecimal longitude);
+    ReverseGeocodeResponse reverseGeocode(BigDecimal latitude, BigDecimal longitude);
 
     /**
      * Calculer l'itinéraire entre deux points

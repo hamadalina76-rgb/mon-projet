@@ -8,8 +8,9 @@ class RouteNames {
   static const String verifyOtp = '/verify-otp';
   static const String resetPassword = '/reset-password';
   
-  // Post-login
+  // Post-login - Location
   static const String enableLocation = '/enable-location';
+  static const String confirmLocation = '/confirm-location';
   
   // Main App
   static const String explore = '/explore';
