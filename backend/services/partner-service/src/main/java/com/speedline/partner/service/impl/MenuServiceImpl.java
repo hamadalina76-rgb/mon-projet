@@ -7,6 +7,7 @@ import com.speedline.partner.repository.ProductRepository;
 import com.speedline.partner.service.MenuService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ public class MenuServiceImpl implements MenuService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "menus:full", key = "#partnerId")
     public MenuDTO getFullMenu(Long partnerId) {
         // TODO: Implémenter la récupération du menu complet
         throw new UnsupportedOperationException("À implémenter");
@@ -34,6 +36,7 @@ public class MenuServiceImpl implements MenuService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "menus:byCategory", key = "#partnerId + ':' + #categoryId")
     public List<ProductDTO> getMenuByCategory(Long partnerId, Long categoryId) {
         // TODO: Implémenter la récupération par catégorie
         throw new UnsupportedOperationException("À implémenter");

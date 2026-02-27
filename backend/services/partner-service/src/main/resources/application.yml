@@ -12,6 +12,8 @@ spring:
       enabled: true
       max-file-size: 5MB
       max-request-size: 20MB
+  cache:
+    type: redis
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:5432/speedline_partners
     username: ${DB_USERNAME:postgres}
@@ -30,7 +32,20 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
     validate-on-migrate: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
   cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
     gcp:
       project-id: ${GCP_PROJECT_ID:speedline-local}
       pubsub:
@@ -45,3 +60,20 @@ eureka:
   client:
     service-url:
       defaultZone: http://${EUREKA_USER:eureka}:${EUREKA_PASSWORD:eureka123}@localhost:8761/eureka/
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 5s
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 500ms
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s

@@ -12,10 +12,11 @@ import com.speedline.location.repository.ZoneRepository;
 import com.speedline.location.service.ZoneService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -155,6 +156,7 @@ public class ZoneServiceImpl implements ZoneService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable("zones:active")
     public List<ZoneDTO> getActiveZones() {
         log.debug("Récupération de toutes les zones actives");
         return zoneRepository.findByIsActiveTrue().stream()
@@ -190,6 +192,7 @@ public class ZoneServiceImpl implements ZoneService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "zones:byType", key = "#type.name()")
     public List<ZoneDTO> getZonesByType(Zone.ZoneType type) {
         log.debug("Récupération des zones par type: {}", type);
         return zoneRepository.findByTypeAndIsActiveTrue(type).stream()

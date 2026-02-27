@@ -1,5 +1,6 @@
 package com.speedline.gateway.filter;
 
+import com.speedline.gateway.security.TokenBlacklistChecker;
 import com.speedline.gateway.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
@@ -18,6 +19,9 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private TokenBlacklistChecker tokenBlacklistChecker;
 
     private static final List<String> OPEN_ENDPOINTS = List.of(
         "/auth/login",
@@ -66,16 +70,38 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                     return onError(exchange, "Invalid token", HttpStatus.UNAUTHORIZED);
                 }
 
-                // Extract user info and add to headers for downstream services
+                // Extract user info
                 String userId = jwtUtil.extractUserId(token);
                 String role = jwtUtil.extractRole(token);
 
-                ServerHttpRequest modifiedRequest = request.mutate()
-                    .header("X-User-Id", userId)
-                    .header("X-User-Role", role)
-                    .build();
+                // Vérification Redis (blacklist + user bloqué)
+                return tokenBlacklistChecker.isBlacklisted(token)
+                        .flatMap(isBlacklisted -> {
+                            if (isBlacklisted) {
+                                return onError(exchange, "Token blacklisted", HttpStatus.UNAUTHORIZED);
+                            }
+                            return tokenBlacklistChecker.isUserBlocked(userId)
+                                    .flatMap(isBlocked -> {
+                                        if (isBlocked) {
+                                            return onError(exchange, "User blocked", HttpStatus.UNAUTHORIZED);
+                                        }
 
-                return chain.filter(exchange.mutate().request(modifiedRequest).build());
+                                        ServerHttpRequest modifiedRequest = request.mutate()
+                                                .header("X-User-Id", userId)
+                                                .header("X-User-Role", role)
+                                                .build();
+
+                                        return chain.filter(exchange.mutate().request(modifiedRequest).build());
+                                    });
+                        })
+                        .onErrorResume(e -> {
+                            // Mode dégradé : si Redis tombe, on ignore la blacklist et on continue
+                            ServerHttpRequest modifiedRequest = request.mutate()
+                                    .header("X-User-Id", userId)
+                                    .header("X-User-Role", role)
+                                    .build();
+                            return chain.filter(exchange.mutate().request(modifiedRequest).build());
+                        });
 
             } catch (Exception e) {
                 return onError(exchange, "Token validation failed: " + e.getMessage(), HttpStatus.UNAUTHORIZED);
