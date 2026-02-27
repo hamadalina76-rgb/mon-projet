@@ -2,6 +2,7 @@ package com.speedline.location.controller;
 
 import com.speedline.location.dto.GeocodeRequest;
 import com.speedline.location.dto.ReverseGeocodeResponse;
+import com.speedline.location.dto.SaveAddressRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -68,5 +69,14 @@ public interface LocationApi {
             @RequestParam("fromLon") BigDecimal fromLon,
             @RequestParam("toLat") BigDecimal toLat,
             @RequestParam("toLon") BigDecimal toLon
+    );
+
+    @PostMapping(path = "/customer-address", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(
+            summary = "Sauvegarder adresse client",
+            description = "Persiste l'adresse GPS ou manuelle confirmée par le client dans la base de données"
+    )
+    ResponseEntity<Map<String, Object>> saveCustomerAddress(
+            @RequestBody SaveAddressRequest request
     );
 }

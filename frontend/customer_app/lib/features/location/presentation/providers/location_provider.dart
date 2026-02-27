@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../data/models/saved_location.dart';
@@ -101,7 +102,7 @@ class LocationNotifier extends StateNotifier<LocationState> {
     }
   }
 
-  /// Met à jour l'état avec une localisation et la sauvegarde dans Hive
+  /// Met à jour l'état avec une localisation et la sauvegarde dans Hive et le backend
   Future<void> confirmLocation(SavedLocation location) async {
     try {
       final box = await Hive.openBox<String>(_kLocationBoxName);
@@ -110,6 +111,9 @@ class LocationNotifier extends StateNotifier<LocationState> {
         status: LocationStatus.success,
         location: location,
       );
+      // Persister aussi dans le backend (fire-and-forget).
+      // Si le backend est injoignable, Hive garde l'adresse localement.
+      unawaited(_apiService.saveLocationToBackend(location));
     } catch (e) {
       state = state.copyWith(
         status: LocationStatus.error,

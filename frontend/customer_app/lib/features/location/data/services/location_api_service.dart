@@ -128,6 +128,40 @@ class LocationApiService {
     }
   }
 
+  // ─── Save to backend ─────────────────────────────────────────────────────
+
+  /// Persiste l'adresse confirmée dans la base de données du backend.
+  /// Fire-and-forget: si le backend est injoignable, l'adresse reste dans Hive.
+  Future<void> saveLocationToBackend(
+    SavedLocation location, {
+    String? userId,
+  }) async {
+    try {
+      debugPrint('[Location] ► saveLocationToBackend lat=${location.latitude} lon=${location.longitude}');
+      await _dio.post(
+        '/locations/customer-address',
+        data: {
+          'userId': userId ?? 'anonymous',
+          'formattedAddress': location.formattedAddress,
+          'street': location.street,
+          'city': location.city,
+          'state': location.state,
+          'postalCode': location.postalCode,
+          'country': location.country.isNotEmpty ? location.country : 'Tunisie',
+          'latitude': location.latitude,
+          'longitude': location.longitude,
+          'addressType': location.addressType.name.toUpperCase(),
+          'customLabel': location.customLabel,
+          'isDefault': true,
+        },
+      );
+      debugPrint('[Location] ✔ Adresse sauvegardée dans le backend');
+    } catch (e) {
+      // Non-bloquant — Hive a déjà sauvé localement
+      debugPrint('[Location] ⚠ Impossible de sauvegarder dans le backend: $e');
+    }
+  }
+
   // ─── Fallback chain ────────────────────────────────────────────────────────
 
   /// Fallback 1 (fast, offline): Android / iOS native geocoder.
