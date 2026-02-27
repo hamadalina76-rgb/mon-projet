@@ -6,6 +6,8 @@ import com.speedline.promotion.repository.UserPromotionRepository;
 import com.speedline.promotion.service.PromotionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +49,7 @@ public class PromotionServiceImpl implements PromotionService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable("promotions:active")
     public List<PromotionDTO> getActivePromotions() {
         // TODO: Implémenter la récupération des promotions actives
         throw new UnsupportedOperationException("À implémenter");
@@ -61,6 +64,7 @@ public class PromotionServiceImpl implements PromotionService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "promotions:active", allEntries = true)
     public PromotionDTO createPromotion(CreatePromotionRequest request) {
         // TODO: Implémenter la création d'une promotion
         throw new UnsupportedOperationException("À implémenter");
@@ -68,6 +72,7 @@ public class PromotionServiceImpl implements PromotionService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "promotions:active", allEntries = true)
     public void deactivatePromotion(Long promotionId) {
         // TODO: Implémenter la désactivation
         throw new UnsupportedOperationException("À implémenter");

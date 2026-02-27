@@ -5,6 +5,7 @@ import com.speedline.auth.domain.User;
 import com.speedline.auth.dto.request.UpdateUserRequest;
 import com.speedline.auth.dto.response.UserInfoResponse;
 import com.speedline.auth.repository.UserRepository;
+import com.speedline.auth.service.TokenBlacklistService;
 import com.speedline.auth.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final UserService userService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     /**
      * Recherche d'utilisateurs par nom, email ou téléphone (pour admin - recherche clients).
@@ -102,10 +104,20 @@ public class UserController {
         
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
-        
-        user.setStatus(com.speedline.auth.domain.UserStatus.valueOf(status));
+
+        com.speedline.auth.domain.UserStatus newStatus = com.speedline.auth.domain.UserStatus.valueOf(status);
+        user.setStatus(newStatus);
         userRepository.save(user);
         log.info("User status changed to {} for user {}", status, userId);
+
+        // Si l'utilisateur est suspendu, on invalide ses tokens via Redis (mode dégradé en cas d'erreur)
+        if (newStatus == com.speedline.auth.domain.UserStatus.SUSPENDED) {
+            try {
+                tokenBlacklistService.blockUser(userId);
+            } catch (Exception e) {
+                log.error("Erreur lors du marquage de l'utilisateur {} comme bloqué dans Redis", userId, e);
+            }
+        }
         return ResponseEntity.ok().build();
     }
 

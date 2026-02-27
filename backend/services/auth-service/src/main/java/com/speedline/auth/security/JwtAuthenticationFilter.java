@@ -1,5 +1,6 @@
 package com.speedline.auth.security;
 
+import com.speedline.auth.service.TokenBlacklistService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +25,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -33,22 +35,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String jwt = getJwtFromRequest(request);
 
             if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
-                String email = jwtTokenProvider.getEmailFromToken(jwt);
+                Long userId = jwtTokenProvider.getUserIdFromToken(jwt);
 
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-                
-                UsernamePasswordAuthenticationToken authentication = 
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails, 
-                                null, 
-                                userDetails.getAuthorities()
-                        );
-                
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                if (tokenBlacklistService.isBlacklisted(jwt)) {
+                    log.warn("Requête avec token blacklisté pour userId={}", userId);
+                } else if (tokenBlacklistService.isUserBlocked(userId)) {
+                    log.warn("Requête avec utilisateur bloqué userId={}", userId);
+                } else {
+                    String email = jwtTokenProvider.getEmailFromToken(jwt);
 
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                
-                log.debug("Set Authentication in SecurityContext for user: {}", email);
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
+
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                    log.debug("Set Authentication in SecurityContext for user: {}", email);
+                }
             }
         } catch (Exception ex) {
             log.error("Could not set user authentication in security context", ex);
@@ -59,11 +69,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private String getJwtFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
-        
+
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
         }
-        
+
         return null;
     }
 }

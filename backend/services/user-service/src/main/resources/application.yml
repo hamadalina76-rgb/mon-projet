@@ -30,6 +30,11 @@ spring:
       max-request-size: 50MB
       file-size-threshold: 2KB
 
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+
 # File Upload Configuration
 file:
   # Use a relative `uploads` directory inside the service folder:
@@ -76,4 +81,21 @@ logging:
     org.hibernate.SQL: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 5s
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 500ms
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s
 

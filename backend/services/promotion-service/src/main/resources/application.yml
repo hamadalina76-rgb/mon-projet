@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: promotion-service
+  cache:
+    type: redis
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:5432/speedline_promotions
     username: ${DB_USERNAME:postgres}
@@ -22,6 +24,16 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
     validate-on-migrate: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
 
 eureka:
   client:

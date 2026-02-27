@@ -55,6 +55,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserServiceClient userServiceClient;
     private final PartnerServiceClient partnerServiceClient;
     private final OtpService otpService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Value("${jwt.expiration}")
     private long jwtExpirationMs;
@@ -546,9 +547,26 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void logout(String username) {
-        log.info("User logout: {}", username);
-        // TODO: Implement token blacklist logic if needed
+    public void logout(String tokenHeader) {
+        log.info("User logout requested");
+        if (tokenHeader == null || tokenHeader.isBlank()) {
+            log.warn("Logout called without Authorization header");
+            return;
+        }
+
+        String token = tokenHeader.startsWith("Bearer ") ? tokenHeader.substring(7) : tokenHeader;
+        if (!tokenProvider.validateToken(token)) {
+            log.warn("Logout called with invalid token");
+            return;
+        }
+
+        try {
+            tokenBlacklistService.addToBlacklist(token);
+            log.info("Token ajouté à la blacklist lors du logout");
+        } catch (Exception e) {
+            // Mode dégradé : on ne bloque pas le logout si Redis échoue
+            log.error("Erreur lors de l'ajout du token à la blacklist pendant le logout", e);
+        }
     }
 
     @Override

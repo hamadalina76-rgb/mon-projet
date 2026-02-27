@@ -20,7 +20,7 @@ public interface AuthService {
     
     AuthResponse socialLogin(SocialLoginRequest request);
 
-    void logout(String email);
+    void logout(String token);
 
     AuthResponse refreshToken(String refreshToken);
 

@@ -30,6 +30,10 @@ spring:
             - StripPrefix=1
             - AuthenticationFilter
             - RoleAuthorizationFilter
+            - name: CircuitBreaker
+              args:
+                name: userServiceBreaker
+                fallbackUri: forward:/fallback/user
 
         # User Service - Direct courier endpoints (without /api prefix)
         - id: user-service-couriers-direct
@@ -53,6 +57,10 @@ spring:
           filters:
             - StripPrefix=1
             - RoleAuthorizationFilter
+            - name: CircuitBreaker
+              args:
+                name: partnerServiceBreaker
+                fallbackUri: forward:/fallback/partner
 
         # Partner Service - Admin Endpoints
         - id: partner-service-admin
@@ -72,6 +80,10 @@ spring:
           filters:
             - StripPrefix=1
             - AuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: orderServiceBreaker
+                fallbackUri: forward:/fallback/order
 
         # Delivery Service
         - id: delivery-service
@@ -81,6 +93,10 @@ spring:
           filters:
             - StripPrefix=1
             - AuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: deliveryServiceBreaker
+                fallbackUri: forward:/fallback/delivery
 
         # Payment Service
         - id: payment-service
@@ -90,6 +106,10 @@ spring:
           filters:
             - StripPrefix=1
             - AuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: paymentServiceBreaker
+                fallbackUri: forward:/fallback/payment
 
         # Notification Service
         - id: notification-service
@@ -99,6 +119,10 @@ spring:
           filters:
             - StripPrefix=1
             - AuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: notificationServiceBreaker
+                fallbackUri: forward:/fallback/notification
 
         # Notification Service (v1 API - admin/partner panels)
         - id: notification-service-v1
@@ -108,6 +132,10 @@ spring:
           filters:
             - StripPrefix=2
             - AuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: notificationServiceBreaker
+                fallbackUri: forward:/fallback/notification
 
         # Notification Service - WebSocket
         - id: notification-service-ws
@@ -122,6 +150,10 @@ spring:
             - Path=/api/locations/**, /api/zones/**
           filters:
             - StripPrefix=1
+            - name: CircuitBreaker
+              args:
+                name: locationServiceBreaker
+                fallbackUri: forward:/fallback/location
 
         # Analytics Service
         - id: analytics-service
@@ -131,6 +163,10 @@ spring:
           filters:
             - StripPrefix=1
             - AuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: analyticsServiceBreaker
+                fallbackUri: forward:/fallback/analytics
 
         # Promotion Service
         - id: promotion-service
@@ -139,6 +175,10 @@ spring:
             - Path=/api/promotions/**
           filters:
             - StripPrefix=1
+            - name: CircuitBreaker
+              args:
+                name: promotionServiceBreaker
+                fallbackUri: forward:/fallback/promotion
 
         # Review Service
         - id: review-service
@@ -147,6 +187,10 @@ spring:
             - Path=/api/reviews/**, /api/ratings/**
           filters:
             - StripPrefix=1
+            - name: CircuitBreaker
+              args:
+                name: reviewServiceBreaker
+                fallbackUri: forward:/fallback/review
 
         # Support Service
         - id: support-service
@@ -165,6 +209,12 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+      lettuce:
+        pool:
+          max-active: 32
+          max-idle: 16
+          min-idle: 4
+          max-wait: 2000ms
 
 eureka:
   client:
@@ -181,6 +231,18 @@ management:
     web:
       exposure:
         include: health,info,gateway
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 20
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s
 
 logging:
   level:
