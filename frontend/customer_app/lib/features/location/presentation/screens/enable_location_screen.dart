@@ -1,15 +1,23 @@
+// This file has been replaced — see full implementation below
+// ignore_for_file: unused_import
 import 'dart:async';
-import '../../../../core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../config/routes/route_names.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../providers/location_provider.dart';
 
-
-/// Enable Location Screen
-/// Shows after successful login to request location permission
+/// Écran d'activation de la localisation
+///
+/// Flux complet selon les critères d'acceptation:
+/// 1. Demander la permission GPS
+/// 2. Si acceptée → détecter position → géocodage inverse → écran de confirmation
+/// 3. Si refusée → mode saisie manuelle
+/// 4. GPS désactivé → fallback vers saisie manuelle
 class EnableLocationScreen extends ConsumerStatefulWidget {
   const EnableLocationScreen({super.key});
 
@@ -18,119 +26,181 @@ class EnableLocationScreen extends ConsumerStatefulWidget {
       _EnableLocationScreenState();
 }
 
-class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen> {
+class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen>
+    with SingleTickerProviderStateMixin {
   bool _isLoading = false;
+  bool _isManualMode = false;
+  String? _manualReason;
+  final TextEditingController _searchController = TextEditingController();
+
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // ──────────────────────────────────────────────────────── GPS Flow ─────────
 
   Future<void> _handleAllowLocation() async {
+    if (_isLoading) return;
     setState(() => _isLoading = true);
-    final l10n = AppLocalizations.of(context)!;
+    ref.read(locationNotifierProvider.notifier).setLoading();
 
     try {
-      // Check if location services are enabled
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      // 1. GPS activé?
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (mounted) {
-          _showError(l10n.translate('location_services_disabled'));
-        }
-        setState(() => _isLoading = false);
+        _switchToManual(_getKey('location_services_disabled'));
         return;
       }
 
-      // Check permission
+      // 2. Permission accordée?
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (mounted) {
-            _showError(l10n.translate('location_permission_denied'));
-          }
-          setState(() => _isLoading = false);
-          return;
-        }
+      }
+
+      if (permission == LocationPermission.denied) {
+        _switchToManual(_getKey('location_permission_denied'));
+        return;
       }
 
       if (permission == LocationPermission.deniedForever) {
-        if (mounted) {
-          _showError(l10n.translate('location_permanently_denied'));
-          // Optionally open app settings
-          await Geolocator.openAppSettings();
-        }
+        ref.read(locationNotifierProvider.notifier).setDenied();
+        _showSettingsDialog();
         setState(() => _isLoading = false);
         return;
       }
 
-      // Get current position
-      Position position = await Geolocator.getCurrentPosition(
+      // 3. Obtenir position GPS
+      final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        timeLimit: const Duration(seconds: 12),
+      );
+      debugPrint('GPS: ${position.latitude}, ${position.longitude}');
+
+      // 4. Reverse geocode via API
+      final notifier = ref.read(locationNotifierProvider.notifier);
+      final location = await notifier.reverseGeocode(
+        latitude: position.latitude,
+        longitude: position.longitude,
       );
 
-      // Success! Show position in console (for debugging)
-      debugPrint('Location obtained: ${position.latitude}, ${position.longitude}');
-
-      // TODO: Save location to backend
-      // For now, just navigate to explore (main home screen)
+      // 5. Naviguer vers confirmation
+      // Navigate even if geocoding failed — user can see the map and confirm.
       if (mounted) {
-        context.go(RouteNames.explore);
+        context.push(
+          RouteNames.confirmLocation,
+          extra: {
+            'latitude': location?.latitude ?? position.latitude,
+            'longitude': location?.longitude ?? position.longitude,
+            'initialAddress': location?.formattedAddress ?? '',
+          },
+        );
       }
     } on LocationServiceDisabledException {
-      if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        _showError(l10n.translate('location_services_disabled'));
-      }
+      _switchToManual(_getKey('location_services_disabled'));
     } on PermissionDeniedException {
-      if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        _showError(l10n.translate('location_permission_denied'));
-      }
+      _switchToManual(_getKey('location_permission_denied'));
     } on TimeoutException {
-      if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        _showError(l10n.translate('location_timeout'));
-      }
+      _switchToManual(_getKey('location_timeout'));
     } catch (e) {
-      if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        _showError('${l10n.translate('location_error')}: ${e.toString()}');
-      }
       debugPrint('Location error: $e');
+      _switchToManual(_getKey('location_error'));
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _handleManualEntry() {
+  void _switchToManual(String reason) {
+    ref.read(locationNotifierProvider.notifier).setDenied();
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _isManualMode = true;
+        _manualReason = reason;
+      });
+    }
+  }
+
+  void _showSettingsDialog() {
+    if (!mounted) return;
     final l10n = AppLocalizations.of(context)!;
-    // TODO: Navigate to manual address entry screen
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.translate('manual_address_entry')),
-        content: Text(l10n.translate('manual_address_coming_soon')),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(l10n.translate('location_permanently_denied'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        content: Text(l10n.translate('open_settings_for_location')),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.translate('ok')),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.translate('cancel'),
+                style: TextStyle(color: Colors.grey[600])),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Geolocator.openAppSettings();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text(l10n.translate('open_settings')),
           ),
         ],
       ),
     );
   }
 
-  void _handleSkip() {
-    context.go(RouteNames.explore);
-  }
+  // ─────────────────────────────────────────────────── Mode manuel ──────────
 
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+  void _handleManualSearch() {
+    final address = _searchController.text.trim();
+    if (address.isEmpty) return;
+    // Coordonnées par défaut: centre de Tunis
+    context.push(
+      RouteNames.confirmLocation,
+      extra: {
+        'latitude': 36.8065,
+        'longitude': 10.1815,
+        'initialAddress': address,
+      },
     );
   }
+
+  void _handleSkip() => context.go(RouteNames.explore);
+
+  String _getKey(String key) =>
+      AppLocalizations.of(context)?.translate(key) ?? key;
+
+  // ────────────────────────────────────────────────────────── Build ─────────
 
   @override
   Widget build(BuildContext context) {
@@ -138,236 +208,365 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              const Spacer(flex: 2),
-              
-              // Location Icon Illustration
-              Container(
-                width: 280,
-                height: 280,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Outer circle with opacity
-                    Container(
-                      width: 280,
-                      height: 280,
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: AppColors.primary.withOpacity(0.2),
-                          width: 2,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    // Location pin icon
-                    Icon(
-                      Icons.location_on,
-                      size: 120,
-                      color: AppColors.primary,
-                    ),
-                    // Small decorative elements (restaurants)
-                    Positioned(
-                      top: 40,
-                      left: 80,
-                      child: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.restaurant,
-                          color: AppColors.primary,
-                          size: 28,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 60,
-                      right: 60,
-                      child: Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.fastfood,
-                          color: AppColors.primary,
-                          size: 32,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+        child: _isManualMode
+            ? _buildManualMode(l10n)
+            : _buildGpsPromptMode(l10n),
+      ),
+    );
+  }
+
+  // ── GPS prompt ──
+
+  Widget _buildGpsPromptMode(AppLocalizations l10n) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          const Spacer(flex: 2),
+
+          // Illustration
+          ScaleTransition(
+            scale: _pulseAnimation,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withOpacity(0.08),
+                border: Border.all(
+                    color: AppColors.primary.withOpacity(0.15), width: 2),
               ),
-              
-              const SizedBox(height: 48),
-              
-              // Title
-              Text(
-                l10n.translate('enable_location'),
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Description
-              RichText(
-                textAlign: TextAlign.center,
-                text: TextSpan(
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.black54,
-                    height: 1.5,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: l10n.translate('location_permission_desc'),
-                    ),
-                    TextSpan(
-                      text: l10n.translate('accurate_delivery'),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              const Spacer(flex: 2),
-              
-              // Allow Location Access Button
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleAllowLocation,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          l10n.translate('allow_location_access'),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Enter Address Manually Button
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: OutlinedButton.icon(
-                  onPressed: _handleManualEntry,
-                  icon: const Icon(Icons.edit_location_outlined),
-                  label: Text(
-                    l10n.translate('enter_address_manually'),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                  ),
-                ),
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Privacy notice
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  Icon(
-                    Icons.lock_outline,
-                    size: 16,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Your privacy is our priority. Your data is encrypted.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
+                  Container(
+                    width: 160,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.primary.withOpacity(0.1),
                     ),
+                  ),
+                  Icon(Icons.location_on, size: 80, color: AppColors.primary),
+                  Positioned(
+                      top: 28,
+                      left: 28,
+                      child: _FloatingIcon(Icons.restaurant, AppColors.primary)),
+                  Positioned(
+                      bottom: 28,
+                      right: 28,
+                      child: _FloatingIcon(
+                          Icons.local_grocery_store, Colors.green)),
+                  Positioned(
+                      top: 28,
+                      right: 28,
+                      child: _FloatingIcon(Icons.fastfood, Colors.orange)),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 36),
+
+          Text(
+            l10n.translate('enable_location'),
+            style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary),
+            textAlign: TextAlign.center,
+          ),
+
+          const SizedBox(height: 12),
+
+          Text(
+            l10n.translate('location_permission_desc'),
+            style: const TextStyle(
+                fontSize: 15, color: AppColors.textSecondary, height: 1.5),
+            textAlign: TextAlign.center,
+          ),
+
+          const Spacer(flex: 2),
+
+          // Bouton GPS
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton.icon(
+              onPressed: _isLoading ? null : _handleAllowLocation,
+              icon: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                  : const Icon(Icons.gps_fixed),
+              label: Text(
+                _isLoading
+                    ? l10n.translate('detecting_location')
+                    : l10n.translate('allow_location_access'),
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(27)),
+                elevation: 0,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Bouton manuel
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: OutlinedButton.icon(
+              onPressed:
+                  _isLoading ? null : () => setState(() => _isManualMode = true),
+              icon: const Icon(Icons.edit_location_outlined),
+              label: Text(
+                l10n.translate('enter_address_manually'),
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.primary.withOpacity(0.4)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(27)),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_outline, size: 14, color: Colors.grey[400]),
+              const SizedBox(width: 6),
+              Text(
+                l10n.translate('privacy_location_note'),
+                style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 4),
+
+          TextButton(
+            onPressed: _handleSkip,
+            child: Text(l10n.translate('skip_for_now'),
+                style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                    fontWeight: FontWeight.w500)),
+          ),
+
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  // ── Mode manuel ──
+
+  Widget _buildManualMode(AppLocalizations l10n) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                color: AppColors.textPrimary,
+                onPressed: () => setState(() {
+                  _isManualMode = false;
+                  _manualReason = null;
+                }),
+              ),
+              Text(
+                l10n.translate('enter_your_address'),
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary),
+              ),
+            ],
+          ),
+
+          if (_manualReason != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amber[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline,
+                      color: Colors.amber[700], size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(_manualReason!,
+                        style: TextStyle(
+                            fontSize: 13, color: Colors.amber[800])),
                   ),
                 ],
               ),
-              
-              const SizedBox(height: 16),
-              
-              // Skip for now
-              TextButton(
-                onPressed: _handleSkip,
-                child: Text(
-                  l10n.translate('skip_for_now'),
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-            ],
+            ),
+          ],
+
+          const SizedBox(height: 24),
+
+          Text(
+            l10n.translate('search_address'),
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary),
           ),
-        ),
+
+          const SizedBox(height: 8),
+
+          TextField(
+            controller: _searchController,
+            autofocus: true,
+            textInputAction: TextInputAction.search,
+            onSubmitted: (_) => _handleManualSearch(),
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: l10n.translate('address_search_hint'),
+              prefixIcon:
+                  const Icon(Icons.search, color: AppColors.textSecondary),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {});
+                      })
+                  : null,
+              filled: true,
+              fillColor: Colors.grey[50],
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: Colors.grey[200]!)),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: Colors.grey[200]!)),
+              focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide:
+                      BorderSide(color: AppColors.primary, width: 2)),
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 14),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton.icon(
+              onPressed: _searchController.text.trim().isEmpty
+                  ? null
+                  : _handleManualSearch,
+              icon: const Icon(Icons.check_circle_outline),
+              label: Text(
+                l10n.translate('confirm_address'),
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey[200],
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(27)),
+                elevation: 0,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: OutlinedButton.icon(
+              onPressed: () => setState(() {
+                _isManualMode = false;
+                _manualReason = null;
+              }),
+              icon: const Icon(Icons.gps_fixed),
+              label: Text(
+                l10n.translate('retry_gps'),
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.primary.withOpacity(0.4)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(27)),
+              ),
+            ),
+          ),
+
+          const Spacer(),
+
+          Center(
+            child: TextButton(
+              onPressed: _handleSkip,
+              child: Text(l10n.translate('skip_for_now'),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }
 }
+
+/// Petit icône flottant dans l'illustration GPS
+class _FloatingIcon extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+
+  const _FloatingIcon(this.icon, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Icon(icon, color: color, size: 18),
+    );
+  }
+}
+

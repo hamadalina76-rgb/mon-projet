@@ -3,9 +3,12 @@ import '../../../../core/constants/app_constants.dart';
 import 'package:customer_app/features/auth/domain/entities/user.dart';
 import 'package:flutter/material.dart';
 import '../../../../config/dependency_injection/injection.dart';
+import '../../../../config/routes/route_names.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../location/data/models/saved_location.dart';
+import '../../../location/presentation/providers/location_provider.dart';
 
 /// Profile Screen
 /// Displays user information, delivery locations, payment methods, order history
@@ -230,23 +233,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               onAction: () {
                 // TODO: Navigate to manage locations
               },
-              child: Column(
-                children: [
-                  _buildLocationItem(
-                    l10n: l10n,
-                    icon: Icons.my_location,
-                    title: 'use_current_location',
-                    subtitle: '742 Evergreen Terrace, Springfield...',
-                    isLive: true,
-                  ),
-                  const Divider(height: 1),
-                  _buildAddNewItem(
-                    l10n: l10n,
-                    icon: Icons.add_location_outlined,
-                    title: 'add_new_address',
-                  ),
-                ],
-              ),
+              child: _buildAddressSection(l10n),
             ),
             
             const SizedBox(height: 16),
@@ -309,6 +296,117 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAddressSection(AppLocalizations l10n) {
+    final loc = ref.watch(
+      locationNotifierProvider.select((s) => s.location),
+    );
+    return Column(
+      children: [
+        _buildSavedAddressTile(l10n, loc),
+        const Divider(height: 1),
+        _buildAddNewItem(
+          l10n: l10n,
+          icon: Icons.add_location_outlined,
+          title: 'add_new_address',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSavedAddressTile(AppLocalizations l10n, SavedLocation? loc) {
+    final IconData icon;
+    final String title;
+    if (loc == null) {
+      icon = Icons.location_off_outlined;
+      title = l10n.translate('no_address_saved');
+    } else {
+      switch (loc.addressType) {
+        case AddressType.work:
+          icon = Icons.work_outline;
+          title = l10n.translate('work_address');
+          break;
+        case AddressType.other:
+          icon = Icons.place_outlined;
+          title = loc.customLabel?.isNotEmpty == true
+              ? loc.customLabel!
+              : l10n.translate('other_address');
+          break;
+        default:
+          icon = Icons.home_outlined;
+          title = l10n.translate('home_address');
+      }
+    }
+
+    final subtitle = loc != null
+        ? (loc.shortAddress.isNotEmpty ? loc.shortAddress : loc.formattedAddress)
+        : l10n.translate('use_current_location');
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+        ),
+        child: Icon(icon, color: AppColors.primary, size: AppConstants.iconSizeMedium),
+      ),
+      title: Row(
+        children: [
+          Flexible(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (loc != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'LIVE',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+          ],
+        ],
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(
+          subtitle,
+          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+      onTap: () {
+        // Navigate back to location screen to update
+        if (loc != null) {
+          context.push(
+            RouteNames.confirmLocation,
+            extra: {
+              'latitude': loc.latitude,
+              'longitude': loc.longitude,
+              'initialAddress': loc.formattedAddress,
+            },
+          );
+        }
+      },
     );
   }
 

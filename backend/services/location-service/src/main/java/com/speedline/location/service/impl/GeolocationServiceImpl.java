@@ -1,13 +1,20 @@
 package com.speedline.location.service.impl;
 
+import com.speedline.location.domain.CustomerLocation;
+import com.speedline.location.dto.ReverseGeocodeResponse;
+import com.speedline.location.dto.SaveAddressRequest;
+import com.speedline.location.integration.MapboxClient;
+import com.speedline.location.repository.CustomerLocationRepository;
 import com.speedline.location.repository.ZoneRepository;
 import com.speedline.location.service.GeolocationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -20,20 +27,46 @@ import java.util.List;
 public class GeolocationServiceImpl implements GeolocationService {
 
     private final ZoneRepository zoneRepository;
-    // TODO: Injecter PartnerRepository, MapboxService, DistanceCalculationService
+    private final MapboxClient mapboxClient;
+    private final JdbcTemplate jdbcTemplate;
+    private final CustomerLocationRepository customerLocationRepository;
 
     @Override
     @Transactional(readOnly = true)
-    public List<NearbyPartnerDTO> findNearbyPartners(BigDecimal latitude, BigDecimal longitude, int radiusMeters) {
-        // TODO: Implémenter la recherche de partenaires proches
-        throw new UnsupportedOperationException("À implémenter");
+    public List<GeolocationService.NearbyPartnerDTO> findNearbyPartners(BigDecimal latitude, BigDecimal longitude, int radiusMeters) {
+        // Partner data belongs to partner-service (its own DB).
+        // location-service does not have a local partners/partner_locations table.
+        // The nearby-partners endpoint should be exposed by partner-service and
+        // called from the Flutter app directly, or via API Gateway routing.
+        log.warn("findNearbyPartners called on location-service — delegate to partner-service instead");
+        return List.of();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public DistanceResult calculateDistance(BigDecimal lat1, BigDecimal lon1, BigDecimal lat2, BigDecimal lon2) {
-        // TODO: Implémenter le calcul de distance
-        throw new UnsupportedOperationException("À implémenter");
+    public GeolocationService.DistanceResult calculateDistance(BigDecimal lat1, BigDecimal lon1,
+                                                               BigDecimal lat2, BigDecimal lon2) {
+        // Use PostGIS ST_Distance (GEOGRAPHY type gives meters automatically)
+        final String sql =
+            "SELECT " +
+            "  ST_Distance(" +
+            "    ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, " +
+            "    ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography" +
+            "  ) AS dist_m";
+
+        double distMeters = jdbcTemplate.queryForObject(
+                sql,
+                Double.class,
+                lon1, lat1, lon2, lat2);
+
+        double distKm  = distMeters / 1000.0;
+        // ~30 km/h average urban speed → minutes
+        int    durationMin = (int) Math.ceil((distKm / 30.0) * 60);
+
+        log.info("calculateDistance ({},{})→({},{}) = {} km ≈ {} min",
+                lat1, lon1, lat2, lon2, String.format("%.3f", distKm), durationMin);
+
+        return new GeolocationService.DistanceResult(distKm, durationMin);
     }
 
     @Override
@@ -52,9 +85,9 @@ public class GeolocationServiceImpl implements GeolocationService {
 
     @Override
     @Transactional(readOnly = true)
-    public String reverseGeocode(BigDecimal latitude, BigDecimal longitude) {
-        // TODO: Implémenter le géocodage inverse
-        throw new UnsupportedOperationException("À implémenter");
+    public ReverseGeocodeResponse reverseGeocode(BigDecimal latitude, BigDecimal longitude) {
+        log.info("Géocodage inverse: lat={}, lon={}", latitude, longitude);
+        return mapboxClient.reverseGeocode(latitude, longitude);
     }
 
     @Override
@@ -70,5 +103,43 @@ public class GeolocationServiceImpl implements GeolocationService {
     public ZoneDTO getZoneForLocation(BigDecimal latitude, BigDecimal longitude) {
         // TODO: Implémenter la récupération de zone
         throw new UnsupportedOperationException("À implémenter");
+    }
+
+    @Override
+    @Transactional
+    public GeolocationService.SavedAddressDTO saveCustomerAddress(SaveAddressRequest request) {
+        // Si l'adresse est marquée comme défaut, réinitialiser les autres
+        if (Boolean.TRUE.equals(request.getIsDefault())) {
+            String uid = request.getUserId() != null ? request.getUserId() : "anonymous";
+            customerLocationRepository.clearDefaultForUser(uid);
+        }
+
+        CustomerLocation entity = CustomerLocation.builder()
+                .userId(request.getUserId() != null ? request.getUserId() : "anonymous")
+                .formattedAddress(request.getFormattedAddress() != null ? request.getFormattedAddress() : "")
+                .street(request.getStreet())
+                .city(request.getCity())
+                .state(request.getState())
+                .postalCode(request.getPostalCode())
+                .country(request.getCountry() != null ? request.getCountry() : "Tunisie")
+                .latitude(request.getLatitude())
+                .longitude(request.getLongitude())
+                .addressType(request.getAddressType() != null ? request.getAddressType() : "HOME")
+                .customLabel(request.getCustomLabel())
+                .isDefault(request.getIsDefault() != null ? request.getIsDefault() : false)
+                .savedAt(LocalDateTime.now())
+                .build();
+
+        entity = customerLocationRepository.save(entity);
+        log.info("Adresse client sauvegardée: id={}, user={}, city={}",
+                entity.getId(), entity.getUserId(), entity.getCity());
+
+        return new GeolocationService.SavedAddressDTO(
+                entity.getId(),
+                entity.getFormattedAddress(),
+                entity.getCity(),
+                entity.getLatitude(),
+                entity.getLongitude()
+        );
     }
 }

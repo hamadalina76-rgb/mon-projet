@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/responsive_utils.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../location/presentation/providers/location_provider.dart';
 
 /// Explore Screen
 /// Main screen for browsing restaurants and food options
@@ -110,13 +112,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
 }
 
 /// Location Header
-class _LocationHeader extends StatelessWidget {
+class _LocationHeader extends ConsumerWidget {
   final AppLocalizations l10n;
 
   const _LocationHeader({required this.l10n});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final address = ref.watch(
+          locationNotifierProvider.select((s) => s.location?.shortAddress),
+        ) ??
+        l10n.translate('default_location');
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: ResponsiveUtils.getResponsiveSpacing(context, 16),
@@ -139,12 +145,16 @@ class _LocationHeader extends StatelessWidget {
             size: ResponsiveUtils.getResponsiveFontSize(context, 18),
           ),
           SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 6)),
-          Text(
-            l10n.translate('default_location'),
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
-              fontWeight: FontWeight.w600,
+          Flexible(
+            child: Text(
+              address,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
           SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 6)),

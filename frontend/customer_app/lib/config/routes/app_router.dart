@@ -6,6 +6,7 @@ import '../../features/auth/presentation/screens/verify_otp_screen.dart';
 import '../../features/auth/presentation/screens/reset_password_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/location/presentation/screens/enable_location_screen.dart';
+import '../../features/location/presentation/screens/confirm_location_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/explore/presentation/screens/explore_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
@@ -81,6 +82,19 @@ final appRouter = GoRouter(
     GoRoute(
       path: RouteNames.enableLocation,
       builder: (context, state) => const EnableLocationScreen(),
+    ),
+
+    // Post-GPS - Confirm location on map
+    GoRoute(
+      path: RouteNames.confirmLocation,
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        return ConfirmLocationScreen(
+          latitude: (extra['latitude'] as num?)?.toDouble() ?? 36.8065,
+          longitude: (extra['longitude'] as num?)?.toDouble() ?? 10.1815,
+          initialAddress: extra['initialAddress'] as String? ?? '',
+        );
+      },
     ),
     
     // Settings & Profile Management (outside bottom nav)
