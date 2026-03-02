@@ -42,7 +42,7 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
      * Vérifier si un point est dans une zone
      * Utilise PostGIS ST_Contains
      */
-    @Query(value = "SELECT z.* FROM zones z WHERE " +
+    @Query(value = "SELECT z.* FROM adm_zones z WHERE " +
            "ST_Contains(ST_GeomFromGeoJSON(z.boundary_json), " +
            "ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)) " +
            "AND z.is_active = true", nativeQuery = true)
@@ -52,7 +52,7 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
     /**
      * Trouver la zone pour un point (première zone trouvée)
      */
-    @Query(value = "SELECT z.* FROM zones z WHERE " +
+    @Query(value = "SELECT z.* FROM adm_zones z WHERE " +
            "ST_Contains(ST_GeomFromGeoJSON(z.boundary_json), " +
            "ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)) " +
            "AND z.is_active = true " +
@@ -91,7 +91,7 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
      * Vérifier si une zone chevauche d'autres zones actives
      * Utilise PostGIS ST_Overlaps ou ST_Intersects
      */
-    @Query(value = "SELECT z.* FROM zones z WHERE " +
+    @Query(value = "SELECT z.* FROM adm_zones z WHERE " +
            "z.id != :excludeZoneId AND z.is_active = true AND " +
            "ST_Intersects(ST_GeomFromGeoJSON(:boundaryJson), ST_GeomFromGeoJSON(z.boundary_json))",
            nativeQuery = true)
