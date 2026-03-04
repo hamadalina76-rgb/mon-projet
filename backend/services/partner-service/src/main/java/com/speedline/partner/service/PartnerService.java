@@ -4,6 +4,7 @@ import com.speedline.partner.domain.PartnerStatus;
 import com.speedline.partner.domain.PartnerType;
 import com.speedline.partner.dto.CompletePartnerProfileRequest;
 import com.speedline.partner.dto.PartnerDTO;
+import com.speedline.partner.dto.StaffMemberDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -276,6 +277,14 @@ public interface PartnerService {
     PartnerDTO updateOpeningHours(Long partnerId, String openingHoursJson);
 
     /**
+     * Récupérer les horaires d'ouverture d'un partenaire (parsed JSON).
+     *
+     * @param partnerId ID du partenaire
+     * @return Liste des horaires (format du JSON stocké, ex. day, isClosed, slots)
+     */
+    List<?> getOpeningHours(Long partnerId);
+
+    /**
      * Vérifier si un partenaire est actuellement ouvert
      * 
      * @param partnerId ID du partenaire
@@ -283,6 +292,16 @@ public interface PartnerService {
      * @throws PartnerNotFoundException si non trouvé
      */
     boolean isCurrentlyOpen(Long partnerId);
+
+    /**
+     * Mettre à jour le statut ouvert/fermé (acceptsOrders) du partenaire.
+     * Réservé OWNER ou ADMIN (vérifié par PartnerOwnershipFilter).
+     *
+     * @param partnerId ID du partenaire
+     * @param isOpen true = accepte les commandes (visible comme ouvert), false = fermé
+     * @return PartnerDTO mis à jour
+     */
+    PartnerDTO updateOpenStatus(Long partnerId, boolean isOpen);
 
     // ==================== CATÉGORIES ET TAGS ====================
 
@@ -406,4 +425,12 @@ public interface PartnerService {
      * @return List<String> noms des villes
      */
     List<String> getAvailableCities();
+
+    /**
+     * Liste du staff du partenaire (OWNER, MANAGER, STAFF).
+     *
+     * @param partnerId ID du partenaire
+     * @return Liste des StaffMemberDTO
+     */
+    List<StaffMemberDTO> getStaff(Long partnerId);
 }

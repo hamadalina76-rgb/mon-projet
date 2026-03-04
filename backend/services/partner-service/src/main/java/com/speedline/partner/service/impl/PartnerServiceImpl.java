@@ -7,7 +7,11 @@ import com.speedline.partner.dto.CompletePartnerProfileRequest;
 import com.speedline.partner.dto.PartnerDTO;
 import com.speedline.partner.event.PartnerEvent;
 import com.speedline.partner.event.PartnerEventPublisher;
+import com.speedline.partner.domain.StaffMember;
+import com.speedline.partner.domain.StaffRole;
+import com.speedline.partner.dto.StaffMemberDTO;
 import com.speedline.partner.repository.PartnerRepository;
+import com.speedline.partner.repository.StaffMemberRepository;
 import com.speedline.partner.service.PartnerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +19,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -32,8 +38,10 @@ import java.util.Optional;
 public class PartnerServiceImpl implements PartnerService {
 
     private final PartnerRepository partnerRepository;
+    private final StaffMemberRepository staffMemberRepository;
     private final PartnerEventPublisher partnerEventPublisher;
     private final com.speedline.partner.client.AuthServiceClient authServiceClient;
+    private final ObjectMapper objectMapper;
 
     // ==================== SYNC AUTH-SERVICE ====================
 
@@ -68,6 +76,14 @@ public class PartnerServiceImpl implements PartnerService {
         partner = partnerRepository.save(partner);
         log.info("Partner profile created successfully with id: {} for userId: {}", 
                 partner.getId(), userId);
+
+        StaffMember owner = StaffMember.builder()
+                .partnerId(partner.getId())
+                .userId(userId)
+                .role(StaffRole.OWNER)
+                .build();
+        staffMemberRepository.save(owner);
+        log.info("StaffMember OWNER created for partner {} userId {}", partner.getId(), userId);
         
         return convertToDTO(partner);
     }
@@ -96,7 +112,13 @@ public class PartnerServiceImpl implements PartnerService {
         if (request.getShortDescription() != null) {
             partner.setShortDescription(request.getShortDescription());
         }
-        
+        if (request.getPhoneNumber() != null) {
+            partner.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getEmail() != null) {
+            partner.setEmail(request.getEmail());
+        }
+
         // ======== Address ========
         if (request.getAddress() != null) {
             partner.setAddress(request.getAddress());
@@ -571,15 +593,65 @@ public class PartnerServiceImpl implements PartnerService {
     @Override
     @Transactional
     public PartnerDTO updateOpeningHours(Long partnerId, String openingHoursJson) {
-        // TODO: Implémenter la mise à jour des horaires
-        throw new UnsupportedOperationException("À implémenter");
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+        partner.setOpeningHoursJson(openingHoursJson);
+        partner = partnerRepository.save(partner);
+        log.info("Opening hours updated for partner {}", partnerId);
+        return convertToDTO(partner);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<?> getOpeningHours(Long partnerId) {
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+        String json = partner.getOpeningHoursJson();
+        if (json == null || json.isBlank()) return List.of();
+        try {
+            return objectMapper.readValue(json, List.class);
+        } catch (Exception e) {
+            log.warn("Failed to parse opening hours JSON for partner {}: {}", partnerId, e.getMessage());
+            return List.of();
+        }
     }
 
     @Override
     @Transactional(readOnly = true)
     public boolean isCurrentlyOpen(Long partnerId) {
-        // TODO: Implémenter la vérification si le partenaire est ouvert
-        throw new UnsupportedOperationException("À implémenter");
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+        if (!partner.getIsActive() || !partner.getAcceptsOrders()) return false;
+        if (partner.getOpeningHoursJson() == null || partner.getOpeningHoursJson().isBlank()) return true;
+        // Simple check: could be enhanced with current time vs opening hours
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public PartnerDTO updateOpenStatus(Long partnerId, boolean isOpen) {
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+        partner.setAcceptsOrders(isOpen);
+        partner = partnerRepository.save(partner);
+        log.info("Partner {} open status set to acceptsOrders={}", partnerId, isOpen);
+        return convertToDTO(partner);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StaffMemberDTO> getStaff(Long partnerId) {
+        if (!partnerRepository.existsById(partnerId)) {
+            throw new RuntimeException("Partner not found with id: " + partnerId);
+        }
+        return staffMemberRepository.findByPartnerIdOrderByCreatedAtAsc(partnerId).stream()
+                .map(sm -> StaffMemberDTO.builder()
+                        .id(sm.getId())
+                        .partnerId(sm.getPartnerId())
+                        .userId(sm.getUserId())
+                        .role(sm.getRole())
+                        .build())
+                .toList();
     }
 
     // ==================== CATÉGORIES ET TAGS ====================
@@ -718,17 +790,29 @@ public class PartnerServiceImpl implements PartnerService {
                     .toList();
         }
 
+        List<?> openingHoursList = null;
+        if (partner.getOpeningHoursJson() != null && !partner.getOpeningHoursJson().isBlank()) {
+            try {
+                openingHoursList = objectMapper.readValue(partner.getOpeningHoursJson(), List.class);
+            } catch (Exception e) {
+                log.trace("Could not parse openingHoursJson for partner {}: {}", partner.getId(), e.getMessage());
+            }
+        }
+
         return PartnerDTO.builder()
                 .id(partner.getId())
                 .userId(partner.getUserId())
                 .businessName(partner.getBusinessName())
+                .name(partner.getBusinessName())
                 .brandName(partner.getBrandName())
                 .slug(partner.getSlug())
                 .type(partner.getType())
                 .description(partner.getDescription())
                 .shortDescription(partner.getShortDescription())
                 .logo(partner.getLogo())
+                .logoUrl(partner.getLogo())
                 .coverImage(partner.getCoverImage())
+                .coverUrl(partner.getCoverImage())
                 .phoneNumber(partner.getPhoneNumber())
                 .email(partner.getEmail())
                 // Legal Information
@@ -758,6 +842,8 @@ public class PartnerServiceImpl implements PartnerService {
                 .isVerified(partner.getIsVerified())
                 .isPremium(partner.getIsPremium())
                 .isFeatured(partner.getIsFeatured())
+                .isCurrentlyOpen(Boolean.TRUE.equals(partner.getIsActive()) && Boolean.TRUE.equals(partner.getAcceptsOrders()))
+                .commissionRate(partner.getCommissionRate())
                 // Delivery Settings
                 .preparationTime(partner.getPreparationTime())
                 .deliveryFee(partner.getDeliveryFee())
@@ -769,6 +855,7 @@ public class PartnerServiceImpl implements PartnerService {
                 // Statistics
                 .rating(partner.getRating())
                 .totalRatings(partner.getTotalRatings())
+                .reviewCount(partner.getTotalRatings() != null ? partner.getTotalRatings() : 0)
                 .totalOrders(partner.getTotalOrders())
                 .totalRevenue(partner.getTotalRevenue())
                 // Documents
@@ -780,7 +867,8 @@ public class PartnerServiceImpl implements PartnerService {
                 // Categories and Tags
                 .categoryIds(categoryIdsList)
                 .tags(tagsList)
-                .openingHoursDisplay(partner.getOpeningHoursJson()) // TODO: Formatter
+                .openingHoursDisplay(partner.getOpeningHoursJson())
+                .openingHours(openingHoursList)
                 .scheduleExceptionsDisplay(partner.getScheduleExceptionsJson())
                 .internalNotes(partner.getInternalNotes())
                 .createdAt(partner.getCreatedAt())

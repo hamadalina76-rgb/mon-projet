@@ -363,6 +363,38 @@ $success-faint: rgba($success-color, 0.12);
   margin-top: 0.125rem;
 }
 
+// Adresse affichée (même style que les champs du formulaire)
+.address-display-field {
+  margin-bottom: 1rem;
+
+  label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: $text-primary;
+    letter-spacing: 0.01em;
+    margin-bottom: 0.35rem;
+  }
+
+  .address-value {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border: 1.5px solid $gray-200;
+    border-radius: $border-radius-md;
+    font-size: 0.9375rem;
+    color: $text-primary;
+    font-family: inherit;
+    background: $white;
+    min-height: 2.75rem;
+    box-sizing: border-box;
+
+    &.empty {
+      color: $text-muted;
+      font-style: italic;
+    }
+  }
+}
+
 .contact-row { margin-top: 1rem; }
 .ops-row { margin-bottom: 1rem; }
 

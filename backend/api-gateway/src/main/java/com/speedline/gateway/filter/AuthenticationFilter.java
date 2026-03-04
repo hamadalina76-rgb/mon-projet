@@ -48,9 +48,46 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
             ServerHttpRequest request = exchange.getRequest();
             String path = request.getURI().getPath();
 
-            // Check if endpoint is open
+            // If endpoint is open and no Bearer token: pass through without headers
             if (isOpenEndpoint(path)) {
-                return chain.filter(exchange);
+                if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
+                    return chain.filter(exchange);
+                }
+                String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+                if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                    return chain.filter(exchange);
+                }
+                // Has Bearer token on "open" path: still validate and add X-User-Id / X-User-Role for downstream
+                try {
+                    String token = authHeader.substring(7);
+                    if (!jwtUtil.validateToken(token)) {
+                        return chain.filter(exchange);
+                    }
+                    String userId = jwtUtil.extractUserId(token);
+                    String role = jwtUtil.extractRole(token);
+                    return tokenBlacklistChecker.isBlacklisted(token)
+                            .flatMap(isBlacklisted -> {
+                                if (isBlacklisted) return chain.filter(exchange);
+                                return tokenBlacklistChecker.isUserBlocked(userId)
+                                        .flatMap(blocked -> {
+                                            if (blocked) return chain.filter(exchange);
+                                            ServerHttpRequest withHeaders = request.mutate()
+                                                    .header("X-User-Id", userId)
+                                                    .header("X-User-Role", role)
+                                                    .build();
+                                            return chain.filter(exchange.mutate().request(withHeaders).build());
+                                        });
+                            })
+                            .onErrorResume(e -> {
+                                ServerHttpRequest withHeaders = request.mutate()
+                                        .header("X-User-Id", userId)
+                                        .header("X-User-Role", role)
+                                        .build();
+                                return chain.filter(exchange.mutate().request(withHeaders).build());
+                            });
+                } catch (Exception e) {
+                    return chain.filter(exchange);
+                }
             }
 
             // Check for Authorization header

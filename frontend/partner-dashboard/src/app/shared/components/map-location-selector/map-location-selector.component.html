@@ -1,25 +1,53 @@
 <!-- Map Location Selector Component -->
 <div class="map-location-selector">
-  <!-- Search Bar -->
+  <!-- Search Bar with Autocomplete -->
   <div class="search-bar">
-    <mat-form-field appearance="outline" class="search-field">
-      <mat-label>Rechercher une adresse</mat-label>
-      <input 
-        matInput 
-        [(ngModel)]="searchQuery" 
-        (keyup.enter)="searchLocation()"
-        placeholder="Ex: Avenue Habib Bourguiba, Tunis"
-      />
-      <mat-icon matPrefix>search</mat-icon>
-      <button 
-        mat-icon-button 
-        matSuffix 
-        (click)="searchLocation()"
-        [disabled]="!searchQuery() || loading()"
-      >
-        <mat-icon>arrow_forward</mat-icon>
-      </button>
-    </mat-form-field>
+    <div class="search-input-wrapper">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Rechercher une adresse</mat-label>
+        <input 
+          matInput 
+          [ngModel]="searchQuery()" 
+          (input)="onSearchInput($event)"
+          (keyup.enter)="searchLocation()"
+          (blur)="hideSuggestions()"
+          (focus)="searchResults().length ? showSuggestions.set(true) : null"
+          placeholder="Ex: Avenue Habib Bourguiba, Tunis"
+        />
+        <mat-icon matPrefix>search</mat-icon>
+        <button 
+          mat-icon-button 
+          matSuffix 
+          (click)="searchLocation()"
+          [disabled]="!searchQuery() || loading()"
+        >
+          <mat-icon>arrow_forward</mat-icon>
+        </button>
+      </mat-form-field>
+
+      <!-- Autocomplete Suggestions Dropdown -->
+      @if (showSuggestions() && searchResults().length) {
+        <div class="suggestions-dropdown">
+          @for (result of searchResults(); track result.placeName) {
+            <div class="suggestion-item" (mousedown)="selectSuggestion(result)">
+              <mat-icon class="suggestion-icon">
+                @if (result.placeType.includes('poi')) {
+                  place
+                } @else if (result.placeType.includes('address')) {
+                  home
+                } @else {
+                  location_city
+                }
+              </mat-icon>
+              <div class="suggestion-text">
+                <span class="suggestion-main">{{ result.text }}</span>
+                <span class="suggestion-detail">{{ result.placeName }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
 
     <button 
       mat-raised-button 

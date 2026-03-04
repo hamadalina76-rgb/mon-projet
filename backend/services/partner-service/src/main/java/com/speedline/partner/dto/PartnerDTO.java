@@ -25,13 +25,19 @@ public class PartnerDTO {
     
     // Informations de base
     private String businessName;
+    /** Alias ticket: nom affiché (businessName) */
+    private String name;
     private String brandName;
     private String slug;
     private PartnerType type;
     private String description;
     private String shortDescription;
     private String logo;
+    /** Alias ticket: URL du logo */
+    private String logoUrl;
     private String coverImage;
+    /** Alias ticket: URL de la couverture */
+    private String coverUrl;
     private String phoneNumber;
     private String email;
     
@@ -68,6 +74,9 @@ public class PartnerDTO {
     private Boolean isPremium;
     private Boolean isFeatured;
     private Boolean isCurrentlyOpen;
+
+    /** Taux de commission (ticket: commissionRate) */
+    private BigDecimal commissionRate;
     
     // Paramètres de livraison
     private Integer preparationTime;
@@ -82,6 +91,8 @@ public class PartnerDTO {
     // Statistiques
     private BigDecimal rating;
     private Integer totalRatings;
+    /** Alias ticket: nombre d'avis */
+    private Integer reviewCount;
     private Integer totalOrders;
     private BigDecimal totalRevenue;
     
@@ -98,6 +109,8 @@ public class PartnerDTO {
     
     // Horaires (simplifié pour l'affichage)
     private String openingHoursDisplay;
+    /** Alias ticket: horaires parsés (liste jour/plages) */
+    private List<?> openingHours;
     private String scheduleExceptionsDisplay; // JSON des exceptions (jours fériés, fermetures)
 
     // Notes internes (admin)

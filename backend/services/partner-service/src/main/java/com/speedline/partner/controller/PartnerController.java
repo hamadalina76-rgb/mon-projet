@@ -3,6 +3,8 @@ package com.speedline.partner.controller;
 import com.speedline.partner.dto.CompletePartnerProfileRequest;
 import com.speedline.partner.dto.CreatePartnerRequest;
 import com.speedline.partner.dto.PartnerDTO;
+import com.speedline.partner.dto.StaffMemberDTO;
+import com.speedline.partner.dto.UpdatePartnerStatusRequest;
 import com.speedline.partner.service.FileStorageService;
 import com.speedline.partner.service.PartnerService;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,9 @@ import org.springframework.web.multipart.MultipartFile;
 import com.speedline.partner.domain.Partner;
 import com.speedline.partner.repository.PartnerRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +43,7 @@ import java.util.Map;
 @RequestMapping("/partners")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Partners", description = "Gestion des établissements partenaires")
 public class PartnerController {
     
     private final PartnerService partnerService;
@@ -95,6 +101,7 @@ public class PartnerController {
      * Récupérer un partner par ID
      * GET /partners/{id}
      */
+    @Operation(summary = "Détail partenaire", description = "Retourne le PartnerDTO complet par id")
     @GetMapping("/{id}")
     public ResponseEntity<?> getPartnerById(@PathVariable Long id) {
         log.info("Getting partner by id: {}", id);
@@ -150,6 +157,94 @@ public class PartnerController {
             log.error("Failed to update partner id: {}. Error: {}", id, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to update partner: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Toggle ouvert/fermé (acceptsOrders). Réservé OWNER ou ADMIN.
+     * PATCH /partners/{id}/status
+     */
+    @Operation(summary = "Changer statut ouvert/fermé", description = "Met à jour acceptsOrders (visible dans l'app client). OWNER ou ADMIN.")
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<?> updateStatus(
+            @PathVariable Long id,
+            @RequestBody UpdatePartnerStatusRequest request) {
+        log.info("Updating open status for partner id: {}, isOpen={}", id, request.getIsOpen());
+        try {
+            boolean isOpen = request.getIsOpen() != null && request.getIsOpen();
+            PartnerDTO partner = partnerService.updateOpenStatus(id, isOpen);
+            return ResponseEntity.ok(partner);
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Partner not found with id: " + id));
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Récupérer les horaires d'ouverture du partenaire.
+     * GET /partners/{id}/opening-hours
+     */
+    @Operation(summary = "Horaires d'ouverture", description = "Retourne la liste des horaires (format JSON stocké)")
+    @GetMapping("/{id}/opening-hours")
+    public ResponseEntity<?> getOpeningHours(@PathVariable Long id) {
+        try {
+            List<?> hours = partnerService.getOpeningHours(id);
+            return ResponseEntity.ok(hours);
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Partner not found with id: " + id));
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Mettre à jour les horaires d'ouverture. Ownership vérifié par filter.
+     * PUT /partners/{id}/opening-hours
+     */
+    @Operation(summary = "Modifier horaires", description = "Met à jour les horaires (body = liste day/isClosed/slots)")
+    @PutMapping("/{id}/opening-hours")
+    public ResponseEntity<?> putOpeningHours(
+            @PathVariable Long id,
+            @RequestBody List<Map<String, Object>> body) {
+        try {
+            String json = objectMapper.writeValueAsString(body);
+            partnerService.updateOpeningHours(id, json);
+            List<?> hours = partnerService.getOpeningHours(id);
+            return ResponseEntity.ok(hours);
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Partner not found with id: " + id));
+            }
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to update opening hours for partner {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Invalid opening hours format: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Liste du staff du partenaire (OWNER, MANAGER, STAFF). Ownership vérifié par filter.
+     * GET /partners/{id}/staff
+     */
+    @Operation(summary = "Liste du staff", description = "Retourne les membres du staff (OWNER, MANAGER, STAFF)")
+    @GetMapping("/{id}/staff")
+    public ResponseEntity<?> getStaff(@PathVariable Long id) {
+        try {
+            List<StaffMemberDTO> staff = partnerService.getStaff(id);
+            return ResponseEntity.ok(staff);
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Partner not found with id: " + id));
+            }
+            throw e;
         }
     }
 

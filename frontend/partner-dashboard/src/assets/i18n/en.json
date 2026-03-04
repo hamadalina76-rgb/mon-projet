@@ -409,6 +409,8 @@
     "acceptingOrders": "Accept orders",
     "open": "Open",
     "closed": "Closed",
+    "statusNowOpen": "You are accepting orders – establishment open",
+    "statusNowClosed": "Establishment closed – customers see « Closed »",
     "ordersToday": "Today's orders",
     "revenueToday": "Today's sales",
     "avgRating": "Customer rating",
@@ -544,6 +546,8 @@
     "welcomeSubtitle": "Complete your partner profile to start receiving orders.",
     "saveProgress": "Save",
     "submit": "Submit my profile",
+    "addressDisplayLabel": "Address",
+    "addressDisplayPlaceholder": "Click on the map or search for an address to display it here.",
     "steps": {
       "business": "Business",
       "address": "Address",
@@ -662,6 +666,7 @@
     "overviewClosed": "Closed",
     "overviewDeliveryZones": "Delivery zones",
     "overviewNoAddress": "No address provided.",
+    "overviewAddressResolving": "Loading address…",
     "overviewNoContact": "No contact details.",
     "overviewNoLegal": "No legal information.",
     "overviewNoBank": "No bank information.",
@@ -693,6 +698,8 @@
     "tagsLabel": "Tags (comma separated)",
     "tagsPlaceholder": "Organic, Vegetarian, Halal…",
     "addressTitle": "Business address",
+    "addressDisplayLabel": "Address displayed",
+    "addressDisplayPlaceholder": "Click on the map or search for an address to fill in the address.",
     "phoneLabel": "Phone",
     "phonePlaceholderBiz": "+216 …",
     "emailLabel": "Email",
@@ -764,6 +771,14 @@
     "passwordChanged": "Password changed successfully",
     "passwordMismatch": "Passwords do not match",
     "loadError": "Unable to load profile",
-    "close": "Close"
+    "close": "Close",
+    "openStatusLabel": "Accept orders",
+    "openStatusOpen": "Open",
+    "openStatusClosed": "Closed",
+    "openStatusHintOpen": "You are accepting orders – shown as « Open » to customers.",
+    "openStatusHintClosed": "You are not accepting orders – shown as « Closed » (inactive) to customers.",
+    "openStatusTooltip": "Toggle establishment open/closed (visible in client app)",
+    "statusNowOpen": "Establishment open – you are accepting orders",
+    "statusNowClosed": "Establishment closed – « Closed » badge visible to customers"
   }
 }

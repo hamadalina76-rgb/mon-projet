@@ -587,8 +587,8 @@ export class CompleteProfileComponent implements OnInit {
       longitude: lng,
     };
 
-    // Adresse : Mapbox ou fallback
-    patchData.fullAddress = locationData.address || locationData.city || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    // Adresse lisible uniquement (jamais les coordonnées en texte)
+    patchData.fullAddress = locationData.address || locationData.city || [locationData.neighborhood, locationData.state, locationData.country].filter(Boolean).join(', ') || '';
     patchData.city = locationData.city || locationData.state || '';
     patchData.postalCode = locationData.postalCode || '';
     patchData.state = locationData.state || '';

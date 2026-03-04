@@ -195,6 +195,8 @@ export interface PartnerProfileDto {
   status?: string;
   isActive?: boolean;
   acceptsOrders?: boolean;
+  /** Établissement actuellement ouvert (accepte les commandes) – aligné backend */
+  isCurrentlyOpen?: boolean;
   isVerified?: boolean;
   isPremium?: boolean;
   isFeatured?: boolean;

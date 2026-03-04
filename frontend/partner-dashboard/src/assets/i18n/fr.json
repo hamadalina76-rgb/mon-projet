@@ -408,6 +408,8 @@
     "acceptingOrders": "Accepter les commandes",
     "open": "Ouvert",
     "closed": "Fermé",
+    "statusNowOpen": "Vous acceptez les commandes – établissement ouvert",
+    "statusNowClosed": "Établissement fermé – les clients voient « Fermé »",
     "ordersToday": "Commandes aujourd'hui",
     "revenueToday": "Ventes du jour",
     "avgRating": "Note clients",
@@ -544,6 +546,8 @@
     "welcomeSubtitle": "Complétez votre profil partenaire pour commencer à recevoir des commandes.",
     "saveProgress": "Sauvegarder",
     "submit": "Soumettre mon profil",
+    "addressDisplayLabel": "Adresse",
+    "addressDisplayPlaceholder": "Cliquez sur la carte ou recherchez une adresse pour afficher l'adresse ici.",
     "steps": {
       "business": "Commerce",
       "address": "Adresse",
@@ -662,6 +666,7 @@
     "overviewClosed": "Fermé",
     "overviewDeliveryZones": "Zones de livraison",
     "overviewNoAddress": "Aucune adresse renseignée.",
+    "overviewAddressResolving": "Chargement de l'adresse…",
     "overviewNoContact": "Aucune coordonnée.",
     "overviewNoLegal": "Aucune information légale.",
     "overviewNoBank": "Aucune information bancaire.",
@@ -693,6 +698,8 @@
     "tagsLabel": "Tags (séparés par des virgules)",
     "tagsPlaceholder": "Bio, Végétarien, Halal…",
     "addressTitle": "Adresse du commerce",
+    "addressDisplayLabel": "Adresse affichée",
+    "addressDisplayPlaceholder": "Cliquez sur la carte ou recherchez une adresse pour remplir l'adresse.",
     "phoneLabel": "Téléphone",
     "phonePlaceholderBiz": "+216 …",
     "emailLabel": "Email",
@@ -764,6 +771,14 @@
     "passwordChanged": "Mot de passe modifié avec succès",
     "passwordMismatch": "Les mots de passe ne correspondent pas",
     "loadError": "Impossible de charger le profil",
-    "close": "Fermer"
+    "close": "Fermer",
+    "openStatusLabel": "Accepter les commandes",
+    "openStatusOpen": "Ouvert",
+    "openStatusClosed": "Fermé",
+    "openStatusHintOpen": "Vous acceptez les commandes – visible comme « Ouvert » pour les clients.",
+    "openStatusHintClosed": "Vous n'acceptez pas les commandes – visible comme « Fermé » (inactif) pour les clients.",
+    "openStatusTooltip": "Basculer l'établissement ouvert/fermé (visible dans l'app client)",
+    "statusNowOpen": "Établissement ouvert – vous acceptez les commandes",
+    "statusNowClosed": "Établissement fermé – badge « Fermé » visible pour les clients"
   }
 }

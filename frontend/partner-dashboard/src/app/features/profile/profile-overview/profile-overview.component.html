@@ -36,7 +36,7 @@
   }
 
   @if (partner() && !loading()) {
-    <!-- Tabs d'accès (Compte, Entreprise, Horaires, Zones) -->
+    <!-- Tabs d'accès (Compte, Entreprise, Horaires) -->
     <nav class="profile-tabs">
       <a class="tab-item" routerLink="settings" routerLinkActive="active">
         <mat-icon>person</mat-icon>
@@ -49,10 +49,6 @@
       <a class="tab-item" routerLink="hours" routerLinkActive="active">
         <mat-icon>schedule</mat-icon>
         <span>{{ 'profilePages.overviewTabHours' | translate }}</span>
-      </a>
-      <a class="tab-item" routerLink="zones" routerLinkActive="active">
-        <mat-icon>place</mat-icon>
-        <span>{{ 'profilePages.overviewTabZones' | translate }}</span>
       </a>
     </nav>
 
@@ -70,9 +66,26 @@
       <div class="store-identity-info">
         <h2 class="store-name">{{ partner()!.businessName || partner()!.brandName }}</h2>
         <p class="store-type">{{ (partner()!.type || ('profilePages.partnerType' | translate)) | uppercase }}</p>
-        <span class="status-badge" [ngClass]="getStatusClass(partner()!.status)">
-          {{ getStatusLabel(partner()!.status) | uppercase }}
+        <span class="status-badge" [ngClass]="getDisplayStatusClass()">
+          {{ getDisplayStatusLabel() | uppercase }}
         </span>
+        @if (partner()!.status === 'ACTIVE') {
+          <div class="open-status-toggle">
+            <span class="open-status-label">{{ 'profilePages.openStatusLabel' | translate }}</span>
+            <mat-slide-toggle
+              [checked]="isCurrentlyOpen()"
+              [disabled]="statusToggleLoading()"
+              (change)="toggleOpenStatus()"
+              color="primary"
+              [matTooltip]="'profilePages.openStatusTooltip' | translate">
+              {{ isCurrentlyOpen() ? ('profilePages.openStatusOpen' | translate) : ('profilePages.openStatusClosed' | translate) }}
+            </mat-slide-toggle>
+            @if (statusToggleLoading()) {
+              <mat-spinner diameter="20" class="toggle-spinner"></mat-spinner>
+            }
+            <p class="open-status-hint">{{ (isCurrentlyOpen() ? 'profilePages.openStatusHintOpen' : 'profilePages.openStatusHintClosed') | translate }}</p>
+          </div>
+        }
       </div>
     </div>
 
@@ -144,29 +157,16 @@
           </div>
         }
         <div class="info-list">
-          @if (hasValue(partner()!.address) || hasValue(partner()!.city)) {
+          @if (displayAddressText()) {
             <div class="info-row full">
               <span class="label">{{ 'profilePages.overviewAddress' | translate | uppercase }}</span>
-              <span class="value">
-                {{ partner()!.address }}
-                @if (partner()!.postalCode || partner()!.city) {
-                  <br />
-                  {{ partner()!.postalCode }} {{ partner()!.city }}
-                }
-                @if (partner()!.state || partner()!.country) {
-                  <br />
-                  {{ partner()!.state }}{{ partner()!.state && partner()!.country ? ', ' : '' }}{{ partner()!.country || '' }}
-                }
-              </span>
+              <span class="value">{{ displayAddressText() }}</span>
             </div>
           }
-          @if (partner()!.latitude != null && partner()!.longitude != null) {
-            <div class="info-row">
-              <span class="label">{{ 'profilePages.overviewGpsCoords' | translate | uppercase }}</span>
-              <span class="value">{{ partner()!.latitude }}°N, {{ partner()!.longitude }}°E</span>
-            </div>
+          @if (addressResolving()) {
+            <p class="empty-hint">{{ 'profilePages.overviewAddressResolving' | translate }}</p>
           }
-          @if (!hasValue(partner()!.address) && !hasValue(partner()!.city)) {
+          @if (!displayAddressText() && !addressResolving()) {
             <p class="empty-hint">{{ 'profilePages.overviewNoAddress' | translate }} <a routerLink="business">{{ 'profilePages.overviewEdit' | translate }}</a></p>
           }
         </div>
@@ -263,16 +263,6 @@
         } @else {
           <p class="empty-hint">{{ 'profilePages.overviewNoHours' | translate }} <a routerLink="hours">{{ 'profilePages.overviewDefineHours' | translate }}</a></p>
         }
-      </mat-card>
-
-      <!-- Zones de livraison -->
-      <mat-card class="info-card">
-        <div class="card-head">
-          <h3><mat-icon>place</mat-icon> {{ 'profilePages.overviewDeliveryZones' | translate }}</h3>
-          <a routerLink="zones" class="edit-link">{{ 'profilePages.overviewEdit' | translate }}</a>
-        </div>
-        <mat-divider></mat-divider>
-        <p class="empty-hint">{{ 'profilePages.overviewZonesHint' | translate }} <a routerLink="zones">{{ 'profilePages.overviewManageZones' | translate }}</a></p>
       </mat-card>
     </div>
   }
