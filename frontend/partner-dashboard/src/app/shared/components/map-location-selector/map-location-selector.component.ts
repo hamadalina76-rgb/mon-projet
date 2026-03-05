@@ -10,6 +10,8 @@ import { FormsModule } from '@angular/forms';
 import * as mapboxgl from 'mapbox-gl';
 import MapboxLanguage from '@mapbox/mapbox-gl-language';
 import { environment } from '@environments/environment';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged, filter } from 'rxjs/operators';
 
 export interface LocationData {
   latitude: number;
@@ -20,6 +22,13 @@ export interface LocationData {
   state?: string;
   country?: string;
   neighborhood?: string;
+}
+
+export interface SearchSuggestion {
+  placeName: string;
+  text: string;
+  center: [number, number];
+  placeType: string[];
 }
 
 @Component({
@@ -47,15 +56,23 @@ export class MapLocationSelectorComponent implements OnInit, AfterViewInit, OnDe
   loading = signal(false);
   searchQuery = signal('');
   isMapReady = signal(false);
+  searchResults = signal<SearchSuggestion[]>([]);
+  showSuggestions = signal(false);
 
   private mapboxToken = environment.mapboxToken;
+  private searchSubject = new Subject<string>();
+  private searchSubscription?: Subscription;
 
   // Default location: Tunis, Tunisia
   private defaultLat = 36.8065;
   private defaultLng = 10.1815;
 
   constructor() {
-    // Mapbox token will be set in initMap
+    this.searchSubscription = this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      filter((q: string) => q.length >= 2),
+    ).subscribe((query: string) => this.fetchSuggestions(query));
   }
 
   ngOnInit(): void {
@@ -70,6 +87,7 @@ export class MapLocationSelectorComponent implements OnInit, AfterViewInit, OnDe
   }
 
   ngOnDestroy(): void {
+    this.searchSubscription?.unsubscribe();
     if (this.map) {
       this.map.remove();
     }
@@ -97,7 +115,7 @@ export class MapLocationSelectorComponent implements OnInit, AfterViewInit, OnDe
       // Initialize map
       this.map = new mapboxgl.Map({
         container: 'map',
-        style: 'mapbox://styles/mapbox/streets-v12',
+        style: 'mapbox://styles/mapbox/streets-v11',
         center: [lng, lat],
         zoom: 13,
         accessToken: this.mapboxToken
@@ -162,91 +180,54 @@ export class MapLocationSelectorComponent implements OnInit, AfterViewInit, OnDe
   }
 
   private async onLocationChange(lat: number, lng: number): Promise<void> {
-    // Reverse geocode to get address
     try {
+      // Use OpenStreetMap Nominatim for reverse geocoding — far better street-level coverage in Tunisia
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${this.mapboxToken}&language=fr&types=address,poi`
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2` +
+        `&lat=${lat}&lon=${lng}&accept-language=fr&addressdetails=1&zoom=18`
       );
       const data = await response.json();
 
-      if (data.features && data.features.length > 0) {
-        const place = data.features[0];
-        
-        // Extract address components from context
-        let streetAddress = '';
-        let city = '';
-        let postalCode = '';
-        let state = '';
-        let country = '';
-        let neighborhood = '';
-
-        // The main place text is usually the street/POI name
-        if (place.place_type?.includes('address')) {
-          // For address type: text = street name, address = house number
-          streetAddress = place.address 
-            ? `${place.address} ${place.text}` 
-            : place.text;
-        } else if (place.place_type?.includes('poi')) {
-          streetAddress = place.text;
-        } else {
-          streetAddress = place.text || place.place_name;
-        }
-
-        // Parse context for city, state, postcode, country
-        place.context?.forEach((ctx: any) => {
-          const id = ctx.id || '';
-          if (id.startsWith('neighborhood') || id.startsWith('locality')) {
-            neighborhood = ctx.text;
-          } else if (id.startsWith('place')) {
-            city = ctx.text;
-          } else if (id.startsWith('district')) {
-            // Fallback for city if place is not available
-            if (!city) city = ctx.text;
-          } else if (id.startsWith('region')) {
-            state = ctx.text;
-          } else if (id.startsWith('postcode')) {
-            postalCode = ctx.text;
-          } else if (id.startsWith('country')) {
-            country = ctx.text;
-          }
-        });
-
-        // If no city found, try from place_type
-        if (!city && place.place_type?.includes('place')) {
-          city = place.text;
-        }
-
-        // Build a clean full address
-        const addressParts = [streetAddress];
-        if (neighborhood) addressParts.push(neighborhood);
-        const fullAddress = addressParts.join(', ');
-
-        const locationData: LocationData = {
-          latitude: lat,
-          longitude: lng,
-          address: fullAddress || place.place_name,
-          city,
-          postalCode,
-          state,
-          country,
-          neighborhood,
-        };
-
-        this.locationSelected.emit(locationData);
-      } else {
-        // Emit location without address details
-        this.locationSelected.emit({
-          latitude: lat,
-          longitude: lng
-        });
+      if (!data || data.error) {
+        this.locationSelected.emit({ latitude: lat, longitude: lng });
+        return;
       }
-    } catch (error) {
-      console.error('Error geocoding:', error);
-      // Emit location without address details
+
+      const addr = data.address || {};
+
+      // Build street address: house_number + road
+      const houseNumber = addr.house_number || '';
+      const road = addr.road || addr.pedestrian || addr.footway || addr.path || '';
+      let streetAddress = [houseNumber, road].filter(Boolean).join(' ');
+
+      // If no road, try amenity/building/shop name
+      if (!streetAddress) {
+        streetAddress = addr.amenity || addr.building || addr.shop || addr.tourism || addr.leisure || '';
+      }
+
+      const neighborhood = addr.neighbourhood || addr.suburb || addr.quarter || '';
+      const city = addr.city || addr.town || addr.village || addr.municipality || '';
+      const postalCode = addr.postcode || '';
+      const state = addr.state || addr.governorate || addr.province || '';
+      const country = addr.country || '';
+
+      // Build display address: street + neighborhood
+      const parts = [streetAddress, neighborhood].filter(Boolean);
+      const displayAddress = parts.join(', ');
+
       this.locationSelected.emit({
         latitude: lat,
-        longitude: lng
+        longitude: lng,
+        address: displayAddress || undefined,
+        city: city || undefined,
+        postalCode: postalCode || undefined,
+        state: state || undefined,
+        country: country || undefined,
+        neighborhood: neighborhood || undefined,
       });
+    } catch (error) {
+      console.error('Reverse geocoding error:', error);
+      this.locationSelected.emit({ latitude: lat, longitude: lng });
     }
   }
 
@@ -255,21 +236,30 @@ export class MapLocationSelectorComponent implements OnInit, AfterViewInit, OnDe
     if (!query || !this.map) return;
 
     this.loading.set(true);
+    this.showSuggestions.set(false);
 
     try {
+      const center = this.map.getCenter();
+      const viewbox = this.getViewbox();
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${this.mapboxToken}&limit=1`
+        `https://nominatim.openstreetmap.org/search?format=jsonv2` +
+        `&q=${encodeURIComponent(query)}` +
+        `&accept-language=fr` +
+        `&limit=1` +
+        `&addressdetails=1` +
+        `&viewbox=${viewbox}` +
+        `&bounded=0`
       );
       const data = await response.json();
 
-      if (data.features && data.features.length > 0) {
-        const place = data.features[0];
-        const [lng, lat] = place.center;
+      if (Array.isArray(data) && data.length > 0) {
+        const place = data[0];
+        const lat = parseFloat(place.lat);
+        const lng = parseFloat(place.lon);
 
-        // Move map and marker
         this.map.flyTo({
           center: [lng, lat],
-          zoom: 15
+          zoom: 16
         });
 
         this.marker!.setLngLat([lng, lat]);
@@ -280,6 +270,89 @@ export class MapLocationSelectorComponent implements OnInit, AfterViewInit, OnDe
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** Called on each keystroke in the search input → debounced autocomplete */
+  onSearchInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.searchQuery.set(value);
+    if (value.length < 2) {
+      this.searchResults.set([]);
+      this.showSuggestions.set(false);
+      return;
+    }
+    this.searchSubject.next(value);
+  }
+
+  /** Fetch autocomplete suggestions from Nominatim (OpenStreetMap) */
+  private async fetchSuggestions(query: string): Promise<void> {
+    try {
+      const viewbox = this.getViewbox();
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2` +
+        `&q=${encodeURIComponent(query)}` +
+        `&accept-language=fr` +
+        `&limit=5` +
+        `&addressdetails=1` +
+        `&viewbox=${viewbox}` +
+        `&bounded=0`
+      );
+      const data = await response.json();
+
+      if (Array.isArray(data) && data.length > 0) {
+        this.searchResults.set(
+          data.map((place: any) => {
+            const addr = place.address || {};
+            const road = addr.road || addr.pedestrian || '';
+            const city = addr.city || addr.town || addr.village || '';
+            const mainText = road || place.name || city || place.display_name?.split(',')[0] || '';
+            return {
+              placeName: place.display_name || '',
+              text: mainText,
+              center: [parseFloat(place.lon), parseFloat(place.lat)] as [number, number],
+              placeType: [place.type || place.category || 'place'],
+            };
+          })
+        );
+        this.showSuggestions.set(true);
+      } else {
+        this.searchResults.set([]);
+        this.showSuggestions.set(false);
+      }
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+    }
+  }
+
+  /** Select a suggestion from the autocomplete dropdown */
+  selectSuggestion(suggestion: SearchSuggestion): void {
+    const [lng, lat] = suggestion.center;
+    this.searchQuery.set(suggestion.placeName);
+    this.showSuggestions.set(false);
+    this.searchResults.set([]);
+
+    if (this.map && this.marker) {
+      this.map.flyTo({ center: [lng, lat], zoom: 16 });
+      this.marker.setLngLat([lng, lat]);
+      this.onLocationChange(lat, lng);
+    }
+  }
+
+  /** Hide suggestions dropdown (with delay to allow click) */
+  hideSuggestions(): void {
+    setTimeout(() => this.showSuggestions.set(false), 200);
+  }
+
+  /** Build Nominatim viewbox from current map bounds for proximity bias */
+  private getViewbox(): string {
+    if (this.map) {
+      const bounds = this.map.getBounds();
+      if (bounds) {
+        return `${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()},${bounds.getSouth()}`;
+      }
+    }
+    // Fallback: Tunisia bounding box
+    return '7.5,37.5,11.6,30.2';
   }
 
   getCurrentLocation(): void {

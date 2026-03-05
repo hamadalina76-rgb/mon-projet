@@ -37,9 +37,4 @@ export const PROFILE_ROUTES: Routes = [
         (m) => m.ScheduleExceptionsComponent
       ),
   },
-  {
-    path: 'zones',
-    loadComponent: () =>
-      import('./zones/zones.component').then((m) => m.ZonesComponent),
-  },
 ];

@@ -20,6 +20,8 @@ import { PartnerService } from '@core/services/partner.service';
 import { AuthService } from '@core/services/auth.service';
 import { MapLocationSelectorComponent, LocationData } from '@shared/components/map-location-selector/map-location-selector.component';
 
+const NOMINATIM_REVERSE_URL = 'https://nominatim.openstreetmap.org/reverse';
+
 @Component({
   selector: 'app-business-info',
   standalone: true,
@@ -153,6 +155,15 @@ export class BusinessInfoComponent implements OnInit {
         if (partner.coverImage) this.coverPreview.set(partner.coverImage);
 
         this.loading.set(false);
+        if (
+          lat != null &&
+          lng != null &&
+          !(partner.address || '').trim() &&
+          !(partner.city || '').trim() &&
+          environment.mapboxToken
+        ) {
+          this.resolveAddressFromCoords(lat, lng);
+        }
       },
       error: (err) => {
         console.error('Error loading business info:', err);
@@ -210,6 +221,44 @@ export class BusinessInfoComponent implements OnInit {
     });
   }
 
+  /** Adresse complète affichée (rue, code postal, ville, pays) – jamais les coordonnées. */
+  get fullAddressLine(): string {
+    const v = this.businessForm.value;
+    const parts = [v.address, [v.postalCode, v.city].filter(Boolean).join(' '), v.state, v.country].filter(Boolean);
+    return parts.join(', ') || '';
+  }
+
+  /** Récupère l'adresse lisible depuis les coordonnées (Nominatim/OSM) et remplit le formulaire. */
+  private resolveAddressFromCoords(lat: number, lng: number): void {
+    fetch(
+      `${NOMINATIM_REVERSE_URL}?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=fr&addressdetails=1&zoom=18`
+    )
+      .then((res) => res.json())
+      .then((data: any) => {
+        if (!data || data.error) return;
+        const addr = data.address || {};
+        const houseNumber = addr.house_number || '';
+        const road = addr.road || addr.pedestrian || addr.footway || '';
+        const streetAddress = [houseNumber, road].filter(Boolean).join(' ')
+          || addr.amenity || addr.building || '';
+        const neighborhood = addr.neighbourhood || addr.suburb || addr.quarter || '';
+        const city = addr.city || addr.town || addr.village || addr.municipality || '';
+        const state = addr.state || addr.governorate || '';
+        const postalCode = addr.postcode || '';
+        const country = addr.country || this.businessForm.get('country')?.value || 'Tunisie';
+
+        const addrParts = [streetAddress, neighborhood].filter(Boolean);
+        this.businessForm.patchValue({
+          address: addrParts.join(', ') || undefined,
+          city: city || undefined,
+          postalCode: postalCode || undefined,
+          state: state || undefined,
+          country,
+        });
+      })
+      .catch(() => {});
+  }
+
   saveBusinessInfo(): void {
     if (this.businessForm.invalid) {
       this.businessForm.markAllAsTouched();
@@ -237,6 +286,8 @@ export class BusinessInfoComponent implements OnInit {
       shortDescription: formVal.shortDescription || undefined,
       fullDescription: formVal.description || undefined,
       partnerType: formVal.type,
+      phoneNumber: formVal.phoneNumber || undefined,
+      email: formVal.email || undefined,
       address: formVal.address || undefined,
       city: formVal.city || undefined,
       postalCode: formVal.postalCode || undefined,

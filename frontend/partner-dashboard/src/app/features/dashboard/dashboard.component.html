@@ -200,9 +200,13 @@
           </div>
           <mat-slide-toggle
             [checked]="acceptingOrders()"
+            [disabled]="statusToggleLoading()"
             (change)="toggleAcceptingOrders()"
             color="primary">
           </mat-slide-toggle>
+          @if (statusToggleLoading()) {
+            <mat-spinner diameter="24" style="margin-left: 8px;"></mat-spinner>
+          }
         </div>
       </div>
     </header>

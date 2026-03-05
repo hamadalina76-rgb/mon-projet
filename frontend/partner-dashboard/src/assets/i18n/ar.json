@@ -408,6 +408,8 @@
     "acceptingOrders": "قبول الطلبات",
     "open": "مفتوح",
     "closed": "مغلق",
+    "statusNowOpen": "أنت تقبل الطلبات – المؤسسة مفتوحة",
+    "statusNowClosed": "المؤسسة مغلقة – العملاء يرون « مغلق »",
     "ordersToday": "طلبات اليوم",
     "revenueToday": "مبيعات اليوم",
     "avgRating": "تقييم العملاء",
@@ -543,6 +545,8 @@
     "welcomeSubtitle": "أكمل ملفك الشخصي كشريك لبدء استقبال الطلبات.",
     "saveProgress": "حفظ",
     "submit": "إرسال ملفي الشخصي",
+    "addressDisplayLabel": "العنوان",
+    "addressDisplayPlaceholder": "انقر على الخريطة أو ابحث عن عنوان لعرضه هنا.",
     "steps": {
       "business": "النشاط التجاري",
       "address": "العنوان",
@@ -661,6 +665,7 @@
     "overviewClosed": "مغلق",
     "overviewDeliveryZones": "مناطق التوصيل",
     "overviewNoAddress": "لم يتم إدخال عنوان.",
+    "overviewAddressResolving": "جاري تحميل العنوان…",
     "overviewNoContact": "لا توجد معلومات اتصال.",
     "overviewNoLegal": "لا توجد معلومات قانونية.",
     "overviewNoBank": "لا توجد معلومات بنكية.",
@@ -692,6 +697,8 @@
     "tagsLabel": "الوسوم (مفصولة بفواصل)",
     "tagsPlaceholder": "عضوي، نباتي، حلال…",
     "addressTitle": "عنوان التجارة",
+    "addressDisplayLabel": "العنوان المعروض",
+    "addressDisplayPlaceholder": "انقر على الخريطة أو ابحث عن عنوان لملء العنوان.",
     "phoneLabel": "الهاتف",
     "phonePlaceholderBiz": "+216 …",
     "emailLabel": "البريد الإلكتروني",
@@ -763,6 +770,14 @@
     "passwordChanged": "تم تغيير كلمة المرور بنجاح",
     "passwordMismatch": "كلمات المرور غير متطابقة",
     "loadError": "تعذر تحميل الملف الشخصي",
-    "close": "إغلاق"
+    "close": "إغلاق",
+    "openStatusLabel": "قبول الطلبات",
+    "openStatusOpen": "مفتوح",
+    "openStatusClosed": "مغلق",
+    "openStatusHintOpen": "أنت تقبل الطلبات – يظهر « مفتوح » للعملاء.",
+    "openStatusHintClosed": "أنت لا تقبل الطلبات – يظهر « مغلق » (غير نشط) للعملاء.",
+    "openStatusTooltip": "تبديل المؤسسة مفتوح/مغلق (يظهر في تطبيق العميل)",
+    "statusNowOpen": "المؤسسة مفتوحة – تقبل الطلبات",
+    "statusNowClosed": "المؤسسة مغلقة – شارة «مغلق» تظهر للعملاء"
   }
 }

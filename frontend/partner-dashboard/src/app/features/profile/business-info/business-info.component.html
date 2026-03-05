@@ -93,15 +93,21 @@
               </div>
             </div>
             <div class="card-body">
+              <div class="address-display-field">
+                <label>{{ 'profilePages.addressDisplayLabel' | translate }}</label>
+                <div class="address-value" [class.empty]="!fullAddressLine">
+                  {{ fullAddressLine || ('profilePages.addressDisplayPlaceholder' | translate) }}
+                </div>
+              </div>
               <app-map-location-selector
                 [initialLatitude]="initialMapLat() ?? businessForm.get('latitude')?.value"
                 [initialLongitude]="initialMapLng() ?? businessForm.get('longitude')?.value"
                 (locationSelected)="onLocationSelected($event)"
               />
-              @if (businessForm.get('address')?.value || businessForm.get('city')?.value) {
+              @if (fullAddressLine) {
                 <div class="address-chip">
                   <mat-icon>place</mat-icon>
-                  <span>{{ businessForm.get('address')?.value }}{{ businessForm.get('postalCode')?.value || businessForm.get('city')?.value ? ', ' : '' }}{{ businessForm.get('postalCode')?.value }}{{ businessForm.get('postalCode')?.value && businessForm.get('city')?.value ? ' ' : '' }}{{ businessForm.get('city')?.value }}{{ businessForm.get('country')?.value ? ', ' + businessForm.get('country')?.value : '' }}</span>
+                  <span>{{ fullAddressLine }}</span>
                 </div>
               }
               <div class="field-grid contact-row">

@@ -17,6 +17,7 @@ import { OrdersChartComponent } from './components/orders-chart/orders-chart.com
 import { AuthService } from '@core/services/auth.service';
 import { PartnerService } from '@core/services/partner.service';
 import { WebSocketService } from '@core/services/websocket.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { GenericDialogComponent } from '@shared/components/generic-dialog/generic-dialog.component';
 
 @Component({
@@ -44,6 +45,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private partnerService = inject(PartnerService);
   private wsService = inject(WebSocketService);
+  private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   private router = inject(Router);
   private translate = inject(TranslateService);
@@ -54,6 +56,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   partnerStatus = signal<string>('');
   acceptingOrders = signal(false);
   loading = signal(true);
+  statusToggleLoading = signal(false);
+  partnerId = signal<number | null>(null);
 
   // Dashboard stats
   stats = signal({
@@ -234,11 +238,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.partnerId.set(partnerId);
     this.partnerService.getPartner(partnerId).subscribe({
       next: (partner: any) => {
         this.partnerStatus.set(partner.status || 'PENDING');
         this.partnerName.set(partner.brandName || partner.businessName || this.partnerName());
-        this.acceptingOrders.set(partner.isActive || false);
+        this.acceptingOrders.set(partner.acceptsOrders === true || partner.isCurrentlyOpen === true);
         
         // Store admin message if status is documents_missing
         if (partner.status === 'DOCUMENTS_MISSING' && partner.adminMessage) {
@@ -270,8 +275,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   toggleAcceptingOrders(): void {
+    const id = this.partnerId();
+    if (id == null) return;
     const newState = !this.acceptingOrders();
-    this.acceptingOrders.set(newState);
+    this.statusToggleLoading.set(true);
+    this.partnerService.updateStatus(id, newState).subscribe({
+      next: (updated) => {
+        this.acceptingOrders.set(updated.acceptsOrders === true || updated.isCurrentlyOpen === true);
+        this.statusToggleLoading.set(false);
+        const key = newState ? 'DASHBOARD.statusNowOpen' : 'DASHBOARD.statusNowClosed';
+        this.snackBar.open(this.translate.instant(key), this.translate.instant('profilePages.close'), { duration: 3000 });
+      },
+      error: (err) => {
+        this.statusToggleLoading.set(false);
+        const msg = err?.error?.error || err?.message || this.translate.instant('profilePages.saveError');
+        this.snackBar.open(msg, this.translate.instant('profilePages.close'), { duration: 4000 });
+      },
+    });
   }
 
   navigateToCompleteProfile(): void {

@@ -23,7 +23,9 @@ public class CompletePartnerProfileRequest {
     private String brandName;
     private PartnerType partnerType;
     private String description;
-    
+    private String phoneNumber;
+    private String email;
+
     // ======== Address ========
     private String address;
     private String city;

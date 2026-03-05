@@ -109,6 +109,14 @@
                 {{ 'auth.register.step2.title' | translate }}
               </h2>
 
+              <!-- Adresse affichée (remplie par la carte, jamais en coordonnées) -->
+              <div class="address-display-field">
+                <label>{{ 'completeProfile.addressDisplayLabel' | translate }}</label>
+                <div class="address-value" [class.empty]="!step2Form.get('fullAddress')?.value && !step2Form.get('city')?.value">
+                  {{ step2Form.get('fullAddress')?.value || (step2Form.get('city')?.value ? (step2Form.get('city')?.value + (step2Form.get('country')?.value ? ', ' + step2Form.get('country')?.value : '')) : ('completeProfile.addressDisplayPlaceholder' | translate)) }}
+                </div>
+              </div>
+
               <!-- Map -->
               <div class="map-section">
                 <h3>{{ 'auth.register.step2.selectLocation' | translate }}</h3>
@@ -122,22 +130,6 @@
                   (locationSelected)="onLocationSelected($event)"
                 ></app-map-location-selector>
               </div>
-
-              <!-- Adresse remplie automatiquement par Mapbox -->
-              @if (step2Form.get('fullAddress')?.value) {
-                <div class="address-chip">
-                  <mat-icon>place</mat-icon>
-                  <span>
-                    {{ step2Form.get('fullAddress')?.value }}
-                    @if (step2Form.get('postalCode')?.value || step2Form.get('city')?.value) {
-                      — {{ step2Form.get('postalCode')?.value }}{{ step2Form.get('postalCode')?.value && step2Form.get('city')?.value ? ' ' : '' }}{{ step2Form.get('city')?.value }}
-                    }
-                    @if (step2Form.get('country')?.value) {
-                      — {{ step2Form.get('country')?.value }}
-                    }
-                  </span>
-                </div>
-              }
 
               <div class="step-actions">
                 <button mat-button matStepperPrevious>

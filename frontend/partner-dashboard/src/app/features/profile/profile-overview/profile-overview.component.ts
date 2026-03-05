@@ -10,8 +10,12 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ProfileService } from '../services/profile.service';
+import { PartnerService } from '@core/services/partner.service';
+import { AuthService } from '@core/services/auth.service';
 import { PartnerProfileDto } from '@core/models/partner.model';
 import { environment } from '@environments/environment';
 
@@ -36,6 +40,8 @@ interface OpeningHoursDay {
     MatProgressSpinnerModule,
     MatDividerModule,
     MatTooltipModule,
+    MatSlideToggleModule,
+    MatSnackBarModule,
     TranslateModule,
   ],
   templateUrl: './profile-overview.component.html',
@@ -43,12 +49,17 @@ interface OpeningHoursDay {
 })
 export class ProfileOverviewComponent implements OnInit {
   private profileService = inject(ProfileService);
+  private partnerService = inject(PartnerService);
+  private authService = inject(AuthService);
+  private snackBar = inject(MatSnackBar);
   private translate = inject(TranslateService);
 
   loading = signal(true);
   error = signal<string | null>(null);
   partner = signal<PartnerProfileDto | null>(null);
   searchQuery = '';
+  /** Chargement du toggle Ouvert/Fermé */
+  statusToggleLoading = signal(false);
 
   /** Horaires parsés depuis openingHoursDisplay (JSON) */
   openingHoursParsed = computed(() => {
@@ -92,10 +103,29 @@ export class ProfileOverviewComponent implements OnInit {
     const lng = p?.longitude;
     const token = environment.mapboxToken;
     if (lat == null || lng == null || !token) return null;
-    const base = 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/static';
+    const base = 'https://api.mapbox.com/styles/v1/mapbox/streets-v11/static';
     const pin = `pin-l+ef4444(${lng},${lat})`;
     const center = `${lng},${lat},14,0,0`;
     return `${base}/${pin}/${center}/400x200@2x?access_token=${encodeURIComponent(token)}`;
+  });
+
+  /** Adresse résolue depuis les coordonnées GPS (Mapbox) quand le partenaire n'a pas d'adresse texte */
+  resolvedAddress = signal<{ address?: string; city?: string; country?: string } | null>(null);
+  addressResolving = signal(false);
+
+  /** Adresse à afficher (lisible) : partenaire ou résolue depuis les coords – jamais les degrés GPS */
+  displayAddressText = computed(() => {
+    const p = this.partner();
+    const resolved = this.resolvedAddress();
+    if (this.hasValue(p?.address) || this.hasValue(p?.city)) {
+      const parts = [p?.address, [p?.postalCode, p?.city].filter(Boolean).join(' '), [p?.state, p?.country].filter(Boolean).join(', ')].filter(Boolean);
+      return parts.join(' — ') || null;
+    }
+    if (resolved) {
+      const parts = [resolved.address, resolved.city, resolved.country].filter(Boolean);
+      return parts.join(', ') || null;
+    }
+    return null;
   });
 
   ngOnInit(): void {
@@ -104,6 +134,16 @@ export class ProfileOverviewComponent implements OnInit {
         this.partner.set(data);
         this.loading.set(false);
         this.error.set(null);
+        this.resolvedAddress.set(null);
+        if (
+          data?.latitude != null &&
+          data?.longitude != null &&
+          !this.hasValue(data.address) &&
+          !this.hasValue(data.city) &&
+          environment.mapboxToken
+        ) {
+          this.resolveAddressFromCoords(data.latitude, data.longitude);
+        }
       },
       error: (err) => {
         this.error.set(err?.error?.error || err?.message || this.translate.instant('profilePages.loadError'));
@@ -158,7 +198,100 @@ export class ProfileOverviewComponent implements OnInit {
     return 'status-' + status.toLowerCase();
   }
 
+  /** Classe du badge affiché : ACTIF (vert) si ouvert, INACTIF (gris) si fermé (compte ACTIVE). */
+  getDisplayStatusClass(): string {
+    const p = this.partner();
+    if (!p) return '';
+    if (p.status === 'ACTIVE' && !this.isCurrentlyOpen()) return 'status-inactive';
+    return this.getStatusClass(p.status);
+  }
+
+  /** Libellé du badge affiché : Actif si ouvert, Inactif si fermé (compte ACTIVE). */
+  getDisplayStatusLabel(): string {
+    const p = this.partner();
+    if (!p) return '—';
+    if (p.status === 'ACTIVE' && !this.isCurrentlyOpen()) return this.translate.instant('profilePages.statusInactive');
+    return this.getStatusLabel(p.status);
+  }
+
+  /** Établissement actuellement ouvert (accepte les commandes) */
+  isCurrentlyOpen(): boolean {
+    const p = this.partner();
+    return p?.acceptsOrders === true || p?.isCurrentlyOpen === true;
+  }
+
+  /** Bascule Ouvert / Fermé – PATCH /partners/{id}/status */
+  toggleOpenStatus(): void {
+    const p = this.partner();
+    const partnerId = this.authService.getPartnerId() ?? p?.id;
+    if (!partnerId || !p) return;
+    const newState = !this.isCurrentlyOpen();
+    this.statusToggleLoading.set(true);
+    this.partnerService.updateStatus(partnerId, newState).subscribe({
+      next: (updated) => {
+        this.partner.set(updated);
+        this.statusToggleLoading.set(false);
+        const key = newState ? 'profilePages.statusNowOpen' : 'profilePages.statusNowClosed';
+        this.snackBar.open(this.translate.instant(key), this.translate.instant('profilePages.close'), { duration: 3000 });
+      },
+      error: (err) => {
+        this.statusToggleLoading.set(false);
+        const msg = err?.error?.error || err?.message || this.translate.instant('profilePages.saveError');
+        this.snackBar.open(msg, this.translate.instant('profilePages.close'), { duration: 4000 });
+      },
+    });
+  }
+
   hasValue(value: any): boolean {
     return value !== undefined && value !== null && value !== '';
+  }
+
+  /** Récupère l'adresse lisible depuis les coordonnées (Mapbox reverse geocoding) */
+  private resolveAddressFromCoords(lat: number, lng: number): void {
+    this.addressResolving.set(true);
+    this.resolvedAddress.set(null);
+    const token = environment.mapboxToken;
+    if (!token) {
+      this.addressResolving.set(false);
+      return;
+    }
+    fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&language=fr`
+    )
+      .then((res) => res.json())
+      .then((data: { features?: any[] }) => {
+        this.addressResolving.set(false);
+        if (!data?.features?.length) return;
+        const features = data.features;
+        const order = ['address', 'poi', 'place', 'locality', 'neighborhood', 'district', 'region', 'country'];
+        let place = features[0];
+        for (const type of order) {
+          const found = features.find((f: any) => f.place_type?.includes(type));
+          if (found) {
+            place = found;
+            break;
+          }
+        }
+        let streetAddress = '';
+        let city = '';
+        let country = '';
+        if (place.place_type?.includes('address')) {
+          streetAddress = place.address ? `${place.address} ${place.text}` : place.text || '';
+        } else if (place.place_type?.includes('poi')) {
+          streetAddress = place.text || '';
+        }
+        place.context?.forEach((ctx: any) => {
+          const id = String(ctx.id || '');
+          if (id.startsWith('place')) city = ctx.text;
+          else if (id.startsWith('country')) country = ctx.text;
+        });
+        if (!city && place.place_type?.includes('place')) city = place.text;
+        this.resolvedAddress.set({
+          address: streetAddress,
+          city: city || undefined,
+          country: country || undefined,
+        });
+      })
+      .catch(() => this.addressResolving.set(false));
   }
 }

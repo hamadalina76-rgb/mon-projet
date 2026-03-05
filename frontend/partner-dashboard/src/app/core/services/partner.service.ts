@@ -164,4 +164,33 @@ export class PartnerService {
       scheduleExceptionsJson: JSON.stringify(exceptions),
     });
   }
+
+  /**
+   * Toggle ouvert/fermé (acceptsOrders). PATCH /api/partners/{id}/status
+   * Réservé OWNER ou ADMIN côté backend.
+   */
+  updateStatus(partnerId: number, isOpen: boolean): Observable<PartnerProfileDto> {
+    return this.apiService.patch<PartnerProfileDto>(`partners/${partnerId}/status`, { isOpen });
+  }
+
+  /**
+   * GET /api/partners/{id}/opening-hours – horaires dédiés
+   */
+  getOpeningHours(partnerId: number): Observable<any[]> {
+    return this.apiService.get<any[]>(`partners/${partnerId}/opening-hours`);
+  }
+
+  /**
+   * PUT /api/partners/{id}/opening-hours – modifier horaires
+   */
+  putOpeningHours(partnerId: number, hours: any[]): Observable<any[]> {
+    return this.apiService.put<any[]>(`partners/${partnerId}/opening-hours`, hours);
+  }
+
+  /**
+   * GET /api/partners/{id}/staff – liste du staff
+   */
+  getStaff(partnerId: number): Observable<any[]> {
+    return this.apiService.get<any[]>(`partners/${partnerId}/staff`);
+  }
 }
