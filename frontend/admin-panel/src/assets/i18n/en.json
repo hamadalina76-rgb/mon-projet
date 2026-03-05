@@ -616,6 +616,7 @@
       "premium": "Premium",
       "restricted": "Restricted",
       "baseFee": "Base Delivery Fee (TND)",
+      "deliveryRadius": "Delivery radius (km)",
       "zoneStats": "Zone Stats",
       "surfaceArea": "Surface Area",
       "points": "Points",

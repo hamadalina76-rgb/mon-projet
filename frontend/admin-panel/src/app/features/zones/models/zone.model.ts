@@ -16,6 +16,10 @@ export interface Zone {
   minDeliveryTime?: number;
   maxDeliveryTime?: number;
   isActive: boolean;
+  /**
+   * Approximate delivery radius for this zone (in kilometers).
+   */
+  radiusKm?: number;
   createdAt?: string;
   updatedAt?: string;
   partnersCount?: number;
@@ -33,6 +37,7 @@ export interface ZoneCreateRequest {
   minDeliveryTime?: number;
   maxDeliveryTime?: number;
   isActive?: boolean;
+  radiusKm?: number;
 }
 
 export interface ZoneUpdateRequest {
@@ -45,6 +50,7 @@ export interface ZoneUpdateRequest {
   minDeliveryTime?: number;
   maxDeliveryTime?: number;
   isActive?: boolean;
+  radiusKm?: number;
 }
 
 export interface PartnerInZone {

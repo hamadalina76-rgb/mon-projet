@@ -352,6 +352,19 @@
           </div>
         </div>
 
+        <div class="form-group">
+          <label>{{ 'zones.editor.deliveryRadius' | translate }}</label>
+          <div class="fee-input-wrap">
+            <input
+              type="number"
+              formControlName="radiusKm"
+              class="form-input fee-input"
+              min="0"
+            />
+            <span class="fee-suffix">km</span>
+          </div>
+        </div>
+
         @if (zoneAreaKm2() > 0 || polygonCoordinates().length >= 3) {
           <div class="zone-stats">
             <h4>{{ 'zones.editor.zoneStats' | translate }}</h4>

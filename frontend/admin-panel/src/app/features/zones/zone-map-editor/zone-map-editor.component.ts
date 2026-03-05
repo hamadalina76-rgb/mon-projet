@@ -93,6 +93,7 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     deliveryFee: [0, [Validators.required, Validators.min(0)]],
     minDeliveryTime: [30],
     maxDeliveryTime: [60],
+    radiusKm: [null, [Validators.min(0)]],
     isActive: [true],
   });
 
@@ -322,6 +323,7 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
           deliveryFee: zone.deliveryFee,
           minDeliveryTime: zone.minDeliveryTime,
           maxDeliveryTime: zone.maxDeliveryTime,
+          radiusKm: zone.radiusKm ?? null,
           isActive: zone.isActive,
         });
         if (zone.boundaryJson) {
@@ -578,6 +580,7 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       deliveryFee: 0,
       minDeliveryTime: 30,
       maxDeliveryTime: 60,
+      radiusKm: null,
       isActive: true,
     });
     this.polygonCoordinates.set([]);
@@ -598,6 +601,7 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       deliveryFee: zone.deliveryFee,
       minDeliveryTime: zone.minDeliveryTime,
       maxDeliveryTime: zone.maxDeliveryTime,
+      radiusKm: zone.radiusKm,
       isActive: zone.isActive,
     });
         if (zone.boundaryJson) {

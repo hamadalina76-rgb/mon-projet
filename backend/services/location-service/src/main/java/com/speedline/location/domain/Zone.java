@@ -72,6 +72,13 @@ public class Zone {
      */
     private Integer maxDeliveryTime;
 
+    /**
+     * Rayon de livraison approximatif pour cette zone (en kilomètres).
+     * Champ optionnel utilisé principalement pour l'affichage et la configuration.
+     */
+    @Column(name = "radius_km")
+    private Integer radiusKm;
+
     @Builder.Default
     private Boolean isActive = true;
 

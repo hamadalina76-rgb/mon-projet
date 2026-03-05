@@ -38,7 +38,12 @@ public class ZoneCreateRequest {
     private Integer minDeliveryTime;
     
     private Integer maxDeliveryTime;
-    
+
+    /**
+     * Rayon de livraison approximatif pour cette zone (en kilomètres).
+     */
+    private Integer radiusKm;
+
     @Builder.Default
     private Boolean isActive = true;
 }
