@@ -624,6 +624,7 @@
       "premium": "متميز",
       "restricted": "مقيد",
       "baseFee": "رسوم التوصيل الأساسية (TND)",
+      "deliveryRadius": "نطاق التوصيل (كم)",
       "zoneStats": "إحصائيات المنطقة",
       "surfaceArea": "المساحة",
       "points": "النقاط",

@@ -27,6 +27,10 @@ public class ZoneDTO {
     private Integer minDeliveryTime;
     private Integer maxDeliveryTime;
     private Boolean isActive;
+    /**
+     * Rayon de livraison approximatif pour cette zone (en kilomètres).
+     */
+    private Integer radiusKm;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     

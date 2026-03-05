@@ -86,7 +86,8 @@ public class ZoneController {
                 request.getBoundaryJson(),
                 request.getDeliveryFee(),
                 request.getMinDeliveryTime(),
-                request.getMaxDeliveryTime()
+                request.getMaxDeliveryTime(),
+                request.getRadiusKm()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(zone);
     }
@@ -104,7 +105,8 @@ public class ZoneController {
                 request.getName(),
                 request.getDescription(),
                 request.getDeliveryFee(),
-                request.getBoundaryJson()
+                request.getBoundaryJson(),
+                request.getRadiusKm()
         );
         return ResponseEntity.ok(zone);
     }

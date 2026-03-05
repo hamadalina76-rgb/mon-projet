@@ -290,17 +290,23 @@ hr {
 
   .notification-content {
     flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
 
     .notif-title {
       font-size: 0.875rem;
       margin: 0 0 4px;
       color: $text-primary;
+      word-wrap: break-word;
     }
 
     .notif-message {
       font-size: 0.8125rem;
       margin: 0 0 $spacing-xs;
       color: $text-secondary;
+      word-wrap: break-word;
+      white-space: normal;
     }
 
     .time {
@@ -328,6 +334,16 @@ hr {
 }
 
 .notifications-dropdown {
-  min-width: 360px;
-  max-width: 400px;
+  min-width: 280px;
+  max-width: min(400px, calc(100vw - 2 * #{$spacing-md}));
+
+  @include mobile {
+    position: fixed;
+    top: $header-height;
+    right: $spacing-md;
+    left: $spacing-md;
+    margin-top: $spacing-xs;
+    min-width: auto;
+    max-width: calc(100vw - 2 * #{$spacing-md});
+  }
 }

@@ -29,7 +29,8 @@ public interface ZoneService {
      */
     ZoneDTO createZone(String name, String description, String city, Zone.ZoneType type,
                        String boundaryJson, BigDecimal deliveryFee,
-                       Integer minDeliveryTime, Integer maxDeliveryTime);
+                       Integer minDeliveryTime, Integer maxDeliveryTime,
+                       Integer radiusKm);
 
     /**
      * Récupérer une zone par ID
@@ -52,7 +53,8 @@ public interface ZoneService {
      * @throws ZoneNotFoundException si la zone n'existe pas
      */
     ZoneDTO updateZone(Long zoneId, String name, String description,
-                       BigDecimal deliveryFee, String boundaryJson);
+                       BigDecimal deliveryFee, String boundaryJson,
+                       Integer radiusKm);
 
     /**
      * Activer/Désactiver une zone

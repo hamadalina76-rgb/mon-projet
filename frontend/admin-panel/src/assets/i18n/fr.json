@@ -629,6 +629,7 @@
       "premium": "Premium",
       "restricted": "Restreint",
       "baseFee": "Frais de livraison (TND)",
+      "deliveryRadius": "Rayon de livraison (km)",
       "zoneStats": "Statistiques",
       "surfaceArea": "Surface",
       "points": "Points",
