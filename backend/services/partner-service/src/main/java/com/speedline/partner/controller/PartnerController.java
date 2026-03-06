@@ -10,6 +10,7 @@ import com.speedline.partner.service.PartnerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -361,6 +362,38 @@ public class PartnerController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to upload documents: " + e.getMessage()));
         }
+    }
+
+    /**
+     * POST /partners/{id}/upload/logo
+     * TC-19 : Upload logo valide → HTTP 200, logoUrl retournée.
+     */
+    @Operation(summary = "Upload logo partenaire",
+               description = "multipart/form-data, champ 'file', max 5 Mo, JPG/PNG/WEBP")
+    @PostMapping(value = "/{id}/upload/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadLogo(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+        log.info("uploadLogo partnerId={} size={}", id, file != null ? file.getSize() : 0);
+        String logoUrl = fileStorageService.storeImage(file, id, "logos");
+        partnerService.updateImages(id, logoUrl, null);
+        return ResponseEntity.ok(Map.of("url", logoUrl, "logoUrl", logoUrl));
+    }
+
+    /**
+     * POST /partners/{id}/upload/cover
+     * Upload image de couverture.
+     */
+    @Operation(summary = "Upload cover partenaire",
+               description = "multipart/form-data, champ 'file', max 5 Mo, JPG/PNG/WEBP")
+    @PostMapping(value = "/{id}/upload/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadCover(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+        log.info("uploadCover partnerId={} size={}", id, file != null ? file.getSize() : 0);
+        String coverUrl = fileStorageService.storeImage(file, id, "covers");
+        partnerService.updateImages(id, null, coverUrl);
+        return ResponseEntity.ok(Map.of("url", coverUrl, "coverUrl", coverUrl));
     }
 
     /**

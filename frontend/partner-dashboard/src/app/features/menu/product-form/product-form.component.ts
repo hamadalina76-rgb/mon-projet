@@ -1,7 +1,7 @@
 // src/app/features/menu/product-form/product-form.component.ts - Angular 19
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -10,12 +10,12 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { TranslateModule } from '@ngx-translate/core';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ProductService } from '../services/product.service';
 import { MenuService } from '../services/menu.service';
+import { MenuCategory, Product, CreateProductRequest, UpdateProductRequest } from '../models/menu.models';
 
 @Component({
   selector: 'app-product-form',
@@ -31,8 +31,8 @@ import { MenuService } from '../services/menu.service';
     MatButtonModule,
     MatIconModule,
     MatSlideToggleModule,
-    MatChipsModule,
     MatProgressSpinnerModule,
+    MatSnackBarModule,
     TranslateModule,
   ],
   templateUrl: './product-form.component.html',
@@ -45,92 +45,254 @@ export class ProductFormComponent implements OnInit {
   private productService = inject(ProductService);
   private menuService = inject(MenuService);
   private snackBar = inject(MatSnackBar);
+  private translate = inject(TranslateService);
 
-  // Angular 19 Signals
-  categories = signal<any[]>([]);
+  @ViewChild('productImageInput') productImageInputRef?: ElementRef<HTMLInputElement>;
+
+  // Signals
+  editId = signal<number | null>(null);
+  categories = signal<MenuCategory[]>([]);
   loading = signal(false);
   saving = signal(false);
-  isEdit = signal(false);
-  productId = signal<string | null>(null);
   imagePreview = signal<string | null>(null);
+  pendingProductImageFile = signal<File | null>(null);
+  productImagePreviewUrl = signal<string | null>(null);
+  uploadingProductImage = signal(false);
+  isDragging = signal(false);
 
   // Computed
-  pageTitle = computed(() => this.isEdit() ? 'Modifier le produit' : 'Nouveau produit');
+  isEdit = computed(() => this.editId() !== null);
+  pageTitleKey = computed(() => this.isEdit() ? 'MENU.PRODUCT_FORM.EDIT_TITLE' : 'MENU.PRODUCT_FORM.CREATE_TITLE');
 
   productForm: FormGroup = this.fb.group({
-    name: ['', Validators.required],
+    name: ['', [Validators.required, Validators.minLength(2)]],
     description: [''],
-    price: [0, [Validators.required, Validators.min(0)]],
-    categoryId: ['', Validators.required],
-    prepTime: [15],
+    price: [null, [Validators.required, Validators.min(0)]],
+    categoryId: [null, Validators.required],
+    imageUrl: [''],
+    preparationTimeMin: [null],
     isAvailable: [true],
-    options: this.fb.array([]),
+    isPopular: [false],
   });
 
-  get optionsArray(): FormArray {
-    return this.productForm.get('options') as FormArray;
-  }
-
   ngOnInit(): void {
-    this.loadCategories();
-    const id = this.route.snapshot.paramMap.get('id');
-    this.productId.set(id);
-    if (id) {
-      this.isEdit.set(true);
-      this.loadProduct();
+    const idParam = this.route.snapshot.paramMap.get('id');
+    if (idParam) {
+      this.editId.set(+idParam);
+      this.loadProduct(+idParam);
     }
+    this.loadCategories();
   }
 
   loadCategories(): void {
     this.menuService.getCategories().subscribe({
       next: (data) => this.categories.set(data),
-      error: (err) => console.error('Error loading categories:', err)
+      error: (err) => console.error('Error loading categories:', err),
     });
   }
 
-  loadProduct(): void {
-    const id = this.productId();
-    if (!id) return;
-    
+  loadProduct(id: number): void {
     this.loading.set(true);
+    const prev = this.productImagePreviewUrl();
+    if (prev) URL.revokeObjectURL(prev);
+    this.productImagePreviewUrl.set(null);
+    this.pendingProductImageFile.set(null);
     this.productService.getProduct(id).subscribe({
-      next: (product) => {
-        this.productForm.patchValue(product);
-        this.imagePreview.set(product.image);
+      next: (product: Product) => {
+        this.productForm.patchValue({
+          name: product.name,
+          description: product.description ?? '',
+          price: product.price,
+          categoryId: product.categoryId,
+          imageUrl: product.imageUrl ?? '',
+          preparationTimeMin: product.preparationTimeMin ?? null,
+          isAvailable: product.isAvailable,
+          isPopular: product.isPopular ?? false,
+        });
+        this.imagePreview.set(product.imageUrl ?? null);
         this.loading.set(false);
       },
       error: (err) => {
         console.error('Error loading product:', err);
+        this.snackBar.open(
+          this.translate.instant('MENU.PRODUCT_FORM.LOAD_ERROR'),
+          this.translate.instant('MENU.CLOSE'),
+          { duration: 3000 }
+        );
         this.loading.set(false);
-      }
+      },
     });
   }
 
-  addOption(): void {
-    const optionGroup = this.fb.group({
-      name: ['', Validators.required],
-      choices: this.fb.array([]),
-    });
-    this.optionsArray.push(optionGroup);
+  onImageUrlChange(): void {
+    const url = this.productForm.get('imageUrl')?.value;
+    this.imagePreview.set(url?.trim() || null);
   }
 
-  removeOption(index: number): void {
-    this.optionsArray.removeAt(index);
+  triggerProductImageInput(): void {
+    this.productImageInputRef?.nativeElement?.click();
   }
 
-  onImageSelected(event: Event): void {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.imagePreview.set(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+  onProductImageFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.item(0);
+    input.value = '';
+    if (!file || !file.type.startsWith('image/')) return;
+    this.processImageFile(file);
+  }
+
+  productImageDisplayUrl(): string | null {
+    return this.productImagePreviewUrl() || this.productForm.get('imageUrl')?.value || this.imagePreview();
   }
 
   onSubmit(): void {
-    if (this.productForm.invalid) return;
-    // TODO: Implement save logic
+    if (this.productForm.invalid) {
+      this.productForm.markAllAsTouched();
+      return;
+    }
+    const val = this.productForm.value;
+    this.saving.set(true);
+
+    if (this.isEdit()) {
+      const payload: UpdateProductRequest = {
+        name: val.name,
+        description: val.description || undefined,
+        price: val.price,
+        categoryId: val.categoryId,
+        imageUrl: val.imageUrl || undefined,
+        preparationTimeMin: val.preparationTimeMin || undefined,
+        isAvailable: val.isAvailable,
+        isPopular: val.isPopular,
+      };
+      this.productService.updateProduct(this.editId()!, payload).subscribe({
+        next: () => {
+          this.snackBar.open(
+            this.translate.instant('MENU.PRODUCT_FORM.UPDATE_SUCCESS'),
+            this.translate.instant('MENU.CLOSE'),
+            { duration: 3000 }
+          );
+          this.saving.set(false);
+          this.router.navigate(['/menu'], { queryParams: { tab: 1 } });
+        },
+        error: (err) => {
+          console.error('Error updating product:', err);
+          this.snackBar.open(
+            this.translate.instant('MENU.PRODUCT_FORM.UPDATE_ERROR'),
+            this.translate.instant('MENU.CLOSE'),
+            { duration: 3000 }
+          );
+          this.saving.set(false);
+        },
+      });
+    } else {
+      const payload: CreateProductRequest = {
+        name: val.name,
+        description: val.description || undefined,
+        price: val.price,
+        categoryId: val.categoryId,
+        imageUrl: val.imageUrl || undefined,
+        preparationTimeMin: val.preparationTimeMin || undefined,
+        isAvailable: val.isAvailable,
+        isPopular: val.isPopular,
+      };
+      this.productService.createProduct(payload).subscribe({
+        next: (saved) => {
+          const pendingFile = this.pendingProductImageFile();
+          if (pendingFile) {
+            this.productService.uploadProductImage(saved.id, pendingFile).subscribe({
+              next: () => {
+                this.snackBar.open(
+                  this.translate.instant('MENU.PRODUCT_FORM.CREATE_SUCCESS'),
+                  this.translate.instant('MENU.CLOSE'),
+                  { duration: 3000 }
+                );
+                this.saving.set(false);
+                this.router.navigate(['/menu'], { queryParams: { tab: 1 } });
+              },
+              error: () => {
+                this.snackBar.open(
+                  this.translate.instant('MENU.PRODUCT_FORM.CREATE_IMAGE_UPLOAD_ERROR'),
+                  this.translate.instant('MENU.CLOSE'),
+                  { duration: 3000 }
+                );
+                this.saving.set(false);
+                this.router.navigate(['/menu'], { queryParams: { tab: 1 } });
+              },
+            });
+          } else {
+            this.snackBar.open(
+              this.translate.instant('MENU.PRODUCT_FORM.CREATE_SUCCESS'),
+              this.translate.instant('MENU.CLOSE'),
+              { duration: 3000 }
+            );
+            this.saving.set(false);
+            this.router.navigate(['/menu'], { queryParams: { tab: 1 } });
+          }
+        },
+        error: (err) => {
+          console.error('Error creating product:', err);
+          this.snackBar.open(
+            this.translate.instant('MENU.PRODUCT_FORM.CREATE_ERROR'),
+            this.translate.instant('MENU.CLOSE'),
+            { duration: 3000 }
+          );
+          this.saving.set(false);
+        },
+      });
+    }
+  }
+
+  cancel(): void {
+    this.router.navigate(['/menu'], { queryParams: { tab: 1 } });
+  }
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    this.isDragging.set(true);
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    this.isDragging.set(false);
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.isDragging.set(false);
+    const file = event.dataTransfer?.files.item(0);
+    if (!file || !file.type.startsWith('image/')) return;
+    this.processImageFile(file);
+  }
+
+  private processImageFile(file: File): void {
+    if (this.isEdit() && this.editId()) {
+      this.uploadingProductImage.set(true);
+      this.productService.uploadProductImage(this.editId()!, file).subscribe({
+        next: (res) => {
+          this.uploadingProductImage.set(false);
+          this.productForm.patchValue({ imageUrl: res.url });
+          this.imagePreview.set(res.url);
+          this.snackBar.open(
+            this.translate.instant('MENU.PRODUCT_FORM.IMAGE_UPDATED'),
+            this.translate.instant('MENU.CLOSE'),
+            { duration: 2000 }
+          );
+        },
+        error: () => {
+          this.uploadingProductImage.set(false);
+          this.snackBar.open(
+            this.translate.instant('MENU.PRODUCT_FORM.IMAGE_UPLOAD_ERROR'),
+            this.translate.instant('MENU.CLOSE'),
+            { duration: 4000 }
+          );
+        },
+      });
+    } else {
+      this.pendingProductImageFile.set(file);
+      const prev = this.productImagePreviewUrl();
+      if (prev) URL.revokeObjectURL(prev);
+      this.productImagePreviewUrl.set(URL.createObjectURL(file));
+      this.imagePreview.set(this.productImagePreviewUrl());
+    }
   }
 }

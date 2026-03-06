@@ -1,74 +1,402 @@
-<!-- Menu List Component Template - Angular 19 -->
 <div class="menu-page">
+  <!-- ======================== PAGE HEADER ======================== -->
   <header class="page-header">
-    <h1>{{ 'menu.title' | translate }}</h1>
+    <div class="header-left">
+      <h1>{{ 'MENU.LIST.TITLE' | translate }}</h1>
+      <p class="page-subtitle">{{ 'MENU.LIST.SUBTITLE' | translate }}</p>
+    </div>
     <div class="header-actions">
-      <button mat-stroked-button routerLink="categories">
-        <mat-icon>category</mat-icon>
-        Gérer catégories
-      </button>
-      <button mat-flat-button color="primary" routerLink="product/new">
-        <mat-icon>add</mat-icon>
-        Ajouter produit
-      </button>
+      @if (activeTab() === 0) {
+        <button mat-flat-button class="btn-primary" (click)="openCreatePanel()">
+          <mat-icon>add</mat-icon>
+          {{ 'MENU.ADD_CATEGORY' | translate }}
+        </button>
+      }
+      @if (activeTab() === 1) {
+        <button mat-flat-button class="btn-primary" routerLink="products/new">
+          <mat-icon>add</mat-icon>
+          {{ 'MENU.ADD_PRODUCT' | translate }}
+        </button>
+      }
     </div>
   </header>
 
-  <div class="menu-content">
-    <!-- Categories Sidebar -->
-    <div class="categories-sidebar">
-      <h3>Catégories</h3>
-      <div 
-        class="categories-list"
-        cdkDropList
-        (cdkDropListDropped)="onCategoryDrop($event)">
-        @for (category of categories(); track category.id) {
-          <div 
-            class="category-item"
-            [class.selected]="selectedCategoryId() === category.id"
-            (click)="loadProducts(category.id)"
-            cdkDrag>
-            <mat-icon cdkDragHandle>drag_indicator</mat-icon>
-            <span class="category-name">{{ category.name }}</span>
-            <span class="category-count">{{ category.productsCount }}</span>
-          </div>
-        } @empty {
-          <div class="empty-categories">
-            <p>Aucune catégorie</p>
-          </div>
-        }
-      </div>
-    </div>
+  <!-- ======================== TABS ======================== -->
+  <mat-tab-group
+    class="menu-tabs"
+    [selectedIndex]="activeTab()"
+    (selectedIndexChange)="onTabChange($event)">
 
-    <!-- Products Grid -->
-    <div class="products-section">
-      <div class="products-header">
-        <span class="products-count">{{ productsCount() }} produits</span>
-        <mat-slide-toggle 
-          [checked]="showUnavailable()"
-          (change)="showUnavailable.set($event.checked)">
-          Afficher indisponibles
-        </mat-slide-toggle>
-      </div>
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TAB 1 â€“ CATÃ‰GORIES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">category</mat-icon>
+        {{ 'MENU.LIST.TAB_CATEGORIES' | translate }}
+      </ng-template>
 
-      <div class="products-grid">
-        @for (product of filteredProducts(); track product.id) {
-          <app-product-card
-            [product]="product"
-            (edit)="editProduct($event)"
-            (toggleAvailability)="toggleProductAvailability($event)"
-            (delete)="deleteProduct($event)">
-          </app-product-card>
-        } @empty {
-          <div class="empty-products">
-            <mat-icon>inventory_2</mat-icon>
-            <p>Aucun produit dans cette catégorie</p>
-            <button mat-flat-button color="primary" routerLink="product/new">
-              Ajouter un produit
+      @if (loading()) {
+        <app-loading-spinner [message]="'MENU.LIST.LOADING_CATEGORIES' | translate"></app-loading-spinner>
+      } @else {
+        <div class="tab-content categories-tab">
+
+          <!-- Left list -->
+          <div class="cat-list-col">
+            <div class="cat-list-header">
+              <div class="cat-list-title">
+                <mat-icon>drag_indicator</mat-icon>
+                <span>{{ 'MENU.LIST.YOUR_CATEGORIES_COUNT' | translate:{ count: categories().length } }}</span>
+              </div>
+            </div>
+            <app-category-list
+              [categories]="categoriesWithCounts()"
+              [selectedId]="selectedCategory()?.id ?? null"
+              (select)="onCategorySelect($event)"
+              (categoriesChange)="categories.set($event)"
+              (visibilityToggled)="onVisibilityToggled($event)"
+              (deleteCategory)="onDeleteCategory($event)">
+            </app-category-list>
+          </div>
+
+          <!-- Right panel -->
+          @if (panelMode()) {
+            <div class="cat-panel">
+              <div class="panel-header">
+                <div class="panel-title">
+                  <div class="panel-title-icon">
+                    <mat-icon>{{ panelMode() === 'create' ? 'add_circle' : 'edit' }}</mat-icon>
+                  </div>
+                  <h3>{{ (panelMode() === 'create' ? 'MENU.LIST.PANEL_CREATE_TITLE' : 'MENU.LIST.PANEL_EDIT_TITLE') | translate }}</h3>
+                </div>
+                <button mat-icon-button (click)="closePanel()" [matTooltip]="'MENU.CLOSE' | translate">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+
+              <form [formGroup]="categoryForm" (ngSubmit)="saveCategory()" class="panel-form">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>{{ 'MENU.LIST.FORM.NAME_LABEL' | translate }}</mat-label>
+                  <input matInput formControlName="name" [placeholder]="'MENU.LIST.FORM.NAME_PLACEHOLDER' | translate" />
+                  @if (categoryForm.get('name')?.hasError('required') && categoryForm.get('name')?.touched) {
+                    <mat-error>{{ 'MENU.LIST.FORM.NAME_REQUIRED' | translate }}</mat-error>
+                  }
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>{{ 'MENU.LIST.FORM.DESC_LABEL' | translate }}</mat-label>
+                  <textarea matInput formControlName="description" rows="3"
+                    [placeholder]="'MENU.LIST.FORM.DESC_PLACEHOLDER' | translate"></textarea>
+                </mat-form-field>
+
+                <div class="cover-image-field full-width">
+                  <label class="field-label">{{ 'MENU.LIST.FORM.COVER_LABEL' | translate }}</label>
+                  <input #categoryImageInput type="file" accept="image/*" class="hidden-input"
+                    (change)="onCategoryImageFileSelected($event)" />
+                  <button type="button" class="cover-image-trigger" (click)="triggerCategoryImageInput()"
+                    [disabled]="uploadingCategoryImage()">
+                    @if (uploadingCategoryImage()) {
+                      <mat-spinner diameter="22"></mat-spinner>
+                    } @else {
+                      <mat-icon>image</mat-icon>
+                      <span>
+                        {{
+                          (categoryImagePreviewUrl() || categoryForm.get('imageUrl')?.value
+                            ? 'MENU.LIST.FORM.COVER_CHANGE'
+                            : 'MENU.LIST.FORM.COVER_PICK'
+                          ) | translate
+                        }}
+                      </span>
+                    }
+                  </button>
+                  @if (categoryImagePreviewUrl() || categoryForm.get('imageUrl')?.value) {
+                    <div class="img-preview">
+                      <img [src]="categoryImagePreviewUrl() || categoryForm.get('imageUrl')?.value" alt="Aperçu" />
+                    </div>
+                  }
+                </div>
+
+                <div class="toggle-row">
+                  <div class="toggle-label-group">
+                    <mat-icon class="toggle-icon">visibility</mat-icon>
+                    <div>
+                      <span class="toggle-label">{{ 'MENU.LIST.FORM.VISIBLE_LABEL' | translate }}</span>
+                      <span class="toggle-hint">{{ 'MENU.LIST.FORM.VISIBLE_HINT' | translate }}</span>
+                    </div>
+                  </div>
+                  <mat-slide-toggle formControlName="isVisible" color="primary"></mat-slide-toggle>
+                </div>
+
+                <div class="panel-actions">
+                  <button mat-flat-button class="btn-save" type="submit"
+                          [disabled]="categoryForm.invalid || saving()">
+                    @if (saving()) {
+                      <mat-spinner diameter="18"></mat-spinner>
+                    } @else {
+                      {{ 'MENU.LIST.FORM.SAVE' | translate }}
+                    }
+                  </button>
+                  <button mat-stroked-button type="button" (click)="closePanel()">
+                    {{ 'MENU.LIST.FORM.CANCEL' | translate }}
+                  </button>
+                </div>
+              </form>
+
+              <!-- Conseil tip -->
+              <div class="tip-card">
+                <div class="tip-icon">
+                  <mat-icon>info</mat-icon>
+                </div>
+                <span><strong>{{ 'MENU.LIST.TIP_TITLE' | translate }} :</strong> {{ 'MENU.LIST.TIP_TEXT' | translate }}</span>
+              </div>
+            </div>
+          } @else {
+            <div class="cat-panel panel-empty">
+              <div class="empty-icon-wrap">
+                <mat-icon>category</mat-icon>
+              </div>
+              <p>{{ 'MENU.LIST.PANEL_EMPTY_TEXT' | translate }}</p>
+              <button mat-stroked-button (click)="openCreatePanel()" color="primary">
+                <mat-icon>add</mat-icon> {{ 'MENU.LIST.PANEL_EMPTY_CTA' | translate }}
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </mat-tab>
+
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TAB 2 â€“ PRODUITS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">restaurant_menu</mat-icon>
+        {{ 'MENU.LIST.TAB_PRODUCTS' | translate }}
+      </ng-template>
+
+      <div class="tab-content products-tab">
+
+        <!-- Category filter chips -->
+        <div class="filter-chips">
+          <button
+            mat-stroked-button
+            [class.chip-active]="filterCategoryId() === null"
+            (click)="filterByCategory(null)">
+            {{ 'MENU.LIST.FILTER_ALL' | translate:{ count: products().length } }}
+          </button>
+          @for (cat of categories(); track cat.id) {
+            <button
+              mat-stroked-button
+              [class.chip-active]="filterCategoryId() === cat.id"
+              (click)="filterByCategory(cat.id)">
+              {{ cat.name }}
             </button>
+          }
+        </div>
+
+        @if (productsLoading()) {
+          <app-loading-spinner [message]="'MENU.LIST.LOADING_PRODUCTS' | translate"></app-loading-spinner>
+        } @else {
+          <div class="products-grid">
+            @for (product of filteredProducts(); track product.id) {
+              <app-product-card
+                [product]="product"
+                (edit)="editProduct($event)"
+                (toggleAvailability)="toggleProductAvailability($event)"
+                (delete)="deleteProduct($event)">
+              </app-product-card>
+            } @empty {
+              <div class="products-empty">
+                <app-empty-state
+                  icon="inventory_2"
+                  [title]="'MENU.LIST.EMPTY_PRODUCTS_TITLE' | translate"
+                  [message]="'MENU.LIST.EMPTY_PRODUCTS_MESSAGE' | translate"
+                  [actionLabel]="'MENU.LIST.EMPTY_PRODUCTS_ACTION' | translate"
+                  (action)="navigateToNewProduct()">
+                </app-empty-state>
+              </div>
+            }
           </div>
         }
       </div>
-    </div>
-  </div>
+    </mat-tab>
+
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TAB 3 â€“ OPTIONS & SUPPLÃ‰MENTS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">tune</mat-icon>
+        {{ 'MENU.LIST.TAB_OPTIONS' | translate }}
+      </ng-template>
+
+      <div class="tab-content options-tab">
+
+        <!-- Aide : comment utiliser -->
+        <mat-card class="options-help-card">
+          <div class="help-card-header">
+            <mat-icon>help_outline</mat-icon>
+            <h3>{{ 'MENU.LIST.OPTIONS_HELP.TITLE' | translate }}</h3>
+          </div>
+          <ol class="help-steps">
+            <li><strong>{{ 'MENU.LIST.OPTIONS_HELP.STEP1_TITLE' | translate }}</strong> {{ 'MENU.LIST.OPTIONS_HELP.STEP1_TEXT' | translate }}</li>
+            <li><strong>{{ 'MENU.LIST.OPTIONS_HELP.STEP2_TITLE' | translate }}</strong> {{ 'MENU.LIST.OPTIONS_HELP.STEP2_TEXT' | translate }}</li>
+            <li><strong>{{ 'MENU.LIST.OPTIONS_HELP.STEP3_TITLE' | translate }}</strong> {{ 'MENU.LIST.OPTIONS_HELP.STEP3_TEXT' | translate }}</li>
+          </ol>
+          <p class="help-example">{{ 'MENU.LIST.OPTIONS_HELP.EXAMPLE' | translate }}</p>
+        </mat-card>
+
+        <!-- Product selector -->
+        <mat-card class="product-selector-card">
+          <div class="selector-header">
+            <mat-icon>touch_app</mat-icon>
+            <h3>{{ 'MENU.LIST.PRODUCT_SELECTOR.TITLE' | translate }}</h3>
+          </div>
+          <p class="selector-hint">{{ 'MENU.LIST.PRODUCT_SELECTOR.HINT' | translate }}</p>
+          <div class="product-chips">
+            @for (product of products(); track product.id) {
+              <button
+                mat-stroked-button
+                [class.chip-active]="selectedProductForOptions()?.id === product.id"
+                (click)="selectProductForOptions(product)">
+                {{ product.name }}
+              </button>
+            } @empty {
+              <span class="no-products-hint">{{ 'MENU.LIST.PRODUCT_SELECTOR.NO_PRODUCTS' | translate }}</span>
+            }
+          </div>
+        </mat-card>
+
+        @if (selectedProductForOptions()) {
+          <div class="options-section">
+            <div class="options-header">
+              <h3>
+                {{ 'MENU.LIST.GROUPS.TITLE_PREFIX' | translate }}
+                <em>{{ selectedProductForOptions()!.name }}</em>
+              </h3>
+            </div>
+
+            @if (optionsLoading()) {
+              <app-loading-spinner [message]="'MENU.LIST.LOADING_OPTIONS' | translate"></app-loading-spinner>
+            } @else {
+              <!-- Add group form -->
+              <mat-card class="add-group-card" [formGroup]="addGroupForm">
+                <h4>
+                  <mat-icon>add_circle_outline</mat-icon>
+                  {{ 'MENU.LIST.GROUPS.ADD_GROUP_TITLE' | translate }}
+                </h4>
+                <p class="add-group-hint">{{ 'MENU.LIST.GROUPS.ADD_GROUP_HINT' | translate }}</p>
+                <div class="group-form-row">
+                  <mat-form-field appearance="outline" class="flex-1">
+                    <mat-label>{{ 'MENU.LIST.GROUPS.GROUP_NAME_LABEL' | translate }}</mat-label>
+                    <input matInput formControlName="name" [placeholder]="'MENU.LIST.GROUPS.GROUP_NAME_PLACEHOLDER' | translate" />
+                    <mat-hint>{{ 'MENU.LIST.GROUPS.GROUP_NAME_HINT' | translate }}</mat-hint>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'MENU.LIST.GROUPS.GROUP_TYPE_LABEL' | translate }}</mat-label>
+                    <mat-select formControlName="type">
+                      <mat-option [value]="OptionType.SINGLE">{{ 'MENU.LIST.GROUPS.GROUP_TYPE_SINGLE' | translate }}</mat-option>
+                      <mat-option [value]="OptionType.MULTIPLE">{{ 'MENU.LIST.GROUPS.GROUP_TYPE_MULTIPLE' | translate }}</mat-option>
+                    </mat-select>
+                    <mat-hint>{{ 'MENU.LIST.GROUPS.GROUP_TYPE_HINT' | translate }}</mat-hint>
+                  </mat-form-field>
+                  <mat-slide-toggle formControlName="isRequired" color="primary" [matTooltip]="'MENU.LIST.GROUPS.GROUP_REQUIRED_TOOLTIP' | translate">
+                    {{ 'MENU.LIST.GROUPS.GROUP_REQUIRED_LABEL' | translate }}
+                  </mat-slide-toggle>
+                  <button mat-flat-button class="btn-primary" (click)="addGroup()"
+                          [disabled]="addGroupForm.invalid"
+                          [matTooltip]="'MENU.LIST.GROUPS.ADD_GROUP_TOOLTIP' | translate">
+                    <mat-icon>add</mat-icon> {{ 'MENU.LIST.GROUPS.ADD_GROUP_BTN' | translate }}
+                  </button>
+                </div>
+              </mat-card>
+
+              <!-- Existing groups -->
+              <mat-accordion class="groups-accordion" multi>
+                @for (group of optionGroups(); track group.id) {
+                  <mat-expansion-panel class="group-panel">
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>
+                        <mat-icon class="group-icon">{{ group.type === OptionType.SINGLE ? 'radio_button_checked' : 'check_box' }}</mat-icon>
+                        {{ group.name }}
+                      </mat-panel-title>
+                      <mat-panel-description>
+                        <span class="group-type-badge" [class.multiple]="group.type === OptionType.MULTIPLE">
+                          {{ group.type === OptionType.SINGLE ? ('MENU.LIST.GROUPS.BADGE_SINGLE' | translate) : ('MENU.LIST.GROUPS.BADGE_MULTIPLE' | translate) }}
+                        </span>
+                        <span class="group-count">
+                          {{ group.options.length }}
+                          {{ group.options.length === 1 ? ('MENU.LIST.GROUPS.OPTIONS_COUNT_SINGULAR' | translate) : ('MENU.LIST.GROUPS.OPTIONS_COUNT_PLURAL' | translate) }}
+                        </span>
+                      </mat-panel-description>
+                    </mat-expansion-panel-header>
+
+                    <!-- Options list -->
+                    <div class="options-list">
+                      @for (opt of group.options; track opt.id) {
+                        <div class="option-row">
+                          <mat-icon class="opt-drag">drag_indicator</mat-icon>
+                          <span class="opt-name">{{ opt.name }}</span>
+                          @if (opt.priceModifier && opt.priceModifier !== 0) {
+                            <span class="opt-price">+{{ opt.priceModifier.toFixed(2) }} MAD</span>
+                          }
+                          @if (opt.isDefault) {
+                            <span class="opt-default">{{ 'MENU.LIST.OPTIONS.ADD_OPTION_DEFAULT_LABEL' | translate }}</span>
+                          }
+                          <button mat-icon-button color="warn" class="opt-delete"
+                                  (click)="deleteOption(group.id, opt.id)"
+                                  [matTooltip]="'MENU.LIST.OPTIONS.DELETE_OPTION_TOOLTIP' | translate">
+                            <mat-icon>delete_outline</mat-icon>
+                          </button>
+                        </div>
+                      } @empty {
+                        <p class="no-options">{{ 'MENU.LIST.OPTIONS.NO_OPTIONS' | translate }}</p>
+                      }
+                    </div>
+
+                    <!-- Add option inline form -->
+                    @if (getGroupForm(group.id); as optForm) {
+                      <div class="add-option-row" [formGroup]="optForm">
+                        <mat-form-field appearance="outline" class="flex-1">
+                          <mat-label>{{ 'MENU.LIST.OPTIONS.ADD_OPTION_NAME_LABEL' | translate }}</mat-label>
+                          <input matInput formControlName="name" [placeholder]="'MENU.LIST.OPTIONS.ADD_OPTION_NAME_PLACEHOLDER' | translate" />
+                          <mat-hint>{{ 'MENU.LIST.OPTIONS.ADD_OPTION_NAME_HINT' | translate }}</mat-hint>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" class="price-field">
+                          <mat-label>{{ 'MENU.LIST.OPTIONS.ADD_OPTION_PRICE_LABEL' | translate }}</mat-label>
+                          <input matInput type="number" formControlName="priceModifier" placeholder="0" />
+                          <span matSuffix>MAD</span>
+                          <mat-hint>{{ 'MENU.LIST.OPTIONS.ADD_OPTION_PRICE_HINT' | translate }}</mat-hint>
+                        </mat-form-field>
+                        <mat-slide-toggle formControlName="isDefault" color="primary" [matTooltip]="'MENU.LIST.OPTIONS.ADD_OPTION_DEFAULT_TOOLTIP' | translate">
+                          {{ 'MENU.LIST.OPTIONS.ADD_OPTION_DEFAULT_LABEL' | translate }}
+                        </mat-slide-toggle>
+                        <button mat-flat-button class="btn-primary" (click)="addOptionToGroup(group.id)"
+                                [disabled]="optForm.invalid"
+                                [matTooltip]="'MENU.LIST.OPTIONS.ADD_OPTION_BTN_TOOLTIP' | translate">
+                          <mat-icon>add</mat-icon>
+                        </button>
+                      </div>
+                    }
+
+                    <mat-action-row>
+                      <button mat-button color="warn" (click)="deleteGroup(group.id)">
+                        <mat-icon>delete_outline</mat-icon> {{ 'MENU.LIST.GROUPS.DELETE_GROUP' | translate }}
+                      </button>
+                    </mat-action-row>
+                  </mat-expansion-panel>
+                } @empty {
+                  <app-empty-state
+                    icon="tune"
+                    [title]="'MENU.LIST.GROUPS.EMPTY_TITLE' | translate"
+                    [message]="'MENU.LIST.GROUPS.EMPTY_MESSAGE' | translate">
+                  </app-empty-state>
+                }
+              </mat-accordion>
+            }
+          </div>
+        } @else {
+          <app-empty-state
+            icon="touch_app"
+            [title]="'MENU.LIST.OPTIONS.SELECT_PRODUCT_EMPTY_TITLE' | translate"
+            [message]="'MENU.LIST.OPTIONS.SELECT_PRODUCT_EMPTY_MESSAGE' | translate">
+          </app-empty-state>
+        }
+      </div>
+    </mat-tab>
+  </mat-tab-group>
 </div>

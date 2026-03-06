@@ -1,120 +1,209 @@
-<!-- Product Form Component Template - Angular 19 -->
+<!-- product-form.component.html -->
 <div class="product-form-page">
-  <header class="page-header">
-    <div class="header-left">
-      <button mat-icon-button routerLink="/menu">
-        <mat-icon>arrow_back</mat-icon>
-      </button>
-      <h1>{{ isEdit() ? 'Modifier produit' : 'Nouveau produit' }}</h1>
+
+  <!-- Breadcrumb -->
+  <nav class="breadcrumb">
+    <a routerLink="/menu">{{ 'MENU.PRODUCT_FORM.BREADCRUMB_MENU' | translate }}</a>
+    <mat-icon class="sep">chevron_right</mat-icon>
+    <span>{{ pageTitleKey() | translate }}</span>
+  </nav>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <button mat-icon-button (click)="cancel()" class="back-btn">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <div class="header-text">
+      <h1>{{ pageTitleKey() | translate }}</h1>
+      <p class="page-subtitle">{{ (isEdit() ? 'MENU.PRODUCT_FORM.SUBTITLE_EDIT' : 'MENU.PRODUCT_FORM.SUBTITLE_CREATE') | translate }}</p>
     </div>
-  </header>
+  </div>
 
-  <form [formGroup]="productForm" (ngSubmit)="onSubmit()">
-    <div class="form-content">
-      <div class="form-left">
-        <!-- Basic Info -->
-        <mat-card class="form-card">
-          <h3>Informations de base</h3>
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  } @else {
+    <form [formGroup]="productForm" (ngSubmit)="onSubmit()">
+      <div class="form-layout">
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Nom du produit</mat-label>
-            <input matInput formControlName="name" />
-          </mat-form-field>
+        <!-- Left column — main fields -->
+        <div class="form-main">
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Description</mat-label>
-            <textarea matInput formControlName="description" rows="3"></textarea>
-          </mat-form-field>
+          <!-- Basic Info card -->
+          <mat-card class="form-card">
+            <h2 class="card-title">
+              <span class="card-icon card-icon--red"><mat-icon>info</mat-icon></span>
+              {{ 'MENU.PRODUCT_FORM.BASIC_INFO' | translate }}
+            </h2>
 
-          <div class="form-row">
-            <mat-form-field appearance="outline">
-              <mat-label>Prix (MAD)</mat-label>
-              <input matInput type="number" formControlName="price" />
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ 'MENU.PRODUCT_FORM.NAME_LABEL' | translate }}</mat-label>
+              <input matInput formControlName="name" [placeholder]="'MENU.PRODUCT_FORM.NAME_PLACEHOLDER' | translate" />
+              @if (productForm.get('name')?.hasError('required') && productForm.get('name')?.touched) {
+                <mat-error>{{ 'MENU.PRODUCT_FORM.NAME_REQUIRED' | translate }}</mat-error>
+              }
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
-              <mat-label>Catégorie</mat-label>
-              <mat-select formControlName="categoryId">
-                @for (cat of categories(); track cat.id) {
-                  <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ 'MENU.PRODUCT_FORM.DESC_LABEL' | translate }}</mat-label>
+              <textarea matInput formControlName="description" rows="4"
+                        [placeholder]="'MENU.PRODUCT_FORM.DESC_PLACEHOLDER' | translate"></textarea>
+            </mat-form-field>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'MENU.PRODUCT_FORM.PRICE_LABEL' | translate }}</mat-label>
+                <input matInput type="number" formControlName="price" min="0" step="0.01" placeholder="0.00" />
+                <span matTextSuffix class="field-suffix">MAD</span>
+                @if (productForm.get('price')?.hasError('required') && productForm.get('price')?.touched) {
+                  <mat-error>{{ 'MENU.PRODUCT_FORM.PRICE_REQUIRED' | translate }}</mat-error>
                 }
-              </mat-select>
+                @if (productForm.get('price')?.hasError('min')) {
+                  <mat-error>{{ 'MENU.PRODUCT_FORM.PRICE_POSITIVE' | translate }}</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'MENU.PRODUCT_FORM.CATEGORY_LABEL' | translate }}</mat-label>
+                <mat-select formControlName="categoryId" [placeholder]="'MENU.PRODUCT_FORM.CATEGORY_PLACEHOLDER' | translate">
+                  @for (cat of categories(); track cat.id) {
+                    <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
+                  }
+                </mat-select>
+                @if (productForm.get('categoryId')?.hasError('required') && productForm.get('categoryId')?.touched) {
+                  <mat-error>{{ 'MENU.PRODUCT_FORM.CATEGORY_REQUIRED' | translate }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>{{ 'MENU.PRODUCT_FORM.PREP_TIME_LABEL' | translate }}</mat-label>
+              <input matInput type="number" formControlName="preparationTimeMin" min="1" [placeholder]="'MENU.PRODUCT_FORM.PREP_TIME_PLACEHOLDER' | translate" />
+              <mat-hint>{{ 'MENU.PRODUCT_FORM.PREP_TIME_HINT' | translate }}</mat-hint>
             </mat-form-field>
-          </div>
+          </mat-card>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Temps de préparation (min)</mat-label>
-            <input matInput type="number" formControlName="prepTime" />
-          </mat-form-field>
+          <!-- Toggles card -->
+          <mat-card class="form-card">
+            <h2 class="card-title">
+              <span class="card-icon card-icon--red"><mat-icon>visibility</mat-icon></span>
+              {{ 'MENU.PRODUCT_FORM.STATUS_TITLE' | translate }}
+            </h2>
 
-          <mat-slide-toggle formControlName="isAvailable">
-            Disponible
-          </mat-slide-toggle>
-        </mat-card>
-
-        <!-- Options -->
-        <mat-card class="form-card">
-          <div class="card-header">
-            <h3>Options & Variantes</h3>
-            <button mat-stroked-button type="button" (click)="addOption()">
-              <mat-icon>add</mat-icon>
-              Ajouter option
-            </button>
-          </div>
-
-          @for (option of optionsArray.controls; track $index; let i = $index) {
-            <div class="option-group">
-              <div class="option-header">
-                <mat-form-field appearance="outline">
-                  <mat-label>Nom de l'option</mat-label>
-                  <input matInput [formControl]="$any(option.get('name'))" placeholder="Ex: Taille" />
-                </mat-form-field>
-                <button mat-icon-button type="button" (click)="removeOption(i)">
-                  <mat-icon>delete</mat-icon>
-                </button>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-label">{{ 'MENU.PRODUCT_FORM.AVAILABLE_LABEL' | translate }}</span>
+                <span class="toggle-desc">{{ 'MENU.PRODUCT_FORM.AVAILABLE_DESC' | translate }}</span>
               </div>
+              <mat-slide-toggle formControlName="isAvailable" color="primary"></mat-slide-toggle>
             </div>
-          } @empty {
-            <div class="no-options">
-              <p>Aucune option configurée</p>
+
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-label">{{ 'MENU.PRODUCT_FORM.POPULAR_LABEL' | translate }}</span>
+                <span class="toggle-desc">{{ 'MENU.PRODUCT_FORM.POPULAR_DESC' | translate }}</span>
+              </div>
+              <mat-slide-toggle formControlName="isPopular" color="primary"></mat-slide-toggle>
             </div>
-          }
-        </mat-card>
-      </div>
+          </mat-card>
 
-      <div class="form-right">
-        <!-- Image Upload -->
-        <mat-card class="form-card">
-          <h3>Image du produit</h3>
+        </div>
 
-          <div class="image-upload" (click)="fileInput.click()">
-            <input #fileInput type="file" accept="image/*" hidden (change)="onImageSelected($event)" />
-            
-            @if (imagePreview()) {
-              <img [src]="imagePreview()" alt="Preview" class="image-preview" />
+        <!-- Right column — image + tips -->
+        <div class="form-side">
+
+          <mat-card class="form-card">
+            <h2 class="card-title">
+              <span class="card-icon card-icon--red"><mat-icon>image</mat-icon></span>
+              {{ 'MENU.PRODUCT_FORM.IMAGE_TITLE' | translate }}
+            </h2>
+
+            <input #productImageInput type="file" accept="image/*" class="hidden-input"
+                   (change)="onProductImageFileSelected($event)" />
+
+            @if (productImageDisplayUrl()) {
+              <div class="image-drop-zone has-image" (click)="triggerProductImageInput()">
+                <img [src]="productImageDisplayUrl()" alt="Aperçu" class="image-preview-full" />
+                <div class="image-change-overlay">
+                  <mat-icon>photo_camera</mat-icon>
+                  <span>{{ 'MENU.PRODUCT_FORM.IMAGE_CHANGE' | translate }}</span>
+                </div>
+              </div>
             } @else {
-              <div class="upload-placeholder">
-                <mat-icon>cloud_upload</mat-icon>
-                <span>Cliquez pour uploader</span>
+              <div
+                class="image-drop-zone"
+                [class.is-dragging]="isDragging()"
+                (click)="triggerProductImageInput()"
+                (dragover)="onDragOver($event)"
+                (dragleave)="onDragLeave($event)"
+                (drop)="onDrop($event)"
+              >
+                @if (uploadingProductImage()) {
+                  <mat-spinner diameter="36"></mat-spinner>
+                } @else {
+                  <div class="drop-zone-icon">
+                    <mat-icon>cloud_upload</mat-icon>
+                  </div>
+                  <p class="drop-zone-title">{{ 'MENU.PRODUCT_FORM.DROP_TITLE' | translate }}</p>
+                  <p class="drop-zone-formats">{{ 'MENU.PRODUCT_FORM.DROP_FORMATS' | translate }}</p>
+                  <button type="button" class="btn-choose-file"
+                          (click)="$event.stopPropagation(); triggerProductImageInput()">
+                    {{ 'MENU.PRODUCT_FORM.CHOOSE_FILE' | translate }}
+                  </button>
+                }
               </div>
             }
-          </div>
-        </mat-card>
-      </div>
-    </div>
 
-    <!-- Actions -->
-    <div class="form-actions">
-      <button mat-stroked-button type="button" routerLink="/menu">
-        Annuler
-      </button>
-      <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
-        @if (loading()) {
-          <mat-spinner diameter="20"></mat-spinner>
-        } @else {
-          {{ isEdit() ? 'Enregistrer' : 'Créer produit' }}
-        }
-      </button>
-    </div>
-  </form>
+            <div class="image-info-box">
+              <mat-icon class="info-box-icon">info</mat-icon>
+              <span>{{ 'MENU.PRODUCT_FORM.IMAGE_INFO' | translate }}</span>
+            </div>
+          </mat-card>
+
+          <!-- Tips card -->
+          <mat-card class="tips-card">
+            <div class="tips-header">
+              <mat-icon>tips_and_updates</mat-icon>
+              <strong>{{ 'MENU.PRODUCT_FORM.TIPS_TITLE' | translate }}</strong>
+            </div>
+            <ul class="tips-list">
+              <li>{{ 'MENU.PRODUCT_FORM.TIP1' | translate }}</li>
+              <li>{{ 'MENU.PRODUCT_FORM.TIP2' | translate }}</li>
+              <li>{{ 'MENU.PRODUCT_FORM.TIP3' | translate }}</li>
+            </ul>
+          </mat-card>
+
+        </div>
+      </div>
+
+      <!-- Actions bar -->
+      <div class="form-actions">
+        <div class="form-actions-status">
+          <span class="status-dot status-dot--green"></span>
+          <span class="status-text">{{ 'MENU.PRODUCT_FORM.SERVER_OK' | translate }}</span>
+          @if (productForm.dirty) {
+            <span class="status-sep">•</span>
+            <span class="status-dot status-dot--amber"></span>
+            <span class="status-text">{{ 'MENU.PRODUCT_FORM.UNSAVED' | translate }}</span>
+          }
+        </div>
+        <div class="form-actions-btns">
+          <button mat-stroked-button type="button" (click)="cancel()">{{ 'MENU.PRODUCT_FORM.CANCEL' | translate }}</button>
+          <button mat-flat-button type="submit" class="btn-save" [disabled]="saving()">
+            @if (saving()) {
+              <mat-spinner diameter="18" class="btn-spinner"></mat-spinner>
+              {{ 'MENU.PRODUCT_FORM.SAVING' | translate }}
+            } @else {
+              <ng-container>
+                <mat-icon>save</mat-icon>
+                {{ (isEdit() ? 'MENU.PRODUCT_FORM.SAVE_EDIT' : 'MENU.PRODUCT_FORM.SAVE_CREATE') | translate }}
+              </ng-container>
+            }
+          </button>
+        </div>
+      </div>
+    </form>
+  }
 </div>
+

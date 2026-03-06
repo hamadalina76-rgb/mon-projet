@@ -1,42 +1,68 @@
-// src/app/features/menu/services/product.service.ts
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '@core/services/api.service';
+import { AuthService } from '@core/services/auth.service';
+import {
+  Product,
+  CreateProductRequest,
+  UpdateProductRequest,
+  ReorderItem,
+} from '../models/menu.models';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class ProductService {
   private api = inject(ApiService);
+  private auth = inject(AuthService);
 
-  getProducts(categoryId?: string): Observable<any> {
-    const params = categoryId ? { categoryId } : {};
-    return this.api.get('partner/menu/products', params);
+  private get partnerId(): number {
+    const id = this.auth.getPartnerId();
+    if (!id) throw new Error('Partner ID not available');
+    return id;
   }
 
-  getProduct(id: string): Observable<any> {
-    return this.api.get(`partner/menu/products/${id}`);
+  private base(): string {
+    return `partners/${this.partnerId}/menu/products`;
   }
 
-  createProduct(data: any): Observable<any> {
-    return this.api.post('partner/menu/products', data);
+  getProducts(categoryId?: number): Observable<Product[]> {
+    const params = categoryId != null ? { categoryId } : undefined;
+    return this.api.get<Product[]>(this.base(), params);
   }
 
-  updateProduct(id: string, data: any): Observable<any> {
-    return this.api.put(`partner/menu/products/${id}`, data);
+  getProduct(id: number): Observable<Product> {
+    return this.api.get<Product>(`${this.base()}/${id}`);
   }
 
-  deleteProduct(id: string): Observable<any> {
-    return this.api.delete(`partner/menu/products/${id}`);
+  createProduct(data: CreateProductRequest): Observable<Product> {
+    return this.api.post<Product>(this.base(), data);
   }
 
-  toggleAvailability(id: string): Observable<any> {
-    return this.api.post(`partner/menu/products/${id}/toggle-availability`, {});
+  updateProduct(id: number, data: UpdateProductRequest): Observable<Product> {
+    return this.api.put<Product>(`${this.base()}/${id}`, data);
   }
 
-  uploadImage(id: string, file: File): Observable<any> {
+  deleteProduct(id: number): Observable<void> {
+    return this.api.delete<void>(`${this.base()}/${id}`);
+  }
+
+  toggleAvailability(id: number, isAvailable: boolean): Observable<Product> {
+    return this.api.patch<Product>(`${this.base()}/${id}/availability`, { isAvailable });
+  }
+
+  /** Upload image produit (multipart, champ 'file'). Retourne { url, product }. */
+  uploadProductImage(productId: number, file: File): Observable<{ url: string; product: Product }> {
     const formData = new FormData();
-    formData.append('image', file);
-    return this.api.post(`partner/menu/products/${id}/image`, formData);
+    formData.append('file', file);
+    return this.api.upload<{ url: string; product: Product }>(
+      `${this.base()}/${productId}/upload/image`,
+      formData
+    );
+  }
+
+  reorderProducts(categoryId: number, items: ReorderItem[]): Observable<Product[]> {
+    return this.api.patch<Product[]>(
+      `partners/${this.partnerId}/menu/categories/${categoryId}/products/reorder`,
+      { items }
+    );
   }
 }

@@ -224,6 +224,15 @@ public class Product {
     @Builder.Default
     private Integer displayOrder = 0;
 
+    // ==================== TAGS ====================
+
+    /**
+     * Tags libres séparés par des virgules (ex: "signature,populaire,halal")
+     * Utilisés pour le filtrage et la mise en avant dans l'app client.
+     */
+    @Column(length = 500)
+    private String tags;
+
     // ==================== TIMESTAMPS ====================
 
     @CreationTimestamp
