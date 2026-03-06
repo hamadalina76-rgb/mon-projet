@@ -76,6 +76,13 @@ BEGIN
         ALTER TABLE PRODUCTS DROP CONSTRAINT fk_product_category;
     END IF;
 
+    -- Null out category_id for products that reference a category not in PARTNER_MENU_CATEGORIES
+    -- (e.g. old menu_categories ids) so the new FK constraint can be added
+    UPDATE products
+    SET category_id = NULL
+    WHERE category_id IS NOT NULL
+      AND category_id NOT IN (SELECT id FROM partner_menu_categories);
+
     -- Add new FK pointing to PARTNER_MENU_CATEGORIES if not already present
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.table_constraints
