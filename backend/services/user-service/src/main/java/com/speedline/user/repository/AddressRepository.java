@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -183,4 +184,43 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
      * @return true si l'adresse appartient au client
      */
     boolean existsByIdAndCustomerId(Long addressId, Long customerId);
+
+    // ==================== UNICITÉ ====================
+
+    /**
+     * Vérifier si un client possède déjà une adresse active avec la même étiquette (insensible à la casse).
+     * Couvre tous les types : HOME, WORK, APARTMENT, OTHER.
+     *
+     * @param customerId ID du client
+     * @param label      Étiquette à vérifier (ex: "Maison", "Bureau", "Chez maman")
+     * @return Optional contenant l'adresse existante si doublon d'étiquette
+     */
+    Optional<Address> findByCustomerIdAndLabelIgnoreCaseAndIsActiveTrue(Long customerId, String label);
+
+    /**
+     * Vérifier si un client possède déjà une adresse active avec la même adresse formatée (insensible à la casse).
+     *
+     * @param customerId       ID du client
+     * @param formattedAddress Adresse formatée GPS (ex: "12 Rue Habib Bourguiba, Tunis")
+     * @return Optional contenant l'adresse existante si doublon physique
+     */
+    Optional<Address> findByCustomerIdAndFormattedAddressIgnoreCaseAndIsActiveTrue(Long customerId, String formattedAddress);
+
+    /**
+     * Trouver les adresses actives d'un client dont les coordonnées GPS sont
+     * dans un rayon d'environ 11 m (± 0,0001°) autour d'un point donné.
+     *
+     * @param customerId ID du client
+     * @param lat        Latitude de référence
+     * @param lon        Longitude de référence
+     * @return Liste des adresses proches (vides si aucun doublon)
+     */
+    @Query("SELECT a FROM Address a " +
+           "WHERE a.customerId = :customerId AND a.isActive = true " +
+           "AND a.latitude IS NOT NULL AND a.longitude IS NOT NULL " +
+           "AND a.latitude  BETWEEN :lat - 0.0001 AND :lat + 0.0001 " +
+           "AND a.longitude BETWEEN :lon - 0.0001 AND :lon + 0.0001")
+    List<Address> findByCoordinatesNear(@Param("customerId") Long customerId,
+                                        @Param("lat") BigDecimal lat,
+                                        @Param("lon") BigDecimal lon);
 }

@@ -74,6 +74,32 @@ public interface CustomerService {
      */
     AddressDTO createAddress(Long customerId, AddressCreateRequest request);
 
+    /**
+     * Récupérer un client par son userId (ID auth-service)
+ *
+     * @param userId ID de l'utilisateur dans auth-service
+     * @return CustomerDTO avec toutes les informations du profil
+     * @throws CustomerNotFoundException si aucun client n'est associé à ce userId
+     */
+    CustomerDTO getCustomerByUserId(Long userId);
+
+    /**
+     * Obtenir toutes les adresses d'un client via son userId (ID auth-service)
+     *
+     * @param userId ID de l'utilisateur dans auth-service
+     * @return List<AddressDTO>
+     */
+    List<AddressDTO> getAddressesByUserId(Long userId);
+
+    /**
+     * Créer une adresse pour un client via son userId (ID auth-service)
+     *
+     * @param userId  ID de l'utilisateur dans auth-service
+     * @param request détails de l'adresse
+     * @return AddressDTO créé
+     */
+    AddressDTO createAddressByUserId(Long userId, AddressCreateRequest request);
+
     // ==================== GESTION DES FAVORIS ====================
 
     /**

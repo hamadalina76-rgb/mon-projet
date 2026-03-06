@@ -1,30 +1,33 @@
 import 'dart:convert';
 
 /// Type d'adresse
-enum AddressType { home, work, other }
+enum AddressType { home, work, apartment, other }
 
 extension AddressTypeX on AddressType {
   String get key {
     switch (this) {
-      case AddressType.home: return 'home_address';
-      case AddressType.work: return 'work_address';
-      case AddressType.other: return 'other_address';
+      case AddressType.home:      return 'home_address';
+      case AddressType.work:      return 'work_address';
+      case AddressType.apartment: return 'apartment_address';
+      case AddressType.other:     return 'other_address';
     }
   }
 
   static AddressType fromString(String? v) {
     switch (v) {
-      case 'work': return AddressType.work;
-      case 'other': return AddressType.other;
-      default: return AddressType.home;
+      case 'work':      return AddressType.work;
+      case 'apartment': return AddressType.apartment;
+      case 'other':     return AddressType.other;
+      default:          return AddressType.home;
     }
   }
 
   String get value {
     switch (this) {
-      case AddressType.home: return 'home';
-      case AddressType.work: return 'work';
-      case AddressType.other: return 'other';
+      case AddressType.home:      return 'home';
+      case AddressType.work:      return 'work';
+      case AddressType.apartment: return 'apartment';
+      case AddressType.other:     return 'other';
     }
   }
 }

@@ -10,6 +10,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Entité Address - Adresses de livraison des clients
@@ -209,28 +211,29 @@ public class Address {
     // ==================== MÉTHODES UTILITAIRES ====================
 
     /**
-     * Générer l'adresse formatée
+     * Générer l'adresse formatée si elle n'est pas déjà définie.
+     * Le service peut fournir une adresse GPS/Mapbox ; dans ce cas on la conserve.
      */
     @PrePersist
     @PreUpdate
     public void generateFormattedAddress() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(street);
-        if (building != null && !building.isEmpty()) {
-            sb.append(", ").append(building);
+        if (formattedAddress != null && !formattedAddress.isBlank()) {
+            return; // déjà définie par le service — ne pas écraser
         }
-        if (floor != null && !floor.isEmpty()) {
-            sb.append(", Étage ").append(floor);
-        }
-        if (apartment != null && !apartment.isEmpty()) {
-            sb.append(", Apt ").append(apartment);
-        }
-        sb.append(", ").append(city);
-        if (postalCode != null && !postalCode.isEmpty()) {
-            sb.append(" ").append(postalCode);
-        }
-        sb.append(", ").append(country);
-        this.formattedAddress = sb.toString();
+        // Combine city + postal code as a single space-separated token
+        String cityPostal = Stream.of(city, postalCode)
+                .filter(s -> s != null && !s.isBlank())
+                .collect(Collectors.joining(" "));
+        this.formattedAddress = Stream.of(
+                        street,
+                        building,
+                        floor    != null && !floor.isBlank()    ? "Étage " + floor    : null,
+                        apartment != null && !apartment.isBlank() ? "Apt "   + apartment : null,
+                        cityPostal.isBlank() ? null : cityPostal,
+                        country
+                )
+                .filter(s -> s != null && !s.isBlank())
+                .collect(Collectors.joining(", "));
     }
 
     /**

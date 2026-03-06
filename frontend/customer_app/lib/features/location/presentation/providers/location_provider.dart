@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../data/models/saved_location.dart';
@@ -111,14 +110,27 @@ class LocationNotifier extends StateNotifier<LocationState> {
         status: LocationStatus.success,
         location: location,
       );
-      // Persister aussi dans le backend (fire-and-forget).
-      // Si le backend est injoignable, Hive garde l'adresse localement.
-      unawaited(_apiService.saveLocationToBackend(location));
     } catch (e) {
       state = state.copyWith(
         status: LocationStatus.error,
         errorMessage: 'Erreur de sauvegarde: $e',
       );
+    }
+  }
+
+  /// Tags the current saved location with an address label and type.
+  /// Called after the user successfully saves a named address so the
+  /// explore screen header immediately reflects the chosen name.
+  Future<void> tagLocation(AddressType type, String label) async {
+    final current = state.location;
+    if (current == null) return;
+    final updated = current.copyWith(addressType: type, customLabel: label);
+    try {
+      final box = await Hive.openBox<String>(_kLocationBoxName);
+      await box.put(_kCurrentLocationKey, updated.toJson());
+      state = state.copyWith(location: updated);
+    } catch (_) {
+      // Persist failure is non-fatal — state is still updated in memory.
     }
   }
 
@@ -148,6 +160,21 @@ class LocationNotifier extends StateNotifier<LocationState> {
       return null;
     }
   }
+
+  /// Efface la localisation active (Hive + état).
+  /// Utilisé quand l'adresse par défaut est supprimée.
+  /// L'app relancera une détection GPS au prochain accès à l'écran explore.
+  Future<void> clearLocation() async {
+    try {
+      final box = await Hive.openBox<String>(_kLocationBoxName);
+      await box.delete(_kCurrentLocationKey);
+    } catch (_) {}
+    state = const LocationState();
+  }
+
+  /// Géocodage direct: texte → liste de résultats positionnables
+  Future<List<SavedLocation>> forwardGeocode(String query) =>
+      _apiService.forwardGeocode(query);
 
   /// Récupère les partenaires proches pour une position donnée
   Future<List<Map<String, dynamic>>> fetchNearbyPartners({

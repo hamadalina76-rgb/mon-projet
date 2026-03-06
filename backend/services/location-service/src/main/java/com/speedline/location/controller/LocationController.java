@@ -2,7 +2,6 @@ package com.speedline.location.controller;
 
 import com.speedline.location.dto.GeocodeRequest;
 import com.speedline.location.dto.ReverseGeocodeResponse;
-import com.speedline.location.dto.SaveAddressRequest;
 import com.speedline.location.service.GeolocationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -113,24 +112,4 @@ public class LocationController implements LocationApi {
                 return ResponseEntity.ok(out);
         }
 
-        @Override
-        @PostMapping("/customer-address")
-        public ResponseEntity<Map<String, Object>> saveCustomerAddress(
-                        @RequestBody SaveAddressRequest request) {
-                log.info("POST /locations/customer-address - user={}, city={}",
-                                request.getUserId(), request.getCity());
-                GeolocationService.SavedAddressDTO saved = geolocationService.saveCustomerAddress(request);
-                Map<String, Object> out = new java.util.LinkedHashMap<>();
-                out.put("id", saved.id());
-                out.put("formattedAddress", saved.formattedAddress());
-                out.put("city", saved.city() != null ? saved.city() : "");
-                out.put("latitude", saved.latitude());
-                out.put("longitude", saved.longitude());
-                return ResponseEntity.ok(out);
-        }
-
-    // TODO: Implémenter les autres endpoints
-    // GET /locations/nearby-partners
-    // POST /locations/calculate-distance
-    // GET /locations/route
 }

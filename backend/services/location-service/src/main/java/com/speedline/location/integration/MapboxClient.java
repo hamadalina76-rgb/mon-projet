@@ -132,13 +132,18 @@ public class MapboxClient {
             for (Map<String, Object> ctx : context) {
                 String ctxId   = (String) ctx.getOrDefault("id", "");
                 String ctxText = (String) ctx.getOrDefault("text", "");
+                // extract the type prefix before the '.' (e.g. "place.abc" -> "place")
+                String ctxType = ctxId.contains(".")
+                        ? ctxId.substring(0, ctxId.indexOf('.'))
+                        : ctxId;
 
-                if      (ctxId.startsWith("postcode")) postalCode = ctxText;
-                else if (ctxId.startsWith("locality"))  { if (city.isBlank())  city   = ctxText; }
-                else if (ctxId.startsWith("place"))     { if (city.isBlank())  city   = ctxText; }
-                else if (ctxId.startsWith("district"))  { if (city.isBlank())  city   = ctxText; }
-                else if (ctxId.startsWith("region"))    { if (state.isBlank()) state  = ctxText; }
-                else if (ctxId.startsWith("country"))   country = ctxText;
+                switch (ctxType) {
+                    case "postcode" -> postalCode = ctxText;
+                    case "locality", "place", "district" -> { if (city.isBlank()) city = ctxText; }
+                    case "region" -> { if (state.isBlank()) state = ctxText; }
+                    case "country" -> country = ctxText;
+                    default -> { /* ignore unknown context types */ }
+                }
             }
         }
 

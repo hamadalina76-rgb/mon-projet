@@ -21,6 +21,9 @@ public class SaveAddressRequest {
     @Schema(description = "ID utilisateur (JWT subject ou 'anonymous')", example = "user-uuid-123")
     private String userId;
 
+    @Schema(description = "ID numérique du client (user-service customers.id)", example = "42")
+    private Long customerId;
+
     @Schema(description = "Adresse complète formatée", example = "Ave. Hedi Chaker, Sfax 3000, Tunisie")
     private String formattedAddress;
 

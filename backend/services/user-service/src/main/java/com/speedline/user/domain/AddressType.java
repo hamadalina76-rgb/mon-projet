@@ -14,7 +14,12 @@ public enum AddressType {
      * Travail/Bureau
      */
     WORK,
-    
+
+    /**
+     * Appartement
+     */
+    APARTMENT,
+
     /**
      * Autre adresse
      */
