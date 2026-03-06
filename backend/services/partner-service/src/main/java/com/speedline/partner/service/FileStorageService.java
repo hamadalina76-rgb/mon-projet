@@ -37,6 +37,8 @@ public class FileStorageService {
             Files.createDirectories(uploadPath.resolve("partners/covers"));
             Files.createDirectories(uploadPath.resolve("partners/photos"));
             Files.createDirectories(uploadPath.resolve("partners/documents"));
+            Files.createDirectories(uploadPath.resolve("partners/products"));
+            Files.createDirectories(uploadPath.resolve("partners/categories"));
             log.info("File upload directories created at: {}", uploadPath.toAbsolutePath());
         } catch (IOException e) {
             log.error("Failed to create upload directories", e);
@@ -68,6 +70,20 @@ public class FileStorageService {
         return storeFile(file, "partners/documents", partnerId);
     }
 
+    /**
+     * Stocker une image produit.
+     */
+    public String storeProductImage(MultipartFile file, Long partnerId, Long productId) {
+        return storeFileWithSuffix(file, "partners/products", partnerId, "p" + productId);
+    }
+
+    /**
+     * Stocker une image de catégorie menu.
+     */
+    public String storeCategoryImage(MultipartFile file, Long partnerId, Long catId) {
+        return storeFileWithSuffix(file, "partners/categories", partnerId, "c" + catId);
+    }
+
     private String storeFile(MultipartFile file, String subDir, Long partnerId) {
         try {
             // Validate file
@@ -95,6 +111,29 @@ public class FileStorageService {
             log.info("File stored successfully: {}", targetPath.toAbsolutePath());
 
             // Return public URL
+            return baseUrl + "/" + subDir + "/" + filename;
+        } catch (IOException e) {
+            log.error("Failed to store file for partner {}: {}", partnerId, e.getMessage());
+            throw new RuntimeException("Failed to store file: " + e.getMessage(), e);
+        }
+    }
+
+    private String storeFileWithSuffix(MultipartFile file, String subDir, Long partnerId, String suffix) {
+        try {
+            if (file.isEmpty()) {
+                throw new RuntimeException("Cannot store empty file");
+            }
+            String originalFilename = file.getOriginalFilename();
+            String extension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+            String filename = partnerId + "_" + suffix + "_" + UUID.randomUUID().toString().substring(0, 8) + extension;
+            Path targetDir = Paths.get(uploadDir, subDir);
+            Files.createDirectories(targetDir);
+            Path targetPath = targetDir.resolve(filename);
+            Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+            log.info("File stored successfully: {}", targetPath.toAbsolutePath());
             return baseUrl + "/" + subDir + "/" + filename;
         } catch (IOException e) {
             log.error("Failed to store file for partner {}: {}", partnerId, e.getMessage());

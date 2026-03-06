@@ -35,6 +35,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     
     List<Product> findByPartnerIdAndCategoryIdAndStatusNot(Long partnerId, Long categoryId, ProductStatus status);
 
+    /**
+     * Produits d'une catégorie triés par displayOrder — utilisé par le menu API.
+     */
+    List<Product> findByPartnerIdAndCategoryIdAndStatusNotOrderByDisplayOrderAsc(
+            Long partnerId, Long categoryId, ProductStatus status);
+
+    /**
+     * Compte les produits actifs d'une catégorie — utilisé pour le soft-delete de catégorie (TC-11).
+     */
+    long countByPartnerIdAndCategoryIdAndStatusNot(Long partnerId, Long categoryId, ProductStatus status);
+
+    /**
+     * Dernier produit d'un partenaire (displayOrder le plus élevé) — pour l'auto-position (TC-18 pattern).
+     */
+    java.util.Optional<Product> findTopByPartnerIdAndStatusNotOrderByDisplayOrderDesc(
+            Long partnerId, ProductStatus status);
+
     // ==================== RECHERCHE PAR CARACTÉRISTIQUES ====================
 
     List<Product> findByPartnerIdAndIsPopularTrue(Long partnerId);

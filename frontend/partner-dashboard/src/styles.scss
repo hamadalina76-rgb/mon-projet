@@ -77,6 +77,13 @@ a {
 
 /* Cards
    ========================================================================== */
+
+// Override Material Design 3 rose-red surface tint on all mat-cards
+.mat-mdc-card {
+  --mdc-elevated-card-container-color: #ffffff;
+  --mat-card-elevated-container-color: #ffffff;
+}
+
 .card {
   background: $white;
   border-radius: $border-radius-lg;

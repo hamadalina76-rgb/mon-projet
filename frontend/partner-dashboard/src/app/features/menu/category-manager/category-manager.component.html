@@ -1,80 +1,128 @@
-<!-- Category Manager Component Template - Angular 19 -->
-<div class="category-manager-page">
+<div class="category-form-page">
+  <!-- Breadcrumb -->
+  <nav class="breadcrumb">
+    <a routerLink="/menu" [queryParams]="{tab: 0}" class="breadcrumb-link">{{ 'MENU.CATEGORY_FORM.BREADCRUMB_MENU' | translate }}</a>
+    <mat-icon class="breadcrumb-sep">chevron_right</mat-icon>
+    <span>{{ pageTitleKey() | translate }}</span>
+  </nav>
+
+  <!-- Header -->
   <header class="page-header">
-    <div class="header-left">
-      <button mat-icon-button routerLink="/menu">
-        <mat-icon>arrow_back</mat-icon>
-      </button>
-      <h1>Gérer les catégories</h1>
-    </div>
-    <button mat-flat-button color="primary" (click)="showAddForm()">
-      <mat-icon>add</mat-icon>
-      Nouvelle catégorie
+    <button mat-icon-button (click)="onCancel()" class="back-btn">
+      <mat-icon>arrow_back</mat-icon>
     </button>
+    <h1>{{ pageTitleKey() | translate }}</h1>
   </header>
 
-  <div class="content-grid">
-    <!-- Categories List -->
-    <mat-card class="categories-card">
-      <div 
-        class="categories-list"
-        cdkDropList
-        (cdkDropListDropped)="onDrop($event)">
-        @for (category of categories(); track category.id) {
-          <div class="category-item" cdkDrag>
-            <mat-icon cdkDragHandle class="drag-handle">drag_indicator</mat-icon>
-            <div class="category-info">
-              <span class="category-name">{{ category.name }}</span>
-              <span class="category-count">{{ category.productsCount }} produits</span>
-            </div>
-            <div class="category-actions">
-              <button mat-icon-button (click)="editCategory(category)">
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button mat-icon-button (click)="deleteCategory(category.id)">
-                <mat-icon>delete</mat-icon>
-              </button>
-            </div>
-          </div>
-        } @empty {
-          <div class="no-categories">
-            <mat-icon>category</mat-icon>
-            <p>Aucune catégorie</p>
-          </div>
-        }
-      </div>
-    </mat-card>
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="48"></mat-spinner>
+    </div>
+  } @else {
+    <div class="form-layout">
+      <!-- Main form card -->
+      <mat-card class="main-form-card">
+        <form [formGroup]="categoryForm" (ngSubmit)="onSubmit()" class="form-body">
 
-    <!-- Category Form -->
-    @if (showForm()) {
-      <mat-card class="form-card">
-        <h3>{{ editingId() ? 'Modifier catégorie' : 'Nouvelle catégorie' }}</h3>
-
-        <form [formGroup]="categoryForm" (ngSubmit)="saveCategory()">
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Nom de la catégorie</mat-label>
-            <input matInput formControlName="name" />
+            <mat-label>{{ 'MENU.CATEGORY_FORM.NAME_LABEL' | translate }}</mat-label>
+            <input matInput formControlName="name" [placeholder]="'MENU.CATEGORY_FORM.NAME_PLACEHOLDER' | translate" />
+            @if (categoryForm.get('name')?.hasError('required') && categoryForm.get('name')?.touched) {
+              <mat-error>{{ 'MENU.CATEGORY_FORM.NAME_REQUIRED' | translate }}</mat-error>
+            }
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Description (optionnel)</mat-label>
-            <textarea matInput formControlName="description" rows="3"></textarea>
+            <mat-label>{{ 'MENU.CATEGORY_FORM.DESC_LABEL' | translate }}</mat-label>
+            <textarea
+              matInput
+              formControlName="description"
+              rows="4"
+              [placeholder]="'MENU.CATEGORY_FORM.DESC_PLACEHOLDER' | translate">
+            </textarea>
           </mat-form-field>
+
+          <!-- Image URL + preview -->
+          <div class="image-section">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ 'MENU.CATEGORY_FORM.IMAGE_URL_LABEL' | translate }}</mat-label>
+              <input
+                matInput
+                formControlName="imageUrl"
+                [placeholder]="'MENU.CATEGORY_FORM.IMAGE_URL_PLACEHOLDER' | translate"
+                (blur)="onImageUrlChange()" />
+              <mat-icon matSuffix>image</mat-icon>
+            </mat-form-field>
+
+            @if (imagePreview()) {
+              <div class="img-preview">
+                <img [src]="imagePreview()" [alt]="'MENU.CATEGORY_FORM.IMAGE_PREVIEW_ALT' | translate" />
+                <span class="img-label">{{ 'MENU.CATEGORY_FORM.IMAGE_PREVIEW_LABEL' | translate }}</span>
+              </div>
+            } @else {
+              <div class="upload-placeholder">
+                <mat-icon>add_photo_alternate</mat-icon>
+                <span>{{ 'MENU.CATEGORY_FORM.IMAGE_PLACEHOLDER' | translate }}</span>
+              </div>
+            }
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'MENU.CATEGORY_FORM.ORDER_LABEL' | translate }}</mat-label>
+              <input matInput type="number" formControlName="position" [placeholder]="'MENU.CATEGORY_FORM.ORDER_PLACEHOLDER' | translate" />
+            </mat-form-field>
+          </div>
+
+          <div class="toggle-field">
+            <div class="toggle-label">
+              <span class="label-main">{{ 'MENU.CATEGORY_FORM.VISIBLE_MAIN' | translate }}</span>
+              <span class="label-sub">{{ 'MENU.CATEGORY_FORM.VISIBLE_SUB' | translate }}</span>
+            </div>
+            <mat-slide-toggle formControlName="isVisible"></mat-slide-toggle>
+          </div>
 
           <div class="form-actions">
-            <button mat-stroked-button type="button" (click)="cancel()">
-              Annuler
-            </button>
-            <button mat-flat-button color="primary" type="submit" [disabled]="loading()">
-              @if (loading()) {
+            <button mat-stroked-button type="button" (click)="onCancel()">{{ 'MENU.CATEGORY_FORM.CANCEL' | translate }}</button>
+            <button
+              mat-flat-button
+              class="btn-save"
+              type="submit"
+              [disabled]="categoryForm.invalid || saving()">
+              @if (saving()) {
                 <mat-spinner diameter="20"></mat-spinner>
               } @else {
-                {{ editingId() ? 'Enregistrer' : 'Créer' }}
+                {{ 'MENU.CATEGORY_FORM.SAVE' | translate }}
               }
             </button>
           </div>
         </form>
       </mat-card>
-    }
-  </div>
+
+      <!-- Info cards sidebar -->
+      <div class="info-sidebar">
+        <div class="info-card">
+          <div class="info-icon"><mat-icon>image</mat-icon></div>
+          <div class="info-text">
+            <strong>{{ 'MENU.CATEGORY_FORM.INFO_IMAGES_TITLE' | translate }}</strong>
+            <p>{{ 'MENU.CATEGORY_FORM.INFO_IMAGES_TEXT' | translate }}</p>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-icon"><mat-icon>sort</mat-icon></div>
+          <div class="info-text">
+            <strong>{{ 'MENU.CATEGORY_FORM.INFO_ORG_TITLE' | translate }}</strong>
+            <p>{{ 'MENU.CATEGORY_FORM.INFO_ORG_TEXT' | translate }}</p>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-icon"><mat-icon>visibility</mat-icon></div>
+          <div class="info-text">
+            <strong>{{ 'MENU.CATEGORY_FORM.INFO_VISIBILITY_TITLE' | translate }}</strong>
+            <p>{{ 'MENU.CATEGORY_FORM.INFO_VISIBILITY_TEXT' | translate }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 </div>

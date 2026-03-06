@@ -1,16 +1,66 @@
-<!-- Category List Component Template - Angular 19 -->
-<div class="category-list" cdkDropList (cdkDropListDropped)="reorder.emit($event)">
-  @for (category of categories(); track category.id) {
-    <div 
-      class="category-item"
-      [class.selected]="selectedId() === category.id"
+<div class="category-list" cdkDropList (cdkDropListDropped)="onDrop($event)">
+  @for (cat of categories(); track cat.id) {
+    <div
+      class="category-row"
+      [class.selected]="selectedId() === cat.id"
       cdkDrag>
-      <mat-icon cdkDragHandle class="drag-handle">drag_indicator</mat-icon>
-      <span class="category-name" (click)="select.emit(category.id)">{{ category.name }}</span>
-      <span class="category-count">{{ category.productsCount }}</span>
-      <button mat-icon-button (click)="edit.emit(category)">
-        <mat-icon>edit</mat-icon>
-      </button>
+
+      <!-- drag placeholder -->
+      <div class="drag-placeholder" *cdkDragPlaceholder></div>
+
+      <!-- drag handle -->
+      <mat-icon cdkDragHandle class="drag-handle" [matTooltip]="'MENU.CATEGORY_LIST.TOOLTIP_REORDER' | translate">drag_indicator</mat-icon>
+
+      <!-- thumbnail -->
+      <div class="cat-thumb">
+        @if (cat.imageUrl) {
+          <img [src]="cat.imageUrl" [alt]="cat.name" />
+        } @else {
+          <mat-icon class="no-img-icon">restaurant_menu</mat-icon>
+        }
+      </div>
+
+      <!-- info -->
+      <div class="cat-info">
+        <span class="cat-name">{{ cat.name }}</span>
+        <span class="cat-count">
+          {{ (cat.productCount ?? 0) }}
+          {{ (cat.productCount ?? 0) === 1 ? ('MENU.CATEGORY_LIST.COUNT_SINGULAR' | translate) : ('MENU.CATEGORY_LIST.COUNT_PLURAL' | translate) }}
+        </span>
+      </div>
+
+      <!-- actions -->
+      <div class="cat-actions">
+        <mat-slide-toggle
+          [checked]="cat.isVisible"
+          (click)="onToggleVisibility(cat, $event)"
+          [matTooltip]="'MENU.CATEGORY_LIST.TOOLTIP_VISIBILITY' | translate">
+        </mat-slide-toggle>
+        <button
+          mat-icon-button
+          class="edit-btn"
+          (click)="onEdit(cat, $event)"
+          [matTooltip]="'MENU.CATEGORY_LIST.TOOLTIP_EDIT' | translate">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <span
+          [matTooltip]="canDelete(cat)
+            ? ('MENU.CATEGORY_LIST.TOOLTIP_DELETE' | translate)
+            : ('MENU.CATEGORY_LIST.DELETE_DISABLED' | translate:{ count: (cat.productCount ?? 0) })">
+          <button
+            mat-icon-button
+            class="delete-btn"
+            [disabled]="!canDelete(cat)"
+            (click)="onDelete(cat, $event)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </span>
+      </div>
+    </div>
+  } @empty {
+    <div class="empty-list">
+      <mat-icon>inbox</mat-icon>
+      <p>{{ 'MENU.CATEGORY_LIST.EMPTY' | translate }}</p>
     </div>
   }
 </div>

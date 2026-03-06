@@ -18,6 +18,10 @@ export class AppComponent implements OnInit {
     const savedLang = localStorage.getItem(LANG_STORAGE_KEY) || 'fr';
     this.translate.use(savedLang);
     this.applyDirection(savedLang);
+
+    this.translate.onLangChange.subscribe((e) => {
+      this.applyDirection(e.lang);
+    });
   }
 
   private applyDirection(lang: string): void {

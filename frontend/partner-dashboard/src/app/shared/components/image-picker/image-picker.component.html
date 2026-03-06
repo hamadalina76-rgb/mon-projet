@@ -1,0 +1,81 @@
+<div class="image-picker" [class.disabled]="disabled()">
+
+  <!-- ── Mode toggle ─────────────────────────────────────────── -->
+  <div class="mode-toggle" role="group">
+    <button type="button" class="mode-btn" [class.active]="mode() === 'url'"
+            (click)="setMode('url')" [disabled]="disabled()">
+      <mat-icon>link</mat-icon>
+      <span>Via URL</span>
+    </button>
+    <button type="button" class="mode-btn" [class.active]="mode() === 'file'"
+            (click)="setMode('file')" [disabled]="disabled()"
+            [matTooltip]="!canUpload() ? 'Aucun endpoint configuré pour l\'upload' : ''"
+            [attr.aria-disabled]="!canUpload() ? true : null">
+      <mat-icon>upload_file</mat-icon>
+      <span>Depuis l'appareil</span>
+    </button>
+  </div>
+
+  <!-- ── URL mode ────────────────────────────────────────────── -->
+  @if (mode() === 'url') {
+    <mat-form-field appearance="outline" class="url-field">
+      <mat-label>{{ label() }}</mat-label>
+      <input matInput
+             [value]="urlInput()"
+             (input)="onUrlInput($event)"
+             [placeholder]="placeholder()"
+             [disabled]="disabled()" />
+      <mat-icon matSuffix>image</mat-icon>
+    </mat-form-field>
+  }
+
+  <!-- ── File mode ───────────────────────────────────────────── -->
+  @if (mode() === 'file') {
+    <div class="drop-zone"
+         [class.dragover]="isDragging()"
+         [class.uploading]="uploading()"
+         (dragover)="onDragOver($event)"
+         (dragleave)="onDragLeave()"
+         (drop)="onDrop($event)"
+         (click)="!disabled() && fileInput.click()"
+         [attr.tabindex]="disabled() ? -1 : 0"
+         (keydown.enter)="!disabled() && fileInput.click()"
+         role="button"
+         [attr.aria-label]="'Sélectionner une image depuis votre appareil'">
+
+      @if (uploading()) {
+        <mat-spinner diameter="36"></mat-spinner>
+        <span class="dz-text">Envoi en cours…</span>
+      } @else {
+        <mat-icon class="dz-icon">cloud_upload</mat-icon>
+        <span class="dz-text">Glissez une image ou cliquez pour parcourir</span>
+        <span class="dz-hint">JPG · PNG · WEBP &nbsp;·&nbsp; max 5 Mo</span>
+      }
+    </div>
+    <input #fileInput type="file"
+           accept="image/jpeg,image/png,image/webp"
+           style="display:none"
+           (change)="onFileSelected($event)" />
+  }
+
+  <!-- ── Error ───────────────────────────────────────────────── -->
+  @if (error()) {
+    <div class="picker-error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <!-- ── Preview ─────────────────────────────────────────────── -->
+  @if (preview()) {
+    <div class="img-preview">
+      <img [src]="preview()!" alt="Aperçu de l'image" />
+      <button type="button" mat-icon-button class="clear-btn"
+              (click)="clearImage()" matTooltip="Supprimer l'image"
+              [disabled]="disabled()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  }
+
+</div>
