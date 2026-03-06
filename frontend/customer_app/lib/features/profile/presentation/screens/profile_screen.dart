@@ -9,6 +9,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../location/data/models/saved_location.dart';
 import '../../../location/presentation/providers/location_provider.dart';
+import '../../data/models/address_model.dart';
+import '../providers/address_provider.dart';
 
 /// Profile Screen
 /// Displays user information, delivery locations, payment methods, order history
@@ -37,6 +39,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       'icon': '🍔',
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAddresses());
+  }
+
+  void _loadAddresses() {
+    final authState = ref.read(authNotifierProvider);
+    authState.whenOrNull(
+      authenticated: (user) =>
+          ref.read(addressNotifierProvider.notifier).fetchAddresses(user.id),
+    );
+  }
 
   void _handleLogout() {
     final l10n = AppLocalizations.of(context)!;
@@ -209,9 +225,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       color: AppColors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(AppConstants.cardPadding),
                     ),
-                    child: const Text(
-                      'PREMIUM MEMBER',
-                      style: TextStyle(
+                    child: Text(
+                      l10n.translate('premium_member'),
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: AppColors.primary,
@@ -230,9 +246,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               l10n: l10n,
               title: 'delivery_addresses',
               action: 'manage_all',
-              onAction: () {
-                // TODO: Navigate to manage locations
-              },
+              onAction: () => context.push(RouteNames.addresses),
               child: _buildAddressSection(l10n),
             ),
             
@@ -300,6 +314,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildAddressSection(AppLocalizations l10n) {
+    final addressesAsync = ref.watch(addressNotifierProvider);
+    return addressesAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      error: (_, __) => _buildFallbackSection(l10n),
+      data: (addresses) {
+        if (addresses.isEmpty) return _buildFallbackSection(l10n);
+        return Column(
+          children: [
+            ...addresses.map((a) => _buildAddressModelTile(l10n, a)),
+            const Divider(height: 1),
+            _buildAddNewItem(
+              l10n: l10n,
+              icon: Icons.add_location_outlined,
+              title: 'add_new_address',
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildFallbackSection(AppLocalizations l10n) {
     final loc = ref.watch(
       locationNotifierProvider.select((s) => s.location),
     );
@@ -314,6 +353,77 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildAddressModelTile(AppLocalizations l10n, AddressModel address) {
+    final IconData icon;
+    switch (address.type) {
+      case AddressType.work:
+        icon = Icons.work_outline;
+        break;
+      case AddressType.apartment:
+        icon = Icons.apartment_outlined;
+        break;
+      case AddressType.other:
+        icon = Icons.place_outlined;
+        break;
+      default:
+        icon = Icons.home_outlined;
+    }
+    final title = address.label?.isNotEmpty == true
+        ? address.label!
+        : _addressTypeLabel(l10n, address.type);
+    final subtitle = address.formattedAddress ??
+        [address.street, address.city]
+            .where((s) => s != null && s!.isNotEmpty)
+            .join(', ');
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+        ),
+        child: Icon(icon, color: AppColors.primary, size: AppConstants.iconSizeMedium),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: (subtitle?.isNotEmpty == true)
+          ? Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                subtitle!,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            )
+          : null,
+      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+      onTap: () => context.push(RouteNames.addresses),
+    );
+  }
+
+  String _addressTypeLabel(AppLocalizations l10n, AddressType type) {
+    switch (type) {
+      case AddressType.work:
+        return l10n.translate('work_address');
+      case AddressType.apartment:
+        return l10n.translate('apartment_address');
+      case AddressType.other:
+        return l10n.translate('other_address');
+      default:
+        return l10n.translate('home_address');
+    }
   }
 
   Widget _buildSavedAddressTile(AppLocalizations l10n, SavedLocation? loc) {
@@ -376,9 +486,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Text(
-                'LIVE',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+              child: Text(
+                l10n.translate('live_badge'),
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ),
           ],
@@ -473,12 +583,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.1),
+          color: AppColors.secondaryDark.withOpacity(0.1),
           borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
         ),
         child: Icon(
           icon,
-          color: AppColors.primary,
+          color: AppColors.secondaryDark,
           size: AppConstants.iconSizeMedium,
         ),
       ),
@@ -497,12 +607,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: AppColors.secondaryDark,
                 borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall / 2),
               ),
-              child: const Text(
-                'LIVE',
-                style: TextStyle(
+              child: Text(
+                l10n.translate('live_badge'),
+                style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,

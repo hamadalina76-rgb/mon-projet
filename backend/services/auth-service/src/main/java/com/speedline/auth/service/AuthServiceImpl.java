@@ -60,6 +60,9 @@ public class AuthServiceImpl implements AuthService {
     @Value("${jwt.expiration}")
     private long jwtExpirationMs;
 
+    @Value("${uploads.base-url}")
+    private String uploadsBaseUrl;
+
     @Override
     @Transactional
     public void register(RegisterRequest request) {
@@ -225,6 +228,13 @@ public class AuthServiceImpl implements AuthService {
             default:
                 log.error("Unknown user status: {} for {}", user.getStatus(), request.getEmail());
                 throw new AccountStatusException("Invalid account status");
+        }
+
+        // Lazy-provision the profile for customers who registered before user-service was running,
+        // or whose profile creation failed silently. createUserProfile is now idempotent.
+        if (user.getRole() == Role.CUSTOMER) {
+            createUserProfile(user.getId(), user.getRole(), user.getEmail(),
+                    user.getFirstName(), user.getLastName(), user.getPhoneNumber());
         }
 
         String accessToken = tokenProvider.generateToken(user);
@@ -406,6 +416,10 @@ public class AuthServiceImpl implements AuthService {
                     user.setStatus(UserStatus.ACTIVE);
                     user.setIsEmailVerified(true);
                     userRepo.save(user);
+                    // Ensure the profile exists in user-service — may have been missed at
+                    // registration time if user-service was unreachable then.
+                    createUserProfile(user.getId(), user.getRole(), user.getEmail(),
+                            user.getFirstName(), user.getLastName(), user.getPhoneNumber());
                     break;
 
                 case ACTIVE:
@@ -469,10 +483,9 @@ public class AuthServiceImpl implements AuthService {
             // 1. User doesn't have a custom uploaded picture (check if it's from our server)
             // 2. AND OAuth provides a picture
             String currentPicture = user.getProfilePicture();
-            boolean isCustomUpload = currentPicture != null && 
-                                    (currentPicture.contains("/uploads/") || 
-                                     currentPicture.contains("10.0.2.2:8082") ||
-                                     currentPicture.contains("localhost:8082"));
+            boolean isCustomUpload = currentPicture != null &&
+                                    (currentPicture.startsWith(uploadsBaseUrl) ||
+                                     currentPicture.contains("/uploads/"));
             
             if (!isCustomUpload && 
                 oauth2UserInfo.getProfilePicture() != null &&
@@ -525,6 +538,13 @@ public class AuthServiceImpl implements AuthService {
         String refreshToken = tokenProvider.generatRefreshToken(user.getEmail());
 
         log.info("Social login successful for user: {}", user.getEmail());
+
+        // Ensure the profile row exists in user-service for customer-role social users.
+        // createUserProfile is idempotent: it returns the existing profile if already present.
+        if (user.getRole() == Role.CUSTOMER) {
+            createUserProfile(user.getId(), user.getRole(), user.getEmail(),
+                    user.getFirstName(), user.getLastName(), user.getPhoneNumber());
+        }
 
         return AuthResponse.builder()
                 .accessToken(accessToken)

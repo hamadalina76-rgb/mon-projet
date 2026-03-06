@@ -37,6 +37,7 @@ dependencies:
   # Maps & Location
   google_maps_flutter: ^2.5.0
   geolocator: ^10.1.0
+  location: ^5.0.3
   geocoding: ^2.1.1
   flutter_polyline_points: ^2.0.0
   flutter_map: ^8.2.2
@@ -90,6 +91,7 @@ dependencies:
   
   # Animations
   lottie: ^2.7.0
+  responsive_framework: ^1.5.1
 
 dev_dependencies:
   flutter_test:

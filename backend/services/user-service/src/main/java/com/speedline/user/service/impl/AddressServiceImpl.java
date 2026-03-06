@@ -5,6 +5,7 @@ import com.speedline.user.domain.AddressType;
 import com.speedline.user.domain.Customer;
 import com.speedline.user.dto.*;
 import com.speedline.user.exception.*;
+import com.speedline.user.exception.DuplicateAddressTypeException;
 import com.speedline.user.repository.AddressRepository;
 import com.speedline.user.repository.CustomerRepository;
 import com.speedline.user.service.AddressService;
@@ -65,6 +66,23 @@ public class AddressServiceImpl implements AddressService {
 
         // Valider les coordonnées GPS si fournies
         validateCoordinates(request.getLatitude(), request.getLongitude());
+
+        // Unicité HOME / WORK / APARTMENT — un seul par client
+        AddressType requestedType = request.getType() != null ? request.getType() : AddressType.HOME;
+        if (requestedType != AddressType.OTHER) {
+            boolean typeExists = !addressRepository
+                    .findByCustomerIdAndTypeAndIsActiveTrue(customerId, requestedType)
+                    .isEmpty();
+            if (typeExists) {
+                throw new DuplicateAddressTypeException(requestedType);
+            }
+        }
+
+        // Label obligatoire pour OTHER
+        if (requestedType == AddressType.OTHER &&
+                (request.getLabel() == null || request.getLabel().isBlank())) {
+            throw new IllegalArgumentException("Le label personnalisé est obligatoire pour le type AUTRE");
+        }
 
         // Créer l'adresse
         Address address = Address.builder()
@@ -130,7 +148,28 @@ public class AddressServiceImpl implements AddressService {
         validateCoordinates(newLat, newLon);
 
         // Mettre à jour les champs si fournis
-        if (request.getType() != null) address.setType(request.getType());
+        if (request.getType() != null && request.getType() != address.getType()) {
+            AddressType newType = request.getType();
+            // Unicité HOME / WORK / APARTMENT lors du changement de type
+            if (newType != AddressType.OTHER) {
+                boolean conflict = addressRepository
+                        .findByCustomerIdAndTypeAndIsActiveTrue(address.getCustomerId(), newType)
+                        .stream().anyMatch(a -> !a.getId().equals(addressId));
+                if (conflict) {
+                    throw new DuplicateAddressTypeException(newType);
+                }
+            }
+            // Label obligatoire si on passe en OTHER et que le label est vide
+            if (newType == AddressType.OTHER) {
+                String currentLabel = request.getLabel() != null ? request.getLabel() : address.getLabel();
+                if (currentLabel == null || currentLabel.isBlank()) {
+                    throw new IllegalArgumentException("Le label personnalisé est obligatoire pour le type AUTRE");
+                }
+            }
+            address.setType(newType);
+        } else if (request.getType() != null) {
+            address.setType(request.getType());
+        }
         if (request.getLabel() != null) address.setLabel(request.getLabel());
         if (request.getStreet() != null) address.setStreet(request.getStreet());
         if (request.getBuilding() != null) address.setBuilding(request.getBuilding());
@@ -170,27 +209,30 @@ public class AddressServiceImpl implements AddressService {
     @Override
     @Transactional
     public void deleteAddress(Long addressId) {
-        log.info("Suppression (soft delete) de l'adresse ID: {}", addressId);
+        log.info("Suppression définitive de l'adresse ID: {}", addressId);
 
-        Address address = findAddressById(addressId);
+        Address address = addressRepository.findById(addressId)
+                .orElseThrow(() -> AddressNotFoundException.byId(addressId));
         Long customerId = address.getCustomerId();
 
-        // Vérifier si c'est l'adresse par défaut
+        // Si c'est l'adresse par défaut, promouvoir une autre adresse avant de supprimer
         if (Boolean.TRUE.equals(address.getIsDefault())) {
-            // Compter les autres adresses actives
-            long otherAddressCount = addressRepository.countByCustomerIdAndIsActiveTrue(customerId) - 1;
-            
-            if (otherAddressCount > 0) {
-                throw CannotDeleteDefaultAddressException.otherAddressesExist(addressId);
+            List<Address> others = addressRepository.findByCustomerIdAndIsActiveTrue(customerId)
+                    .stream()
+                    .filter(a -> !a.getId().equals(addressId))
+                    .collect(Collectors.toList());
+            if (!others.isEmpty()) {
+                Address nextDefault = others.get(0);
+                nextDefault.setIsDefault(true);
+                addressRepository.save(nextDefault);
+                log.info("Adresse {} définie comme nouvelle adresse par défaut", nextDefault.getId());
             }
-            // Si c'est la seule adresse, on peut la supprimer
         }
 
-        // Soft delete
-        address.setIsActive(false);
-        addressRepository.save(address);
+        // Hard delete — remove from database permanently
+        addressRepository.delete(address);
 
-        log.info("Adresse {} supprimée avec succès", addressId);
+        log.info("Adresse {} supprimée définitivement de la base de données", addressId);
     }
 
     // ==================== ADRESSES D'UN CLIENT ====================

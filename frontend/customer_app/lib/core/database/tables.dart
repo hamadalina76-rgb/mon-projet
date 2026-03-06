@@ -24,6 +24,7 @@ class Orders extends Table {
   DateTimeColumn get updatedAt => dateTime()();
 }
 
+@DataClassName('AddressesData')
 class Addresses extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get addressId => text().unique()();

@@ -6,9 +6,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:location/location.dart' as loc;
 import '../../../../config/routes/route_names.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../data/models/saved_location.dart';
 import '../providers/location_provider.dart';
 
 /// Écran d'activation de la localisation
@@ -29,9 +31,6 @@ class EnableLocationScreen extends ConsumerStatefulWidget {
 class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen>
     with SingleTickerProviderStateMixin {
   bool _isLoading = false;
-  bool _isManualMode = false;
-  String? _manualReason;
-  final TextEditingController _searchController = TextEditingController();
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -57,7 +56,6 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen>
   @override
   void dispose() {
     _pulseController.dispose();
-    _searchController.dispose();
     super.dispose();
   }
 
@@ -69,11 +67,14 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen>
     ref.read(locationNotifierProvider.notifier).setLoading();
 
     try {
-      // 1. GPS activé?
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        _switchToManual(_getKey('location_services_disabled'));
-        return;
+      // 1. GPS activé? → show native system dialog if not
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        final enabled = await loc.Location().requestService();
+        if (!enabled || !mounted) {
+          ref.read(locationNotifierProvider.notifier).setDenied();
+          if (mounted) setState(() => _isLoading = false);
+          return;
+        }
       }
 
       // 2. Permission accordée?
@@ -83,7 +84,7 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen>
       }
 
       if (permission == LocationPermission.denied) {
-        _switchToManual(_getKey('location_permission_denied'));
+        ref.read(locationNotifierProvider.notifier).setDenied();
         return;
       }
 
@@ -108,40 +109,31 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen>
         longitude: position.longitude,
       );
 
-      // 5. Naviguer vers confirmation
-      // Navigate even if geocoding failed — user can see the map and confirm.
+      // 5. Persist to Hive and go straight to Explore (no map confirmation step)
+      final finalLocation = location ??
+          SavedLocation(
+            latitude: position.latitude,
+            longitude: position.longitude,
+            formattedAddress: '',
+            savedAt: DateTime.now(),
+          );
+      await ref
+          .read(locationNotifierProvider.notifier)
+          .confirmLocation(finalLocation);
       if (mounted) {
-        context.push(
-          RouteNames.confirmLocation,
-          extra: {
-            'latitude': location?.latitude ?? position.latitude,
-            'longitude': location?.longitude ?? position.longitude,
-            'initialAddress': location?.formattedAddress ?? '',
-          },
-        );
+        context.go(RouteNames.explore);
       }
     } on LocationServiceDisabledException {
-      _switchToManual(_getKey('location_services_disabled'));
+      ref.read(locationNotifierProvider.notifier).setDenied();
     } on PermissionDeniedException {
-      _switchToManual(_getKey('location_permission_denied'));
+      ref.read(locationNotifierProvider.notifier).setDenied();
     } on TimeoutException {
-      _switchToManual(_getKey('location_timeout'));
+      ref.read(locationNotifierProvider.notifier).setDenied();
     } catch (e) {
       debugPrint('Location error: $e');
-      _switchToManual(_getKey('location_error'));
+      ref.read(locationNotifierProvider.notifier).setDenied();
     } finally {
       if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _switchToManual(String reason) {
-    ref.read(locationNotifierProvider.notifier).setDenied();
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _isManualMode = true;
-        _manualReason = reason;
-      });
     }
   }
 
@@ -179,26 +171,7 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen>
     );
   }
 
-  // ─────────────────────────────────────────────────── Mode manuel ──────────
-
-  void _handleManualSearch() {
-    final address = _searchController.text.trim();
-    if (address.isEmpty) return;
-    // Coordonnées par défaut: centre de Tunis
-    context.push(
-      RouteNames.confirmLocation,
-      extra: {
-        'latitude': 36.8065,
-        'longitude': 10.1815,
-        'initialAddress': address,
-      },
-    );
-  }
-
   void _handleSkip() => context.go(RouteNames.explore);
-
-  String _getKey(String key) =>
-      AppLocalizations.of(context)?.translate(key) ?? key;
 
   // ────────────────────────────────────────────────────────── Build ─────────
 
@@ -208,9 +181,7 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen>
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: _isManualMode
-            ? _buildManualMode(l10n)
-            : _buildGpsPromptMode(l10n),
+        child: _buildGpsPromptMode(l10n),
       ),
     );
   }
@@ -318,30 +289,6 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen>
             ),
           ),
 
-          const SizedBox(height: 12),
-
-          // Bouton manuel
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: OutlinedButton.icon(
-              onPressed:
-                  _isLoading ? null : () => setState(() => _isManualMode = true),
-              icon: const Icon(Icons.edit_location_outlined),
-              label: Text(
-                l10n.translate('enter_address_manually'),
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: BorderSide(color: AppColors.primary.withOpacity(0.4)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(27)),
-              ),
-            ),
-          ),
-
           const SizedBox(height: 16),
 
           Row(
@@ -373,173 +320,6 @@ class _EnableLocationScreenState extends ConsumerState<EnableLocationScreen>
     );
   }
 
-  // ── Mode manuel ──
-
-  Widget _buildManualMode(AppLocalizations l10n) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 12),
-
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                color: AppColors.textPrimary,
-                onPressed: () => setState(() {
-                  _isManualMode = false;
-                  _manualReason = null;
-                }),
-              ),
-              Text(
-                l10n.translate('enter_your_address'),
-                style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary),
-              ),
-            ],
-          ),
-
-          if (_manualReason != null) ...[
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.amber[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.amber[200]!),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline,
-                      color: Colors.amber[700], size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(_manualReason!,
-                        style: TextStyle(
-                            fontSize: 13, color: Colors.amber[800])),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 24),
-
-          Text(
-            l10n.translate('search_address'),
-            style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary),
-          ),
-
-          const SizedBox(height: 8),
-
-          TextField(
-            controller: _searchController,
-            autofocus: true,
-            textInputAction: TextInputAction.search,
-            onSubmitted: (_) => _handleManualSearch(),
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              hintText: l10n.translate('address_search_hint'),
-              prefixIcon:
-                  const Icon(Icons.search, color: AppColors.textSecondary),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() {});
-                      })
-                  : null,
-              filled: true,
-              fillColor: Colors.grey[50],
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.grey[200]!)),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.grey[200]!)),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide:
-                      BorderSide(color: AppColors.primary, width: 2)),
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 14),
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton.icon(
-              onPressed: _searchController.text.trim().isEmpty
-                  ? null
-                  : _handleManualSearch,
-              icon: const Icon(Icons.check_circle_outline),
-              label: Text(
-                l10n.translate('confirm_address'),
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.grey[200],
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(27)),
-                elevation: 0,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: OutlinedButton.icon(
-              onPressed: () => setState(() {
-                _isManualMode = false;
-                _manualReason = null;
-              }),
-              icon: const Icon(Icons.gps_fixed),
-              label: Text(
-                l10n.translate('retry_gps'),
-                style: const TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w500),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: BorderSide(color: AppColors.primary.withOpacity(0.4)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(27)),
-              ),
-            ),
-          ),
-
-          const Spacer(),
-
-          Center(
-            child: TextButton(
-              onPressed: _handleSkip,
-              child: Text(l10n.translate('skip_for_now'),
-                  style: TextStyle(fontSize: 14, color: Colors.grey[500])),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
 }
 
 /// Petit icône flottant dans l'illustration GPS

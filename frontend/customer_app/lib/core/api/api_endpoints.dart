@@ -29,12 +29,14 @@ class ApiEndpoints {
   static const String USER_PROFILE = '$USER_BASE/profile';
   static const String USER_UPDATE_PROFILE = '$USER_BASE/profile';
   static const String USER_ADDRESSES = '$USER_BASE/addresses';
-  static String userAddressById(String id) => '$USER_ADDRESSES/$id';
+  // /api/addresses/{id} → gateway StripPrefix=1 → /addresses/{id} → AddressController
+  static String userAddressById(String id) => '/addresses/$id';
 
   // ==================== CUSTOMERS ====================
   static const String CUSTOMER_BASE = '/customers';
   static String customerById(String id) => '$CUSTOMER_BASE/$id';
   static String customerAddresses(String id) => '$CUSTOMER_BASE/$id/addresses';
+  static String customerAddressesByUserId(String userId) => '$CUSTOMER_BASE/by-user/$userId/addresses';
   static String customerFavorites(String id) => '$CUSTOMER_BASE/$id/favorites';
   static String addFavoritePartner(String customerId, String partnerId) => 
       '$CUSTOMER_BASE/$customerId/favorites/$partnerId';

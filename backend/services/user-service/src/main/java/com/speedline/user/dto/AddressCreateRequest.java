@@ -4,7 +4,6 @@ import com.speedline.user.domain.AddressType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -40,10 +39,18 @@ public class AddressCreateRequest {
     /**
      * Numéro et nom de rue (obligatoire)
      */
-    @Schema(description = "Numéro et nom de rue", example = "123 Avenue Habib Bourguiba", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotBlank(message = "La rue est obligatoire")
+    @Schema(description = "Numéro et nom de rue", example = "123 Avenue Habib Bourguiba")
     @Size(max = 255, message = "La rue ne doit pas dépasser 255 caractères")
     private String street;
+
+    /**
+     * Adresse formatée complète – fournie par le client (ex. depuis Mapbox/GPS).
+     * Si absent, le serveur la génère depuis les autres champs.
+     */
+    @Schema(description = "Adresse formatée GPS",
+            example = "12 Rue Habib Bourguiba, Tunis 1000, Tunisie")
+    @Size(max = 512, message = "L'adresse formatée ne doit pas dépasser 512 caractères")
+    private String formattedAddress;
 
     /**
      * Nom ou numéro du bâtiment
@@ -72,8 +79,7 @@ public class AddressCreateRequest {
     /**
      * Ville (obligatoire)
      */
-    @Schema(description = "Ville", example = "Tunis", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotBlank(message = "La ville est obligatoire")
+    @Schema(description = "Ville", example = "Tunis")
     @Size(max = 100, message = "La ville ne doit pas dépasser 100 caractères")
     private String city;
 

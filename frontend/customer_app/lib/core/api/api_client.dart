@@ -61,8 +61,10 @@ class ApiClient {
           'Accept': 'application/json',
         },
         validateStatus: (status) {
-          // Accepter tous les status codes pour gérer les erreurs manuellement
-          return status != null && status < 500;
+          // Treat 401 as an error so AuthInterceptor.onError can handle
+          // token refresh and retry automatically. All other < 500 codes
+          // are treated as successful responses.
+          return status != null && status < 500 && status != 401;
         },
       ),
     );

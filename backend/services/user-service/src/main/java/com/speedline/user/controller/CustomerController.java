@@ -93,6 +93,29 @@ public class CustomerController implements ICustomerController {
         return ResponseEntity.ok().build();
     }
 
+    // ==================== ENDPOINTS PAR USER-ID ====================
+
+    @GetMapping("/by-user/{userId}")
+    public ResponseEntity<CustomerDTO> getCustomerByUserId(@PathVariable Long userId) {
+        log.debug("GET /customers/by-user/{} - Récupération du client par userId", userId);
+        return ResponseEntity.ok(customerService.getCustomerByUserId(userId));
+    }
+
+    @GetMapping("/by-user/{userId}/addresses")
+    public ResponseEntity<List<AddressDTO>> getAddressesByUserId(@PathVariable Long userId) {
+        log.debug("GET /customers/by-user/{}/addresses - Adresses par userId", userId);
+        return ResponseEntity.ok(customerService.getAddressesByUserId(userId));
+    }
+
+    @PostMapping("/by-user/{userId}/addresses")
+    public ResponseEntity<AddressDTO> createAddressByUserId(
+            @PathVariable Long userId,
+            @Valid @RequestBody AddressCreateRequest request) {
+        log.info("POST /customers/by-user/{}/addresses - Création d'adresse par userId", userId);
+        AddressDTO address = customerService.createAddressByUserId(userId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(address);
+    }
+
     // ==================== ENDPOINTS INTERNES ====================
 
     /**

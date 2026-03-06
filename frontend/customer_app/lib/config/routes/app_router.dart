@@ -15,6 +15,11 @@ import '../../features/main/presentation/screens/main_scaffold.dart';
 import '../../features/profile/presentation/screens/settings_screen.dart';
 import '../../features/profile/presentation/screens/edit_profile_screen.dart';
 import '../../features/profile/presentation/screens/change_password_screen.dart';
+import '../../features/profile/presentation/screens/address_type_selector_screen.dart';
+import '../../features/profile/presentation/screens/address_details_screen.dart';
+import '../../features/profile/presentation/screens/addresses_screen.dart';
+import '../../features/location/data/models/saved_location.dart';
+import '../../features/profile/data/models/address_model.dart';
 import 'route_names.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -109,6 +114,36 @@ final appRouter = GoRouter(
     GoRoute(
       path: RouteNames.changePassword,
       builder: (context, state) => const ChangePasswordScreen(),
+    ),
+
+    // Address management
+    GoRoute(
+      path: RouteNames.addresses,
+      builder: (context, state) => const AddressesScreen(),
+    ),
+    GoRoute(
+      path: RouteNames.addressTypeSelector,
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        return AddressTypeSelectorScreen(
+          customerId: extra['customerId'] as String? ?? '',
+          fromLocation: extra['fromLocation'] as SavedLocation?,
+          redirectOnSuccess: extra['redirectOnSuccess'] as String?,
+        );
+      },
+    ),
+    GoRoute(
+      path: RouteNames.addressDetails,
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        return AddressDetailsScreen(
+          type: extra['type'] as AddressType? ?? AddressType.home,
+          customerId: extra['customerId'] as String? ?? '',
+          fromLocation: extra['fromLocation'] as SavedLocation?,
+          existing: extra['existing'] as AddressModel?,
+          redirectOnSuccess: extra['redirectOnSuccess'] as String?,
+        );
+      },
     ),
     
     // Main App Screens with Bottom Navigation

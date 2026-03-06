@@ -2,11 +2,12 @@ package com.speedline.user.service.impl;
 
 import com.speedline.user.client.AuthServiceClient;
 import com.speedline.user.domain.Address;
+import com.speedline.user.domain.AddressType;
 import com.speedline.user.domain.Customer;
 import com.speedline.user.domain.Customer.CustomerStatus;
 import com.speedline.user.dto.*;
 import com.speedline.user.exception.CustomerNotFoundException;
-import com.speedline.user.exception.UserAlreadyExistsException;
+import com.speedline.user.exception.DuplicateAddressLabelException;
 import com.speedline.user.repository.AddressRepository;
 import com.speedline.user.repository.CustomerRepository;
 import com.speedline.user.service.CustomerService;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -45,9 +47,13 @@ public class CustomerServiceImpl implements CustomerService {
     public CustomerDTO createCustomer(CustomerCreateRequest request) {
         log.info("Création d'un nouveau profil client pour userId: {}", request.getUserId());
 
-        // Vérifier qu'un profil n'existe pas déjà pour ce userId
-        if (customerRepository.existsByUserId(request.getUserId())) {
-            throw new UserAlreadyExistsException("Un profil client existe déjà pour userId: " + request.getUserId());
+        // Idempotent: if a profile already exists, return it instead of throwing.
+        // This makes the call safe to retry (e.g. after a transient failure at registration time).
+        Optional<Customer> existing = customerRepository.findByUserId(request.getUserId());
+        if (existing.isPresent()) {
+            log.info("Profil client déjà existant pour userId: {} (id: {}), retour sans modification.",
+                    request.getUserId(), existing.get().getId());
+            return mapToDTO(existing.get());
         }
 
         // Créer le nouveau client
@@ -128,7 +134,7 @@ public class CustomerServiceImpl implements CustomerService {
         List<Address> addresses = addressRepository.findByCustomerIdAndIsActiveTrue(customerId);
         return addresses.stream()
                 .map(this::mapAddressToDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -137,6 +143,17 @@ public class CustomerServiceImpl implements CustomerService {
         log.info("Création d'une nouvelle adresse pour le client {}", customerId);
 
         Customer customer = findCustomerById(customerId);
+
+        // Unicité de l'étiquette : aucun doublon de label (insensible à la casse) pour ce client.
+        // Les détails physiques (adresse GPS, coordonnées) peuvent être réutilisés avec des étiquettes différentes.
+        String requestLabel = request.getLabel();
+        if (requestLabel != null && !requestLabel.isBlank()) {
+            addressRepository
+                    .findByCustomerIdAndLabelIgnoreCaseAndIsActiveTrue(customerId, requestLabel.trim())
+                    .ifPresent(a -> {
+                        throw new DuplicateAddressLabelException(requestLabel.trim());
+                    });
+        }
 
         // Créer la nouvelle adresse
         Address address = Address.builder()
@@ -164,8 +181,13 @@ public class CustomerServiceImpl implements CustomerService {
                 .isVerified(false)
                 .build();
 
-        // Générer l'adresse formatée
-        address.setFormattedAddress(generateFormattedAddress(address));
+        // Générer l'adresse formatée : préférer celle fournie par le client (Mapbox/GPS),
+        // sinon la construire à partir des champs structurés.
+        if (request.getFormattedAddress() != null && !request.getFormattedAddress().isBlank()) {
+            address.setFormattedAddress(request.getFormattedAddress().trim());
+        } else {
+            address.setFormattedAddress(generateFormattedAddress(address));
+        }
 
         // Si c'est la première adresse ou marquée comme défaut, la définir comme défaut
         List<Address> existingAddresses = addressRepository.findByCustomerIdAndIsActiveTrue(customerId);
@@ -178,6 +200,33 @@ public class CustomerServiceImpl implements CustomerService {
         log.info("Adresse créée avec succès. ID: {}", address.getId());
 
         return mapAddressToDTO(address);
+    }
+
+    // ==================== MÉTHODES PAR USER-ID ====================
+
+    @Override
+    @Transactional(readOnly = true)
+    public CustomerDTO getCustomerByUserId(Long userId) {
+        log.debug("Récupération du client pour userId: {}", userId);
+        Customer customer = findCustomerByUserId(userId);
+        return mapToDTO(customer);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AddressDTO> getAddressesByUserId(Long userId) {
+        log.debug("Récupération des adresses pour userId: {}", userId);
+        Customer customer = findCustomerByUserId(userId);
+        List<Address> addresses = addressRepository.findByCustomerIdAndIsActiveTrue(customer.getId());
+        return addresses.stream().map(this::mapAddressToDTO).toList();
+    }
+
+    @Override
+    @Transactional
+    public AddressDTO createAddressByUserId(Long userId, AddressCreateRequest request) {
+        log.info("Création d'une adresse pour userId: {}", userId);
+        Customer customer = findCustomerByUserId(userId);
+        return createAddress(customer.getId(), request);
     }
 
     // ==================== GESTION DES FAVORIS ====================
@@ -219,6 +268,14 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     /**
+     * Trouve un client par son userId (auth-service) ou lève une exception
+     */
+    private Customer findCustomerByUserId(Long userId) {
+        return customerRepository.findByUserId(userId)
+                .orElseThrow(() -> CustomerNotFoundException.byUserId(userId));
+    }
+
+    /**
      * Parse une chaîne d'IDs séparés par virgule en liste
      */
     private List<Long> parseFavoriteIds(String ids) {
@@ -229,7 +286,7 @@ public class CustomerServiceImpl implements CustomerService {
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .map(Long::parseLong)
-                .collect(Collectors.toCollection(ArrayList::new));
+                .collect(Collectors.toCollection(ArrayList::new)); // must stay mutable — callers call add() on this list
     }
 
     /**

@@ -22,4 +22,9 @@ class RouteNames {
   static const String settings = '/settings';
   static const String editProfile = '/edit-profile';
   static const String changePassword = '/change-password';
+
+  // Address Management
+  static const String addresses = '/addresses';
+  static const String addressTypeSelector = '/address-type-selector';
+  static const String addressDetails = '/address-details';
 }

@@ -16,7 +16,7 @@ class AppColors {
   
   // Textes
   static const Color textPrimary = Color(0xFF1A1A1A);
-  static const Color textSecondary = Color(0xFF6B7280);
+  static const Color textSecondary = Color(0xFF757575);
   static const Color textHint = Color(0xFF9CA3AF);
   
   // États
@@ -35,4 +35,11 @@ class AppColors {
   
   // Shadow
   static const Color shadow = Color(0x1A000000);
+
+  //grey shades
+  static const Color softGrey = Color(0xFFE0E0E0);
+  static const Color secondaryGrey = Color(0xFFBDBDBD);
+  static const Color grey = Color(0xFF9E9E9E);
+  static const Color darkGrey = Color(0xFF424242);
+  
 }

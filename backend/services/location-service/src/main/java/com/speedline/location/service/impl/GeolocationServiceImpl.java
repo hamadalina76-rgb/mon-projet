@@ -1,10 +1,7 @@
 package com.speedline.location.service.impl;
 
-import com.speedline.location.domain.CustomerLocation;
 import com.speedline.location.dto.ReverseGeocodeResponse;
-import com.speedline.location.dto.SaveAddressRequest;
 import com.speedline.location.integration.MapboxClient;
-import com.speedline.location.repository.CustomerLocationRepository;
 import com.speedline.location.repository.ZoneRepository;
 import com.speedline.location.service.GeolocationService;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -29,7 +25,6 @@ public class GeolocationServiceImpl implements GeolocationService {
     private final ZoneRepository zoneRepository;
     private final MapboxClient mapboxClient;
     private final JdbcTemplate jdbcTemplate;
-    private final CustomerLocationRepository customerLocationRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -105,41 +100,4 @@ public class GeolocationServiceImpl implements GeolocationService {
         throw new UnsupportedOperationException("À implémenter");
     }
 
-    @Override
-    @Transactional
-    public GeolocationService.SavedAddressDTO saveCustomerAddress(SaveAddressRequest request) {
-        // Si l'adresse est marquée comme défaut, réinitialiser les autres
-        if (Boolean.TRUE.equals(request.getIsDefault())) {
-            String uid = request.getUserId() != null ? request.getUserId() : "anonymous";
-            customerLocationRepository.clearDefaultForUser(uid);
-        }
-
-        CustomerLocation entity = CustomerLocation.builder()
-                .userId(request.getUserId() != null ? request.getUserId() : "anonymous")
-                .formattedAddress(request.getFormattedAddress() != null ? request.getFormattedAddress() : "")
-                .street(request.getStreet())
-                .city(request.getCity())
-                .state(request.getState())
-                .postalCode(request.getPostalCode())
-                .country(request.getCountry() != null ? request.getCountry() : "Tunisie")
-                .latitude(request.getLatitude())
-                .longitude(request.getLongitude())
-                .addressType(request.getAddressType() != null ? request.getAddressType() : "HOME")
-                .customLabel(request.getCustomLabel())
-                .isDefault(request.getIsDefault() != null ? request.getIsDefault() : false)
-                .savedAt(LocalDateTime.now())
-                .build();
-
-        entity = customerLocationRepository.save(entity);
-        log.info("Adresse client sauvegardée: id={}, user={}, city={}",
-                entity.getId(), entity.getUserId(), entity.getCity());
-
-        return new GeolocationService.SavedAddressDTO(
-                entity.getId(),
-                entity.getFormattedAddress(),
-                entity.getCity(),
-                entity.getLatitude(),
-                entity.getLongitude()
-        );
-    }
 }

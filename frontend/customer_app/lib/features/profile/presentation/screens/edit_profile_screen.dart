@@ -6,9 +6,7 @@ import 'dart:io';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../config/dependency_injection/injection.dart';
-import 'package:customer_app/features/auth/domain/entities/user.dart';
 import '../../../../core/api/services/user_api_service.dart';
-import '../../../auth/presentation/providers/auth_notifier.dart';
 import '../../../../core/localization/app_localizations.dart';
 
 

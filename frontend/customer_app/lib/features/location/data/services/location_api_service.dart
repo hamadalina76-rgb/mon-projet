@@ -79,6 +79,77 @@ class LocationApiService {
     }
   }
 
+  /// Géocodage direct (forward): texte d'adresse → liste de résultats.
+  /// Utilise l'API Nominatim/OpenStreetMap directement.
+  Future<List<SavedLocation>> forwardGeocode(String query) async {
+    if (query.trim().isEmpty) return [];
+    try {
+      debugPrint('[ForwardGeocode] ► "$query"');
+      final nominatim = Dio(BaseOptions(
+        baseUrl: 'https://nominatim.openstreetmap.org',
+        connectTimeout: const Duration(seconds: 8),
+        receiveTimeout: const Duration(seconds: 8),
+        headers: {
+          'User-Agent': 'SpeedLine-Customer-App/1.0',
+          'Accept-Language': 'fr,en',
+          'Accept': 'application/json',
+        },
+      ));
+      final resp = await nominatim.get<List<dynamic>>(
+        '/search',
+        queryParameters: {
+          'q': query.trim(),
+          'format': 'json',
+          'addressdetails': 1,
+          'limit': 5,
+        },
+      );
+      final list = resp.data;
+      if (list == null || list.isEmpty) return [];
+
+      return list.map((e) {
+        final data = e as Map<String, dynamic>;
+        final addr = data['address'] as Map<String, dynamic>? ?? {};
+        final lat = double.tryParse(data['lat'] as String? ?? '') ?? 0.0;
+        final lon = double.tryParse(data['lon'] as String? ?? '') ?? 0.0;
+        final road = addr['road']         as String?
+            ?? addr['pedestrian']         as String?
+            ?? addr['path']               as String?
+            ?? '';
+        final city = addr['city']         as String?
+            ?? addr['town']               as String?
+            ?? addr['village']            as String?
+            ?? addr['county']             as String?
+            ?? '';
+        final state    = addr['state']    as String? ?? '';
+        final postcode = addr['postcode'] as String? ?? '';
+        final country  = addr['country']  as String? ?? '';
+        final display  = data['display_name'] as String? ?? '';
+        // Build a shorter label: "road, city, country"
+        final shortParts = <String>[];
+        if (road.isNotEmpty) shortParts.add(road);
+        if (city.isNotEmpty) shortParts.add(city);
+        if (country.isNotEmpty) shortParts.add(country);
+        final formatted = shortParts.isNotEmpty ? shortParts.join(', ') : display;
+        debugPrint('[ForwardGeocode] ◄ $formatted ($lat, $lon)');
+        return SavedLocation(
+          latitude: lat,
+          longitude: lon,
+          formattedAddress: formatted,
+          street: road,
+          city: city,
+          state: state,
+          postalCode: postcode,
+          country: country,
+          savedAt: DateTime.now(),
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('[ForwardGeocode] ✗ $e');
+      return [];
+    }
+  }
+
   /// Récupère les partenaires proches via l'API
   /// GET /locations/nearby-partners?lat=..&lon=..&radius=..
   ///
@@ -125,40 +196,6 @@ class LocationApiService {
     } catch (e) {
       debugPrint('[PostGIS] ❌ Unexpected error in getNearbyPartners: $e');
       return [];
-    }
-  }
-
-  // ─── Save to backend ─────────────────────────────────────────────────────
-
-  /// Persiste l'adresse confirmée dans la base de données du backend.
-  /// Fire-and-forget: si le backend est injoignable, l'adresse reste dans Hive.
-  Future<void> saveLocationToBackend(
-    SavedLocation location, {
-    String? userId,
-  }) async {
-    try {
-      debugPrint('[Location] ► saveLocationToBackend lat=${location.latitude} lon=${location.longitude}');
-      await _dio.post(
-        '/locations/customer-address',
-        data: {
-          'userId': userId ?? 'anonymous',
-          'formattedAddress': location.formattedAddress,
-          'street': location.street,
-          'city': location.city,
-          'state': location.state,
-          'postalCode': location.postalCode,
-          'country': location.country.isNotEmpty ? location.country : 'Tunisie',
-          'latitude': location.latitude,
-          'longitude': location.longitude,
-          'addressType': location.addressType.name.toUpperCase(),
-          'customLabel': location.customLabel,
-          'isDefault': true,
-        },
-      );
-      debugPrint('[Location] ✔ Adresse sauvegardée dans le backend');
-    } catch (e) {
-      // Non-bloquant — Hive a déjà sauvé localement
-      debugPrint('[Location] ⚠ Impossible de sauvegarder dans le backend: $e');
     }
   }
 

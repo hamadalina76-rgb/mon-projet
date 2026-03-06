@@ -67,6 +67,42 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(DuplicateAddressTypeException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateAddressType(DuplicateAddressTypeException ex) {
+        log.warn("Type d'adresse en doublon: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(
+                        HttpStatus.CONFLICT.value(),
+                        "DUPLICATE_ADDRESS_TYPE",
+                        ex.getMessage()
+                ));
+    }
+
+    @ExceptionHandler(DuplicateAddressLabelException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateAddressLabel(DuplicateAddressLabelException ex) {
+        log.warn("Étiquette d'adresse en doublon: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(
+                        HttpStatus.CONFLICT.value(),
+                        "DUPLICATE_ADDRESS_LABEL",
+                        ex.getMessage()
+                ));
+    }
+
+    @ExceptionHandler(DuplicateAddressLocationException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateAddressLocation(DuplicateAddressLocationException ex) {
+        log.warn("Adresse physique en doublon: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(
+                        HttpStatus.CONFLICT.value(),
+                        "DUPLICATE_ADDRESS_LOCATION",
+                        ex.getMessage()
+                ));
+    }
+
     @ExceptionHandler(InvalidCoordinatesException.class)
     public ResponseEntity<ErrorResponse> handleInvalidCoordinates(InvalidCoordinatesException ex) {
         log.warn("Coordonnées invalides: {}", ex.getMessage());

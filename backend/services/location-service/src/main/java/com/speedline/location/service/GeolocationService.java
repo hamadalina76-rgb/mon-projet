@@ -1,7 +1,6 @@
 package com.speedline.location.service;
 
 import com.speedline.location.dto.ReverseGeocodeResponse;
-import com.speedline.location.dto.SaveAddressRequest;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -48,11 +47,6 @@ public interface GeolocationService {
     ZoneDTO getZoneForLocation(BigDecimal latitude, BigDecimal longitude);
 
     /**
-     * Sauvegarder l'adresse confirmée par le client dans la base de données
-     */
-    SavedAddressDTO saveCustomerAddress(SaveAddressRequest request);
-
-    /**
      * DTO pour les partenaires proches
      */
     record NearbyPartnerDTO(Long partnerId, String name, double distanceKm, int estimatedDeliveryTime) {}
@@ -80,6 +74,4 @@ public interface GeolocationService {
     /**
      * DTO de réponse après sauvegarde d'une adresse client
      */
-    record SavedAddressDTO(Long id, String formattedAddress, String city,
-                           BigDecimal latitude, BigDecimal longitude) {}
 }
