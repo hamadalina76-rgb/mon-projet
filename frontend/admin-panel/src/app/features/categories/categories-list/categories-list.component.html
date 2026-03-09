@@ -1,0 +1,240 @@
+<!-- Categories List -->
+<div class="categories-container">
+
+  <!-- ───── Header ───── -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <mat-icon class="title-icon">category</mat-icon>
+        Catégories
+      </h1>
+      <p class="page-subtitle">Gérez les catégories de votre marketplace</p>
+    </div>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" class="btn-add" routerLink="/categories/create">
+        <mat-icon>add</mat-icon>
+        Nouvelle catégorie
+      </button>
+    </div>
+  </div>
+
+  <!-- ───── Filters ───── -->
+  <div class="filters-bar">
+    <!-- Search -->
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Rechercher</mat-label>
+      <input matInput #searchInput [value]="searchQuery()" (input)="onSearch(searchInput.value)" placeholder="Nom, slug…">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+
+    <!-- Business type -->
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Type</mat-label>
+      <mat-select [value]="selectedBusinessType()" (selectionChange)="onTypeChange($event.value)">
+        @for (bt of businessTypes; track bt.value) {
+          <mat-option [value]="bt.value">
+            <mat-icon class="option-icon">{{ bt.icon }}</mat-icon>
+            {{ bt.label }}
+          </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Status -->
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Statut</mat-label>
+      <mat-select [value]="selectedStatus()" (selectionChange)="onStatusChange($event.value)">
+        @for (s of statusOptions; track s.value) {
+          <mat-option [value]="s.value">{{ s.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Sort -->
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Trier par</mat-label>
+      <mat-select [value]="sortBy()" (selectionChange)="sortBy.set($event.value)">
+        @for (s of sortOptions; track s.value) {
+          <mat-option [value]="s.value">{{ s.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Sort order toggle -->
+    <button mat-icon-button class="sort-btn"
+      [matTooltip]="sortOrder() === 'asc' ? 'Croissant' : 'Décroissant'"
+      (click)="sortOrder.set(sortOrder() === 'asc' ? 'desc' : 'asc')">
+      <mat-icon>{{ sortOrder() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+    </button>
+
+    <!-- Clear -->
+    <button mat-stroked-button class="clear-btn" (click)="clearFilters()">
+      <mat-icon>filter_alt_off</mat-icon>
+      Réinitialiser
+    </button>
+
+    <!-- Count -->
+    <div class="items-count">
+      {{ filteredCategories().length }} catégorie{{ filteredCategories().length !== 1 ? 's' : '' }}
+    </div>
+  </div>
+
+  <!-- ───── Content ───── -->
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Chargement des catégories…</p>
+    </div>
+  } @else if (filteredCategories().length === 0) {
+    <div class="empty-state">
+      <mat-icon class="empty-icon">category</mat-icon>
+      @if (allCategories().length === 0) {
+        <h2>Aucune catégorie</h2>
+        <p>Commencez par créer votre première catégorie.</p>
+        <button mat-raised-button color="primary" routerLink="/categories/create">
+          <mat-icon>add</mat-icon>
+          Créer une catégorie
+        </button>
+      } @else {
+        <h2>Aucun résultat</h2>
+        <p>Modifiez vos filtres pour voir des catégories.</p>
+        <button mat-stroked-button (click)="clearFilters()">Réinitialiser les filtres</button>
+      }
+    </div>
+  } @else {
+    <div class="categories-grid" cdkDropList [cdkDropListData]="paginatedCategories()" (cdkDropListDropped)="onDrop($event)">
+      @for (cat of paginatedCategories(); track cat.id) {
+        <div class="category-card" cdkDrag [class.inactive]="!cat.isActive">
+
+          <!-- Colored top band -->
+          <div class="card-band" [style.background-color]="cat.backgroundColor || '#EC131E'"></div>
+
+          <!-- Card body -->
+          <div class="card-body">
+            <!-- Icon + name -->
+            <div class="card-header">
+              <div class="cat-icon" [style.background-color]="(cat.backgroundColor || '#EC131E') + '22'">
+                @if (cat.icon) {
+                  <img [src]="cat.icon" [alt]="getDisplayName(cat)" class="icon-img">
+                } @else {
+                  <mat-icon [style.color]="cat.backgroundColor || '#EC131E'">
+                    {{ getBusinessTypeIcon(cat.categoryBusinessType) }}
+                  </mat-icon>
+                }
+              </div>
+
+              <div class="cat-info">
+                <h3 class="cat-name">
+                  {{ getDisplayName(cat) }}
+                  @if (cat.isFeatured) {
+                    <mat-icon class="featured-star" matTooltip="Mise en avant">star</mat-icon>
+                  }
+                </h3>
+                <span class="cat-slug">{{ cat.slug }}</span>
+              </div>
+
+              <!-- Menu actions -->
+              <button mat-icon-button class="menu-btn" [matMenuTriggerFor]="menu" (click)="$event.stopPropagation()">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #menu="matMenu">
+                <button mat-menu-item [routerLink]="['/categories', cat.id]">
+                  <mat-icon>visibility</mat-icon><span>Voir</span>
+                </button>
+                <button mat-menu-item [routerLink]="['/categories', cat.id, 'edit']">
+                  <mat-icon>edit</mat-icon><span>Modifier</span>
+                </button>
+                <mat-divider></mat-divider>
+                <button mat-menu-item (click)="toggleCategoryStatus(cat, $event)"
+                  [class.activate]="!cat.isActive" [class.deactivate]="cat.isActive">
+                  <mat-icon>{{ cat.isActive ? 'pause_circle' : 'play_circle' }}</mat-icon>
+                  <span>{{ cat.isActive ? 'Désactiver' : 'Activer' }}</span>
+                </button>
+                <mat-divider></mat-divider>
+                <button mat-menu-item class="delete-item" (click)="deleteCategory(cat, $event)">
+                  <mat-icon>delete</mat-icon><span>Supprimer</span>
+                </button>
+              </mat-menu>
+            </div>
+
+            <!-- Description -->
+            @if (cat.description) {
+              <p class="cat-desc">{{ cat.description }}</p>
+            }
+
+            <!-- Type badge -->
+            <div class="cat-badges">
+              <span class="badge type-badge">
+                <mat-icon>{{ getBusinessTypeIcon(cat.categoryBusinessType) }}</mat-icon>
+                {{ getBusinessTypeLabel(cat.categoryBusinessType) }}
+              </span>
+              @if (cat.categoryType) {
+                <span class="badge secondary-badge">{{ cat.categoryType }}</span>
+              }
+            </div>
+
+            <!-- Stats -->
+            <div class="cat-stats">
+              <div class="stat">
+                <mat-icon>storefront</mat-icon>
+                <span class="stat-val">{{ cat.partnerCount ?? 0 }}</span>
+                <span class="stat-lbl">Partenaires</span>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat">
+                <mat-icon>inventory_2</mat-icon>
+                <span class="stat-val">{{ cat.productCount ?? 0 }}</span>
+                <span class="stat-lbl">Produits</span>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat">
+                <mat-icon>format_list_numbered</mat-icon>
+                <span class="stat-val">#{{ cat.displayOrder }}</span>
+                <span class="stat-lbl">Ordre</span>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="card-footer">
+              <div class="status-toggle" (click)="$event.stopPropagation()">
+                <mat-slide-toggle
+                  [checked]="cat.isActive"
+                  (change)="toggleCategoryStatus(cat)"
+                  color="primary">
+                </mat-slide-toggle>
+                <span class="status-label" [class.active]="cat.isActive">
+                  {{ cat.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </div>
+
+              <div class="color-swatches">
+                @if (cat.backgroundColor) {
+                  <span class="swatch" [style.background]="cat.backgroundColor"
+                    [matTooltip]="'Fond: ' + cat.backgroundColor"></span>
+                }
+                @if (cat.textColor) {
+                  <span class="swatch swatch-text" [style.background]="cat.textColor"
+                    [matTooltip]="'Texte: ' + cat.textColor"></span>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Click overlay to view detail -->
+          <a class="card-overlay" [routerLink]="['/categories', cat.id]"></a>
+        </div>
+      }
+    </div>
+
+    @if (filteredCategories().length > PAGE_SIZE) {
+      <mat-paginator
+        class="categories-paginator"
+        [length]="filteredCategories().length"
+        [pageSize]="PAGE_SIZE"
+        [pageIndex]="currentPage()"
+        [hidePageSize]="true"
+        (page)="onPageChange($event)">
+      </mat-paginator>
+    }
+  }
+</div>

@@ -69,7 +69,6 @@ public class FileStorageService {
     public String storeDocument(MultipartFile file, Long partnerId, String docType) {
         return storeFile(file, "partners/documents", partnerId);
     }
-
     /**
      * Stocker une image produit.
      */
@@ -82,6 +81,61 @@ public class FileStorageService {
      */
     public String storeCategoryImage(MultipartFile file, Long partnerId, Long catId) {
         return storeFileWithSuffix(file, "partners/categories", partnerId, "c" + catId);
+    }
+
+    /**
+     * Stocker une icône de catégorie
+     *
+     * @param file le fichier image (PNG, JPG, SVG, WEBP)
+     * @return l'URL publique du fichier
+     */
+    public String storeIcon(MultipartFile file) {
+        try {
+            if (file == null || file.isEmpty()) {
+                throw new IllegalArgumentException("Le fichier est vide");
+            }
+
+            // Dériver l'extension depuis le nom, puis depuis le Content-Type si nom absent
+            String extension = resolveExtension(file);
+
+            String filename = UUID.randomUUID().toString() + extension;
+            Path targetDir = Paths.get(uploadDir, "categories", "icons");
+            Files.createDirectories(targetDir);
+            Path targetPath = targetDir.resolve(filename);
+            Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+            log.info("Category icon stored: {}", targetPath.toAbsolutePath());
+            return baseUrl + "/categories/icons/" + filename;
+        } catch (IllegalArgumentException e) {
+            throw e; // Remonter telle quelle → 400 via handler
+        } catch (IOException e) {
+            log.error("Failed to store category icon: {}", e.getMessage());
+            throw new RuntimeException("Failed to store icon: " + e.getMessage(), e);
+        }
+    }
+
+    private String resolveExtension(MultipartFile file) {
+        // 1. Essayer l'extension du nom de fichier original
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename != null && originalFilename.contains(".")) {
+            String ext = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+            if (ext.matches("\\.(png|jpg|jpeg|svg|webp)")) {
+                return ext;
+            }
+        }
+        // 2. Fallback : dériver du Content-Type
+        String contentType = file.getContentType();
+        if (contentType != null) {
+            switch (contentType.toLowerCase()) {
+                case "image/png":  return ".png";
+                case "image/jpeg": return ".jpg";
+                case "image/svg+xml": return ".svg";
+                case "image/webp": return ".webp";
+                default: break;
+            }
+        }
+        // 3. Défaut sécurisé
+        return ".png";
     }
 
     private String storeFile(MultipartFile file, String subDir, Long partnerId) {
