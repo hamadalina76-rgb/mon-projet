@@ -1,6 +1,6 @@
 -- ============================================
 -- V9: Backward compatibility — rename menu_categories to partner_menu_categories
--- (for DBs that ran the old V8 before the PARTNER_ prefix was introduced)
+-- (même nom de table que l’entité MenuCategory / V8)
 -- ============================================
 
 DO $$

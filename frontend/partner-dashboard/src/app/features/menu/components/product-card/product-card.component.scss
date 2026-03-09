@@ -15,6 +15,35 @@
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   animation: fadeIn 0.4s ease-out both;
   cursor: default;
+  min-width: 0; /* permet au contenu de shrink correctement en grille */
+  width: 100%;
+  box-sizing: border-box;
+
+  &.list-view {
+    display: flex;
+    flex-direction: row;
+    .product-image {
+      width: 140px;
+      min-width: 140px;
+      height: 100px;
+    }
+    .product-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+    }
+    .product-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .product-footer {
+      flex-shrink: 0;
+    }
+  }
 
   &:hover {
     transform: translateY(-4px);
@@ -59,6 +88,10 @@
     object-fit: cover;
     transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
+
+  @media (max-width: 600px) {
+    height: 160px;
+  }
 }
 
 .image-overlay {
@@ -98,6 +131,15 @@
 
     &:hover {
       background: $info-color;
+      transform: scale(1.08);
+    }
+  }
+
+  &.duplicate-btn {
+    background: rgba($white, 0.2);
+
+    &:hover {
+      background: rgba($speedline-red, 0.9);
       transform: scale(1.08);
     }
   }
@@ -146,6 +188,14 @@
     color: $white;
     box-shadow: 0 2px 8px rgba(#F59E0B, 0.35);
   }
+
+  &.low-stock-badge {
+    bottom: 0.75rem;
+    left: 0.75rem;
+    background: rgba(#F59E0B, 0.95);
+    color: $white;
+    box-shadow: 0 2px 8px rgba(#F59E0B, 0.35);
+  }
 }
 
 // ─── Body ────────────────────────────────────────────────────────────────────
@@ -173,6 +223,31 @@
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
+
+  &.editable {
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    &:hover {
+      background: rgba($gray-200, 0.5);
+    }
+  }
+}
+
+.inline-name-input {
+  width: 100%;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border: 1px solid $gray-300;
+  border-radius: 8px;
+  margin: -2px 0 0 0;
+  outline: none;
+  &:focus {
+    border-color: $speedline-red;
+    box-shadow: 0 0 0 2px rgba($speedline-red, 0.2);
+  }
 }
 
 .product-description {

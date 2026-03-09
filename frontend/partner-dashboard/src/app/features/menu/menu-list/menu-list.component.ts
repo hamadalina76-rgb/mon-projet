@@ -1,6 +1,7 @@
-import { Component, OnInit, inject, signal, computed, effect, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -18,6 +19,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { LoadingSpinnerComponent } from '@shared/components/loading-spinner/loading-spinner.component';
+import { ConfirmationDialogComponent } from '@shared/components/confirmation-dialog/confirmation-dialog.component';
 import { MenuService } from '../services/menu.service';
 import { ProductService } from '../services/product.service';
 import { OptionService } from '../services/option.service';
@@ -36,6 +38,7 @@ import {
     CommonModule,
     RouterLink,
     ReactiveFormsModule,
+    DragDropModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -53,6 +56,7 @@ import {
     ProductCardComponent,
     EmptyStateComponent,
     LoadingSpinnerComponent,
+    ConfirmationDialogComponent,
   ],
   templateUrl: './menu-list.component.html',
   styleUrls: ['./menu-list.component.scss'],
@@ -78,26 +82,18 @@ export class MenuListComponent implements OnInit {
   /** 'create' | 'edit' | null */
   panelMode = signal<'create' | 'edit' | null>(null);
 
-  /** Categories enriched with computed productCount (client-side). */
-  categoriesWithCounts = computed(() => {
-    const cats = this.categories();
-    const prods = this.products();
-
-    if (!cats?.length) return [];
-
-    const counts = new Map<number, number>();
-    for (const p of prods) {
-      if (p.categoryId == null) continue;
-      counts.set(p.categoryId, (counts.get(p.categoryId) ?? 0) + 1);
-    }
-
-    return cats.map(c => ({
-      ...c,
-      productCount: counts.get(c.id) ?? 0,
-    }));
-  });
+  /** Catégories avec productCount renvoyé par l’API GET /categories. */
+  categoriesWithCounts = computed(() => this.categories());
 
   @ViewChild('categoryImageInput') categoryImageInputRef?: ElementRef<HTMLInputElement>;
+
+  /** Catégorie en attente de confirmation de suppression (TC-35). */
+  deleteCategoryToConfirm = signal<MenuCategory | null>(null);
+  /** Message du dialog de confirmation (évite l’expression pipe dans le template). */
+  deleteCategoryConfirmMessage = computed(() => {
+    const cat = this.deleteCategoryToConfirm();
+    return cat ? this.translate.instant('MENU.CONFIRM_DELETE_CATEGORY', { name: cat.name }) : '';
+  });
 
   /** Fichier image sélectionné en mode création (uploadé après création de la catégorie). */
   pendingCategoryImageFile = signal<File | null>(null);
@@ -112,16 +108,47 @@ export class MenuListComponent implements OnInit {
     isVisible: [true],
   });
 
-  // ─── Tab 2: Products ──────────────────────────────────────────────────────
+  // ─── Tab 2: Products (filtres et pagination côté backend) ───────────────────
   products = signal<Product[]>([]);
   filterCategoryId = signal<number | null>(null);
+  searchQuery = signal('');
+  statusFilter = signal<string>('all');
+  currentPage = signal(0);
+  pageSize = signal(20);
+  totalElements = signal(0);
+  totalPages = signal(0);
   productsLoading = signal(false);
+  /** Pour l’onglet Options : liste chargée sans pagination stricte (selector). */
+  productsForOptionsTab = signal<Product[]>([]);
 
-  filteredProducts = computed(() => {
-    const catId = this.filterCategoryId();
-    const all = this.products();
-    return catId != null ? all.filter(p => p.categoryId === catId) : all;
-  });
+  pageRangeFrom = computed(() =>
+    this.totalElements() === 0 ? 0 : this.currentPage() * this.pageSize() + 1
+  );
+  pageRangeTo = computed(() =>
+    Math.min((this.currentPage() + 1) * this.pageSize(), this.totalElements())
+  );
+
+  /** Toggle vue grille / liste */
+  viewMode = signal<'grid' | 'list'>('grid');
+
+  /** Drag-drop : réordonnancement possible uniquement sur la page courante (une seule page). */
+  onProductsDrop(event: CdkDragDrop<Product[]>): void {
+    const list = [...this.products()];
+    moveItemInArray(list, event.previousIndex, event.currentIndex);
+    this.products.set(list);
+    const items = list.map((p, i) => ({ id: p.id, position: i + 1 }));
+    this.productService.reorderProducts(items).subscribe({
+      next: () => {},
+      error: () => {
+        this.loadProductsPage();
+        this.snackBar.open(
+          this.translate.instant('MENU.SNACK.REORDER_ERROR'),
+          this.translate.instant('MENU.CLOSE'),
+          { duration: 3000 }
+        );
+      },
+    });
+  }
 
   // ─── Tab 3: Options ───────────────────────────────────────────────────────
   selectedProductForOptions = signal<Product | null>(null);
@@ -145,11 +172,12 @@ export class MenuListComponent implements OnInit {
     const tab = this.route.snapshot.queryParamMap.get('tab');
     if (tab) this.activeTab.set(+tab);
     this.loadCategories();
-    this.loadAllProducts();
+    this.loadProductsPage();
   }
 
   onTabChange(index: number): void {
     this.activeTab.set(index);
+    if (index === 2) this.loadProductsForOptionsTab();
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tab: index },
@@ -194,11 +222,15 @@ export class MenuListComponent implements OnInit {
   }
 
   onDeleteCategory(cat: MenuCategory): void {
-    if (!confirm(this.translate.instant('MENU.CONFIRM_DELETE_CATEGORY', { name: cat.name }))) {
-      return;
-    }
+    this.deleteCategoryToConfirm.set(cat);
+  }
+
+  confirmDeleteCategory(): void {
+    const cat = this.deleteCategoryToConfirm();
+    if (!cat) return;
     this.menuService.deleteCategory(cat.id).subscribe({
       next: () => {
+        this.deleteCategoryToConfirm.set(null);
         this.snackBar.open(
           this.translate.instant('MENU.SNACK.CATEGORY_DELETED'),
           this.translate.instant('MENU.CLOSE'),
@@ -208,7 +240,7 @@ export class MenuListComponent implements OnInit {
           this.closePanel();
         }
         this.loadCategories();
-        this.loadAllProducts();
+        this.loadProductsPage();
       },
       error: (err) => {
         const msg = err?.error?.message || this.translate.instant('MENU.SNACK.DELETE_ERROR');
@@ -338,11 +370,19 @@ export class MenuListComponent implements OnInit {
 
   // ─── Products ────────────────────────────────────────────────────────────
 
-  loadAllProducts(): void {
+  loadProductsPage(): void {
     this.productsLoading.set(true);
-    this.productService.getProducts().subscribe({
-      next: (data) => {
-        this.products.set(data);
+    this.productService.getProductsPage({
+      search: this.searchQuery() || undefined,
+      categoryId: this.filterCategoryId(),
+      status: this.statusFilter(),
+      page: this.currentPage(),
+      size: this.pageSize(),
+    }).subscribe({
+      next: (res) => {
+        this.products.set(res.content);
+        this.totalElements.set(res.totalElements);
+        this.totalPages.set(res.totalPages);
         this.productsLoading.set(false);
       },
       error: () => this.productsLoading.set(false),
@@ -351,6 +391,44 @@ export class MenuListComponent implements OnInit {
 
   filterByCategory(catId: number | null): void {
     this.filterCategoryId.set(catId);
+    this.currentPage.set(0);
+    this.loadProductsPage();
+  }
+
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  onSearchChange(value: string): void {
+    this.searchQuery.set(value ?? '');
+    this.currentPage.set(0);
+    if (this.searchDebounceTimer != null) clearTimeout(this.searchDebounceTimer);
+    this.searchDebounceTimer = setTimeout(() => {
+      this.searchDebounceTimer = null;
+      this.loadProductsPage();
+    }, 400);
+  }
+
+  onStatusFilterChange(status: string): void {
+    this.statusFilter.set(status);
+    this.currentPage.set(0);
+    this.loadProductsPage();
+  }
+
+  goToPage(page: number): void {
+    this.currentPage.set(page);
+    this.loadProductsPage();
+  }
+
+  /** Charge une liste de produits pour le sélecteur de l’onglet Options. */
+  loadProductsForOptionsTab(): void {
+    this.productService.getProductsPage({
+      search: '',
+      categoryId: null,
+      status: 'all',
+      page: 0,
+      size: 500,
+    }).subscribe({
+      next: (res) => this.productsForOptionsTab.set(res.content),
+    });
   }
 
   editProduct(productId: number): void {
@@ -369,11 +447,38 @@ export class MenuListComponent implements OnInit {
     });
   }
 
+  duplicateProduct(productId: number): void {
+    this.productService.duplicateProduct(productId).subscribe({
+      next: () => {
+        this.loadProductsPage();
+        this.snackBar.open(
+          this.translate.instant('MENU.SNACK.PRODUCT_DUPLICATED'),
+          this.translate.instant('MENU.CLOSE'),
+          { duration: 3000 }
+        );
+      },
+      error: (err) => {
+        const msg = err?.error?.message || this.translate.instant('MENU.SNACK.DUPLICATE_ERROR');
+        this.snackBar.open(msg, this.translate.instant('MENU.CLOSE'), { duration: 4000 });
+      },
+    });
+  }
+
   deleteProduct(productId: number): void {
     this.productService.deleteProduct(productId).subscribe({
       next: () => {
-        this.products.update(prods => prods.filter(p => p.id !== productId));
+        this.loadProductsPage();
         this.snackBar.open('Produit supprimé', 'Fermer', { duration: 3000 });
+      },
+    });
+  }
+
+  onProductNameChange(event: { productId: number; name: string }): void {
+    this.productService.updateProduct(event.productId, { name: event.name }).subscribe({
+      next: (updated) => {
+        this.products.update(prods =>
+          prods.map(p => (p.id === updated.id ? { ...p, name: updated.name } : p))
+        );
       },
     });
   }

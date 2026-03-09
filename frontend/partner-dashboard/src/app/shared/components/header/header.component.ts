@@ -123,9 +123,18 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   toggleNotifications(): void {
+    const opening = !this.showNotifications();
     this.showNotifications.update(v => !v);
     this.showUserMenu.set(false);
     this.showLangMenu.set(false);
+    // Reload from API when opening so history (including read notifications) is up to date
+    if (opening) {
+      const user = this.currentUser();
+      if (user) {
+        this.loadNotifications(Number(user.id));
+        this.loadUnreadCount(Number(user.id));
+      }
+    }
   }
 
   selectLanguage(lang: string): void {

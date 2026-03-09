@@ -69,12 +69,14 @@ public class PubSubConfig {
 
         try (TopicAdminClient topicAdminClient = TopicAdminClient.create(topicAdminSettings)) {
             createTopic(topicAdminClient, "partner-events");
+            createTopic(topicAdminClient, "partner-product-stock");
         }
     }
 
     private void createTopics() throws Exception {
         try (TopicAdminClient topicAdminClient = TopicAdminClient.create()) {
             createTopic(topicAdminClient, "partner-events");
+            createTopic(topicAdminClient, "partner-product-stock");
         }
     }
 

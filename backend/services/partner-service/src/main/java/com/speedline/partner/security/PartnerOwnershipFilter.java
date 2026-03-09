@@ -96,9 +96,13 @@ public class PartnerOwnershipFilter extends OncePerRequestFilter {
         // POST /partners/internal is called by auth-service, no user context
         if ("POST".equals(method) && (path.equals("/partners/internal") || path.startsWith("/partners/internal/")))
             return false;
-        // GET: only /partners/{id}/staff requires ownership (owner or admin)
+        // GET: /partners/{id}/staff and stock endpoints require ownership (owner or admin)
         if ("GET".equals(method)) {
-            return path.matches("^/partners/\\d+/staff$");
+            if (path.matches("^/partners/\\d+/staff$")) return true;
+            if (path.matches("^/partners/\\d+/menu/products/stock$")) return true;
+            if (path.matches("^/partners/\\d+/menu/products/low-stock$")) return true;
+            if (path.matches("^/partners/\\d+/menu/products/out-of-stock$")) return true;
+            return false;
         }
         // PUT, PATCH, POST on /partners/{id} or /partners/{id}/...
         return ("PUT".equals(method) || "PATCH".equals(method) || "POST".equals(method))

@@ -8,6 +8,7 @@ import { TranslateModule, TranslateLoader, TranslateService } from '@ngx-transla
 import { Observable, firstValueFrom } from 'rxjs';
 import { SocketIoModule, SocketIoConfig } from 'ngx-socket-io';
 
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import { routes } from './app.routes';
 import { authInterceptor } from '@core/interceptors/auth.interceptor';
 import { errorInterceptor } from '@core/interceptors/error.interceptor';
@@ -48,6 +49,7 @@ export const appConfig: ApplicationConfig = {
       withInterceptors([authInterceptor, errorInterceptor, loadingInterceptor])
     ),
     provideAnimations(),
+    provideCharts(withDefaultRegisterables()),
     provideToastr({
       timeOut: 3000,
       positionClass: 'toast-top-right',

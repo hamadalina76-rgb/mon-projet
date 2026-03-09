@@ -84,6 +84,20 @@ a {
   --mat-card-elevated-container-color: #ffffff;
 }
 
+// Remove rose from stroked/outlined buttons – use global primary (SpeedLine red)
+button.mat-mdc-outlined-button,
+button[mat-stroked-button] {
+  border-color: $primary-color !important;
+  color: $primary-color !important;
+  .mat-icon, mat-icon { color: $primary-color !important; }
+  &:hover {
+    background: rgba($primary-color, 0.08) !important;
+    border-color: $primary-color !important;
+    color: $primary-dark !important;
+    .mat-icon, mat-icon { color: $primary-dark !important; }
+  }
+}
+
 .card {
   background: $white;
   border-radius: $border-radius-lg;

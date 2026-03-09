@@ -22,7 +22,12 @@
 
       <!-- info -->
       <div class="cat-info">
-        <span class="cat-name">{{ cat.name }}</span>
+        <span class="cat-name">
+          {{ cat.name }}
+          @if (!cat.isVisible) {
+            <mat-icon class="hidden-indicator" [matTooltip]="'MENU.CATEGORY_LIST.HIDDEN_INDICATOR' | translate">visibility_off</mat-icon>
+          }
+        </span>
         <span class="cat-count">
           {{ (cat.productCount ?? 0) }}
           {{ (cat.productCount ?? 0) === 1 ? ('MENU.CATEGORY_LIST.COUNT_SINGULAR' | translate) : ('MENU.CATEGORY_LIST.COUNT_PLURAL' | translate) }}
@@ -36,25 +41,10 @@
           (click)="onToggleVisibility(cat, $event)"
           [matTooltip]="'MENU.CATEGORY_LIST.TOOLTIP_VISIBILITY' | translate">
         </mat-slide-toggle>
-        <button
-          mat-icon-button
-          class="edit-btn"
-          (click)="onEdit(cat, $event)"
-          [matTooltip]="'MENU.CATEGORY_LIST.TOOLTIP_EDIT' | translate">
-          <mat-icon>edit</mat-icon>
+        <button mat-icon-button [matMenuTriggerFor]="catMenu" (click)="openCategoryMenu(cat, $event)" class="menu-trigger-btn"
+          [matTooltip]="'MENU.CATEGORY_LIST.MENU_ACTIONS' | translate">
+          <mat-icon>more_vert</mat-icon>
         </button>
-        <span
-          [matTooltip]="canDelete(cat)
-            ? ('MENU.CATEGORY_LIST.TOOLTIP_DELETE' | translate)
-            : ('MENU.CATEGORY_LIST.DELETE_DISABLED' | translate:{ count: (cat.productCount ?? 0) })">
-          <button
-            mat-icon-button
-            class="delete-btn"
-            [disabled]="!canDelete(cat)"
-            (click)="onDelete(cat, $event)">
-            <mat-icon>delete</mat-icon>
-          </button>
-        </span>
       </div>
     </div>
   } @empty {
@@ -64,3 +54,16 @@
     </div>
   }
 </div>
+
+<mat-menu #catMenu="matMenu">
+  @if (categoryForMenu(); as cat) {
+    <button mat-menu-item (click)="onEdit(cat, $event)">
+      <mat-icon>edit</mat-icon>
+      <span>{{ 'MENU.CATEGORY_LIST.TOOLTIP_EDIT' | translate }}</span>
+    </button>
+    <button mat-menu-item [disabled]="!canDelete(cat)" (click)="onDelete(cat, $event)">
+      <mat-icon>delete</mat-icon>
+      <span>{{ 'MENU.CATEGORY_LIST.TOOLTIP_DELETE' | translate }}</span>
+    </button>
+  }
+</mat-menu>

@@ -1,4 +1,5 @@
 // src/app/shared/components/confirmation-dialog/confirmation-dialog.component.scss
+@use 'sass:color';
 @use 'assets/styles/variables' as *;
 
 .dialog-overlay {
@@ -90,7 +91,7 @@
     color: $white;
 
     &:hover {
-      background: darken($error-color, 10%);
+      background: color.adjust($error-color, $lightness: -10%);
     }
   }
 
@@ -99,7 +100,7 @@
     color: $text-primary;
 
     &:hover {
-      background: darken($warning-color, 10%);
+      background: color.adjust($warning-color, $lightness: -10%);
     }
   }
 
@@ -108,7 +109,7 @@
     color: $white;
 
     &:hover {
-      background: darken($info-color, 10%);
+      background: color.adjust($info-color, $lightness: -10%);
     }
   }
 }

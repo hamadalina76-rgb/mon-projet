@@ -1,5 +1,5 @@
 <!-- Product Card Component Template - Angular 19 -->
-<div class="product-card" [class.unavailable]="!isAvailable()">
+<div class="product-card" [class.unavailable]="!isAvailable()" [class.list-view]="layout() === 'list'">
   <!-- Image section -->
   <div class="product-image">
     <img [src]="productImageSrc()"
@@ -9,6 +9,9 @@
       <button class="overlay-btn edit-btn" (click)="onEdit()" [matTooltip]="'MENU.PRODUCT_CARD.TOOLTIP_EDIT' | translate">
         <mat-icon>edit</mat-icon>
       </button>
+      <button class="overlay-btn duplicate-btn" (click)="onDuplicate()" [matTooltip]="'MENU.PRODUCT_CARD.TOOLTIP_DUPLICATE' | translate">
+        <mat-icon>content_copy</mat-icon>
+      </button>
       <button class="overlay-btn delete-btn" (click)="onDelete()" [matTooltip]="'MENU.PRODUCT_CARD.TOOLTIP_DELETE' | translate">
         <mat-icon>delete_outline</mat-icon>
       </button>
@@ -17,6 +20,12 @@
       <div class="status-badge unavailable-badge">
         <mat-icon>block</mat-icon>
         {{ 'MENU.PRODUCT_CARD.BADGE_UNAVAILABLE' | translate }}
+      </div>
+    }
+    @if (product().stockStatus === 'LOW_STOCK') {
+      <div class="status-badge low-stock-badge">
+        <mat-icon>warning</mat-icon>
+        {{ 'MENU.PRODUCT_CARD.BADGE_LOW_STOCK' | translate }}
       </div>
     }
     @if (product().isPopular) {
@@ -30,7 +39,19 @@
   <!-- Content section -->
   <div class="product-body">
     <div class="product-info">
-      <h4 class="product-name">{{ product().name }}</h4>
+      @if (editingName()) {
+        <input
+          class="inline-name-input"
+          [value]="inlineNameValue"
+          (input)="inlineNameValue = $any($event.target).value"
+          (blur)="saveInlineName()"
+          (keydown.enter)="saveInlineName()"
+          (keydown.escape)="cancelInlineName()"
+          (click)="$event.stopPropagation()"
+          type="text" />
+      } @else {
+        <h4 class="product-name editable" (click)="startEditName()">{{ product().name }}</h4>
+      }
       @if (product().description) {
         <p class="product-description">{{ product().description }}</p>
       }

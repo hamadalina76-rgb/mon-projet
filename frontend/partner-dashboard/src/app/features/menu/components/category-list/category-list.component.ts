@@ -1,8 +1,9 @@
-import { Component, inject, input, output, computed } from '@angular/core';
+import { Component, inject, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule } from '@ngx-translate/core';
@@ -17,6 +18,7 @@ import { MenuCategory, ReorderItem } from '../../models/menu.models';
     DragDropModule,
     MatIconModule,
     MatButtonModule,
+    MatMenuModule,
     MatSlideToggleModule,
     MatTooltipModule,
     TranslateModule,
@@ -37,10 +39,18 @@ export class CategoryListComponent {
   visibilityToggled = output<MenuCategory>();
   deleteCategory = output<MenuCategory>();
 
+  /** Catégorie ciblée par le menu contextuel (une seule instance de menu). */
+  categoryForMenu = signal<MenuCategory | null>(null);
+
   canDelete(cat: MenuCategory): boolean {
     // Disable deletion when the category contains products.
     // (User request: disable delete when products are affected.)
     return (cat.productCount ?? 0) === 0;
+  }
+
+  openCategoryMenu(cat: MenuCategory, event: Event): void {
+    event.stopPropagation();
+    this.categoryForMenu.set(cat);
   }
 
   onDrop(event: CdkDragDrop<MenuCategory[]>): void {

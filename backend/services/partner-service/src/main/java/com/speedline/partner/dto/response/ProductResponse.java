@@ -52,4 +52,7 @@ public class ProductResponse {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    /** Optionnel : IN_STOCK, LOW_STOCK, OUT_OF_STOCK (enrichi depuis ProductStock). */
+    private String stockStatus;
 }

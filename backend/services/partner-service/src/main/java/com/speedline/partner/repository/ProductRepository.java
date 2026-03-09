@@ -80,6 +80,27 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "LOWER(p.description) LIKE LOWER(CONCAT('%', :query, '%')))")
     List<Product> searchProducts(@Param("partnerId") Long partnerId, @Param("query") String query);
 
+    @Query("SELECT p.id FROM Product p WHERE p.partnerId = :partnerId AND p.status != 'DELETED'")
+    List<Long> findProductIdsByPartnerId(@Param("partnerId") Long partnerId);
+
+    /**
+     * Page de produits avec filtres optionnels (recherche, catégorie, disponibilité, stock faible).
+     * lowStockIds : si non null et non vide, ne garde que les produits dont l'id est dans la liste.
+     */
+    @Query("SELECT p FROM Product p WHERE p.partnerId = :partnerId AND p.status <> com.speedline.partner.domain.ProductStatus.DELETED " +
+           "AND (:categoryId IS NULL OR p.categoryId = :categoryId) " +
+           "AND (:search IS NULL OR :search = '' OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "AND (:isAvailable IS NULL OR p.isAvailable = :isAvailable) " +
+           "AND (:lowStockIds IS NULL OR p.id IN :lowStockIds) " +
+           "ORDER BY p.displayOrder ASC")
+    Page<Product> findProductsPage(
+            @Param("partnerId") Long partnerId,
+            @Param("categoryId") Long categoryId,
+            @Param("search") String search,
+            @Param("isAvailable") Boolean isAvailable,
+            @Param("lowStockIds") List<Long> lowStockIds,
+            Pageable pageable);
+
     @Query("SELECT p FROM Product p WHERE p.status != 'DELETED' AND " +
            "(LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(p.description) LIKE LOWER(CONCAT('%', :query, '%')))")
