@@ -90,6 +90,13 @@ public class PubSubConfig {
                 "partner-events",
                 "partner-events-notification-sub"
             );
+            // Create partner-product-stock topic and subscription (stock alerts)
+            createTopicAndSubscription(
+                topicAdminClient,
+                subscriptionAdminClient,
+                "partner-product-stock",
+                "partner-product-stock-notification-sub"
+            );
         }
     }
 
@@ -103,6 +110,13 @@ public class PubSubConfig {
                 subscriptionAdminClient,
                 "partner-events",
                 "partner-events-notification-sub"
+            );
+            // Create partner-product-stock topic and subscription (stock alerts)
+            createTopicAndSubscription(
+                topicAdminClient,
+                subscriptionAdminClient,
+                "partner-product-stock",
+                "partner-product-stock-notification-sub"
             );
         }
     }

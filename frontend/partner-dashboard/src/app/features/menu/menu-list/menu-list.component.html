@@ -18,6 +18,10 @@
           {{ 'MENU.ADD_PRODUCT' | translate }}
         </button>
       }
+      <button mat-stroked-button routerLink="stock" class="stock-link">
+        <mat-icon>inventory_2</mat-icon>
+        {{ 'MENU.STOCK.TITLE' | translate }}
+      </button>
     </div>
   </header>
 
@@ -172,13 +176,37 @@
 
       <div class="tab-content products-tab">
 
-        <!-- Category filter chips -->
+        <!-- Filtres : recherche, statut, catégorie (côté backend) -->
+        <div class="products-filters">
+          <mat-form-field appearance="outline" class="search-field">
+            <mat-label>{{ 'MENU.LIST.SEARCH_PLACEHOLDER' | translate }}</mat-label>
+            <input matInput [value]="searchQuery()" (input)="onSearchChange(($any($event.target).value))" />
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="status-field">
+            <mat-label>{{ 'MENU.LIST.STATUS_FILTER' | translate }}</mat-label>
+            <mat-select [value]="statusFilter()" (selectionChange)="onStatusFilterChange($event.value)">
+              <mat-option value="all">{{ 'MENU.LIST.STATUS_ALL' | translate }}</mat-option>
+              <mat-option value="available">{{ 'MENU.LIST.STATUS_AVAILABLE' | translate }}</mat-option>
+              <mat-option value="unavailable">{{ 'MENU.LIST.STATUS_UNAVAILABLE' | translate }}</mat-option>
+              <mat-option value="low_stock">{{ 'MENU.LIST.STATUS_LOW_STOCK' | translate }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <div class="view-toggle">
+            <button mat-icon-button [class.active]="viewMode() === 'grid'" (click)="viewMode.set('grid')" [matTooltip]="'MENU.LIST.VIEW_GRID' | translate">
+              <mat-icon>grid_view</mat-icon>
+            </button>
+            <button mat-icon-button [class.active]="viewMode() === 'list'" (click)="viewMode.set('list')" [matTooltip]="'MENU.LIST.VIEW_LIST' | translate">
+              <mat-icon>view_list</mat-icon>
+            </button>
+          </div>
+        </div>
         <div class="filter-chips">
           <button
             mat-stroked-button
             [class.chip-active]="filterCategoryId() === null"
             (click)="filterByCategory(null)">
-            {{ 'MENU.LIST.FILTER_ALL' | translate:{ count: products().length } }}
+            {{ 'MENU.LIST.FILTER_ALL' | translate:{ count: totalElements() } }}
           </button>
           @for (cat of categories(); track cat.id) {
             <button
@@ -193,14 +221,29 @@
         @if (productsLoading()) {
           <app-loading-spinner [message]="'MENU.LIST.LOADING_PRODUCTS' | translate"></app-loading-spinner>
         } @else {
-          <div class="products-grid">
-            @for (product of filteredProducts(); track product.id) {
-              <app-product-card
-                [product]="product"
-                (edit)="editProduct($event)"
-                (toggleAvailability)="toggleProductAvailability($event)"
-                (delete)="deleteProduct($event)">
-              </app-product-card>
+          <div
+            class="products-container"
+            [class.products-grid]="viewMode() === 'grid'"
+            [class.products-list]="viewMode() === 'list'"
+            [class.draggable]="totalPages() <= 1 && products().length > 1"
+            cdkDropList
+            [cdkDropListData]="products()"
+            (cdkDropListDropped)="onProductsDrop($event)">
+            @for (product of products(); track product.id) {
+              <div class="product-card-wrapper" cdkDrag [cdkDragDisabled]="totalPages() > 1 || products().length <= 1">
+                <app-product-card
+                  [product]="product"
+                  [layout]="viewMode()"
+                  (edit)="editProduct($event)"
+                  (toggleAvailability)="toggleProductAvailability($event)"
+                  (duplicate)="duplicateProduct($event)"
+                  (delete)="deleteProduct($event)"
+                  (nameChange)="onProductNameChange($event)">
+                </app-product-card>
+                @if (totalPages() <= 1 && products().length > 1) {
+                  <div class="drag-placeholder" *cdkDragPlaceholder></div>
+                }
+              </div>
             } @empty {
               <div class="products-empty">
                 <app-empty-state
@@ -213,6 +256,19 @@
               </div>
             }
           </div>
+          @if (totalPages() > 1) {
+            <div class="products-pagination">
+              <button mat-stroked-button [disabled]="currentPage() === 0" (click)="goToPage(currentPage() - 1)">
+                <mat-icon>chevron_left</mat-icon>
+              </button>
+              <span class="pagination-info">
+                {{ 'MENU.LIST.PAGE_INFO' | translate:{ from: pageRangeFrom(), to: pageRangeTo(), total: totalElements() } }}
+              </span>
+              <button mat-stroked-button [disabled]="currentPage() >= totalPages() - 1" (click)="goToPage(currentPage() + 1)">
+                <mat-icon>chevron_right</mat-icon>
+              </button>
+            </div>
+          }
         }
       </div>
     </mat-tab>
@@ -399,4 +455,16 @@
       </div>
     </mat-tab>
   </mat-tab-group>
+
+  <!-- Dialog confirmation suppression catégorie (TC-35) -->
+  <app-confirmation-dialog
+    [isOpen]="deleteCategoryToConfirm() !== null"
+    [title]="'MENU.DIALOG.DELETE_CATEGORY_TITLE' | translate"
+    [message]="deleteCategoryConfirmMessage()"
+    type="danger"
+    [confirmText]="'COMMON.DELETE' | translate"
+    [cancelText]="'MENU.CLOSE' | translate"
+    (confirm)="confirmDeleteCategory()"
+    (cancel)="deleteCategoryToConfirm.set(null)">
+  </app-confirmation-dialog>
 </div>

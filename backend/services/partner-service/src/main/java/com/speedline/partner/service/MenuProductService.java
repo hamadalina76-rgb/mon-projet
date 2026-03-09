@@ -4,6 +4,8 @@ import com.speedline.partner.dto.request.*;
 import com.speedline.partner.dto.response.OptionGroupResponse;
 import com.speedline.partner.dto.response.OptionResponse;
 import com.speedline.partner.dto.response.ProductResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -37,6 +39,13 @@ public interface MenuProductService {
     List<ProductResponse> getAllProducts(Long partnerId, Long categoryId);
 
     /**
+     * Page de produits avec filtres et pagination côté serveur.
+     * @param status "all" | "available" | "unavailable" | "low_stock"
+     */
+    @Transactional(readOnly = true)
+    Page<ProductResponse> getProductsPage(Long partnerId, String search, Long categoryId, String status, Pageable pageable);
+
+    /**
      * Produits d'une catégorie, triés par position.
      *
      * @throws com.speedline.partner.exception.ResourceNotFoundException si la catégorie n'existe pas
@@ -66,6 +75,15 @@ public interface MenuProductService {
      */
     @Transactional
     ProductResponse updateProduct(Long partnerId, Long productId, UpdateProductRequest request);
+
+    /**
+     * Duplique un produit (TC-38) : copie le produit et ses groupes d'options/options.
+     *
+     * @return le nouveau produit créé (nom préfixé "Copy of ")
+     * @throws com.speedline.partner.exception.ResourceNotFoundException si introuvable
+     */
+    @Transactional
+    ProductResponse duplicateProduct(Long partnerId, Long productId);
 
     /**
      * Soft-delete d'un produit (status = DELETED).

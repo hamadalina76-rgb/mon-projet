@@ -24,9 +24,25 @@ export class ProductService {
     return `partners/${this.partnerId}/menu/products`;
   }
 
-  getProducts(categoryId?: number): Observable<Product[]> {
-    const params = categoryId != null ? { categoryId } : undefined;
-    return this.api.get<Product[]>(this.base(), params);
+  /** Page de produits avec filtres et pagination côté backend. */
+  getProductsPage(params: {
+    search?: string;
+    categoryId?: number | null;
+    status?: string;
+    page: number;
+    size: number;
+  }): Observable<{ content: Product[]; totalElements: number; totalPages: number; size: number; number: number }> {
+    const q: Record<string, string | number> = {
+      page: params.page,
+      size: params.size,
+      status: params.status ?? 'all',
+    };
+    if (params.search != null && params.search !== '') q['search'] = params.search;
+    if (params.categoryId != null) q['categoryId'] = params.categoryId;
+    return this.api.get<{ content: Product[]; totalElements: number; totalPages: number; size: number; number: number }>(
+      this.base(),
+      q
+    );
   }
 
   getProduct(id: number): Observable<Product> {
@@ -45,6 +61,11 @@ export class ProductService {
     return this.api.delete<void>(`${this.base()}/${id}`);
   }
 
+  /** TC-38 : Duplique le produit (et ses options). Retourne le nouveau produit. */
+  duplicateProduct(id: number): Observable<Product> {
+    return this.api.post<Product>(`${this.base()}/${id}/duplicate`, {});
+  }
+
   toggleAvailability(id: number, isAvailable: boolean): Observable<Product> {
     return this.api.patch<Product>(`${this.base()}/${id}/availability`, { isAvailable });
   }
@@ -59,10 +80,8 @@ export class ProductService {
     );
   }
 
-  reorderProducts(categoryId: number, items: ReorderItem[]): Observable<Product[]> {
-    return this.api.patch<Product[]>(
-      `partners/${this.partnerId}/menu/categories/${categoryId}/products/reorder`,
-      { items }
-    );
+  /** PATCH /partners/{id}/menu/products/reorder — items: [{ id, position }] */
+  reorderProducts(items: ReorderItem[]): Observable<Product[]> {
+    return this.api.patch<Product[]>(`${this.base()}/reorder`, { items });
   }
 }

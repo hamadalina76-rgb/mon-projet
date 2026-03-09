@@ -19,6 +19,8 @@ public class MenuCategoryResponse {
     private String imageUrl;
     private Integer position;
     private Boolean isVisible;
+    /** Nombre de produits actifs (non supprimés) dans cette catégorie. */
+    private Long productCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

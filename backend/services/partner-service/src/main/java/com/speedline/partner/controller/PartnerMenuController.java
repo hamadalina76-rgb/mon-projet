@@ -5,18 +5,23 @@ import com.speedline.partner.dto.response.*;
 import com.speedline.partner.service.FileStorageService;
 import com.speedline.partner.service.MenuCategoryService;
 import com.speedline.partner.service.MenuProductService;
+import com.speedline.partner.service.ProductStockService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map;
 
 /**
@@ -61,6 +66,7 @@ public class PartnerMenuController {
 
     private final MenuCategoryService menuCategoryService;
     private final MenuProductService  menuProductService;
+    private final ProductStockService productStockService;
     private final FileStorageService fileStorageService;
 
     // ============================================================
@@ -211,19 +217,132 @@ public class PartnerMenuController {
     // ============================================================
 
     /**
-     * GET /partners/{partnerId}/menu/products[?categoryId={catId}]
-     * Retourne tous les produits du partenaire, filtrés optionnellement par catégorie.
+     * GET /partners/{partnerId}/menu/products
+     * Page de produits avec filtres et pagination côté serveur.
+     * Paramètres : search (nom), categoryId, status (all|available|unavailable|low_stock), page, size.
      */
-    @Operation(summary = "Tous les produits", description = "Filtre optionnel par categoryId")
+    @Operation(summary = "Produits paginés", description = "Filtres (search, categoryId, status) et pagination côté backend")
     @GetMapping("/products")
-    public ResponseEntity<?> getAllProducts(
+    public ResponseEntity<?> getProductsPage(
             @PathVariable Long partnerId,
-            @RequestParam(required = false) Long categoryId) {
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false, defaultValue = "all") String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<ProductResponse> products = menuProductService.getAllProducts(partnerId, categoryId);
-            return ResponseEntity.ok(products);
+            Page<ProductResponse> result = menuProductService.getProductsPage(
+                    partnerId, search, categoryId, status,
+                    org.springframework.data.domain.PageRequest.of(page, size));
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("content", result.getContent());
+            body.put("totalElements", result.getTotalElements());
+            body.put("totalPages", result.getTotalPages());
+            body.put("size", result.getSize());
+            body.put("number", result.getNumber());
+            return ResponseEntity.ok(body);
         } catch (Exception ex) {
-            log.error("getAllProducts error: {}", ex.getMessage(), ex);
+            log.error("getProductsPage error: {}", ex.getMessage(), ex);
+            return serverError(ex.getMessage());
+        }
+    }
+
+    // ============================================================
+    //  STOCK (routes before /products/{productId} to avoid path conflict)
+    // ============================================================
+
+    /**
+     * GET /partners/{partnerId}/menu/products/stock
+     * Liste tous les produits avec leur stock actuel.
+     */
+    @Operation(summary = "Stats stock", description = "Nombre total / en stock / faible / épuisé pour le partenaire.")
+    @GetMapping("/products/stock/stats")
+    public ResponseEntity<?> getStockStats(@PathVariable Long partnerId) {
+        try {
+            List<ProductStockDTO> all = productStockService.getStockList(partnerId);
+            Map<String, Object> stats = new LinkedHashMap<>();
+            stats.put("total",      all.size());
+            stats.put("inStock",    all.stream().filter(p -> "IN_STOCK".equals(p.getStockStatus())).count());
+            stats.put("lowStock",   all.stream().filter(p -> "LOW_STOCK".equals(p.getStockStatus())).count());
+            stats.put("outOfStock", all.stream().filter(p -> "OUT_OF_STOCK".equals(p.getStockStatus())).count());
+            return ResponseEntity.ok(stats);
+        } catch (Exception ex) {
+            log.error("getStockStats error: {}", ex.getMessage(), ex);
+            return serverError(ex.getMessage());
+        }
+    }
+
+    @Operation(summary = "Liste stock paginée", description = "Produits avec stock, filtrés et paginés côté serveur.")
+    @GetMapping("/products/stock")
+    public ResponseEntity<?> getStockList(
+            @PathVariable Long partnerId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            List<ProductStockDTO> filtered = productStockService.getStockList(partnerId, search, status);
+            long totalElements = filtered.size();
+            int from = page * size;
+            int to   = Math.min(from + size, filtered.size());
+            List<ProductStockDTO> content = (from >= filtered.size())
+                    ? new ArrayList<>()
+                    : filtered.subList(from, to);
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("content",       content);
+            resp.put("totalElements", totalElements);
+            resp.put("page",          page);
+            resp.put("size",          size);
+            return ResponseEntity.ok(resp);
+        } catch (Exception ex) {
+            log.error("getStockList error: {}", ex.getMessage(), ex);
+            return serverError(ex.getMessage());
+        }
+    }
+
+    /**
+     * GET /partners/{partnerId}/menu/products/low-stock
+     * Produits sous le seuil d'alerte (quantity <= lowStockThreshold, isTrackingEnabled = true).
+     */
+    @Operation(summary = "Produits sous le seuil")
+    @GetMapping("/products/low-stock")
+    public ResponseEntity<?> getLowStock(@PathVariable Long partnerId) {
+        try {
+            return ResponseEntity.ok(productStockService.getLowStock(partnerId));
+        } catch (Exception ex) {
+            log.error("getLowStock error: {}", ex.getMessage(), ex);
+            return serverError(ex.getMessage());
+        }
+    }
+
+    /**
+     * GET /partners/{partnerId}/menu/products/out-of-stock
+     * Produits épuisés (quantity = 0, isTrackingEnabled = true).
+     */
+    @Operation(summary = "Produits épuisés")
+    @GetMapping("/products/out-of-stock")
+    public ResponseEntity<?> getOutOfStock(@PathVariable Long partnerId) {
+        try {
+            return ResponseEntity.ok(productStockService.getOutOfStock(partnerId));
+        } catch (Exception ex) {
+            log.error("getOutOfStock error: {}", ex.getMessage(), ex);
+            return serverError(ex.getMessage());
+        }
+    }
+
+    /**
+     * POST /partners/{partnerId}/menu/products/stock/bulk
+     * Mise à jour stock en masse (CSV: productId,quantity).
+     */
+    @Operation(summary = "Import CSV stock")
+    @PostMapping(value = "/products/stock/bulk", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> bulkUpdateStock(
+            @PathVariable Long partnerId,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        try {
+            return ResponseEntity.ok(productStockService.bulkUpdate(partnerId, file));
+        } catch (Exception ex) {
+            log.error("bulkUpdateStock error: {}", ex.getMessage(), ex);
             return serverError(ex.getMessage());
         }
     }
@@ -243,6 +362,26 @@ public class PartnerMenuController {
             return notFound(ex.getMessage());
         } catch (Exception ex) {
             log.error("getProductsByCategory error: {}", ex.getMessage(), ex);
+            return serverError(ex.getMessage());
+        }
+    }
+
+    /**
+     * POST /partners/{partnerId}/menu/products/{productId}/duplicate
+     * TC-38 : Duplique le produit et ses options.
+     */
+    @Operation(summary = "Dupliquer un produit", description = "TC-38 : copie produit + groupes d'options")
+    @PostMapping("/products/{productId}/duplicate")
+    public ResponseEntity<?> duplicateProduct(
+            @PathVariable Long partnerId,
+            @PathVariable Long productId) {
+        try {
+            ProductResponse created = menuProductService.duplicateProduct(partnerId, productId);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (com.speedline.partner.exception.ResourceNotFoundException ex) {
+            return notFound(ex.getMessage());
+        } catch (Exception ex) {
+            log.error("duplicateProduct error: {}", ex.getMessage(), ex);
             return serverError(ex.getMessage());
         }
     }
@@ -342,6 +481,26 @@ public class PartnerMenuController {
             return notFound(ex.getMessage());
         } catch (Exception ex) {
             log.error("updateAvailability error: {}", ex.getMessage(), ex);
+            return serverError(ex.getMessage());
+        }
+    }
+
+    /**
+     * PATCH /partners/{partnerId}/menu/products/{productId}/stock
+     * Met à jour la quantité (et optionnellement lowStockThreshold, isTrackingEnabled).
+     */
+    @Operation(summary = "Mettre à jour le stock d'un produit")
+    @PatchMapping("/products/{productId}/stock")
+    public ResponseEntity<?> updateStock(
+            @PathVariable Long partnerId,
+            @PathVariable Long productId,
+            @Valid @RequestBody UpdateStockRequest request) {
+        try {
+            return ResponseEntity.ok(productStockService.updateStock(partnerId, productId, request));
+        } catch (com.speedline.partner.exception.ResourceNotFoundException ex) {
+            return notFound(ex.getMessage());
+        } catch (Exception ex) {
+            log.error("updateStock error: {}", ex.getMessage(), ex);
             return serverError(ex.getMessage());
         }
     }

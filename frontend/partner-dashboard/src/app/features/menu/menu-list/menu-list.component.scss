@@ -464,6 +464,34 @@
   flex-direction: column;
   gap: 1.5rem;
   animation: fadeInUp 0.3s ease-out;
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.products-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  align-items: center;
+
+  .search-field { width: 220px; max-width: 100%; }
+  .status-field { width: 160px; }
+}
+
+.products-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 0.75rem;
+
+  .pagination-info {
+    font-size: 0.875rem;
+    color: $text-secondary;
+  }
 }
 
 .filter-chips {
@@ -500,10 +528,61 @@
   }
 }
 
-.products-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.25rem;
+.products-container {
+  &.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+    gap: 1.25rem;
+    width: 100%;
+    box-sizing: border-box;
+
+    @media (max-width: 600px) {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    @media (min-width: 601px) and (max-width: 900px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    @media (min-width: 901px) and (max-width: 1200px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  &.products-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+  }
+}
+
+.view-toggle {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  button.active {
+    background: rgba($speedline-red, 0.1);
+    color: $speedline-red;
+  }
+}
+
+.product-card-wrapper {
+  min-width: 0;
+  width: 100%;
+
+  &.cdk-drag-preview app-product-card {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+    border-radius: 18px;
+  }
+  &.cdk-drag-animating {
+    transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+
+.drag-placeholder {
+  min-height: 120px;
+  background: rgba($gray-200, 0.3);
+  border: 2px dashed $gray-300;
+  border-radius: 18px;
 }
 
 // ─── Tab 3: Options ───────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import com.speedline.partner.domain.OptionValue;
 import com.speedline.partner.domain.Product;
 import com.speedline.partner.domain.ProductOption;
 import com.speedline.partner.domain.ProductStatus;
+import com.speedline.partner.domain.ProductStock;
 import com.speedline.partner.dto.request.*;
 import com.speedline.partner.dto.response.OptionGroupResponse;
 import com.speedline.partner.dto.response.OptionResponse;
@@ -14,11 +15,15 @@ import com.speedline.partner.service.MenuProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -33,6 +38,7 @@ import java.util.stream.Collectors;
 public class MenuProductServiceImpl implements MenuProductService {
 
     private final ProductRepository productRepository;
+    private final ProductStockRepository productStockRepository;
     private final ProductOptionRepository productOptionRepository;
     private final OptionValueRepository optionValueRepository;
     private final MenuCategoryRepository menuCategoryRepository;
@@ -56,6 +62,50 @@ public class MenuProductServiceImpl implements MenuProductService {
                 .stream()
                 .map(this::toProductResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> getProductsPage(Long partnerId, String search, Long categoryId, String status, Pageable pageable) {
+        log.debug("getProductsPage partnerId={} search={} categoryId={} status={}", partnerId, search, categoryId, status);
+        Boolean isAvailable = null;
+        List<Long> lowStockIds = null;
+        if (status != null) {
+            switch (status) {
+                case "available" -> isAvailable = true;
+                case "unavailable" -> isAvailable = false;
+                case "low_stock" -> {
+                    List<Long> partnerProductIds = productRepository.findProductIdsByPartnerId(partnerId);
+                    if (partnerProductIds.isEmpty()) {
+                        return Page.empty(pageable);
+                    }
+                    lowStockIds = productStockRepository.findProductIdsInLowStock(partnerProductIds);
+                    if (lowStockIds.isEmpty()) {
+                        return Page.empty(pageable);
+                    }
+                }
+                default -> { /* all */ }
+            }
+        }
+        Page<Product> page = productRepository
+                .findProductsPage(partnerId, categoryId, search != null ? search.trim() : null, isAvailable, lowStockIds, pageable);
+        List<Long> productIds = page.getContent().stream().map(Product::getId).toList();
+        Map<Long, String> stockStatusMap = buildStockStatusMap(productIds);
+        return page.map(p -> toProductResponse(p, stockStatusMap.get(p.getId())));
+    }
+
+    private Map<Long, String> buildStockStatusMap(List<Long> productIds) {
+        Map<Long, String> map = new HashMap<>();
+        if (productIds.isEmpty()) return map;
+        List<ProductStock> stocks = productStockRepository.findByProductIdIn(productIds);
+        for (ProductStock ps : stocks) {
+            if (!Boolean.TRUE.equals(ps.getIsTrackingEnabled())) continue;
+            int qty = ps.getQuantity() != null ? ps.getQuantity() : 0;
+            int threshold = ps.getLowStockThreshold() != null ? ps.getLowStockThreshold() : 0;
+            String status = qty <= 0 ? "OUT_OF_STOCK" : (qty <= threshold ? "LOW_STOCK" : "IN_STOCK");
+            map.put(ps.getProductId(), status);
+        }
+        return map;
     }
 
     @Override
@@ -131,6 +181,61 @@ public class MenuProductServiceImpl implements MenuProductService {
         if (req.getTags() != null)             product.setTags(req.getTags());
 
         return toProductResponse(productRepository.save(product));
+    }
+
+    @Override
+    @CacheEvict(value = "menus:full", key = "#partnerId")
+    public ProductResponse duplicateProduct(Long partnerId, Long productId) {
+        log.info("duplicateProduct partnerId={} productId={}", partnerId, productId);
+        Product source = findProductOrThrow(partnerId, productId);
+        int nextPos = resolveNextProductPosition(partnerId, null);
+
+        Product copy = Product.builder()
+                .partnerId(partnerId)
+                .categoryId(source.getCategoryId())
+                .name("Copy of " + source.getName())
+                .description(source.getDescription())
+                .image(source.getImage())
+                .price(source.getPrice())
+                .isAvailable(true)
+                .isPopular(false)
+                .preparationTime(source.getPreparationTime())
+                .displayOrder(nextPos)
+                .tags(source.getTags())
+                .status(ProductStatus.ACTIVE)
+                .build();
+        Product newProduct = productRepository.save(copy);
+
+        List<ProductOption> sourceGroups = productOptionRepository
+                .findByProductIdAndIsActiveTrueOrderByDisplayOrderAsc(source.getId());
+        for (ProductOption oldGroup : sourceGroups) {
+            ProductOption newGroup = ProductOption.builder()
+                    .productId(newProduct.getId())
+                    .name(oldGroup.getName())
+                    .type(oldGroup.getType())
+                    .isRequired(oldGroup.getIsRequired())
+                    .minSelection(oldGroup.getMinSelection())
+                    .maxSelection(oldGroup.getMaxSelection())
+                    .displayOrder(oldGroup.getDisplayOrder())
+                    .isActive(true)
+                    .build();
+            ProductOption savedGroup = productOptionRepository.save(newGroup);
+
+            List<OptionValue> oldValues = optionValueRepository.findByOptionIdOrderByDisplayOrderAsc(oldGroup.getId());
+            for (OptionValue oldVal : oldValues) {
+                OptionValue newVal = OptionValue.builder()
+                        .optionId(savedGroup.getId())
+                        .name(oldVal.getName())
+                        .priceModifier(oldVal.getPriceModifier() != null ? oldVal.getPriceModifier() : BigDecimal.ZERO)
+                        .isDefault(false)
+                        .isAvailable(oldVal.getIsAvailable() != null ? oldVal.getIsAvailable() : true)
+                        .displayOrder(oldVal.getDisplayOrder())
+                        .build();
+                optionValueRepository.save(newVal);
+            }
+        }
+
+        return toProductResponse(newProduct);
     }
 
     @Override
@@ -306,6 +411,16 @@ public class MenuProductServiceImpl implements MenuProductService {
                 .map(og -> toGroupResponse(og, p.getId()))
                 .collect(Collectors.toList());
 
+        return toProductResponse(p, null);
+    }
+
+    ProductResponse toProductResponse(Product p, String stockStatus) {
+        List<OptionGroupResponse> optionGroups = productOptionRepository
+                .findByProductIdAndIsActiveTrueOrderByDisplayOrderAsc(p.getId())
+                .stream()
+                .map(og -> toGroupResponse(og, p.getId()))
+                .collect(Collectors.toList());
+
         return ProductResponse.builder()
                 .id(p.getId())
                 .categoryId(p.getCategoryId())
@@ -322,6 +437,7 @@ public class MenuProductServiceImpl implements MenuProductService {
                 .optionGroups(optionGroups)
                 .createdAt(p.getCreatedAt())
                 .updatedAt(p.getUpdatedAt())
+                .stockStatus(stockStatus)
                 .build();
     }
 

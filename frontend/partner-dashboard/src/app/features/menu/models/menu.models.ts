@@ -17,7 +17,7 @@ export interface MenuCategory {
   imageUrl?: string;
   position: number;
   isVisible: boolean;
-  productCount?: number;   // computed on the client side
+  productCount?: number;   // fourni par l’API GET /categories
   createdAt?: string;
   updatedAt?: string;
 }
@@ -59,6 +59,8 @@ export interface Product {
   position: number;
   tags?: string;
   optionGroups: OptionGroup[];
+  /** Enrichi par l’API (IN_STOCK, LOW_STOCK, OUT_OF_STOCK). */
+  stockStatus?: StockStatus;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -159,4 +161,38 @@ export interface UpdateOptionRequest {
   isDefault?: boolean;
   isAvailable?: boolean;
   position?: number;
+}
+
+// ─── Stock ────────────────────────────────────────────────────────────────
+
+export type StockStatus = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+
+export interface ProductStockDTO {
+  productId: number;
+  productName: string;
+  categoryName?: string;
+  quantity: number;
+  lowStockThreshold: number;
+  isTrackingEnabled: boolean;
+  isAvailable: boolean;
+  stockStatus: StockStatus;
+  updatedAt?: string;
+}
+
+export interface UpdateStockRequest {
+  quantity: number;
+  lowStockThreshold?: number;
+  isTrackingEnabled?: boolean;
+}
+
+export interface BulkStockError {
+  row: number;
+  productId?: number;
+  message: string;
+}
+
+export interface BulkStockUpdateResult {
+  processed: number;
+  success: number;
+  errors: BulkStockError[];
 }

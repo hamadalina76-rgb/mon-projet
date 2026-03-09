@@ -1,7 +1,9 @@
 // src/app/features/menu/components/product-card/product-card.component.ts - Angular 19
-import { Component, input, output, computed } from '@angular/core';
+import { Component, input, output, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
+import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -15,9 +17,11 @@ import { Product } from '../../models/menu.models';
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
+    MatInputModule,
     MatMenuModule,
     MatSlideToggleModule,
     MatTooltipModule,
@@ -29,11 +33,16 @@ import { Product } from '../../models/menu.models';
 export class ProductCardComponent {
   // Angular 19 Signal Inputs
   product = input.required<Product>();
+  /** 'grid' = carte classique, 'list' = ligne compacte */
+  layout = input<'grid' | 'list'>('grid');
 
   // Angular 19 Outputs
   edit = output<number>();
   toggleAvailability = output<number>();
+  duplicate = output<number>();
   delete = output<number>();
+  /** Édition inline : nouveau nom (productId, name). */
+  nameChange = output<{ productId: number; name: string }>();
 
   // Computed
   priceFormatted = computed(() => {
@@ -66,8 +75,33 @@ export class ProductCardComponent {
     this.toggleAvailability.emit(this.product().id);
   }
 
+  onDuplicate(): void {
+    this.duplicate.emit(this.product().id);
+  }
+
   onDelete(): void {
     this.delete.emit(this.product().id);
+  }
+
+  // Édition inline du nom
+  editingName = signal(false);
+  inlineNameValue = '';
+
+  startEditName(): void {
+    this.inlineNameValue = this.product().name ?? '';
+    this.editingName.set(true);
+  }
+
+  saveInlineName(): void {
+    const trimmed = this.inlineNameValue?.trim();
+    this.editingName.set(false);
+    if (trimmed && trimmed !== this.product().name) {
+      this.nameChange.emit({ productId: this.product().id, name: trimmed });
+    }
+  }
+
+  cancelInlineName(): void {
+    this.editingName.set(false);
   }
 }
 

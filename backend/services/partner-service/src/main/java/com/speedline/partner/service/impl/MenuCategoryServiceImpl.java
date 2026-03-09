@@ -51,7 +51,7 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
         log.debug("getCategories partnerId={}", partnerId);
         return menuCategoryRepository.findByPartnerIdOrderByPositionAsc(partnerId)
                 .stream()
-                .map(this::toResponse)
+                .map(cat -> toResponseWithCount(cat, partnerId))
                 .collect(Collectors.toList());
     }
 
@@ -221,6 +221,23 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
                 .imageUrl(cat.getImageUrl())
                 .position(cat.getPosition())
                 .isVisible(cat.getIsVisible())
+                .createdAt(cat.getCreatedAt())
+                .updatedAt(cat.getUpdatedAt())
+                .build();
+    }
+
+    private MenuCategoryResponse toResponseWithCount(MenuCategory cat, Long partnerId) {
+        long productCount = productRepository
+                .countByPartnerIdAndCategoryIdAndStatusNot(partnerId, cat.getId(), ProductStatus.DELETED);
+        return MenuCategoryResponse.builder()
+                .id(cat.getId())
+                .partnerId(cat.getPartnerId())
+                .name(cat.getName())
+                .description(cat.getDescription())
+                .imageUrl(cat.getImageUrl())
+                .position(cat.getPosition())
+                .isVisible(cat.getIsVisible())
+                .productCount(productCount)
                 .createdAt(cat.getCreatedAt())
                 .updatedAt(cat.getUpdatedAt())
                 .build();

@@ -26,4 +26,9 @@ export const MENU_ROUTES: Routes = [
     loadComponent: () =>
       import('./product-form/product-form.component').then((m) => m.ProductFormComponent),
   },
+  {
+    path: 'stock',
+    loadComponent: () =>
+      import('./stock-list/stock-list.component').then((m) => m.StockListComponent),
+  },
 ];
