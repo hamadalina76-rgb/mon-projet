@@ -1,0 +1,294 @@
+<!-- Category Configuration -->
+<div class="config-container">
+
+  <!-- ───── Header ───── -->
+  <div class="page-header">
+    <div class="header-left">
+      <div class="breadcrumb">
+        <a routerLink="/categories" class="breadcrumb-link">
+          <mat-icon>arrow_back</mat-icon>
+          Catégories
+        </a>
+        <span class="sep">/</span>
+        <span>{{ isEditMode() ? 'Modifier' : 'Nouvelle catégorie' }}</span>
+      </div>
+      <h1 class="page-title">
+        {{ isEditMode() ? 'Modifier la catégorie' : 'Créer une catégorie' }}
+      </h1>
+    </div>
+
+    <div class="header-actions">
+      <button mat-stroked-button (click)="onCancel()" type="button">Annuler</button>
+      <button mat-raised-button color="primary" class="btn-save"
+        (click)="onSave()" [disabled]="saving()" type="button">
+        <mat-icon>{{ saving() ? 'hourglass_empty' : 'save' }}</mat-icon>
+        {{ saving() ? 'Enregistrement…' : 'Enregistrer' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ───── Form ───── -->
+  <form [formGroup]="categoryForm" class="form-layout">
+
+    <!-- ── Left column ── -->
+    <div class="form-main">
+
+      <!-- Names (multilingual) -->
+      <mat-card class="form-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar class="card-icon">translate</mat-icon>
+          <mat-card-title>Noms multilingues</mat-card-title>
+          <mat-card-subtitle>Au moins Français et Anglais sont requis</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-tab-group [(selectedIndex)]="selectedTabIndex" (selectedIndexChange)="onTabChange($event)" class="lang-tabs">
+
+            <!-- FR -->
+            <mat-tab label="🇫🇷 Français">
+              <div class="tab-body">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Nom en Français *</mat-label>
+                  <input matInput formControlName="nameFr" placeholder="ex: Restauration rapide">
+                  <mat-error>{{ getError('nameFr') }}</mat-error>
+                </mat-form-field>
+              </div>
+            </mat-tab>
+
+            <!-- EN -->
+            <mat-tab label="🇬🇧 English">
+              <div class="tab-body">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Name in English *</mat-label>
+                  <input matInput formControlName="nameEn" placeholder="e.g. Fast Food">
+                  <mat-error>{{ getError('nameEn') }}</mat-error>
+                </mat-form-field>
+              </div>
+            </mat-tab>
+
+            <!-- AR -->
+            <mat-tab label="🇸🇦 العربية">
+              <div class="tab-body">
+                <mat-form-field appearance="outline" class="full-width" dir="rtl">
+                  <mat-label>الاسم بالعربية</mat-label>
+                  <input matInput formControlName="nameAr" placeholder="مثال: الوجبات السريعة">
+                </mat-form-field>
+              </div>
+            </mat-tab>
+          </mat-tab-group>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Description -->
+      <mat-card class="form-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar class="card-icon">description</mat-icon>
+          <mat-card-title>Description</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Description (optionnelle)</mat-label>
+            <textarea matInput formControlName="description" rows="3"
+              placeholder="Décrivez brièvement cette catégorie…"></textarea>
+          </mat-form-field>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Properties -->
+      <mat-card class="form-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar class="card-icon">tune</mat-icon>
+          <mat-card-title>Propriétés</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="properties-grid">
+
+            <!-- Business type -->
+            <mat-form-field appearance="outline">
+              <mat-label>Type métier *</mat-label>
+              <mat-select formControlName="categoryBusinessType">
+                @for (bt of businessTypes; track bt.value) {
+                  <mat-option [value]="bt.value">
+                    <mat-icon class="opt-icon">{{ bt.icon }}</mat-icon>
+                    {{ bt.label }}
+                  </mat-option>
+                }
+              </mat-select>
+              <mat-error>{{ getError('categoryBusinessType') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Category sub-type -->
+            <mat-form-field appearance="outline">
+              <mat-label>Sous-type (optionnel)</mat-label>
+              <input matInput formControlName="categoryType" placeholder="ex: Pizzeria, Bio, Halal…">
+            </mat-form-field>
+
+            <!-- Parent category -->
+            <mat-form-field appearance="outline">
+              <mat-label>Catégorie parente</mat-label>
+              <mat-select formControlName="parentId">
+                <mat-option [value]="null">
+                  <mat-icon class="opt-icon">radio_button_unchecked</mat-icon>
+                  Aucune (catégorie racine)
+                </mat-option>
+                @for (parent of parentCategories(); track parent.id) {
+                  <mat-option [value]="parent.id">
+                    <mat-icon class="opt-icon">folder</mat-icon>
+                    {{ parent.nameI18n['fr'] || parent.nameI18n['en'] || parent.nameI18n['ar'] }}
+                  </mat-option>
+                }
+              </mat-select>
+              <mat-hint>Sélectionnez une catégorie parente pour créer une hiérarchie</mat-hint>
+            </mat-form-field>
+
+            <!-- Display order -->
+            <mat-form-field appearance="outline">
+              <mat-label>Ordre d'affichage *</mat-label>
+              <input matInput type="number" formControlName="displayOrder" min="1">
+              <mat-hint>Les catégories avec un ordre plus bas apparaissent en premier</mat-hint>
+              <mat-error>{{ getError('displayOrder') }}</mat-error>
+            </mat-form-field>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Icon -->
+      <mat-card class="form-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar class="card-icon">image</mat-icon>
+          <mat-card-title>Icône</mat-card-title>
+          <mat-card-subtitle>PNG, JPG, SVG, WEBP · max 5 Mo</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <!-- Champ caché gardant l'URL finale -->
+          <input type="text" formControlName="icon" style="display:none">
+
+          <!-- Input file caché -->
+          <input type="file" #fileInput
+            accept="image/png,image/jpeg,image/svg+xml,image/webp"
+            style="display:none"
+            (change)="onFileSelected($event)">
+
+          <!-- Zone d'upload -->
+          <div class="icon-upload-zone" [class.has-preview]="iconPreviewUrl()" (click)="!uploading() && fileInput.click()">
+
+            @if (uploading()) {
+              <div class="upload-state upload-loading">
+                <mat-icon class="icon-spin">autorenew</mat-icon>
+                <span>Upload en cours…</span>
+              </div>
+            } @else if (iconPreviewUrl()) {
+              <div class="upload-state icon-preview">
+                <img [src]="iconPreviewUrl()" alt="Icône" (error)="onIconError($event)" class="preview-img">
+                <button mat-icon-button class="remove-btn" (click)="removeIcon($event)" matTooltip="Supprimer l'icône" type="button">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            } @else {
+              <div class="upload-state upload-placeholder">
+                <mat-icon>cloud_upload</mat-icon>
+                <span>Cliquez pour uploader une icône</span>
+                <small>PNG, JPG, SVG, WEBP</small>
+              </div>
+            }
+          </div>
+
+          @if (iconPreviewUrl() && !uploading()) {
+            <button mat-stroked-button class="change-icon-btn" (click)="fileInput.click()" type="button">
+              <mat-icon>swap_horiz</mat-icon>
+              Changer l'icône
+            </button>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Colors -->
+      <mat-card class="form-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar class="card-icon">palette</mat-icon>
+          <mat-card-title>Couleurs</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="colors-grid">
+            <div class="color-field">
+              <label class="color-label">Couleur de fond</label>
+              <div class="color-input-row">
+                <input type="color" formControlName="backgroundColor" class="color-picker">
+                <mat-form-field appearance="outline" class="color-text">
+                  <input matInput formControlName="backgroundColor" placeholder="#EC131E">
+                </mat-form-field>
+              </div>
+            </div>
+
+            <div class="color-field">
+              <label class="color-label">Couleur du texte</label>
+              <div class="color-input-row">
+                <input type="color" formControlName="textColor" class="color-picker">
+                <mat-form-field appearance="outline" class="color-text">
+                  <input matInput formControlName="textColor" placeholder="#FFFFFF">
+                </mat-form-field>
+              </div>
+            </div>
+
+            <!-- Preview -->
+            <div class="color-preview-box"
+              [style.background-color]="categoryForm.get('backgroundColor')?.value || '#EC131E'"
+              [style.color]="categoryForm.get('textColor')?.value || '#FFFFFF'">
+              <span>Aperçu du style</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- ── Right column (sidebar) ── -->
+    <div class="form-sidebar">
+
+      <!-- Status & visibility -->
+      <mat-card class="form-card sidebar-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar class="card-icon">toggle_on</mat-icon>
+          <mat-card-title>Statut & Visibilité</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span class="toggle-title">Active</span>
+              <span class="toggle-desc">La catégorie est visible sur le marketplace</span>
+            </div>
+            <mat-slide-toggle formControlName="isActive" color="primary"></mat-slide-toggle>
+          </div>
+          <mat-divider></mat-divider>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <span class="toggle-title">Mise en avant ⭐</span>
+              <span class="toggle-desc">Apparaît dans les sections vedettes</span>
+            </div>
+            <mat-slide-toggle formControlName="isFeatured" color="accent"></mat-slide-toggle>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Save card -->
+      <mat-card class="form-card sidebar-card save-card">
+        <mat-card-content>
+          <p class="save-hint">
+            @if (isEditMode()) {
+              Les modifications seront appliquées immédiatement.
+            } @else {
+              La catégorie sera créée et visible selon son statut.
+            }
+          </p>
+          <button mat-raised-button color="primary" class="btn-save-full"
+            (click)="onSave()" [disabled]="saving()" type="button">
+            <mat-icon>{{ saving() ? 'hourglass_empty' : 'save' }}</mat-icon>
+            {{ saving() ? 'Enregistrement…' : (isEditMode() ? 'Mettre à jour' : 'Créer la catégorie') }}
+          </button>
+          <button mat-stroked-button class="btn-cancel-full" (click)="onCancel()" type="button">
+            Annuler
+          </button>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </form>
+</div>
+

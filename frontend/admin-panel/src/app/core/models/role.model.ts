@@ -35,6 +35,12 @@ export const PERMISSIONS = {
   PARTNERS_EDIT: 'partners:edit',
   PARTNERS_DELETE: 'partners:delete',
 
+  // Categories
+  CATEGORIES_VIEW: 'categories:view',
+  CATEGORIES_CREATE: 'categories:create',
+  CATEGORIES_EDIT: 'categories:edit',
+  CATEGORIES_DELETE: 'categories:delete',
+
   // Orders
   ORDERS_VIEW: 'orders:view',
   ORDERS_MANAGE: 'orders:manage',

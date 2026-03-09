@@ -3,36 +3,26 @@ package com.speedline.partner.dto;
 import com.speedline.partner.domain.CategoryBusinessType;
 import lombok.*;
 import jakarta.validation.constraints.*;
-import java.time.LocalDateTime;
 import java.util.Map;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class CategoryDTO {
-
-    private Long id;
+public class UpdateCategoryRequest {
 
     @NotNull(message = "Les noms multilingues sont requis")
     @NotEmpty(message = "Au moins une locale est requise")
     private Map<String, String> nameI18n;
 
-    private String slug;
     private String description;
     private String icon;
     private String image;
-
-    @NotNull
     private Integer displayOrder;
-
-    @NotNull
+    private Boolean isFeatured;
     private Boolean isActive;
 
-    @NotNull
-    private Boolean isFeatured;
-
-    private CategoryBusinessType categoryBusinessType; // ✅ Enum au lieu de String
+    @NotNull(message = "Le type métier est requis")
+    private CategoryBusinessType categoryBusinessType; // ✅ Majuscule
 
     private String categoryType;
 
@@ -41,10 +31,4 @@ public class CategoryDTO {
 
     @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Format couleur invalide (#RRGGBB)")
     private String textColor;
-
-    private Integer partnerCount;
-    private Integer productCount;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-    private Long createdBy;
 }

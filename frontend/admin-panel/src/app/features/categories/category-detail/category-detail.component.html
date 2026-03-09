@@ -1,0 +1,182 @@
+<!-- Category Detail -->
+<div class="detail-container">
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Chargement…</p>
+    </div>
+  } @else if (category()) {
+    <!-- ── Header ── -->
+    <div class="page-header">
+      <div class="header-left">
+        <button mat-button class="back-btn" (click)="goBack()">
+          <mat-icon>arrow_back</mat-icon>
+          Catégories
+        </button>
+        <div class="cat-title-row">
+          <div class="cat-icon-lg"
+            [style.background-color]="(category()!.backgroundColor || '#EC131E') + '22'">
+            @if (category()!.icon) {
+              <img [src]="category()!.icon" [alt]="getDisplayName(category()!)" class="icon-img">
+            } @else {
+              <mat-icon [style.color]="category()!.backgroundColor || '#EC131E'">
+                {{ getBusinessTypeIcon(category()!.categoryBusinessType) }}
+              </mat-icon>
+            }
+          </div>
+          <div>
+            <h1 class="page-title">
+              {{ getDisplayName(category()!) }}
+              @if (category()!.isFeatured) {
+                <mat-icon class="star" matTooltip="Mise en avant">star</mat-icon>
+              }
+            </h1>
+            <div class="cat-badges">
+              <span class="badge type-badge">
+                <mat-icon>{{ getBusinessTypeIcon(category()!.categoryBusinessType) }}</mat-icon>
+                {{ getBusinessTypeLabel(category()!.categoryBusinessType) }}
+              </span>
+              <span class="badge" [class.active-badge]="category()!.isActive" [class.inactive-badge]="!category()!.isActive">
+                <mat-icon>{{ category()!.isActive ? 'check_circle' : 'pause_circle' }}</mat-icon>
+                {{ category()!.isActive ? 'Active' : 'Inactive' }}
+              </span>
+              @if (category()!.categoryType) {
+                <span class="badge secondary-badge">{{ category()!.categoryType }}</span>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button mat-stroked-button [matMenuTriggerFor]="actionsMenu">
+          <mat-icon>more_vert</mat-icon>
+          Actions
+        </button>
+        <mat-menu #actionsMenu="matMenu">
+          <button mat-menu-item (click)="editCategory()">
+            <mat-icon>edit</mat-icon><span>Modifier</span>
+          </button>
+          <button mat-menu-item (click)="toggleStatus()">
+            <mat-icon>{{ category()!.isActive ? 'pause_circle' : 'play_circle' }}</mat-icon>
+            <span>{{ category()!.isActive ? 'Désactiver' : 'Activer' }}</span>
+          </button>
+          <mat-divider></mat-divider>
+          <button mat-menu-item class="delete-item" (click)="deleteCategory()">
+            <mat-icon>delete</mat-icon><span>Supprimer</span>
+          </button>
+        </mat-menu>
+
+        <button mat-raised-button color="primary" class="edit-btn" (click)="editCategory()">
+          <mat-icon>edit</mat-icon>
+          Modifier
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Content grid ── -->
+    <div class="content-grid">
+
+      <!-- Stats cards -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <mat-icon class="sc-icon">storefront</mat-icon>
+          <div class="sc-body">
+            <span class="sc-val">{{ category()!.partnerCount ?? 0 }}</span>
+            <span class="sc-lbl">Partenaires</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <mat-icon class="sc-icon">inventory_2</mat-icon>
+          <div class="sc-body">
+            <span class="sc-val">{{ category()!.productCount ?? 0 }}</span>
+            <span class="sc-lbl">Produits</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <mat-icon class="sc-icon">format_list_numbered</mat-icon>
+          <div class="sc-body">
+            <span class="sc-val">#{{ category()!.displayOrder }}</span>
+            <span class="sc-lbl">Ordre d'affichage</span>
+          </div>
+        </div>
+        <div class="stat-card color-card"
+          [style.background-color]="category()!.backgroundColor || '#EC131E'"
+          [style.color]="category()!.textColor || '#FFFFFF'">
+          <mat-icon class="sc-icon" style="color:inherit">palette</mat-icon>
+          <div class="sc-body">
+            <span class="sc-val" style="color:inherit">{{ category()!.backgroundColor || '#EC131E' }}</span>
+            <span class="sc-lbl" style="color:inherit; opacity:0.8">Couleur de fond</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Details tabs -->
+      <mat-card class="details-card">
+        <mat-tab-group [(selectedIndex)]="selectedTabIndex" (selectedIndexChange)="onTabChange($event)">
+
+          <!-- General -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon class="tab-icon">info</mat-icon>
+              Informations
+            </ng-template>
+            <div class="tab-body">
+              <div class="info-grid">
+                <div class="info-section">
+                  <h3>Général</h3>
+                  <div class="info-row"><span class="il">Slug</span><code class="iv">{{ category()!.slug }}</code></div>
+                  <div class="info-row"><span class="il">Type métier</span><span class="iv">{{ getBusinessTypeLabel(category()!.categoryBusinessType) }}</span></div>
+                  @if (category()!.categoryType) {
+                    <div class="info-row"><span class="il">Sous-type</span><span class="iv">{{ category()!.categoryType }}</span></div>
+                  }
+                  @if (category()!.description) {
+                    <div class="info-row"><span class="il">Description</span><span class="iv">{{ category()!.description }}</span></div>
+                  }
+                  <div class="info-row"><span class="il">Mise en avant</span>
+                    <span class="iv">{{ category()!.isFeatured ? '⭐ Oui' : 'Non' }}</span>
+                  </div>
+                </div>
+
+                <div class="info-section">
+                  <h3>Dates</h3>
+                  <div class="info-row"><span class="il">Créé le</span><span class="iv">{{ category()!.createdAt | date:'dd/MM/yyyy HH:mm' }}</span></div>
+                  <div class="info-row"><span class="il">Modifié le</span><span class="iv">{{ category()!.updatedAt | date:'dd/MM/yyyy HH:mm' }}</span></div>
+                  @if (category()!.createdBy) {
+                    <div class="info-row"><span class="il">Créé par</span><span class="iv">Admin #{{ category()!.createdBy }}</span></div>
+                  }
+                </div>
+              </div>
+            </div>
+          </mat-tab>
+
+          <!-- Multilingual names -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <mat-icon class="tab-icon">translate</mat-icon>
+              Traductions
+            </ng-template>
+            <div class="tab-body">
+              @for (entry of getNameEntries(); track $index) {
+                <div class="lang-row">
+                  <span class="lang-key">{{ entry.key.toUpperCase() }}</span>
+                  <span class="lang-val">{{ entry.value }}</span>
+                </div>
+              }
+              @if (getNameEntries().length === 0) {
+                <p class="empty-msg">Aucune traduction enregistrée.</p>
+              }
+            </div>
+          </mat-tab>
+        </mat-tab-group>
+      </mat-card>
+    </div>
+  } @else {
+    <div class="empty-state">
+      <mat-icon>error_outline</mat-icon>
+      <p>Catégorie introuvable.</p>
+      <button mat-button (click)="goBack()">Retour</button>
+    </div>
+  }
+</div>

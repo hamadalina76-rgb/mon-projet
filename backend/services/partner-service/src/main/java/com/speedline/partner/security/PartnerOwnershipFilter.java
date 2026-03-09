@@ -6,8 +6,10 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.ws.rs.ext.ParamConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -23,7 +25,7 @@ import java.util.regex.Pattern;
  */
 @Component
 @Order(1)
-@RequiredArgsConstructor
+@Lazy
 @Slf4j
 public class PartnerOwnershipFilter extends OncePerRequestFilter {
 
@@ -32,7 +34,7 @@ public class PartnerOwnershipFilter extends OncePerRequestFilter {
     private static final String ROLE_ADMIN = "ADMIN";
     private static final Pattern PARTNER_ID_PATH = Pattern.compile("^/partners/(\\d+)(/.*)?$");
 
-    private final PartnerRepository partnerRepository;
+    private  PartnerRepository partnerRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,

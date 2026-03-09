@@ -53,7 +53,7 @@ spring:
         - id: partner-service
           uri: lb://partner-service
           predicates:
-            - Path=/api/partners/**, /api/products/**, /api/categories/**
+            - Path=/api/partners/**, /api/products/**, /api/v1/categories/**
           filters:
             - StripPrefix=1
             - AuthenticationFilter

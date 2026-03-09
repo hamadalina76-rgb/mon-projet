@@ -58,6 +58,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     { label: 'nav.admins', icon: 'admin_panel_settings', route: '/users/admins', permission: 'admins:view', section: 'nav.mainMenu' },
 
     // ── Operations ──
+    { label: 'nav.categories', icon: 'category', route: '/categories', permission: 'categories:view', section: 'nav.operations' },
     { label: 'nav.payments', icon: 'payments', route: '/payments', permission: 'payments:view', section: 'nav.operations' },
     { label: 'nav.promotions', icon: 'local_offer', route: '/promotions', permission: 'promotions:view', section: 'nav.operations' },
     { label: 'nav.reviews', icon: 'rate_review', route: '/reviews', permission: 'reviews:view', section: 'nav.operations' },
