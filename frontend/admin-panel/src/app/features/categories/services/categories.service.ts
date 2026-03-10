@@ -7,7 +7,9 @@ import {
   Category,
   CategoryBusinessType,
   CreateCategoryRequest,
-  UpdateCategoryRequest
+  UpdateCategoryRequest,
+  CategoryStats,
+  AuditLogEntry
 } from '@core/models/category.model';
 
 @Injectable({
@@ -58,6 +60,7 @@ export class CategoriesService {
       icon:             cat.icon             ?? null,
       image:            cat.image            ?? null,
       parentId:         cat.parentId         ?? null,
+      depth:            cat.depth            ?? null,
       backgroundColor:  cat.backgroundColor  ?? null,
       textColor:        cat.textColor        ?? null,
       partnerCount:     cat.partnerCount     ?? null,
@@ -206,11 +209,51 @@ export class CategoriesService {
       );
   }
 
+  // ==================== PARENT CANDIDATES ====================
+
+  getParentCandidates(excludeId?: number): Observable<Category[]> {
+    let params = new HttpParams();
+    if (excludeId != null) params = params.set('excludeId', String(excludeId));
+    return this.http
+      .get<any[]>(`${this.baseUrl}/parent-candidates`, { headers: this.adminHeaders(), params })
+      .pipe(
+        map(res => res.map(cat => this.mapCategory(cat))),
+        catchError(error => {
+          console.error('\u274c Erreur chargement parent candidates:', error);
+          return throwError(() => error);
+        })
+      );
+  }
+
   // ==================== PARENT CATEGORIES ====================
 
   getParentCategories(excludeId?: number): Observable<Category[]> {
     return this.getCategories().pipe(
       map(categories => categories.filter(cat => cat.id !== excludeId))
     );
+  }
+
+  // ==================== STATS ====================
+
+  getCategoryStats(id: number): Observable<CategoryStats> {
+    return this.http
+      .get<CategoryStats>(`${this.baseUrl}/${id}/stats`, { headers: this.adminHeaders() })
+      .pipe(
+        catchError(error => {
+          console.error('❌ Erreur chargement stats catégorie:', error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  getCategoryAuditTrail(id: number): Observable<AuditLogEntry[]> {
+    return this.http
+      .get<AuditLogEntry[]>(`${this.baseUrl}/${id}/audit-trail`, { headers: this.adminHeaders() })
+      .pipe(
+        catchError(error => {
+          console.error('❌ Erreur chargement audit trail:', error);
+          return throwError(() => error);
+        })
+      );
   }
 }

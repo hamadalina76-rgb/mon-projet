@@ -9,22 +9,21 @@
           <mat-icon>arrow_back</mat-icon>
           Catégories
         </a>
+        @if (breadcrumbPath().length > 0) {
+          @for (segment of breadcrumbPath(); track segment) {
+            <span class="sep">/</span>
+            <span class="breadcrumb-seg">{{ segment }}</span>
+          }
+        }
         <span class="sep">/</span>
-        <span>{{ isEditMode() ? 'Modifier' : 'Nouvelle catégorie' }}</span>
+        <span>{{ isEditMode() ? 'Modifier' : (breadcrumbPath().length > 0 ? 'Nouvelle sous-catégorie' : 'Nouvelle catégorie') }}</span>
       </div>
       <h1 class="page-title">
-        {{ isEditMode() ? 'Modifier la catégorie' : 'Créer une catégorie' }}
+        {{ isEditMode() ? 'Modifier la catégorie' : (breadcrumbPath().length > 0 ? 'Ajouter une sous-catégorie' : 'Créer une catégorie') }}
       </h1>
     </div>
 
-    <div class="header-actions">
-      <button mat-stroked-button (click)="onCancel()" type="button">Annuler</button>
-      <button mat-raised-button color="primary" class="btn-save"
-        (click)="onSave()" [disabled]="saving()" type="button">
-        <mat-icon>{{ saving() ? 'hourglass_empty' : 'save' }}</mat-icon>
-        {{ saving() ? 'Enregistrement…' : 'Enregistrer' }}
-      </button>
-    </div>
+
   </div>
 
   <!-- ───── Form ───── -->
@@ -125,20 +124,37 @@
             <!-- Parent category -->
             <mat-form-field appearance="outline">
               <mat-label>Catégorie parente</mat-label>
-              <mat-select formControlName="parentId">
-                <mat-option [value]="null">
+              <input matInput
+                [formControl]="parentSearchCtrl"
+                [matAutocomplete]="parentAuto"
+                placeholder="Rechercher une catégorie…">
+              <mat-icon matSuffix>account_tree</mat-icon>
+              <mat-hint>Laissez vide pour une catégorie racine (max 3 niveaux)</mat-hint>
+              <mat-autocomplete #parentAuto="matAutocomplete" [displayWith]="displayParentFn"
+                (optionSelected)="onParentSelected($event.option.value)">
+                <mat-option [value]="null" (click)="clearParent()">
                   <mat-icon class="opt-icon">radio_button_unchecked</mat-icon>
                   Aucune (catégorie racine)
                 </mat-option>
-                @for (parent of parentCategories(); track parent.id) {
-                  <mat-option [value]="parent.id">
-                    <mat-icon class="opt-icon">folder</mat-icon>
-                    {{ parent.nameI18n['fr'] || parent.nameI18n['en'] || parent.nameI18n['ar'] }}
+                @for (parent of filteredParents(); track parent.id) {
+                  <mat-option [value]="parent">
+                    <mat-icon class="opt-icon">{{ (parent.depth ?? 0) === 0 ? 'folder' : 'subdirectory_arrow_right' }}</mat-icon>
+                    <span [style.padding-left]="((parent.depth ?? 0) * 12) + 'px'">
+                      {{ getCatName(parent) }}
+                    </span>
                   </mat-option>
                 }
-              </mat-select>
-              <mat-hint>Sélectionnez une catégorie parente pour créer une hiérarchie</mat-hint>
+              </mat-autocomplete>
             </mat-form-field>
+            @if (selectedParent()) {
+              <div class="parent-depth-info">
+                <mat-icon class="depth-icon">account_tree</mat-icon>
+                <span>Niveau {{ (selectedParent()!.depth ?? 0) + 1 }}/3 &mdash; sous-catégorie de <strong>{{ getCatName(selectedParent()!) }}</strong></span>
+                <button mat-icon-button class="clear-parent-btn" type="button" (click)="clearParent()" matTooltip="Retirer">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            }
 
             <!-- Display order -->
             <mat-form-field appearance="outline">
@@ -274,6 +290,8 @@
           <p class="save-hint">
             @if (isEditMode()) {
               Les modifications seront appliquées immédiatement.
+            } @else if (isSubcategoryMode()) {
+              La sous-catégorie sera créée et visible selon son statut.
             } @else {
               La catégorie sera créée et visible selon son statut.
             }
@@ -281,7 +299,7 @@
           <button mat-raised-button color="primary" class="btn-save-full"
             (click)="onSave()" [disabled]="saving()" type="button">
             <mat-icon>{{ saving() ? 'hourglass_empty' : 'save' }}</mat-icon>
-            {{ saving() ? 'Enregistrement…' : (isEditMode() ? 'Mettre à jour' : 'Créer la catégorie') }}
+            {{ saving() ? 'Enregistrement…' : (isEditMode() ? 'Mettre à jour' : (isSubcategoryMode() ? 'Créer la sous-catégorie' : 'Créer la catégorie')) }}
           </button>
           <button mat-stroked-button class="btn-cancel-full" (click)="onCancel()" type="button">
             Annuler

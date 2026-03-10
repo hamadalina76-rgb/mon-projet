@@ -1,11 +1,12 @@
-import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -28,6 +29,7 @@ import { Category, CategoryBusinessType, CreateCategoryRequest, UpdateCategoryRe
     MatTabsModule,
     MatFormFieldModule,
     MatSelectModule,
+    MatAutocompleteModule,
     MatInputModule,
     MatButtonModule,
     MatIconModule,
@@ -56,7 +58,34 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
   saving = signal(false);
   uploading = signal(false);
   iconPreviewUrl = signal<string>('');
-  parentCategories = signal<Category[]>([]);
+
+  // Hierarchy / autocomplete
+  parentCandidates = signal<Category[]>([]);
+  selectedParent = signal<Category | null>(null);
+  parentSearchCtrl = new FormControl('');
+  filteredParents = signal<Category[]>([]);
+
+  /** Breadcrumb path: [root name, …, selected parent name] */
+  breadcrumbPath = computed<string[]>(() => {
+    const parent = this.selectedParent();
+    if (!parent) return [];
+    const path: string[] = [this.getCatName(parent)];
+    // walk ancestors from parentCandidates list
+    let pid = parent.parentId;
+    const checked = new Set<number>();
+    while (pid != null) {
+      if (checked.has(pid)) break;
+      checked.add(pid);
+      const ancestor = this.parentCandidates().find(c => c.id === pid);
+      if (!ancestor) break;
+      path.unshift(this.getCatName(ancestor));
+      pid = ancestor.parentId;
+    }
+    return path;
+  });
+
+  isSubcategoryMode = computed(() => this.selectedParent() !== null || !!this.categoryForm?.get('parentId')?.value);
+
   private iconObjectUrl: string | null = null;
 
   businessTypes: { value: CategoryBusinessType; label: string; icon: string }[] = [
@@ -69,10 +98,6 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.initializeForm();
     this.checkEditMode();
-    // loadParentCategories is called in checkEditMode with exclusion, or below for create mode
-    if (!this.isEditMode()) {
-      this.loadParentCategories();
-    }
   }
 
   ngOnDestroy(): void {
@@ -83,54 +108,106 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
 
   private initializeForm(): void {
     this.categoryForm = this.fb.group({
-      // i18n names
       nameFr: ['', [Validators.required, Validators.minLength(2)]],
       nameEn: ['', [Validators.required, Validators.minLength(2)]],
       nameAr: [''],
-
       description: [''],
-
-      // Hierarchy  
       parentId: [null],
-
-      // Type
       categoryBusinessType: ['', Validators.required],
       categoryType: [''],
-
-      // Display
       displayOrder: [1, [Validators.required, Validators.min(1)]],
       backgroundColor: ['#EC131E'],
       textColor: ['#FFFFFF'],
       icon: [''],
-
-      // Toggle flags
       isActive: [true],
       isFeatured: [false],
     });
+
+    // Filter autocomplete on each keystroke
+    this.parentSearchCtrl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(term => this.filterParents(term ?? ''));
   }
 
   private checkEditMode(): void {
     const id = this.route.snapshot.paramMap.get('id');
+    // Support both route param (:parentId/create-sub) and query param (?parentId=)
+    const parentIdParam =
+      this.route.snapshot.paramMap.get('parentId') ??
+      this.route.snapshot.queryParamMap.get('parentId');
+
     if (id) {
       this.isEditMode.set(true);
       this.categoryId.set(Number(id));
+      this.loadParentCandidates(Number(id));
       this.loadCategory(Number(id));
-      this.loadParentCategories(Number(id)); // Exclude current category
+    } else {
+      this.loadParentCandidates();
+      // Pre-fill parentId from query param (e.g. ?parentId=3)
+      if (parentIdParam) {
+        const pid = Number(parentIdParam);
+        this.categoryForm.patchValue({ parentId: pid });
+        // selectedParent will be resolved once candidates load
+        this.categoriesService.getParentCandidates()
+          .pipe(takeUntil(this.destroy$))
+          .subscribe(candidates => {
+            const found = candidates.find(c => c.id === pid) ?? null;
+            if (found) {
+              this.selectedParent.set(found);
+              this.parentSearchCtrl.setValue(this.getCatName(found), { emitEvent: false });
+            }
+          });
+      }
     }
   }
 
-  private loadParentCategories(excludeId?: number): void {
-    this.categoriesService.getParentCategories(excludeId)
+  private loadParentCandidates(excludeId?: number): void {
+    this.categoriesService.getParentCandidates(excludeId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (categories) => {
-          this.parentCategories.set(categories);
+        next: candidates => {
+          this.parentCandidates.set(candidates);
+          this.filteredParents.set(candidates);
+          // If we already have a parentId (edit mode), resolve the selected parent
+          const pid = this.categoryForm.get('parentId')?.value as number | null;
+          if (pid) {
+            const found = candidates.find(c => c.id === pid) ?? null;
+            if (found) {
+              this.selectedParent.set(found);
+              this.parentSearchCtrl.setValue(this.getCatName(found), { emitEvent: false });
+            }
+          }
         },
-        error: (error) => {
-          console.error('Erreur lors du chargement des catégories parentes:', error);
-        }
+        error: err => console.error('Erreur chargement parent candidates:', err)
       });
   }
+
+  private filterParents(term: string): void {
+    const lower = term.toLowerCase();
+    this.filteredParents.set(
+      this.parentCandidates().filter(c =>
+        this.getCatName(c).toLowerCase().includes(lower)
+      )
+    );
+  }
+
+  onParentSelected(cat: Category | null): void {
+    this.selectedParent.set(cat);
+    this.categoryForm.patchValue({ parentId: cat?.id ?? null });
+  }
+
+  clearParent(): void {
+    this.selectedParent.set(null);
+    this.categoryForm.patchValue({ parentId: null });
+    this.parentSearchCtrl.setValue('');
+    this.filteredParents.set(this.parentCandidates());
+  }
+
+  getCatName(cat: Category): string {
+    return cat.nameI18n['fr'] || cat.nameI18n['en'] || cat.nameI18n['ar'] || '';
+  }
+
+  displayParentFn = (cat: Category | null): string => cat ? this.getCatName(cat) : '';
 
   private loadCategory(id: number): void {
     this.categoriesService.getCategoryById(id)
@@ -153,6 +230,14 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
             icon: cat.icon || '',
           });
           this.iconPreviewUrl.set(cat.icon || '');
+          // Resolve parent after candidates are potentially already loaded
+          if (cat.parentId) {
+            const found = this.parentCandidates().find(c => c.id === cat.parentId) ?? null;
+            if (found) {
+              this.selectedParent.set(found);
+              this.parentSearchCtrl.setValue(this.getCatName(found), { emitEvent: false });
+            }
+          }
         },
         error: () => {
           this.toastr.error('Impossible de charger la catégorie');
@@ -177,7 +262,6 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
     }
 
     const v = this.categoryForm.value;
-
     const nameI18n: { [locale: string]: string } = {};
     if (v.nameFr) nameI18n['fr'] = v.nameFr;
     if (v.nameEn) nameI18n['en'] = v.nameEn;
@@ -207,12 +291,7 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
             this.router.navigate(['/categories']);
           },
           error: (err) => {
-            if (err.status === 409) {
-              this.toastr.error('Ce nom de catégorie existe déjà pour cette locale');
-            } else {
-              this.toastr.error('Erreur lors de la mise à jour');
-            }
-            this.saving.set(false);
+            this.handleSaveError(err, 'mise à jour');
           }
         });
     } else {
@@ -236,15 +315,21 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
             this.router.navigate(['/categories']);
           },
           error: (err) => {
-            if (err.status === 409) {
-              this.toastr.error('Ce nom de catégorie existe déjà pour cette locale');
-            } else {
-              this.toastr.error('Erreur lors de la création');
-            }
-            this.saving.set(false);
+            this.handleSaveError(err, 'création');
           }
         });
     }
+  }
+
+  private handleSaveError(err: any, action: string): void {
+    if (err.status === 409) {
+      this.toastr.error('Ce nom de catégorie existe déjà pour cette locale');
+    } else if (err.status === 400) {
+      this.toastr.error(err.error?.message || 'Données invalides');
+    } else {
+      this.toastr.error(`Erreur lors de la ${action}`);
+    }
+    this.saving.set(false);
   }
 
   getError(field: string): string {
@@ -264,7 +349,6 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
     if (!input.files?.length) return;
     const file = input.files[0];
 
-    // Prévisualisation instantanée
     if (this.iconObjectUrl) URL.revokeObjectURL(this.iconObjectUrl);
     this.iconObjectUrl = URL.createObjectURL(file);
     this.iconPreviewUrl.set(this.iconObjectUrl);
@@ -280,7 +364,7 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
           this.uploading.set(false);
         },
         error: () => {
-          this.toastr.error('Erreur lors de l\'upload de l\'icône');
+          this.toastr.error("Erreur lors de l'upload de l'icône");
           this.iconPreviewUrl.set('');
           if (this.iconObjectUrl) { URL.revokeObjectURL(this.iconObjectUrl); this.iconObjectUrl = null; }
           this.uploading.set(false);

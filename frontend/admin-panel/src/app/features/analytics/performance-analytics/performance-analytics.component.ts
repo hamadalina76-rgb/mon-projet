@@ -4,7 +4,6 @@ import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
-import { NgChartsModule } from 'ng2-charts';
 import { AnalyticsService } from '../services/analytics.service';
 
 @Component({
@@ -15,7 +14,6 @@ import { AnalyticsService } from '../services/analytics.service';
     MatCardModule,
     MatIconModule,
     TranslateModule,
-    NgChartsModule,
   ],
   templateUrl: './performance-analytics.component.html',
   styleUrls: ['./performance-analytics.component.scss'],

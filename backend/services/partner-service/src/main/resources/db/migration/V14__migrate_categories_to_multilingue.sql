@@ -27,16 +27,30 @@ ALTER TABLE categories
     ADD COLUMN IF NOT EXISTS name_i18n JSONB;
 
 -- ============================================
--- 3️⃣ MIGRER LES DONNÉES: name → name_i18n
+-- 3️⃣ MIGRER LES DONNÉES: name → name_i18n (si colonne name existe encore)
 -- ============================================
 
-UPDATE categories
-SET name_i18n = jsonb_build_object(
-        'fr', COALESCE(name, ''),
-        'ar', '',
-        'en', COALESCE(name, '')
-    )
-WHERE name_i18n IS NULL OR name_i18n = '{}'::jsonb;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'categories' AND column_name = 'name'
+    ) THEN
+        UPDATE categories
+        SET name_i18n = jsonb_build_object(
+                'fr', COALESCE(name, ''),
+                'ar', '',
+                'en', COALESCE(name, '')
+            )
+        WHERE name_i18n IS NULL OR name_i18n = '{}'::jsonb;
+    ELSE
+        -- name déjà supprimée : mettre un objet vide pour les lignes sans name_i18n
+        UPDATE categories
+        SET name_i18n = '{}'::jsonb
+        WHERE name_i18n IS NULL;
+    END IF;
+END
+$$;
 
 -- ============================================
 -- 4️⃣ RENDRE name_i18n NOT NULL et UNIQUE

@@ -22,6 +22,8 @@ public class CategoryDTO {
     private String description;
     private String icon;
     private String image;
+    private Long parentId;
+    private Integer depth;
 
     @NotNull
     private Integer displayOrder;

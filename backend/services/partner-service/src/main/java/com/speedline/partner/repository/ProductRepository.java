@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -150,6 +151,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     long countByPartnerIdAndIsAvailableTrue(Long partnerId);
     
     long countByCategoryId(Long categoryId);
+
+    /** Nombre de produits dans une catégorie créés entre deux dates (pour calcul de tendance). */
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.categoryId = :categoryId " +
+           "AND p.status <> com.speedline.partner.domain.ProductStatus.DELETED " +
+           "AND p.createdAt BETWEEN :start AND :end")
+    long countByCategoryIdAndCreatedAtBetween(@Param("categoryId") Long categoryId,
+                                              @Param("start") LocalDateTime start,
+                                              @Param("end") LocalDateTime end);
 
     @Query("SELECT p FROM Product p WHERE p.partnerId = :partnerId ORDER BY p.orderCount DESC")
     List<Product> findTopSellingProducts(@Param("partnerId") Long partnerId, Pageable pageable);

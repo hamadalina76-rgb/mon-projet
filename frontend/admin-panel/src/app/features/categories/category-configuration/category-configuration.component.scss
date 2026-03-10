@@ -46,6 +46,7 @@ $shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
     }
 
     .sep { color: var(--text-disabled, #cbd5e1); }
+    .breadcrumb-seg { color: var(--text-secondary, #64748b); font-size: 13px; }
   }
 
   .page-title {
@@ -133,6 +134,24 @@ $shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   width: 16px;
   vertical-align: middle;
   margin-right: 6px;
+}
+
+// ─── Parent depth info chip ───────────────────────────────────────────────────
+.parent-depth-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #e8f5e9;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #2e7d32;
+  grid-column: 1 / -1; // span full width inside properties-grid
+
+  .depth-icon { font-size: 16px; height: 16px; width: 16px; }
+  .clear-parent-btn { margin-left: auto; width: 28px; height: 28px; line-height: 28px;
+    mat-icon { font-size: 16px; height: 16px; width: 16px; }
+  }
 }
 
 // ─── Properties grid ─────────────────────────────────────────────────────────

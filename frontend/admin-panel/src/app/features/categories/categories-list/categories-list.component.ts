@@ -118,12 +118,24 @@ export class CategoriesListComponent implements OnInit, OnDestroy {
     return list;
   });
 
+  /** Seules les catégories racines (sans parent) affichées dans la grille */
+  rootCategories = computed(() =>
+    this.filteredCategories().filter(c => c.parentId == null)
+  );
+
   paginatedCategories = computed(() => {
-    const list = this.filteredCategories();
+    const list = this.rootCategories();
     if (list.length <= this.PAGE_SIZE) return list;
     const start = this.currentPage() * this.PAGE_SIZE;
     return list.slice(start, start + this.PAGE_SIZE);
   });
+
+  /** Retourne les sous-catégories directes d'une catégorie (triées par ordre) */
+  getSubcategories(parentId: number): Category[] {
+    return this.allCategories()
+      .filter(c => c.parentId === parentId)
+      .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+  }
 
   ngOnInit(): void {
     this.setupSearch();

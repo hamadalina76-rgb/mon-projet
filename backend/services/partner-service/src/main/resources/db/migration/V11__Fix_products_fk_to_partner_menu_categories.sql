@@ -14,7 +14,11 @@ BEGIN
     END IF;
 
     -- S'assurer que la FK vers partner_menu_categories existe
-    IF NOT EXISTS (
+    -- (la table peut ne pas encore exister si V12 n'a pas encore renommé menu_categories)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'partner_menu_categories'
+    ) AND NOT EXISTS (
         SELECT 1 FROM information_schema.table_constraints
         WHERE constraint_name = 'fk_product_partner_menu_category' AND table_name = 'products'
     ) THEN

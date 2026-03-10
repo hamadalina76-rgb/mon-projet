@@ -75,7 +75,10 @@
 
     <!-- Count -->
     <div class="items-count">
-      {{ filteredCategories().length }} catégorie{{ filteredCategories().length !== 1 ? 's' : '' }}
+      {{ rootCategories().length }} catégorie{{ rootCategories().length !== 1 ? 's' : '' }}
+      @if (allCategories().length - rootCategories().length > 0) {
+        &nbsp;· {{ allCategories().length - rootCategories().length }} sous-catégorie{{ allCategories().length - rootCategories().length !== 1 ? 's' : '' }}
+      }
     </div>
   </div>
 
@@ -144,6 +147,9 @@
                 <button mat-menu-item [routerLink]="['/categories', cat.id, 'edit']">
                   <mat-icon>edit</mat-icon><span>Modifier</span>
                 </button>
+                <button mat-menu-item [routerLink]="['/categories', cat.id, 'create-sub']">
+                  <mat-icon>account_tree</mat-icon><span>Ajouter une sous-catégorie</span>
+                </button>
                 <mat-divider></mat-divider>
                 <button mat-menu-item (click)="toggleCategoryStatus(cat, $event)"
                   [class.activate]="!cat.isActive" [class.deactivate]="cat.isActive">
@@ -194,6 +200,32 @@
               </div>
             </div>
 
+            <!-- Sous-catégories -->
+            @if (getSubcategories(cat.id).length > 0 || true) {
+              <div class="subcategories-section">
+                <div class="subcategories-header">
+                  <mat-icon class="sub-icon">account_tree</mat-icon>
+                  <span class="sub-label">Sous-catégories ({{ getSubcategories(cat.id).length }})</span>
+                  <a class="sub-add-link" [routerLink]="['/categories', cat.id, 'create-sub']" (click)="$event.stopPropagation()">
+                    <mat-icon>add</mat-icon>
+                  </a>
+                </div>
+                @if (getSubcategories(cat.id).length > 0) {
+                  <div class="subcategories-chips">
+                    @for (sub of getSubcategories(cat.id); track sub.id) {
+                      <a class="sub-chip" [routerLink]="['/categories', sub.id]" [class.inactive-chip]="!sub.isActive" (click)="$event.stopPropagation()">
+                        <mat-icon class="sub-chip-icon">subdirectory_arrow_right</mat-icon>
+                        {{ getDisplayName(sub) }}
+                        @if (!sub.isActive) { <mat-icon class="sub-chip-off" matTooltip="Inactive">visibility_off</mat-icon> }
+                      </a>
+                    }
+                  </div>
+                } @else {
+                  <span class="sub-empty">Aucune sous-catégorie</span>
+                }
+              </div>
+            }
+
             <!-- Footer -->
             <div class="card-footer">
               <div class="status-toggle" (click)="$event.stopPropagation()">
@@ -207,16 +239,10 @@
                 </span>
               </div>
 
-              <div class="color-swatches">
-                @if (cat.backgroundColor) {
-                  <span class="swatch" [style.background]="cat.backgroundColor"
-                    [matTooltip]="'Fond: ' + cat.backgroundColor"></span>
-                }
-                @if (cat.textColor) {
-                  <span class="swatch swatch-text" [style.background]="cat.textColor"
-                    [matTooltip]="'Texte: ' + cat.textColor"></span>
-                }
-              </div>
+              <a class="analyse-btn" [routerLink]="['/categories', cat.id]" (click)="$event.stopPropagation()">
+                <mat-icon>bar_chart</mat-icon>
+                Analyse
+              </a>
             </div>
           </div>
 
@@ -226,10 +252,10 @@
       }
     </div>
 
-    @if (filteredCategories().length > PAGE_SIZE) {
+    @if (rootCategories().length > PAGE_SIZE) {
       <mat-paginator
         class="categories-paginator"
-        [length]="filteredCategories().length"
+        [length]="rootCategories().length"
         [pageSize]="PAGE_SIZE"
         [pageIndex]="currentPage()"
         [hidePageSize]="true"
