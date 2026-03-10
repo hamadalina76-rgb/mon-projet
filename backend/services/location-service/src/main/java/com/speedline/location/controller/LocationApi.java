@@ -14,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -42,15 +41,6 @@ public interface LocationApi {
     ResponseEntity<ReverseGeocodeResponse> reverseGeocode(
             @Parameter(description = "Latitude et longitude GPS", required = true)
             @Valid @RequestBody GeocodeRequest request
-    );
-
-    @GetMapping(path = "/nearby-partners")
-    @Operation(summary = "Partenaires proches",
-            description = "Retourne une liste de partenaires (restaurants/livraison) proches d'une position donnée")
-    ResponseEntity<List<Map<String, Object>>> getNearbyPartners(
-            @Parameter(description = "Latitude du centre", required = true) @RequestParam("lat") BigDecimal latitude,
-            @Parameter(description = "Longitude du centre", required = true) @RequestParam("lon") BigDecimal longitude,
-            @Parameter(description = "Rayon en mètres (optionnel)") @RequestParam(value = "radius", required = false) Integer radiusMeters
     );
 
     @PostMapping(path = "/calculate-distance", consumes = MediaType.APPLICATION_JSON_VALUE)

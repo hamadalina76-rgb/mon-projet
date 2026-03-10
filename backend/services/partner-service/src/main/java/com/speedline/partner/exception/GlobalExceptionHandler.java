@@ -8,9 +8,12 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import jakarta.validation.ConstraintViolationException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
@@ -87,6 +90,26 @@ public class GlobalExceptionHandler {
         Map<String, Object> error = new HashMap<>();
         error.put("error", "Bad request");
         error.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolation(ConstraintViolationException ex) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("error", "Invalid parameters");
+        error.put("message", ex.getConstraintViolations().stream()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .collect(Collectors.joining(", ")));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolation(ConstraintViolationException ex) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("error", "Invalid parameters");
+        error.put("message", ex.getConstraintViolations().stream()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .collect(Collectors.joining(", ")));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 

@@ -12,15 +12,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * REST Controller pour Location
  *
  * Endpoints:
- * GET    /locations/nearby-partners   - Partenaires proches
  * POST   /locations/calculate-distance - Calculer distance
  * POST   /locations/reverse-geocode   - Coordonnées → Adresse
  * POST   /locations/geocode            - Adresse → Coordonnées
@@ -54,25 +51,6 @@ public class LocationController implements LocationApi {
 
         return ResponseEntity.ok(response);
     }
-
-        @Override
-        @GetMapping("/nearby-partners")
-        public ResponseEntity<List<Map<String, Object>>> getNearbyPartners(
-                @RequestParam("lat") BigDecimal latitude,
-                @RequestParam("lon") BigDecimal longitude,
-                @RequestParam(value = "radius", required = false) Integer radiusMeters) {
-                int radius = radiusMeters == null ? 5000 : radiusMeters;
-                List<GeolocationService.NearbyPartnerDTO> partners = geolocationService.findNearbyPartners(latitude, longitude, radius);
-                List<Map<String, Object>> out = partners.stream()
-                                .map(p -> Map.<String, Object>of(
-                                                "partnerId", p.partnerId(),
-                                                "name", p.name(),
-                                                "distanceKm", p.distanceKm(),
-                                                "etaMinutes", p.estimatedDeliveryTime()
-                                ))
-                                .collect(Collectors.toList());
-                return ResponseEntity.ok(out);
-        }
 
         @Override
         @PostMapping("/calculate-distance")

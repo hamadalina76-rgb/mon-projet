@@ -11,11 +11,6 @@ import java.util.List;
 public interface GeolocationService {
 
     /**
-     * Trouver les partenaires proches d'une position
-     */
-    List<NearbyPartnerDTO> findNearbyPartners(BigDecimal latitude, BigDecimal longitude, int radiusMeters);
-
-    /**
      * Calculer la distance entre deux points
      */
     DistanceResult calculateDistance(BigDecimal lat1, BigDecimal lon1, BigDecimal lat2, BigDecimal lon2);
@@ -45,11 +40,6 @@ public interface GeolocationService {
      * Obtenir la zone pour une position
      */
     ZoneDTO getZoneForLocation(BigDecimal latitude, BigDecimal longitude);
-
-    /**
-     * DTO pour les partenaires proches
-     */
-    record NearbyPartnerDTO(Long partnerId, String name, double distanceKm, int estimatedDeliveryTime) {}
 
     /**
      * DTO pour le résultat de distance

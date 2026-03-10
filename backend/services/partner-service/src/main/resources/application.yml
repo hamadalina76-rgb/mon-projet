@@ -84,3 +84,6 @@ resilience4j:
     configs:
       default:
         timeoutDuration: 5s
+
+nearby:
+  default-radius-km: 5.0

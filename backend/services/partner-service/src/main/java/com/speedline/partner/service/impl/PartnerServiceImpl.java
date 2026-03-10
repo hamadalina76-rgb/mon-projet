@@ -21,12 +21,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Implémentation du service de gestion des partenaires
@@ -42,6 +49,10 @@ public class PartnerServiceImpl implements PartnerService {
     private final PartnerEventPublisher partnerEventPublisher;
     private final com.speedline.partner.client.AuthServiceClient authServiceClient;
     private final ObjectMapper objectMapper;
+    private final StringRedisTemplate redisTemplate;
+
+    @Value("${nearby.default-radius-km:5.0}")
+    private double defaultRadiusKm;
 
     // ==================== SYNC AUTH-SERVICE ====================
 
@@ -736,9 +747,74 @@ public class PartnerServiceImpl implements PartnerService {
     @Override
     @Transactional(readOnly = true)
     public List<PartnerDTO> getNearbyPartners(BigDecimal latitude, BigDecimal longitude, double radiusKm) {
-        // TODO: Implémenter la récupération des partenaires proches
-        throw new UnsupportedOperationException("À implémenter");
+        return getNearbyPartners(latitude, longitude, 0, Integer.MAX_VALUE / 2).getContent();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PartnerDTO> getNearbyPartners(BigDecimal latitude, BigDecimal longitude, int page, int size) {
+        // 1. Read radius from Redis or use config fallback
+        double radiusKm = defaultRadiusKm;
+        try {
+            String redisRadius = redisTemplate.opsForValue().get("config:nearby:radius_km");
+            if (redisRadius != null) radiusKm = Double.parseDouble(redisRadius);
+        } catch (Exception e) {
+            log.warn("Could not read radius from Redis: {}", e.getMessage());
+        }
+        double radiusMeters = radiusKm * 1000.0;
+
+        // 2. Check cache
+        String cacheKey = String.format("partners:nearby:%.4f:%.4f:%d:%d",
+                latitude.doubleValue(), longitude.doubleValue(), page, size);
+        try {
+            String cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                CachedPage cp = objectMapper.readValue(cached, CachedPage.class);
+                return new PageImpl<>(cp.content(), PageRequest.of(cp.pageNumber(), cp.pageSize()), cp.totalElements());
+            }
+        } catch (Exception e) {
+            log.warn("Redis cache read failed: {}", e.getMessage());
+        }
+
+        // 3. Query DB with PostGIS ST_DWithin
+        double lat = latitude.doubleValue();
+        double lng = longitude.doubleValue();
+        long total = partnerRepository.countNearbyPartners(lat, lng, radiusMeters);
+        List<Object[]> rows = total == 0 ? List.of() :
+                partnerRepository.findNearbyPartnersSorted(lat, lng, radiusMeters, size, page * size);
+
+        // 4. Bulk load entities and build DTOs
+        List<Long> ids = rows.stream().map(r -> ((Number) r[0]).longValue()).toList();
+        Map<Long, Partner> byId = partnerRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Partner::getId, p -> p));
+        List<PartnerDTO> dtos = rows.stream()
+                .map(r -> {
+                    Long id = ((Number) r[0]).longValue();
+                    double distKm = ((Number) r[1]).doubleValue();
+                    Partner p = byId.get(id);
+                    if (p == null) return null;
+                    PartnerDTO dto = convertToDTO(p);
+                    dto.setDistanceKm(distKm);
+                    return dto;
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        Page<PartnerDTO> result = new PageImpl<>(dtos, PageRequest.of(page, size), total);
+
+        // 5. Cache with 2-min TTL
+        try {
+            String json = objectMapper.writeValueAsString(
+                    new CachedPage(dtos, page, size, total));
+            redisTemplate.opsForValue().set(cacheKey, json, Duration.ofMinutes(2));
+        } catch (Exception e) {
+            log.warn("Redis cache write failed: {}", e.getMessage());
+        }
+
+        return result;
+    }
+
+    private record CachedPage(List<PartnerDTO> content, int pageNumber, int pageSize, long totalElements) {}
 
     @Override
     @Transactional(readOnly = true)
