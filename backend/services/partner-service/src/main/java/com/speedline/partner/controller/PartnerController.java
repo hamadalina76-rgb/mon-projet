@@ -7,6 +7,7 @@ import com.speedline.partner.dto.StaffMemberDTO;
 import com.speedline.partner.dto.UpdatePartnerStatusRequest;
 import com.speedline.partner.service.FileStorageService;
 import com.speedline.partner.service.PartnerService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -336,36 +337,7 @@ public class PartnerController implements PartnerApi {
         }
     }
 
-    @Override
-    @GetMapping("/nearby")
-    public ResponseEntity<Page<PartnerDTO>> getNearbyPartners(
-            @RequestParam @NotNull
-            @DecimalMin(value = "-90.0",  message = "Latitude invalide : doit être entre -90 et 90")
-            @DecimalMax(value = "90.0",   message = "Latitude invalide : doit être entre -90 et 90") BigDecimal lat,
-            @RequestParam @NotNull
-            @DecimalMin(value = "-180.0", message = "Longitude invalide : doit être entre -180 et 180")
-            @DecimalMax(value = "180.0",  message = "Longitude invalide : doit être entre -180 et 180") BigDecimal lng,
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ResponseEntity.ok(partnerService.getNearbyPartners(lat, lng, page, size));
-    }
 
-    @Override
-    /**
-     * POST /partners/{id}/upload/logo
-     * TC-19 : Upload logo valide → HTTP 200, logoUrl retournée.
-     */
-    @Operation(summary = "Upload logo partenaire",
-               description = "multipart/form-data, champ 'file', max 5 Mo, JPG/PNG/WEBP")
-    @PostMapping(value = "/{id}/upload/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadLogo(
-            @PathVariable Long id,
-            @RequestParam("file") MultipartFile file) {
-        log.info("uploadLogo partnerId={} size={}", id, file != null ? file.getSize() : 0);
-        String logoUrl = fileStorageService.storeImage(file, id, "logos");
-        partnerService.updateImages(id, logoUrl, null);
-        return ResponseEntity.ok(Map.of("url", logoUrl, "logoUrl", logoUrl));
-    }
 
     /**
      * POST /partners/{id}/upload/cover
