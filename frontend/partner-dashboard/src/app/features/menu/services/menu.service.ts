@@ -8,6 +8,8 @@ import {
   CreateCategoryRequest,
   UpdateCategoryRequest,
   ReorderItem,
+  ImportPreviewResponse,
+  ImportConfirmResult,
 } from '../models/menu.models';
 
 @Injectable({ providedIn: 'root' })
@@ -29,6 +31,25 @@ export class MenuService {
 
   getFullMenu(): Observable<FullMenuResponse> {
     return this.api.get<FullMenuResponse>(this.base());
+  }
+
+  /** TC-57 : Exporte le menu en CSV (id, name, category, price, isAvailable, stock, description). */
+  exportMenuCsv(): Observable<Blob> {
+    return this.api.getBlob(`${this.base()}/export/csv`);
+  }
+
+  /** TC-58 : Preview import CSV menu. */
+  importPreview(file: File): Observable<ImportPreviewResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.api.upload<ImportPreviewResponse>(`${this.base()}/import/preview`, formData);
+  }
+
+  /** TC-59 : Confirmer import CSV menu. */
+  importConfirm(file: File): Observable<ImportConfirmResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.api.upload<ImportConfirmResult>(`${this.base()}/import/confirm`, formData);
   }
 
   // ─── Categories ──────────────────────────────────────────────────────────

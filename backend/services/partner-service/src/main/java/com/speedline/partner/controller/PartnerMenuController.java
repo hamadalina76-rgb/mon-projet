@@ -2,6 +2,7 @@ package com.speedline.partner.controller;
 
 import com.speedline.partner.dto.request.*;
 import com.speedline.partner.dto.response.*;
+import com.speedline.partner.scheduler.PromotionEndingScheduler;
 import com.speedline.partner.service.FileStorageService;
 import com.speedline.partner.service.MenuCategoryService;
 import com.speedline.partner.service.MenuProductService;
@@ -12,16 +13,17 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Map;
 
 /**
@@ -68,6 +70,7 @@ public class PartnerMenuController {
     private final MenuProductService  menuProductService;
     private final ProductStockService productStockService;
     private final FileStorageService fileStorageService;
+    private final PromotionEndingScheduler promotionEndingScheduler;
 
     // ============================================================
     //  MENU COMPLET  (TC-16)
@@ -88,6 +91,60 @@ public class PartnerMenuController {
             return notFound(ex.getMessage());
         } catch (Exception ex) {
             log.error("getFullMenu error partnerId={}: {}", partnerId, ex.getMessage(), ex);
+            return serverError(ex.getMessage());
+        }
+    }
+
+    /**
+     * GET /partners/{partnerId}/menu/export/csv
+     * TC-57 : Exporte le menu en CSV (id, name, category, price, isAvailable, stock, description).
+     */
+    @Operation(summary = "Exporter le menu en CSV")
+    @GetMapping(value = "/export/csv", produces = "text/csv")
+    public ResponseEntity<?> exportMenuCsv(@PathVariable Long partnerId) {
+        try {
+            byte[] csv = menuProductService.exportMenuCsv(partnerId);
+            String filename = "menu-export-" + LocalDate.now() + ".csv";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("text/csv"));
+            headers.setContentDispositionFormData("attachment", filename);
+            return ResponseEntity.ok().headers(headers).body(csv);
+        } catch (Exception ex) {
+            log.error("exportMenuCsv error: {}", ex.getMessage(), ex);
+            return serverError(ex.getMessage());
+        }
+    }
+
+    /**
+     * POST /partners/{partnerId}/menu/import/preview
+     * TC-58 : Preview des modifications avant import CSV.
+     */
+    @Operation(summary = "Preview import CSV menu")
+    @PostMapping(value = "/import/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> importPreview(
+            @PathVariable Long partnerId,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            return ResponseEntity.ok(menuProductService.importPreview(partnerId, file));
+        } catch (Exception ex) {
+            log.error("importPreview error: {}", ex.getMessage(), ex);
+            return serverError(ex.getMessage());
+        }
+    }
+
+    /**
+     * POST /partners/{partnerId}/menu/import/confirm
+     * TC-59 : Confirme l'import CSV, applique les mises à jour, retourne rapport d'erreurs.
+     */
+    @Operation(summary = "Confirmer import CSV menu")
+    @PostMapping(value = "/import/confirm", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> importConfirm(
+            @PathVariable Long partnerId,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            return ResponseEntity.ok(menuProductService.importConfirm(partnerId, file));
+        } catch (Exception ex) {
+            log.error("importConfirm error: {}", ex.getMessage(), ex);
             return serverError(ex.getMessage());
         }
     }
@@ -331,6 +388,22 @@ public class PartnerMenuController {
     }
 
     /**
+     * POST /partners/{partnerId}/menu/products/stock/restore-all
+     * Remet en stock tous les produits épuisés (quantity = 1 ou lowStockThreshold).
+     */
+    @Operation(summary = "Tout remettre en stock")
+    @PostMapping("/products/stock/restore-all")
+    public ResponseEntity<?> restoreAllOutOfStock(@PathVariable Long partnerId) {
+        try {
+            int restored = productStockService.restoreAllOutOfStock(partnerId);
+            return ResponseEntity.ok(Map.of("restored", restored));
+        } catch (Exception ex) {
+            log.error("restoreAllOutOfStock error: {}", ex.getMessage(), ex);
+            return serverError(ex.getMessage());
+        }
+    }
+
+    /**
      * POST /partners/{partnerId}/menu/products/stock/bulk
      * Mise à jour stock en masse (CSV: productId,quantity).
      */
@@ -520,6 +593,49 @@ public class PartnerMenuController {
             return notFound(ex.getMessage());
         } catch (Exception ex) {
             log.error("reorderProducts error: {}", ex.getMessage(), ex);
+            return serverError(ex.getMessage());
+        }
+    }
+
+    /**
+     * PATCH /partners/{partnerId}/menu/products/promotions
+     * Définit ou supprime le label et la date de fin de promotion pour une liste de produits.
+     */
+    @Operation(summary = "Définir les promotions sur des produits")
+    @PatchMapping("/products/promotions")
+    public ResponseEntity<?> setPromotion(
+            @PathVariable Long partnerId,
+            @Valid @RequestBody SetPromotionRequest request) {
+        try {
+            List<ProductResponse> updated = menuProductService.setPromotion(
+                    partnerId,
+                    request.getProductIds(),
+                    request.getPromotionLabel(),
+                    request.getPromotionEndDate(),
+                    request.getDiscountPercentage());
+            return ResponseEntity.ok(updated);
+        } catch (Exception ex) {
+            log.error("setPromotion error: {}", ex.getMessage(), ex);
+            return serverError(ex.getMessage());
+        }
+    }
+
+    /**
+     * POST /partners/{partnerId}/menu/trigger-promotion-ending-check
+     * Déclenche manuellement la vérification « promotion se termine dans 3 j / demain » pour ce partenaire.
+     * Utile pour tester sans attendre le cron 8h. Envoie les événements vers notification-service.
+     */
+    @Operation(summary = "Déclencher la vérification fin de promotion (test)")
+    @PostMapping("/trigger-promotion-ending-check")
+    public ResponseEntity<?> triggerPromotionEndingCheck(@PathVariable Long partnerId) {
+        try {
+            int count = promotionEndingScheduler.runNowForPartner(partnerId);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("message", count > 0 ? "Events sent for " + count + " product(s)." : "No products with promotion ending in 1 or 3 days.");
+            body.put("eventsSent", count);
+            return ResponseEntity.ok(body);
+        } catch (Exception ex) {
+            log.error("triggerPromotionEndingCheck error: {}", ex.getMessage(), ex);
             return serverError(ex.getMessage());
         }
     }

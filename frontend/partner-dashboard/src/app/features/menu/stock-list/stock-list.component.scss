@@ -76,6 +76,50 @@
   &.is-error { background: #fff8e1; border-color: #ffe082; color: #e65100; }
 }
 
+// ── Alertes stock ────────────────────────────────────────────────────────────
+
+.alertes-section {
+  margin-bottom: 1.25rem;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 10px;
+  overflow: hidden;
+
+  .alertes-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #e65100;
+
+    .expand-icon { margin-left: auto; }
+    .muted { font-weight: 400; color: #92400e; }
+  }
+
+  .alertes-list {
+    margin: 0;
+    padding: 0 1rem 1rem;
+    list-style: none;
+    font-size: 0.85rem;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.35rem 0;
+      flex-wrap: wrap;
+    }
+    .alertes-name { font-weight: 500; color: $text-primary; }
+  }
+}
+
 // ── Stats Grid ─────────────────────────────────────────────────────────────────
 
 .stats-grid {
@@ -187,6 +231,41 @@
   .product-name { font-weight: 600; color: $text-primary; }
   .muted        { color: $text-secondary; font-size: 0.82rem; }
   .actions-cell { width: 48px; text-align: right; }
+
+  .photo-cell {
+    width: 56px;
+    padding: 0.35rem 0.5rem !important;
+    vertical-align: middle;
+  }
+  .product-thumb {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+  .no-photo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: #f1f5f9;
+    border-radius: 8px;
+    color: $text-secondary;
+    mat-icon { font-size: 20px; width: 20px; height: 20px; }
+  }
+  .qty-cell {
+    cursor: pointer;
+    min-width: 80px;
+  }
+  .inline-qty-input {
+    width: 64px;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid $gray-300;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
 }
 
 .chip {

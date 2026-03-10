@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -27,8 +28,14 @@ public class ProductResponse {
     /** URL de l'image principale. */
     private String imageUrl;
 
-    /** Prix de base du produit. */
+    /** Prix de base ou prix promo (après réduction). */
     private BigDecimal price;
+
+    /** Prix avant réduction (affiché barré si discountPercentage > 0). */
+    private BigDecimal originalPrice;
+
+    /** Pourcentage de réduction (ex. 20 pour -20%). */
+    private BigDecimal discountPercentage;
 
     /** TC-13 : false → produit non commandable côté client. */
     private Boolean isAvailable;
@@ -55,4 +62,10 @@ public class ProductResponse {
 
     /** Optionnel : IN_STOCK, LOW_STOCK, OUT_OF_STOCK (enrichi depuis ProductStock). */
     private String stockStatus;
+
+    /** Label promo affiché en badge (ex. "-20%", "Nouveau"). */
+    private String promotionLabel;
+
+    /** Date de fin de la promotion. */
+    private LocalDate promotionEndDate;
 }

@@ -11,6 +11,14 @@
       <p class="subtitle">{{ 'MENU.STOCK.SUBTITLE' | translate }}</p>
     </div>
     <div class="header-actions">
+      <button mat-stroked-button (click)="restoreAllOutOfStock()" [disabled]="restoringAll() || outOfStockCount() === 0" type="button">
+        @if (restoringAll()) {
+          <mat-icon class="spin">sync</mat-icon>
+        } @else {
+          <mat-icon>restore</mat-icon>
+        }
+        {{ 'MENU.STOCK.RESTORE_ALL' | translate }}
+      </button>
       <button mat-stroked-button (click)="downloadTemplate()" type="button">
         <mat-icon>download</mat-icon>
         {{ 'MENU.STOCK.DOWNLOAD_TEMPLATE' | translate }}
@@ -42,6 +50,28 @@
         }
       </span>
       <button mat-icon-button (click)="dismissBulkResult()"><mat-icon>close</mat-icon></button>
+    </div>
+  }
+
+  <!-- Alertes stock (produits sous le seuil) -->
+  @if (lowStockItems().length > 0) {
+    <div class="alertes-section">
+      <button type="button" class="alertes-header" (click)="alertesExpanded.set(!alertesExpanded())">
+        <mat-icon>warning_amber</mat-icon>
+        <span>{{ 'MENU.STOCK.ALERTES_TITLE' | translate }}</span>
+        <span class="muted">({{ lowStockItems().length }})</span>
+        <mat-icon class="expand-icon">{{ alertesExpanded() ? 'expand_less' : 'expand_more' }}</mat-icon>
+      </button>
+      @if (alertesExpanded()) {
+        <ul class="alertes-list">
+          @for (item of lowStockItems(); track item.productId) {
+            <li>
+              <span class="alertes-name">{{ item.productName }}</span>
+              <span class="muted">{{ 'MENU.STOCK.QUANTITY' | translate }}: {{ item.quantity }}, {{ 'MENU.STOCK.THRESHOLD' | translate }}: {{ item.lowStockThreshold }}</span>
+            </li>
+          }
+        </ul>
+      }
     </div>
   }
 
@@ -113,6 +143,17 @@
       <div class="table-wrap">
         <table mat-table [dataSource]="dataSource" class="stock-table">
 
+          <ng-container matColumnDef="photo">
+            <th mat-header-cell *matHeaderCellDef>{{ 'MENU.STOCK.PHOTO' | translate }}</th>
+            <td mat-cell *matCellDef="let row" class="photo-cell">
+              @if (row.productImageUrl) {
+                <img [src]="row.productImageUrl" [alt]="row.productName" class="product-thumb" />
+              } @else {
+                <span class="no-photo"><mat-icon>image_not_supported</mat-icon></span>
+              }
+            </td>
+          </ng-container>
+
           <ng-container matColumnDef="productName">
             <th mat-header-cell *matHeaderCellDef>{{ 'MENU.STOCK.PRODUCT' | translate }}</th>
             <td mat-cell *matCellDef="let row"><span class="product-name">{{ row.productName }}</span></td>
@@ -131,9 +172,27 @@
 
           <ng-container matColumnDef="quantity">
             <th mat-header-cell *matHeaderCellDef>{{ 'MENU.STOCK.QUANTITY' | translate }}</th>
-            <td mat-cell *matCellDef="let row">
-              <span class="qty qty-{{ row.stockStatus }}">{{ row.quantity }}</span>
+            <td mat-cell *matCellDef="let row" (click)="!isEditingQuantity(row) && startInlineQuantityEdit(row)" class="qty-cell">
+              @if (isEditingQuantity(row)) {
+                <input
+                  #qtyInput
+                  type="number"
+                  min="0"
+                  [value]="row.quantity"
+                  (keydown.enter)="qtyInput.blur()"
+                  (keydown.escape)="cancelInlineQuantityEdit(); qtyInput.blur()"
+                  (blur)="saveInlineQuantity(row, qtyInput.value)"
+                  (click)="$event.stopPropagation()"
+                  class="inline-qty-input" />
+              } @else {
+                <span class="qty qty-{{ row.stockStatus }}">{{ row.quantity }}</span>
+              }
             </td>
+          </ng-container>
+
+          <ng-container matColumnDef="lowStockThreshold">
+            <th mat-header-cell *matHeaderCellDef>{{ 'MENU.STOCK.THRESHOLD' | translate }}</th>
+            <td mat-cell *matCellDef="let row" class="muted">{{ row.lowStockThreshold ?? 0 }}</td>
           </ng-container>
 
           <ng-container matColumnDef="stockStatus">
@@ -152,6 +211,18 @@
               <span class="avail" [class.yes]="row.isAvailable">
                 <mat-icon>{{ row.isAvailable ? 'check' : 'close' }}</mat-icon>
               </span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="tracking">
+            <th mat-header-cell *matHeaderCellDef>{{ 'MENU.STOCK.TRACKING' | translate }}</th>
+            <td mat-cell *matCellDef="let row">
+              <mat-slide-toggle
+                [checked]="row.isTrackingEnabled"
+                (change)="toggleTracking(row)"
+                color="primary"
+                (click)="$event.stopPropagation()">
+              </mat-slide-toggle>
             </td>
           </ng-container>
 

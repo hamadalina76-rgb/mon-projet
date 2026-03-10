@@ -1,4 +1,4 @@
-﻿import {
+import {
   Component,
   OnInit,
   OnDestroy,
@@ -78,6 +78,14 @@ export class StockListComponent implements OnInit, OnDestroy {
   lowStockCount   = signal(0);
   outOfStockCount = signal(0);
 
+  /** Products below threshold (for "Alertes stock" section). */
+  lowStockItems = signal<ProductStockDTO[]>([]);
+  alertesExpanded = signal(true);
+
+  /** Inline quantity edit: productId when a cell is in edit mode. */
+  editingQuantityProductId = signal<number | null>(null);
+  restoringAll = signal(false);
+
   // Server-side pagination state
   totalItems = signal(0);
   pageIndex  = signal(0);
@@ -88,8 +96,8 @@ export class StockListComponent implements OnInit, OnDestroy {
   hasActiveFilters = computed(() => !!this.searchQuery() || !!this.statusFilter());
 
   displayedColumns = [
-    'productName', 'categoryName', 'quantity', 'stockStatus',
-    'isAvailable', 'updatedAt', 'actions',
+    'photo', 'productName', 'categoryName', 'quantity', 'lowStockThreshold', 'stockStatus',
+    'isAvailable', 'tracking', 'updatedAt', 'actions',
   ];
   dataSource = new MatTableDataSource<ProductStockDTO>([]);
 
@@ -109,6 +117,7 @@ export class StockListComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadStats();
     this.loadFiltered();
+    this.loadLowStockAlertes();
     this.searchSubject.pipe(
       debounceTime(400),
       distinctUntilChanged(),
@@ -134,6 +143,19 @@ export class StockListComponent implements OnInit, OnDestroy {
       },
       error: () => {},
     });
+  }
+
+  loadLowStockAlertes(): void {
+    this.stockService.getLowStock().subscribe({
+      next: (list) => this.lowStockItems.set(list),
+      error: () => {},
+    });
+  }
+
+  private refreshAfterStockChange(): void {
+    this.loadStats();
+    this.loadFiltered();
+    this.loadLowStockAlertes();
   }
 
   loadFiltered(): void {
@@ -196,6 +218,95 @@ export class StockListComponent implements OnInit, OnDestroy {
     this.bulkResult.set(null);
   }
 
+  startInlineQuantityEdit(row: ProductStockDTO): void {
+    this.editingQuantityProductId.set(row.productId);
+  }
+
+  isEditingQuantity(row: ProductStockDTO): boolean {
+    return this.editingQuantityProductId() === row.productId;
+  }
+
+  saveInlineQuantity(row: ProductStockDTO, newQty: string | number): void {
+    if (this.editingQuantityProductId() !== row.productId) return; // cancelled (e.g. Escape)
+    const qty = Math.max(0, Math.floor(Number(newQty)));
+    this.editingQuantityProductId.set(null);
+    this.stockService.updateStock(row.productId, { quantity: qty }).subscribe({
+      next: (updated) => {
+        const idx = this.dataSource.data.findIndex(d => d.productId === row.productId);
+        if (idx >= 0) {
+          this.dataSource.data = this.dataSource.data.slice();
+          this.dataSource.data[idx] = updated;
+        }
+        this.refreshAfterStockChange();
+        this.snackBar.open(
+          this.translate.instant('MENU.STOCK.SAVE_SUCCESS'),
+          undefined,
+          { duration: 2500 },
+        );
+      },
+      error: () => {
+        this.snackBar.open(
+          this.translate.instant('MENU.STOCK.SAVE_ERROR'),
+          undefined,
+          { duration: 3000 },
+        );
+      },
+    });
+  }
+
+  cancelInlineQuantityEdit(): void {
+    this.editingQuantityProductId.set(null);
+  }
+
+  toggleTracking(row: ProductStockDTO): void {
+    const next = !row.isTrackingEnabled;
+    this.stockService.updateStock(row.productId, { isTrackingEnabled: next }).subscribe({
+      next: (updated) => {
+        const idx = this.dataSource.data.findIndex(d => d.productId === row.productId);
+        if (idx >= 0) {
+          this.dataSource.data = this.dataSource.data.slice();
+          this.dataSource.data[idx] = updated;
+        }
+        this.refreshAfterStockChange();
+        this.snackBar.open(
+          this.translate.instant('MENU.STOCK.SAVE_SUCCESS'),
+          undefined,
+          { duration: 2500 },
+        );
+      },
+      error: () => {
+        this.snackBar.open(
+          this.translate.instant('MENU.STOCK.SAVE_ERROR'),
+          undefined,
+          { duration: 3000 },
+        );
+      },
+    });
+  }
+
+  restoreAllOutOfStock(): void {
+    this.restoringAll.set(true);
+    this.stockService.restoreAllOutOfStock().subscribe({
+      next: (res) => {
+        this.restoringAll.set(false);
+        this.refreshAfterStockChange();
+        this.snackBar.open(
+          this.translate.instant('MENU.STOCK.RESTORE_ALL_SUCCESS', { count: res.restored }),
+          undefined,
+          { duration: 3000 },
+        );
+      },
+      error: () => {
+        this.restoringAll.set(false);
+        this.snackBar.open(
+          this.translate.instant('MENU.STOCK.RESTORE_ALL_ERROR'),
+          undefined,
+          { duration: 3000 },
+        );
+      },
+    });
+  }
+
   openEdit(row: ProductStockDTO): void {
     this.editingProduct.set(row);
     this.editProductId = row.productId;
@@ -225,8 +336,7 @@ export class StockListComponent implements OnInit, OnDestroy {
       next: () => {
         this.saving.set(false);
         this.closeEdit();
-        this.loadStats();
-        this.loadFiltered();
+        this.refreshAfterStockChange();
         this.snackBar.open(
           this.translate.instant('MENU.STOCK.SAVE_SUCCESS'),
           undefined,
@@ -292,8 +402,7 @@ export class StockListComponent implements OnInit, OnDestroy {
       next: (result) => {
         this.bulkResult.set(result);
         this.bulkLoading.set(false);
-        this.loadStats();
-        this.loadFiltered();
+        this.refreshAfterStockChange();
         input.value = '';
         this.snackBar.open(
           this.translate.instant('MENU.STOCK.BULK_SUCCESS'),

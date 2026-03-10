@@ -291,6 +291,10 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
                 .optionGroups(optionGroups)
                 .createdAt(p.getCreatedAt())
                 .updatedAt(p.getUpdatedAt())
+                .promotionLabel(p.getPromotionLabel())
+                .promotionEndDate(p.getPromotionEndDate())
+                .originalPrice(p.getOriginalPrice())
+                .discountPercentage(p.getDiscountPercentage())
                 .build();
     }
 

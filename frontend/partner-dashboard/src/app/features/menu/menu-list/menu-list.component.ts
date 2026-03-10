@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal, computed, ViewChild, ElementRef } fr
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,6 +16,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatTableModule } from '@angular/material/table';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { LoadingSpinnerComponent } from '@shared/components/loading-spinner/loading-spinner.component';
@@ -29,6 +30,7 @@ import {
   MenuCategory, Product, OptionGroup, OptionType,
   CreateCategoryRequest, UpdateCategoryRequest,
   CreateOptionGroupRequest, CreateOptionRequest,
+  ImportPreviewResponse, ImportConfirmResult,
 } from '../models/menu.models';
 
 @Component({
@@ -38,6 +40,7 @@ import {
     CommonModule,
     RouterLink,
     ReactiveFormsModule,
+    FormsModule,
     DragDropModule,
     MatCardModule,
     MatButtonModule,
@@ -51,6 +54,7 @@ import {
     MatExpansionModule,
     MatTooltipModule,
     MatChipsModule,
+    MatTableModule,
     TranslateModule,
     CategoryListComponent,
     ProductCardComponent,
@@ -114,7 +118,9 @@ export class MenuListComponent implements OnInit {
   searchQuery = signal('');
   statusFilter = signal<string>('all');
   currentPage = signal(0);
-  pageSize = signal(20);
+  /** Taille de page (pas de valeur fixe 200). */
+  pageSize = signal(12);
+  readonly pageSizeOptions = [10, 12, 20, 50];
   totalElements = signal(0);
   totalPages = signal(0);
   productsLoading = signal(false);
@@ -128,8 +134,8 @@ export class MenuListComponent implements OnInit {
     Math.min((this.currentPage() + 1) * this.pageSize(), this.totalElements())
   );
 
-  /** Toggle vue grille / liste */
-  viewMode = signal<'grid' | 'list'>('grid');
+  /** Toggle vue grille / tableau (vue liste supprimée) */
+  viewMode = signal<'grid' | 'table'>('grid');
 
   /** Drag-drop : réordonnancement possible uniquement sur la page courante (une seule page). */
   onProductsDrop(event: CdkDragDrop<Product[]>): void {
@@ -166,6 +172,25 @@ export class MenuListComponent implements OnInit {
 
   addOptionForms = signal<{ [groupId: number]: FormGroup }>({});
 
+  // ─── Promotions dialog ───────────────────────────────────────────────────
+  promotionDialogOpen = signal(false);
+  promotionProducts = signal<Product[]>([]);
+  promotionProductsLoading = signal(false);
+  promotionSelectedIds = signal<number[]>([]);
+  promotionLabelValue = '';
+  promotionEndDateValue = '';
+  promotionDiscountValue = '';
+  promotionSaving = signal(false);
+
+  // ─── Import menu CSV (TC-58, TC-59) ───────────────────────────────────────
+  importDialogOpen = signal(false);
+  importStep = signal<'preview' | 'result'>('preview');
+  importFile = signal<File | null>(null);
+  importPreviewResult = signal<ImportPreviewResponse | null>(null);
+  importConfirmResult = signal<ImportConfirmResult | null>(null);
+  importLoading = signal(false);
+  importConfirming = signal(false);
+
   // ─── Lifecycle ────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
@@ -187,6 +212,231 @@ export class MenuListComponent implements OnInit {
 
   navigateToNewProduct(): void {
     this.router.navigate(['products/new'], { relativeTo: this.route });
+  }
+
+  exportMenuCsv(): void {
+    this.menuService.exportMenuCsv().subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `menu-export-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.snackBar.open(
+          this.translate.instant('MENU.EXPORT_MENU_CSV_SUCCESS'),
+          undefined,
+          { duration: 2500 },
+        );
+      },
+      error: () => {
+        this.snackBar.open(
+          this.translate.instant('MENU.EXPORT_MENU_CSV_ERROR'),
+          undefined,
+          { duration: 3000 },
+        );
+      },
+    });
+  }
+
+  openPromotionsDialog(): void {
+    this.promotionDialogOpen.set(true);
+    this.promotionSelectedIds.set([]);
+    this.promotionLabelValue = '';
+    this.promotionEndDateValue = '';
+    this.promotionDiscountValue = '';
+    this.loadPromotionProducts();
+  }
+
+  closePromotionsDialog(): void {
+    this.promotionDialogOpen.set(false);
+  }
+
+  loadPromotionProducts(): void {
+    this.promotionProductsLoading.set(true);
+    this.productService.getProductsPage({
+      page: 0,
+      size: 200,
+      status: 'all',
+    }).subscribe({
+      next: (res) => {
+        this.promotionProducts.set(res.content);
+        this.promotionProductsLoading.set(false);
+      },
+      error: () => this.promotionProductsLoading.set(false),
+    });
+  }
+
+  isPromotionProductSelected(id: number): boolean {
+    return this.promotionSelectedIds().includes(id);
+  }
+
+  getFirstSelectedPromotionProduct(): Product | null {
+    const ids = this.promotionSelectedIds();
+    if (ids.length !== 1) return null;
+    return this.promotionProducts().find(p => p.id === ids[0]) ?? null;
+  }
+
+  togglePromotionProduct(id: number): void {
+    const current = this.promotionSelectedIds();
+    let next: number[];
+    if (current.includes(id)) {
+      next = current.filter(x => x !== id);
+    } else {
+      next = [...current, id];
+    }
+    this.promotionSelectedIds.set(next);
+    // Prefill form when exactly one product is selected so user sees current promotion
+    if (next.length === 1) {
+      const product = this.promotionProducts().find(p => p.id === next[0]);
+      if (product) {
+        this.promotionLabelValue = product.promotionLabel ?? '';
+        this.promotionEndDateValue = product.promotionEndDate ?? '';
+        this.promotionDiscountValue = product.discountPercentage != null ? String(product.discountPercentage) : '';
+      }
+    } else if (next.length === 0) {
+      this.promotionLabelValue = '';
+      this.promotionEndDateValue = '';
+      this.promotionDiscountValue = '';
+    }
+  }
+
+  applyPromotions(): void {
+    const ids = this.promotionSelectedIds();
+    if (ids.length === 0) return;
+    this.promotionSaving.set(true);
+    const label = this.promotionLabelValue?.trim() || null;
+    const endDate = this.promotionEndDateValue?.trim() || null;
+    const discountRaw = (this.promotionDiscountValue != null ? String(this.promotionDiscountValue) : '').trim();
+    const discount = discountRaw ? Math.min(100, Math.max(0, parseInt(discountRaw, 10) || 0)) : null;
+    this.productService.setPromotion(ids, label, endDate, discount).subscribe({
+      next: () => {
+        this.promotionSaving.set(false);
+        this.loadProductsPage();
+        this.closePromotionsDialog();
+        this.snackBar.open(
+          this.translate.instant('MENU.PROMOTIONS_DIALOG.SUCCESS'),
+          undefined,
+          { duration: 3000 },
+        );
+      },
+      error: () => {
+        this.promotionSaving.set(false);
+        this.snackBar.open(
+          this.translate.instant('MENU.PROMOTIONS_DIALOG.ERROR'),
+          undefined,
+          { duration: 3000 },
+        );
+      },
+    });
+  }
+
+  clearPromotions(): void {
+    const ids = this.promotionSelectedIds();
+    if (ids.length === 0) return;
+    this.promotionSaving.set(true);
+    this.productService.setPromotion(ids, null, null, null).subscribe({
+      next: () => {
+        this.promotionSaving.set(false);
+        this.loadPromotionProducts();
+        this.loadProductsPage();
+        this.snackBar.open(
+          this.translate.instant('MENU.PROMOTIONS_DIALOG.CLEARED'),
+          undefined,
+          { duration: 3000 },
+        );
+      },
+      error: () => {
+        this.promotionSaving.set(false);
+        this.snackBar.open(
+          this.translate.instant('MENU.PROMOTIONS_DIALOG.ERROR'),
+          undefined,
+          { duration: 3000 },
+        );
+      },
+    });
+  }
+
+  onImportFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.importFile.set(file);
+    this.importLoading.set(true);
+    this.importPreviewResult.set(null);
+    this.importConfirmResult.set(null);
+    this.importStep.set('preview');
+    this.importDialogOpen.set(true);
+    this.menuService.importPreview(file).subscribe({
+      next: (res) => {
+        this.importPreviewResult.set(res);
+        this.importLoading.set(false);
+      },
+      error: () => {
+        this.importLoading.set(false);
+        this.snackBar.open(
+          this.translate.instant('MENU.IMPORT_DIALOG.PREVIEW_ERROR'),
+          undefined,
+          { duration: 3000 },
+        );
+      },
+    });
+    input.value = '';
+  }
+
+  confirmImport(): void {
+    const file = this.importFile();
+    if (!file) return;
+    this.importConfirming.set(true);
+    this.menuService.importConfirm(file).subscribe({
+      next: (res) => {
+        this.importConfirmResult.set(res);
+        this.importStep.set('result');
+        this.importConfirming.set(false);
+        this.loadProductsPage();
+        this.snackBar.open(
+          this.translate.instant('MENU.IMPORT_DIALOG.CONFIRM_SUCCESS'),
+          undefined,
+          { duration: 3000 },
+        );
+      },
+      error: () => {
+        this.importConfirming.set(false);
+        this.snackBar.open(
+          this.translate.instant('MENU.IMPORT_DIALOG.CONFIRM_ERROR'),
+          undefined,
+          { duration: 3000 },
+        );
+      },
+    });
+  }
+
+  closeImportDialog(): void {
+    this.importDialogOpen.set(false);
+    this.importFile.set(null);
+    this.importPreviewResult.set(null);
+    this.importConfirmResult.set(null);
+  }
+
+  getImportResultParams(result: ImportConfirmResult): { processed: number; success: number } {
+    return { processed: result.processed, success: result.success };
+  }
+
+  downloadImportErrorReport(): void {
+    const result = this.importConfirmResult();
+    if (!result?.errors?.length) return;
+    const headers = ['row', 'productId', 'message'];
+    const rows = result.errors.map(e =>
+      [e.row, e.productId ?? '', `"${(e.message ?? '').replace(/"/g, '""')}"`].join(',')
+    );
+    const csv = ['\uFEFF' + headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `import-errors-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   // ─── Categories ──────────────────────────────────────────────────────────
@@ -416,6 +666,16 @@ export class MenuListComponent implements OnInit {
   goToPage(page: number): void {
     this.currentPage.set(page);
     this.loadProductsPage();
+  }
+
+  onPageSizeChange(size: number): void {
+    this.pageSize.set(size);
+    this.currentPage.set(0);
+    this.loadProductsPage();
+  }
+
+  getCategoryName(categoryId: number): string {
+    return this.categories().find(c => c.id === categoryId)?.name ?? '—';
   }
 
   /** Charge une liste de produits pour le sélecteur de l’onglet Options. */

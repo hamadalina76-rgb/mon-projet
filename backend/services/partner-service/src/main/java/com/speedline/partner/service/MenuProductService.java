@@ -110,6 +110,33 @@ public interface MenuProductService {
     @Transactional
     List<ProductResponse> reorderProducts(Long partnerId, ReorderRequest request);
 
+    /**
+     * Définit ou supprime le label et la date de fin de promotion pour une liste de produits.
+     * Seuls les produits appartenant au partenaire sont mis à jour.
+     *
+     * @return liste des produits mis à jour
+     */
+    @Transactional
+    List<ProductResponse> setPromotion(Long partnerId, List<Long> productIds, String promotionLabel, java.time.LocalDate promotionEndDate, Integer discountPercentage);
+
+    /**
+     * Exporte le menu en CSV (id, name, category, price, isAvailable, stock, description). TC-57.
+     */
+    @Transactional(readOnly = true)
+    byte[] exportMenuCsv(Long partnerId);
+
+    /**
+     * TC-58 : Preview import CSV menu — parse le fichier et retourne les modifications détectées.
+     */
+    @Transactional(readOnly = true)
+    com.speedline.partner.dto.response.ImportPreviewResponse importPreview(Long partnerId, org.springframework.web.multipart.MultipartFile file);
+
+    /**
+     * TC-59 : Confirm import CSV menu — applique les mises à jour, continue en cas d'erreur ligne, retourne rapport.
+     */
+    @Transactional
+    com.speedline.partner.dto.response.ImportConfirmResult importConfirm(Long partnerId, org.springframework.web.multipart.MultipartFile file);
+
     // ===================== OPTION GROUPS =====================
 
     /**

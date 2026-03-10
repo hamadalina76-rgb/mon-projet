@@ -41,4 +41,10 @@ public interface ProductStockService {
      * Mise à jour en masse via CSV (colonnes: productId,quantity).
      */
     BulkStockUpdateResult bulkUpdate(Long partnerId, MultipartFile file);
+
+    /**
+     * Remet en stock tous les produits épuisés du partenaire (quantity = 1 ou lowStockThreshold si > 0).
+     * @return nombre de produits restaurés
+     */
+    int restoreAllOutOfStock(Long partnerId);
 }

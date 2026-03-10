@@ -15,6 +15,7 @@ public class ProductStockDTO {
 
     private Long productId;
     private String productName;
+    private String productImageUrl;
     private String categoryName;
     private Integer quantity;
     private Integer lowStockThreshold;

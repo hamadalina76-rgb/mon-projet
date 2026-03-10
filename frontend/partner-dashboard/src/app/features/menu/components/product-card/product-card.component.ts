@@ -45,9 +45,25 @@ export class ProductCardComponent {
   nameChange = output<{ productId: number; name: string }>();
 
   // Computed
+  /** Prix affiché : si promo avec réduction, prix actuel (déjà réduit côté backend). */
   priceFormatted = computed(() => {
     const p = this.product();
-    return p?.price != null ? `${p.price.toFixed(2)} MAD` : '0.00 MAD';
+    const price = p?.price != null ? p.price : 0;
+    return `${Number(price).toFixed(2)} DT`;
+  });
+
+  /** Prix original (barré) quand une réduction est active. */
+  originalPriceFormatted = computed(() => {
+    const p = this.product();
+    const orig = p?.originalPrice ?? p?.price;
+    if (orig == null) return null;
+    return `${Number(orig).toFixed(2)} DT`;
+  });
+
+  /** True si on affiche le prix barré + prix promo. */
+  hasDiscountPrice = computed(() => {
+    const p = this.product();
+    return (p?.discountPercentage != null && Number(p.discountPercentage) > 0) && (p?.originalPrice != null || p?.price != null);
   });
 
   isAvailable = computed(() => this.product()?.isAvailable ?? true);
@@ -58,6 +74,20 @@ export class ProductCardComponent {
     const p = this.product();
     const url = p?.imageUrl || (p as any)?.image;
     return url || this.placeholderSvg;
+  });
+
+  /** True when promotionLabel is set and (no end date or end date >= today). */
+  promotionBadgeVisible = computed(() => {
+    const p = this.product();
+    const label = p?.promotionLabel?.trim();
+    if (!label) return false;
+    const end = p?.promotionEndDate;
+    if (!end) return true;
+    try {
+      return new Date(end) >= new Date(new Date().toISOString().slice(0, 10));
+    } catch {
+      return true;
+    }
   });
 
   onImageError(event: Event): void {

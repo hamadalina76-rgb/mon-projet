@@ -18,6 +18,23 @@
           {{ 'MENU.ADD_PRODUCT' | translate }}
         </button>
       }
+      <button mat-stroked-button (click)="exportMenuCsv()" type="button">
+          <mat-icon>download</mat-icon>
+          {{ 'MENU.EXPORT_MENU_CSV' | translate }}
+        </button>
+      <input #importFileInput type="file" accept=".csv" hidden (change)="onImportFileSelected($event)" />
+      <button mat-stroked-button (click)="importFileInput.click()" [disabled]="importLoading()" type="button">
+          @if (importLoading()) {
+            <mat-icon class="spin">sync</mat-icon>
+          } @else {
+            <mat-icon>upload_file</mat-icon>
+          }
+          {{ 'MENU.IMPORT_MENU_CSV' | translate }}
+        </button>
+      <button mat-stroked-button (click)="openPromotionsDialog()" type="button">
+          <mat-icon>local_offer</mat-icon>
+          {{ 'MENU.PROMOTIONS_LABEL' | translate }}
+        </button>
       <button mat-stroked-button routerLink="stock" class="stock-link">
         <mat-icon>inventory_2</mat-icon>
         {{ 'MENU.STOCK.TITLE' | translate }}
@@ -196,8 +213,8 @@
             <button mat-icon-button [class.active]="viewMode() === 'grid'" (click)="viewMode.set('grid')" [matTooltip]="'MENU.LIST.VIEW_GRID' | translate">
               <mat-icon>grid_view</mat-icon>
             </button>
-            <button mat-icon-button [class.active]="viewMode() === 'list'" (click)="viewMode.set('list')" [matTooltip]="'MENU.LIST.VIEW_LIST' | translate">
-              <mat-icon>view_list</mat-icon>
+            <button mat-icon-button [class.active]="viewMode() === 'table'" (click)="viewMode.set('table')" [matTooltip]="'MENU.LIST.VIEW_TABLE' | translate">
+              <mat-icon>table_chart</mat-icon>
             </button>
           </div>
         </div>
@@ -220,11 +237,104 @@
 
         @if (productsLoading()) {
           <app-loading-spinner [message]="'MENU.LIST.LOADING_PRODUCTS' | translate"></app-loading-spinner>
+        } @else if (viewMode() === 'table') {
+          <div class="products-table-wrap">
+            @if (products().length === 0) {
+              <app-empty-state
+                icon="inventory_2"
+                [title]="'MENU.LIST.EMPTY_PRODUCTS_TITLE' | translate"
+                [message]="'MENU.LIST.EMPTY_PRODUCTS_MESSAGE' | translate"
+                [actionLabel]="'MENU.LIST.EMPTY_PRODUCTS_ACTION' | translate"
+                (action)="navigateToNewProduct()">
+              </app-empty-state>
+            } @else {
+              <table mat-table [dataSource]="products()" class="products-mat-table">
+                <ng-container matColumnDef="image">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let p">
+                    <img [src]="p.imageUrl || p.image" alt="" class="table-thumb" onerror="this.style.display='none'" />
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="name">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'MENU.LIST.TABLE_NAME' | translate }}</th>
+                  <td mat-cell *matCellDef="let p">{{ p.name }}</td>
+                </ng-container>
+                <ng-container matColumnDef="category">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'MENU.LIST.TABLE_CATEGORY' | translate }}</th>
+                  <td mat-cell *matCellDef="let p">{{ getCategoryName(p.categoryId) }}</td>
+                </ng-container>
+                <ng-container matColumnDef="price">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'MENU.LIST.TABLE_PRICE' | translate }}</th>
+                  <td mat-cell *matCellDef="let p">
+                    @if (p.originalPrice != null && p.discountPercentage != null) {
+                      <span class="price-old">{{ p.originalPrice }} DT</span> {{ p.price }} DT
+                    } @else {
+                      {{ p.price }} DT
+                    }
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="promo">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'MENU.LIST.TABLE_PROMO' | translate }}</th>
+                  <td mat-cell *matCellDef="let p">
+                    @if (p.promotionLabel) {
+                      {{ p.promotionLabel }}
+                      @if (p.promotionEndDate) { ({{ p.promotionEndDate | date:'d/M/yy' }}) }
+                    } @else { — }
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="stock">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'MENU.LIST.TABLE_STOCK' | translate }}</th>
+                  <td mat-cell *matCellDef="let p">
+                    @if (p.stockStatus === 'LOW_STOCK') {
+                      <span class="badge-low">{{ 'MENU.PRODUCT_CARD.BADGE_LOW_STOCK' | translate }}</span>
+                    } @else if (p.stockStatus === 'OUT_OF_STOCK') {
+                      <span class="badge-out">{{ 'MENU.LIST.STATUS_UNAVAILABLE' | translate }}</span>
+                    } @else { — }
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="available">
+                  <th mat-header-cell *matHeaderCellDef>{{ 'MENU.LIST.TABLE_AVAILABLE' | translate }}</th>
+                  <td mat-cell *matCellDef="let p">
+                    <mat-slide-toggle [checked]="p.isAvailable" (change)="toggleProductAvailability(p.id)" color="primary"></mat-slide-toggle>
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let p">
+                    <button mat-icon-button (click)="editProduct(p.id)" [matTooltip]="'MENU.PRODUCT_CARD.TOOLTIP_EDIT' | translate"><mat-icon>edit</mat-icon></button>
+                    <button mat-icon-button (click)="duplicateProduct(p.id)" [matTooltip]="'MENU.PRODUCT_CARD.TOOLTIP_DUPLICATE' | translate"><mat-icon>content_copy</mat-icon></button>
+                    <button mat-icon-button (click)="deleteProduct(p.id)" [matTooltip]="'MENU.PRODUCT_CARD.TOOLTIP_DELETE' | translate"><mat-icon>delete_outline</mat-icon></button>
+                  </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="['image','name','category','price','promo','stock','available','actions']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['image','name','category','price','promo','stock','available','actions']"></tr>
+              </table>
+            }
+          </div>
+          @if (totalElements() > 0) {
+            <div class="products-pagination">
+              <button mat-stroked-button [disabled]="currentPage() === 0" (click)="goToPage(currentPage() - 1)">
+                <mat-icon>chevron_left</mat-icon>
+              </button>
+              <span class="pagination-info">
+                {{ 'MENU.LIST.PAGE_INFO' | translate:{ from: pageRangeFrom(), to: pageRangeTo(), total: totalElements() } }}
+              </span>
+              <button mat-stroked-button [disabled]="currentPage() >= totalPages() - 1" (click)="goToPage(currentPage() + 1)">
+                <mat-icon>chevron_right</mat-icon>
+              </button>
+              <mat-form-field appearance="outline" class="page-size-select">
+                <mat-select [value]="pageSize()" (selectionChange)="onPageSizeChange($event.value)">
+                  @for (opt of pageSizeOptions; track opt) {
+                    <mat-option [value]="opt">{{ opt }}</mat-option>
+                  }
+                </mat-select>
+                <mat-label>{{ 'MENU.LIST.PAGE_SIZE' | translate }}</mat-label>
+              </mat-form-field>
+            </div>
+          }
         } @else {
           <div
-            class="products-container"
-            [class.products-grid]="viewMode() === 'grid'"
-            [class.products-list]="viewMode() === 'list'"
+            class="products-container products-grid"
             [class.draggable]="totalPages() <= 1 && products().length > 1"
             cdkDropList
             [cdkDropListData]="products()"
@@ -233,7 +343,7 @@
               <div class="product-card-wrapper" cdkDrag [cdkDragDisabled]="totalPages() > 1 || products().length <= 1">
                 <app-product-card
                   [product]="product"
-                  [layout]="viewMode()"
+                  [layout]="'grid'"
                   (edit)="editProduct($event)"
                   (toggleAvailability)="toggleProductAvailability($event)"
                   (duplicate)="duplicateProduct($event)"
@@ -256,7 +366,7 @@
               </div>
             }
           </div>
-          @if (totalPages() > 1) {
+          @if (totalElements() > 0) {
             <div class="products-pagination">
               <button mat-stroked-button [disabled]="currentPage() === 0" (click)="goToPage(currentPage() - 1)">
                 <mat-icon>chevron_left</mat-icon>
@@ -267,6 +377,14 @@
               <button mat-stroked-button [disabled]="currentPage() >= totalPages() - 1" (click)="goToPage(currentPage() + 1)">
                 <mat-icon>chevron_right</mat-icon>
               </button>
+              <mat-form-field appearance="outline" class="page-size-select">
+                <mat-select [value]="pageSize()" (selectionChange)="onPageSizeChange($event.value)">
+                  @for (opt of pageSizeOptions; track opt) {
+                    <mat-option [value]="opt">{{ opt }}</mat-option>
+                  }
+                </mat-select>
+                <mat-label>{{ 'MENU.LIST.PAGE_SIZE' | translate }}</mat-label>
+              </mat-form-field>
             </div>
           }
         }
@@ -388,7 +506,7 @@
                           <mat-icon class="opt-drag">drag_indicator</mat-icon>
                           <span class="opt-name">{{ opt.name }}</span>
                           @if (opt.priceModifier && opt.priceModifier !== 0) {
-                            <span class="opt-price">+{{ opt.priceModifier.toFixed(2) }} MAD</span>
+                            <span class="opt-price">+{{ opt.priceModifier.toFixed(2) }} DT</span>
                           }
                           @if (opt.isDefault) {
                             <span class="opt-default">{{ 'MENU.LIST.OPTIONS.ADD_OPTION_DEFAULT_LABEL' | translate }}</span>
@@ -415,7 +533,7 @@
                         <mat-form-field appearance="outline" class="price-field">
                           <mat-label>{{ 'MENU.LIST.OPTIONS.ADD_OPTION_PRICE_LABEL' | translate }}</mat-label>
                           <input matInput type="number" formControlName="priceModifier" placeholder="0" />
-                          <span matSuffix>MAD</span>
+                          <span matSuffix>DT</span>
                           <mat-hint>{{ 'MENU.LIST.OPTIONS.ADD_OPTION_PRICE_HINT' | translate }}</mat-hint>
                         </mat-form-field>
                         <mat-slide-toggle formControlName="isDefault" color="primary" [matTooltip]="'MENU.LIST.OPTIONS.ADD_OPTION_DEFAULT_TOOLTIP' | translate">
@@ -455,6 +573,185 @@
       </div>
     </mat-tab>
   </mat-tab-group>
+
+  <!-- Dialog Promotions -->
+  @if (promotionDialogOpen()) {
+    <div class="dialog-backdrop" (click)="closePromotionsDialog()">
+      <div class="dialog-panel promotions-dialog" (click)="$event.stopPropagation()">
+        <div class="dialog-header">
+          <div class="dialog-title">
+            <mat-icon>local_offer</mat-icon>
+            <div>
+              <h3>{{ 'MENU.PROMOTIONS_DIALOG.TITLE' | translate }}</h3>
+              <p class="dialog-subtitle">{{ 'MENU.PROMOTIONS_DIALOG.SUBTITLE' | translate }}</p>
+            </div>
+          </div>
+          <button mat-icon-button (click)="closePromotionsDialog()"><mat-icon>close</mat-icon></button>
+        </div>
+        @if (promotionProductsLoading()) {
+          <app-loading-spinner [message]="'MENU.LIST.LOADING_PRODUCTS' | translate"></app-loading-spinner>
+        } @else {
+          <section class="promo-section">
+            <h4 class="promo-section-title">{{ 'MENU.PROMOTIONS_DIALOG.SELECT_PRODUCTS' | translate }}</h4>
+            <div class="promo-product-list">
+              @for (p of promotionProducts(); track p.id) {
+                <label class="promo-product-row">
+                  <input type="checkbox" [checked]="isPromotionProductSelected(p.id)" (change)="togglePromotionProduct(p.id)" />
+                  <span class="promo-product-name">{{ p.name }}</span>
+                  @if (p.promotionLabel || p.discountPercentage != null || p.promotionEndDate) {
+                    <span class="promo-current">
+                      @if (p.promotionLabel) { {{ p.promotionLabel }} }
+                      @if (p.discountPercentage != null && p.discountPercentage > 0) { ({{ p.discountPercentage }}%) }
+                      @if (p.promotionEndDate) {
+                        <span class="promo-end-date">{{ 'MENU.PROMOTIONS_DIALOG.END_DATE' | translate }}: {{ p.promotionEndDate | date:'d/M/yyyy' }}</span>
+                      }
+                    </span>
+                  }
+                </label>
+              }
+            </div>
+          </section>
+          <section class="promo-section">
+            <h4 class="promo-section-title">{{ 'MENU.PROMOTIONS_DIALOG.PROMO_DETAILS' | translate }}</h4>
+            @if (promotionSelectedIds().length === 1) {
+              @if (getFirstSelectedPromotionProduct(); as product) {
+                <p class="promo-current-summary">
+                  {{ 'MENU.PROMOTIONS_DIALOG.CURRENT_FOR' | translate }} « {{ product.name }} » :
+                  @if (product.promotionLabel || product.discountPercentage != null || product.promotionEndDate) {
+                    {{ product.promotionLabel || '' }}
+                    @if (product.discountPercentage != null && product.discountPercentage > 0) { ({{ product.discountPercentage }}%) }
+                    @if (product.promotionEndDate) { — {{ 'MENU.PROMOTIONS_DIALOG.END_DATE' | translate }} {{ product.promotionEndDate | date:'d/M/yyyy' }} }
+                  } @else {
+                    {{ 'MENU.PROMOTIONS_DIALOG.NO_CURRENT_PROMO' | translate }}
+                  }
+                </p>
+              }
+            }
+            <div class="promo-form-grid">
+              <mat-form-field appearance="outline" class="promo-field full">
+                <mat-label>{{ 'MENU.PROMOTIONS_DIALOG.LABEL' | translate }}</mat-label>
+                <mat-icon matPrefix>label</mat-icon>
+                <input matInput [(ngModel)]="promotionLabelValue" [placeholder]="'MENU.PROMOTIONS_DIALOG.LABEL_PLACEHOLDER' | translate" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="promo-field">
+                <mat-label>{{ 'MENU.PROMOTIONS_DIALOG.DISCOUNT_PCT' | translate }}</mat-label>
+                <mat-icon matPrefix>percent</mat-icon>
+                <input matInput type="number" min="0" max="100" [(ngModel)]="promotionDiscountValue" [placeholder]="'MENU.PROMOTIONS_DIALOG.DISCOUNT_PCT_PLACEHOLDER' | translate" />
+                <mat-hint>{{ 'MENU.PROMOTIONS_DIALOG.DISCOUNT_PCT_HINT' | translate }}</mat-hint>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="promo-field">
+                <mat-label>{{ 'MENU.PROMOTIONS_DIALOG.END_DATE' | translate }}</mat-label>
+                <mat-icon matPrefix>event</mat-icon>
+                <input matInput type="date" [(ngModel)]="promotionEndDateValue" />
+              </mat-form-field>
+            </div>
+          </section>
+          <div class="dialog-actions">
+            <button mat-button type="button" (click)="clearPromotions()" [disabled]="promotionSaving() || promotionSelectedIds().length === 0">
+              {{ 'MENU.PROMOTIONS_DIALOG.CLEAR' | translate }}
+            </button>
+            <button mat-button type="button" (click)="closePromotionsDialog()">{{ 'COMMON.CANCEL' | translate }}</button>
+            <button mat-flat-button class="btn-primary" (click)="applyPromotions()" [disabled]="promotionSaving() || promotionSelectedIds().length === 0">
+              @if (promotionSaving()) {
+                <mat-icon class="spin">sync</mat-icon>
+              } @else {
+                <mat-icon>check</mat-icon>
+              }
+              {{ 'MENU.PROMOTIONS_DIALOG.APPLY' | translate }}
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Dialog Import CSV menu (TC-58, TC-59) -->
+  @if (importDialogOpen()) {
+    <div class="dialog-backdrop" (click)="closeImportDialog()">
+      <div class="dialog-panel import-dialog" (click)="$event.stopPropagation()">
+        <div class="dialog-header">
+          <div class="dialog-title">
+            <mat-icon>upload_file</mat-icon>
+            <h3>{{ (importStep() === 'preview' ? 'MENU.IMPORT_DIALOG.TITLE_PREVIEW' : 'MENU.IMPORT_DIALOG.TITLE_RESULT') | translate }}</h3>
+          </div>
+          <button mat-icon-button (click)="closeImportDialog()"><mat-icon>close</mat-icon></button>
+        </div>
+        @if (importLoading()) {
+          <app-loading-spinner [message]="'MENU.IMPORT_DIALOG.LOADING' | translate"></app-loading-spinner>
+        } @else if (importStep() === 'preview') {
+          @if (importPreviewResult(); as preview) {
+            @if (preview.parseErrors.length) {
+              <div class="import-errors">
+                <mat-icon>warning_amber</mat-icon>
+                <span>{{ 'MENU.IMPORT_DIALOG.PARSE_ERRORS' | translate: { count: preview.parseErrors.length } }}</span>
+                <ul>
+                  @for (err of preview.parseErrors; track err.row + err.message) {
+                    <li>Ligne {{ err.row }}: {{ err.message }}</li>
+                  }
+                </ul>
+              </div>
+            }
+            @if (preview.changes.length) {
+              <p class="dialog-hint">{{ 'MENU.IMPORT_DIALOG.CHANGES_DETECTED' | translate: { count: preview.changes.length } }}</p>
+              <div class="import-preview-table-wrap">
+                <table class="import-preview-table">
+                  <thead>
+                    <tr>
+                      <th>{{ 'MENU.IMPORT_DIALOG.COL_PRODUCT' | translate }}</th>
+                      <th>{{ 'MENU.IMPORT_DIALOG.COL_FIELD' | translate }}</th>
+                      <th>{{ 'MENU.IMPORT_DIALOG.COL_OLD' | translate }}</th>
+                      <th>{{ 'MENU.IMPORT_DIALOG.COL_NEW' | translate }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (ch of preview.changes; track ch.productId + ch.field) {
+                      <tr>
+                        <td>{{ ch.productName }}</td>
+                        <td>{{ ch.field }}</td>
+                        <td class="old-val">{{ ch.oldValue }}</td>
+                        <td class="new-val">{{ ch.newValue }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else if (!preview.parseErrors.length) {
+              <p class="dialog-hint">{{ 'MENU.IMPORT_DIALOG.NO_CHANGES' | translate }}</p>
+            }
+            <div class="dialog-actions">
+              <button mat-button type="button" (click)="closeImportDialog()">{{ 'COMMON.CANCEL' | translate }}</button>
+              <button mat-flat-button class="btn-primary" (click)="confirmImport()" [disabled]="importConfirming()">
+                @if (importConfirming()) {
+                  <mat-icon class="spin">sync</mat-icon>
+                } @else {
+                  <mat-icon>check</mat-icon>
+                }
+                {{ 'MENU.IMPORT_DIALOG.CONFIRM_BTN' | translate }}
+              </button>
+            </div>
+          }
+        } @else if (importStep() === 'result') {
+          @if (importConfirmResult(); as result) {
+            <p class="dialog-hint">
+              {{ 'MENU.IMPORT_DIALOG.RESULT' | translate: getImportResultParams(result) }}
+              @if (result.errors.length) {
+                — <strong>{{ result.errors.length }} {{ 'MENU.IMPORT_DIALOG.ERRORS' | translate }}</strong>
+              }
+            </p>
+            @if (result.errors.length) {
+              <button mat-stroked-button (click)="downloadImportErrorReport()" type="button">
+                <mat-icon>download</mat-icon>
+                {{ 'MENU.IMPORT_DIALOG.DOWNLOAD_REPORT' | translate }}
+              </button>
+            }
+            <div class="dialog-actions">
+              <button mat-flat-button class="btn-primary" (click)="closeImportDialog()">{{ 'MENU.CLOSE' | translate }}</button>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
 
   <!-- Dialog confirmation suppression catégorie (TC-35) -->
   <app-confirmation-dialog

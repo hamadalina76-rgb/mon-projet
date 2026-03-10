@@ -1,4 +1,4 @@
-﻿import { Injectable, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from '@core/services/api.service';
@@ -83,5 +83,10 @@ export class StockService {
     const formData = new FormData();
     formData.append('file', file);
     return this.api.upload<BulkStockUpdateResult>(`${this.base()}/stock/bulk`, formData);
+  }
+
+  /** Restore all out-of-stock products to quantity 1 or threshold. */
+  restoreAllOutOfStock(): Observable<{ restored: number }> {
+    return this.api.post<{ restored: number }>(`${this.base()}/stock/restore-all`, {});
   }
 }
