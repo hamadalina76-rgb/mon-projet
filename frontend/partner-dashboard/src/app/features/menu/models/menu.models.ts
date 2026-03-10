@@ -53,6 +53,10 @@ export interface Product {
   imageUrl?: string;
   image?: string;          // alias used by product-card
   price: number;
+  /** Prix avant réduction (affiché barré si discountPercentage > 0). */
+  originalPrice?: number;
+  /** Pourcentage de réduction (ex. 20 pour -20%). */
+  discountPercentage?: number;
   isAvailable: boolean;
   isPopular: boolean;
   preparationTimeMin?: number;
@@ -61,6 +65,8 @@ export interface Product {
   optionGroups: OptionGroup[];
   /** Enrichi par l’API (IN_STOCK, LOW_STOCK, OUT_OF_STOCK). */
   stockStatus?: StockStatus;
+  promotionLabel?: string;
+  promotionEndDate?: string;  // ISO date
   createdAt?: string;
   updatedAt?: string;
 }
@@ -170,6 +176,7 @@ export type StockStatus = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
 export interface ProductStockDTO {
   productId: number;
   productName: string;
+  productImageUrl?: string;
   categoryName?: string;
   quantity: number;
   lowStockThreshold: number;
@@ -180,7 +187,7 @@ export interface ProductStockDTO {
 }
 
 export interface UpdateStockRequest {
-  quantity: number;
+  quantity?: number;
   lowStockThreshold?: number;
   isTrackingEnabled?: boolean;
 }
@@ -195,4 +202,36 @@ export interface BulkStockUpdateResult {
   processed: number;
   success: number;
   errors: BulkStockError[];
+}
+
+// ─── Import menu CSV (TC-58, TC-59) ────────────────────────────────────────
+
+export interface ImportChangeRow {
+  productId: number;
+  productName: string;
+  field: string;
+  oldValue: string;
+  newValue: string;
+}
+
+export interface ImportParseError {
+  row: number;
+  message: string;
+}
+
+export interface ImportPreviewResponse {
+  changes: ImportChangeRow[];
+  parseErrors: ImportParseError[];
+}
+
+export interface ImportConfirmError {
+  row: number;
+  productId?: number;
+  message: string;
+}
+
+export interface ImportConfirmResult {
+  processed: number;
+  success: number;
+  errors: ImportConfirmError[];
 }

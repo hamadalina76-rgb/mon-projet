@@ -1,11 +1,14 @@
 package com.speedline.partner.service.impl;
 
+import com.speedline.partner.domain.MenuCategory;
 import com.speedline.partner.domain.OptionValue;
 import com.speedline.partner.domain.Product;
 import com.speedline.partner.domain.ProductOption;
 import com.speedline.partner.domain.ProductStatus;
 import com.speedline.partner.domain.ProductStock;
 import com.speedline.partner.dto.request.*;
+import com.speedline.partner.dto.response.ImportConfirmResult;
+import com.speedline.partner.dto.response.ImportPreviewResponse;
 import com.speedline.partner.dto.response.OptionGroupResponse;
 import com.speedline.partner.dto.response.OptionResponse;
 import com.speedline.partner.dto.response.ProductResponse;
@@ -20,10 +23,18 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.math.BigDecimal;
-import java.util.HashMap;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -280,6 +291,314 @@ public class MenuProductServiceImpl implements MenuProductService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @CacheEvict(value = "menus:full", key = "#partnerId")
+    public List<ProductResponse> setPromotion(Long partnerId, List<Long> productIds,
+                                              String promotionLabel, java.time.LocalDate promotionEndDate, Integer discountPercentage) {
+        if (productIds == null || productIds.isEmpty()) {
+            return List.of();
+        }
+        List<Product> products = productRepository.findAllById(productIds).stream()
+                .filter(p -> partnerId.equals(p.getPartnerId()))
+                .toList();
+        for (Product p : products) {
+            p.setPromotionLabel(promotionLabel != null && !promotionLabel.isBlank() ? promotionLabel.trim() : null);
+            p.setPromotionEndDate(promotionEndDate);
+            if (discountPercentage == null || discountPercentage <= 0) {
+                if (p.getOriginalPrice() != null) {
+                    p.setPrice(p.getOriginalPrice());
+                    p.setOriginalPrice(null);
+                    p.setDiscountPercentage(null);
+                }
+            } else {
+                BigDecimal basePrice = p.getOriginalPrice() != null ? p.getOriginalPrice() : p.getPrice();
+                if (basePrice != null && basePrice.compareTo(BigDecimal.ZERO) > 0) {
+                    p.setOriginalPrice(basePrice);
+                    BigDecimal pct = BigDecimal.valueOf(discountPercentage).min(new BigDecimal("100"));
+                    BigDecimal reduced = basePrice.multiply(BigDecimal.ONE.subtract(pct.divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP)));
+                    p.setPrice(reduced);
+                    p.setDiscountPercentage(pct);
+                }
+            }
+            productRepository.save(p);
+        }
+        return products.stream().map(this::toProductResponse).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportMenuCsv(Long partnerId) {
+        List<Product> products = productRepository.findByPartnerIdAndStatusNot(partnerId, ProductStatus.DELETED);
+        if (products.isEmpty()) {
+            return "id,name,category,price,isAvailable,stock,description\n".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        var categoryIds = products.stream()
+                .map(Product::getCategoryId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, String> categoryNames = categoryIds.isEmpty() ? Map.of() : menuCategoryRepository.findAllById(categoryIds).stream()
+                .collect(Collectors.toMap(com.speedline.partner.domain.MenuCategory::getId, com.speedline.partner.domain.MenuCategory::getName));
+        var productIds = products.stream().map(Product::getId).toList();
+        Map<Long, Integer> stockByProduct = productStockRepository.findByProductIdIn(productIds).stream()
+                .collect(Collectors.toMap(ProductStock::getProductId, ps -> java.util.Optional.ofNullable(ps.getQuantity()).orElse(0)));
+        var sb = new StringBuilder();
+        sb.append("id,name,category,price,isAvailable,stock,description\n");
+        for (Product p : products) {
+            String categoryName = p.getCategoryId() != null ? categoryNames.getOrDefault(p.getCategoryId(), "") : "";
+            int stock = stockByProduct.getOrDefault(p.getId(), 0);
+            Boolean available = p.getIsAvailable();
+            sb.append(p.getId()).append(',')
+                    .append(escapeCsv(p.getName())).append(',')
+                    .append(escapeCsv(categoryName)).append(',')
+                    .append(p.getPrice() != null ? p.getPrice() : BigDecimal.ZERO).append(',')
+                    .append(Boolean.TRUE.equals(available)).append(',')
+                    .append(stock).append(',')
+                    .append(escapeCsv(p.getDescription())).append('\n');
+        }
+        return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private static String escapeCsv(String s) {
+        if (s == null) return "";
+        if (s.contains(",") || s.contains("\"") || s.contains("\n") || s.contains("\r")) {
+            return "\"" + s.replace("\"", "\"\"") + "\"";
+        }
+        return s;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ImportPreviewResponse importPreview(Long partnerId, MultipartFile file) {
+        List<ImportPreviewResponse.ImportChangeRow> changes = new ArrayList<>();
+        List<ImportPreviewResponse.ImportParseError> parseErrors = new ArrayList<>();
+        Map<Long, String> categoryNames = loadCategoryNamesForPartner(partnerId);
+        List<Product> partnerProducts = productRepository.findByPartnerIdAndStatusNot(partnerId, ProductStatus.DELETED);
+        Map<Long, Product> productMap = partnerProducts.stream().collect(Collectors.toMap(Product::getId, p -> p));
+        Map<Long, Integer> stockMap = productStockRepository.findByProductIdIn(productMap.keySet().stream().toList()).stream()
+                .collect(Collectors.toMap(ProductStock::getProductId, ps -> Optional.ofNullable(ps.getQuantity()).orElse(0)));
+
+        try (var reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+            String headerLine = reader.readLine();
+            if (headerLine == null || !headerLine.toLowerCase().replace(" ", "").startsWith("id,name,")) {
+                parseErrors.add(ImportPreviewResponse.ImportParseError.builder().row(1).message("Header invalide (attendu: id,name,category,price,isAvailable,stock,description)").build());
+                return ImportPreviewResponse.builder().changes(changes).parseErrors(parseErrors).build();
+            }
+            String line;
+            int row = 1;
+            while ((line = reader.readLine()) != null) {
+                row++;
+                if (line.isBlank()) continue;
+                List<String> cols = parseCsvLine(line);
+                if (cols.size() < 5) {
+                    parseErrors.add(ImportPreviewResponse.ImportParseError.builder().row(row).message("Colonnes insuffisantes").build());
+                    continue;
+                }
+                Long productId = parseLong(cols.get(0));
+                if (productId == null) {
+                    parseErrors.add(ImportPreviewResponse.ImportParseError.builder().row(row).message("id produit invalide").build());
+                    continue;
+                }
+                Product product = productMap.get(productId);
+                if (product == null) {
+                    parseErrors.add(ImportPreviewResponse.ImportParseError.builder().row(row).message("Produit " + productId + " introuvable ou n'appartient pas au partenaire").build());
+                    continue;
+                }
+                String name = cols.size() > 1 ? cols.get(1).trim() : "";
+                String categoryName = cols.size() > 2 ? cols.get(2).trim() : "";
+                BigDecimal price = parseBigDecimal(cols.size() > 3 ? cols.get(3) : "0");
+                boolean isAvailable = parseBoolean(cols.size() > 4 ? cols.get(4) : "true");
+                int stock = parsePositiveInt(cols.size() > 5 ? cols.get(5) : "0");
+                String description = cols.size() > 6 ? cols.get(6).trim() : "";
+
+                String currentCategoryName = product.getCategoryId() != null ? categoryNames.getOrDefault(product.getCategoryId(), "") : "";
+                if (!Objects.equals(name, product.getName())) {
+                    changes.add(ImportPreviewResponse.ImportChangeRow.builder().productId(productId).productName(product.getName()).field("name").oldValue(product.getName()).newValue(name).build());
+                }
+                if (!Objects.equals(categoryName, currentCategoryName)) {
+                    changes.add(ImportPreviewResponse.ImportChangeRow.builder().productId(productId).productName(product.getName()).field("category").oldValue(currentCategoryName).newValue(categoryName).build());
+                }
+                if (price != null && product.getPrice() != null && price.compareTo(product.getPrice()) != 0) {
+                    changes.add(ImportPreviewResponse.ImportChangeRow.builder().productId(productId).productName(product.getName()).field("price").oldValue(String.valueOf(product.getPrice())).newValue(String.valueOf(price)).build());
+                }
+                if (Boolean.TRUE.equals(product.getIsAvailable()) != isAvailable) {
+                    changes.add(ImportPreviewResponse.ImportChangeRow.builder().productId(productId).productName(product.getName()).field("isAvailable").oldValue(String.valueOf(product.getIsAvailable())).newValue(String.valueOf(isAvailable)).build());
+                }
+                int currentStock = stockMap.getOrDefault(productId, 0);
+                if (stock != currentStock) {
+                    changes.add(ImportPreviewResponse.ImportChangeRow.builder().productId(productId).productName(product.getName()).field("stock").oldValue(String.valueOf(currentStock)).newValue(String.valueOf(stock)).build());
+                }
+                if (!Objects.equals(description, product.getDescription() != null ? product.getDescription() : "")) {
+                    changes.add(ImportPreviewResponse.ImportChangeRow.builder().productId(productId).productName(product.getName()).field("description").oldValue(product.getDescription()).newValue(description).build());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("importPreview error: {}", e.getMessage());
+            parseErrors.add(ImportPreviewResponse.ImportParseError.builder().row(0).message("Erreur lecture fichier: " + e.getMessage()).build());
+        }
+        return ImportPreviewResponse.builder().changes(changes).parseErrors(parseErrors).build();
+    }
+
+    @Override
+    @CacheEvict(value = "menus:full", key = "#partnerId")
+    @Transactional
+    public ImportConfirmResult importConfirm(Long partnerId, MultipartFile file) {
+        List<ImportConfirmResult.ImportConfirmError> errors = new ArrayList<>();
+        int processed = 0;
+        int success = 0;
+        List<Product> partnerProducts = productRepository.findByPartnerIdAndStatusNot(partnerId, ProductStatus.DELETED);
+        Map<Long, Product> productMap = partnerProducts.stream().collect(Collectors.toMap(Product::getId, p -> p));
+        Map<String, Long> categoryNameToId = menuCategoryRepository.findByPartnerIdOrderByPositionAsc(partnerId).stream()
+                .collect(Collectors.toMap(MenuCategory::getName, MenuCategory::getId, (a, b) -> a));
+
+        try (var reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+            String headerLine = reader.readLine();
+            if (headerLine == null || !headerLine.toLowerCase().replace(" ", "").startsWith("id,name,")) {
+                errors.add(ImportConfirmResult.ImportConfirmError.builder().row(1).message("Header invalide").build());
+                return ImportConfirmResult.builder().processed(0).success(0).errors(errors).build();
+            }
+            String line;
+            int row = 1;
+            while ((line = reader.readLine()) != null) {
+                row++;
+                if (line.isBlank()) continue;
+                processed++;
+                List<String> cols = parseCsvLine(line);
+                if (cols.size() < 5) {
+                    errors.add(ImportConfirmResult.ImportConfirmError.builder().row(row).message("Colonnes insuffisantes").build());
+                    continue;
+                }
+                Long productId = parseLong(cols.get(0));
+                if (productId == null) {
+                    errors.add(ImportConfirmResult.ImportConfirmError.builder().row(row).message("id produit invalide").build());
+                    continue;
+                }
+                Product product = productMap.get(productId);
+                if (product == null) {
+                    errors.add(ImportConfirmResult.ImportConfirmError.builder().row(row).productId(productId).message("Produit introuvable ou n'appartient pas au partenaire").build());
+                    continue;
+                }
+                try {
+                    String name = cols.size() > 1 ? cols.get(1).trim() : product.getName();
+                    String categoryName = cols.size() > 2 ? cols.get(2).trim() : "";
+                    BigDecimal price = parseBigDecimal(cols.size() > 3 ? cols.get(3) : "0");
+                    boolean isAvailable = parseBoolean(cols.size() > 4 ? cols.get(4) : "true");
+                    int stock = parsePositiveInt(cols.size() > 5 ? cols.get(5) : "0");
+                    String description = cols.size() > 6 ? cols.get(6).trim() : "";
+
+                    if (name != null && !name.isBlank()) product.setName(name);
+                    Long categoryId = categoryName.isBlank() ? null : categoryNameToId.get(categoryName);
+                    product.setCategoryId(categoryId);
+                    if (price != null) product.setPrice(price);
+                    product.setIsAvailable(isAvailable);
+                    if (description != null) product.setDescription(description);
+                    productRepository.save(product);
+
+                    ProductStock ps;
+                    var stockOpt = productStockRepository.findByProductId(productId);
+                    if (stockOpt.isPresent()) {
+                        ps = stockOpt.get();
+                        ps.setQuantity(stock);
+                        ps = productStockRepository.save(ps);
+                    } else {
+                        ps = productStockRepository.save(ProductStock.builder()
+                            .productId(productId).quantity(stock).lowStockThreshold(0).isTrackingEnabled(false)
+                            .updatedAt(java.time.LocalDateTime.now())
+                            .build());
+                    }
+                    applyAvailabilityAndEventsForProduct(partnerId, product, ps);
+                    success++;
+                } catch (Exception e) {
+                    errors.add(ImportConfirmResult.ImportConfirmError.builder().row(row).productId(productId).message(e.getMessage()).build());
+                }
+            }
+        } catch (Exception e) {
+            log.error("importConfirm error: {}", e.getMessage(), e);
+            errors.add(ImportConfirmResult.ImportConfirmError.builder().row(0).message("Erreur lecture: " + e.getMessage()).build());
+        }
+        return ImportConfirmResult.builder().processed(processed).success(success).errors(errors).build();
+    }
+
+    private Map<Long, String> loadCategoryNamesForPartner(Long partnerId) {
+        return menuCategoryRepository.findByPartnerIdOrderByPositionAsc(partnerId).stream()
+                .collect(Collectors.toMap(MenuCategory::getId, MenuCategory::getName));
+    }
+
+    private void applyAvailabilityAndEventsForProduct(Long partnerId, Product product, ProductStock stock) {
+        if (stock == null) return;
+        if (Boolean.FALSE.equals(stock.getIsTrackingEnabled())) return;
+        int qty = Optional.ofNullable(stock.getQuantity()).orElse(0);
+        product.setIsAvailable(qty > 0);
+        productRepository.save(product);
+    }
+
+    private static List<String> parseCsvLine(String line) {
+        List<String> out = new ArrayList<>();
+        int i = 0;
+        while (i < line.length()) {
+            if (line.charAt(i) == '"') {
+                i++;
+                StringBuilder sb = new StringBuilder();
+                while (i < line.length()) {
+                    char c = line.charAt(i);
+                    if (c == '"') {
+                        if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                            sb.append('"');
+                            i += 2;
+                        } else {
+                            i++;
+                            break;
+                        }
+                    } else {
+                        sb.append(c);
+                        i++;
+                    }
+                }
+                out.add(sb.toString());
+                if (i < line.length() && line.charAt(i) == ',') i++;
+            } else {
+                int start = i;
+                while (i < line.length() && line.charAt(i) != ',') i++;
+                out.add(line.substring(start, i).trim());
+                if (i < line.length()) i++;
+            }
+        }
+        return out;
+    }
+
+    private static Long parseLong(String s) {
+        if (s == null || s.isBlank()) return null;
+        try {
+            return Long.parseLong(s.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static BigDecimal parseBigDecimal(String s) {
+        if (s == null || s.isBlank()) return BigDecimal.ZERO;
+        try {
+            return new BigDecimal(s.trim().replace(",", "."));
+        } catch (NumberFormatException e) {
+            return BigDecimal.ZERO;
+        }
+    }
+
+    private static boolean parseBoolean(String s) {
+        if (s == null) return true;
+        String v = s.trim().toLowerCase();
+        return "true".equals(v) || "1".equals(v) || "yes".equals(v) || "oui".equals(v);
+    }
+
+    private static int parsePositiveInt(String s) {
+        if (s == null || s.isBlank()) return 0;
+        try {
+            return Math.max(0, Integer.parseInt(s.trim()));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
     // ========================= OPTION GROUPS — READ ==========
 
     @Override
@@ -438,6 +757,10 @@ public class MenuProductServiceImpl implements MenuProductService {
                 .createdAt(p.getCreatedAt())
                 .updatedAt(p.getUpdatedAt())
                 .stockStatus(stockStatus)
+                .promotionLabel(p.getPromotionLabel())
+                .promotionEndDate(p.getPromotionEndDate())
+                .originalPrice(p.getOriginalPrice())
+                .discountPercentage(p.getDiscountPercentage())
                 .build();
     }
 

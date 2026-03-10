@@ -34,6 +34,11 @@
         {{ 'MENU.PRODUCT_CARD.BADGE_POPULAR' | translate }}
       </div>
     }
+    @if (promotionBadgeVisible()) {
+      <div class="status-badge promotion-badge">
+        {{ product().promotionLabel }}
+      </div>
+    }
   </div>
 
   <!-- Content section -->
@@ -58,7 +63,17 @@
     </div>
 
     <div class="product-footer">
-      <div class="product-price">{{ priceFormatted() }}</div>
+      <div class="product-price">
+        @if (hasDiscountPrice()) {
+          <span class="price-original">{{ originalPriceFormatted() }}</span>
+          <span class="price-promo">{{ priceFormatted() }}</span>
+        } @else {
+          <span>{{ priceFormatted() }}</span>
+        }
+        @if (product().promotionEndDate) {
+          <span class="promo-end-hint">{{ product().promotionEndDate | date:'d/M/yyyy' }}</span>
+        }
+      </div>
       <div class="product-controls">
         <mat-slide-toggle
           [checked]="isAvailable()"

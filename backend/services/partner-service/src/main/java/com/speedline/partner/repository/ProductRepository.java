@@ -63,6 +63,21 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE p.partnerId = :partnerId AND p.originalPrice IS NOT NULL AND p.originalPrice > p.price")
     List<Product> findPromotionalProducts(@Param("partnerId") Long partnerId);
 
+    /**
+     * Produits dont la promotion se termine à la date donnée (ex. dans 3 jours).
+     */
+    List<Product> findByPromotionEndDateAndStatusNot(
+            java.time.LocalDate promotionEndDate,
+            ProductStatus status);
+
+    /**
+     * Produits d'un partenaire dont la promotion se termine à la date donnée.
+     */
+    List<Product> findByPartnerIdAndPromotionEndDateAndStatusNot(
+            Long partnerId,
+            java.time.LocalDate promotionEndDate,
+            ProductStatus status);
+
     // ==================== RECHERCHE PAR RÉGIME ALIMENTAIRE ====================
 
     List<Product> findByPartnerIdAndIsVegetarianTrue(Long partnerId);

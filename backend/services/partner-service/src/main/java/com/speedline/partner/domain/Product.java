@@ -195,6 +195,18 @@ public class Product {
     @Builder.Default
     private Boolean isFeatured = false;
 
+    /**
+     * Label de promotion affiché en badge (ex. "-20%", "Nouveau", "Top vente").
+     */
+    @Column(length = 100)
+    private String promotionLabel;
+
+    /**
+     * Date de fin de la promotion (null = pas de fin).
+     */
+    @Column
+    private java.time.LocalDate promotionEndDate;
+
     // ==================== STATISTIQUES ====================
 
     /**

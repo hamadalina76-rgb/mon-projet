@@ -97,6 +97,13 @@ public class PubSubConfig {
                 "partner-product-stock",
                 "partner-product-stock-notification-sub"
             );
+            // Create partner-promotion-ending topic and subscription (promo ending in 3 days)
+            createTopicAndSubscription(
+                topicAdminClient,
+                subscriptionAdminClient,
+                "partner-promotion-ending",
+                "partner-promotion-ending-notification-sub"
+            );
         }
     }
 
@@ -117,6 +124,13 @@ public class PubSubConfig {
                 subscriptionAdminClient,
                 "partner-product-stock",
                 "partner-product-stock-notification-sub"
+            );
+            // Create partner-promotion-ending topic and subscription (promo ending in 3 days)
+            createTopicAndSubscription(
+                topicAdminClient,
+                subscriptionAdminClient,
+                "partner-promotion-ending",
+                "partner-promotion-ending-notification-sub"
             );
         }
     }

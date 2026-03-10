@@ -84,4 +84,13 @@ export class ProductService {
   reorderProducts(items: ReorderItem[]): Observable<Product[]> {
     return this.api.patch<Product[]>(`${this.base()}/reorder`, { items });
   }
+
+  /** PATCH /partners/{id}/menu/products/promotions — set promotion label, end date and optional discount %. */
+  setPromotion(productIds: number[], promotionLabel: string | null, promotionEndDate: string | null, discountPercentage: number | null): Observable<Product[]> {
+    const body: { productIds: number[]; promotionLabel?: string; promotionEndDate?: string; discountPercentage?: number } = { productIds };
+    if (promotionLabel != null) body.promotionLabel = promotionLabel;
+    if (promotionEndDate != null) body.promotionEndDate = promotionEndDate;
+    if (discountPercentage != null && discountPercentage > 0) body.discountPercentage = discountPercentage;
+    return this.api.patch<Product[]>(`${this.base()}/promotions`, body);
+  }
 }

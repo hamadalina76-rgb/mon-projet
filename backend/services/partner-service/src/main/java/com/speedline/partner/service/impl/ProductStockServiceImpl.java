@@ -129,6 +129,29 @@ public class ProductStockServiceImpl implements ProductStockService {
 
     @Override
     @CacheEvict(value = "menus:full", key = "#partnerId")
+    public int restoreAllOutOfStock(Long partnerId) {
+        List<Long> outOfStockIds = getOutOfStock(partnerId).stream()
+                .map(ProductStockDTO::getProductId)
+                .toList();
+        if (outOfStockIds.isEmpty()) {
+            return 0;
+        }
+        List<ProductStock> stocks = productStockRepository.findByProductIdIn(outOfStockIds).stream()
+                .filter(ps -> Integer.valueOf(0).equals(ps.getQuantity()) && Boolean.TRUE.equals(ps.getIsTrackingEnabled()))
+                .toList();
+        for (ProductStock stock : stocks) {
+            int threshold = Optional.ofNullable(stock.getLowStockThreshold()).orElse(0);
+            int newQty = Math.max(1, threshold);
+            stock.setQuantity(newQty);
+            productStockRepository.save(stock);
+            Product product = findProductOrThrow(partnerId, stock.getProductId());
+            applyAvailabilityAndEvents(partnerId, product, stock);
+        }
+        return stocks.size();
+    }
+
+    @Override
+    @CacheEvict(value = "menus:full", key = "#partnerId")
     public BulkStockUpdateResult bulkUpdate(Long partnerId, MultipartFile file) {
         List<BulkStockUpdateResult.BulkStockError> errors = new ArrayList<>();
         int processed = 0;
@@ -284,10 +307,12 @@ public class ProductStockServiceImpl implements ProductStockService {
      * controls product availability and notification publishing, not the displayed status.
      */
     private ProductStockDTO toStockDTO(Product product, ProductStock stock, String categoryName) {
+        String imageUrl = product.getImage();
         if (stock == null) {
             return ProductStockDTO.builder()
                     .productId(product.getId())
                     .productName(product.getName())
+                    .productImageUrl(imageUrl)
                     .categoryName(categoryName)
                     .quantity(0)
                     .lowStockThreshold(0)
@@ -305,6 +330,7 @@ public class ProductStockServiceImpl implements ProductStockService {
         return ProductStockDTO.builder()
                 .productId(product.getId())
                 .productName(product.getName())
+                .productImageUrl(imageUrl)
                 .categoryName(categoryName)
                 .quantity(qty)
                 .lowStockThreshold(threshold)

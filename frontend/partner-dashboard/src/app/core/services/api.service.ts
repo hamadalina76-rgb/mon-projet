@@ -27,6 +27,11 @@ export class ApiService {
     return this.http.get<T>(`${this.apiUrl}/${endpoint}`, { params: httpParams });
   }
 
+  /** GET that returns response as Blob (e.g. for file download). */
+  getBlob(endpoint: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${endpoint}`, { responseType: 'blob' });
+  }
+
   post<T>(endpoint: string, data: unknown): Observable<T> {
     return this.http.post<T>(`${this.apiUrl}/${endpoint}`, data);
   }

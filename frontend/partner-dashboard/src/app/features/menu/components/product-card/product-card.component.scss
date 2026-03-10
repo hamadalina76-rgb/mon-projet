@@ -189,6 +189,15 @@
     box-shadow: 0 2px 8px rgba(#F59E0B, 0.35);
   }
 
+  &.promotion-badge {
+    top: 0.75rem;
+    right: 0.75rem;
+    left: auto;
+    background: linear-gradient(135deg, #8B5CF6, #6366F1);
+    color: $white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+  }
+
   &.low-stock-badge {
     bottom: 0.75rem;
     left: 0.75rem;
@@ -274,6 +283,27 @@
   font-weight: 800;
   color: $speedline-red;
   letter-spacing: -0.02em;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+
+  .price-original {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: $text-secondary;
+    text-decoration: line-through;
+  }
+  .price-promo {
+    color: $speedline-red;
+  }
+  .promo-end-hint {
+    width: 100%;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: $text-muted;
+    letter-spacing: 0;
+  }
 }
 
 .product-controls {
