@@ -405,6 +405,17 @@ public interface PartnerService {
     List<PartnerDTO> getNearbyPartners(BigDecimal latitude, BigDecimal longitude, double radiusKm);
 
     /**
+     * Obtenir les partenaires proches avec pagination (endpoint public)
+     *
+     * @param latitude  Latitude du client
+     * @param longitude Longitude du client
+     * @param page      Numéro de page (0-indexed)
+     * @param size      Taille de la page
+     * @return Page<PartnerDTO> triés : ouverts d'abord, puis par distance, puis par note
+     */
+    Page<PartnerDTO> getNearbyPartners(BigDecimal latitude, BigDecimal longitude, int page, int size);
+
+    /**
      * Obtenir les partenaires en vedette
      * 
      * @return List<PartnerDTO>

@@ -28,17 +28,6 @@ public class GeolocationServiceImpl implements GeolocationService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<GeolocationService.NearbyPartnerDTO> findNearbyPartners(BigDecimal latitude, BigDecimal longitude, int radiusMeters) {
-        // Partner data belongs to partner-service (its own DB).
-        // location-service does not have a local partners/partner_locations table.
-        // The nearby-partners endpoint should be exposed by partner-service and
-        // called from the Flutter app directly, or via API Gateway routing.
-        log.warn("findNearbyPartners called on location-service — delegate to partner-service instead");
-        return List.of();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public GeolocationService.DistanceResult calculateDistance(BigDecimal lat1, BigDecimal lon1,
                                                                BigDecimal lat2, BigDecimal lon2) {
         // Use PostGIS ST_Distance (GEOGRAPHY type gives meters automatically)

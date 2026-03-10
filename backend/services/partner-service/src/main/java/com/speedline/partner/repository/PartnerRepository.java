@@ -55,12 +55,35 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
 
     // ==================== RECHERCHE PAR LOCALISATION ====================
 
-    @Query("SELECT p FROM Partner p WHERE p.isActive = true AND p.acceptsOrders = true " +
-           "AND p.latitude BETWEEN :latMin AND :latMax " +
-           "AND p.longitude BETWEEN :lonMin AND :lonMax")
-    List<Partner> findNearbyPartners(
-            @Param("latMin") BigDecimal latMin, @Param("latMax") BigDecimal latMax,
-            @Param("lonMin") BigDecimal lonMin, @Param("lonMax") BigDecimal lonMax);
+    @Query(value = """
+            SELECT id,
+                   ST_Distance(CAST(ST_MakePoint(CAST(longitude AS float8), CAST(latitude AS float8)) AS geography),
+                               CAST(ST_MakePoint(:lng, :lat) AS geography)) / 1000.0 AS distance_km
+            FROM partners
+            WHERE is_active = true
+              AND latitude IS NOT NULL AND longitude IS NOT NULL
+              AND ST_DWithin(CAST(ST_MakePoint(CAST(longitude AS float8), CAST(latitude AS float8)) AS geography),
+                             CAST(ST_MakePoint(:lng, :lat) AS geography), :radiusMeters)
+            ORDER BY CASE WHEN accepts_orders THEN 0 ELSE 1 END ASC,
+                     distance_km ASC,
+                     rating DESC NULLS LAST
+            LIMIT :size OFFSET :offset
+            """, nativeQuery = true)
+    List<Object[]> findNearbyPartnersSorted(
+            @Param("lat") double lat, @Param("lng") double lng,
+            @Param("radiusMeters") double radiusMeters,
+            @Param("size") int size, @Param("offset") int offset);
+
+    @Query(value = """
+            SELECT COUNT(*) FROM partners
+            WHERE is_active = true
+              AND latitude IS NOT NULL AND longitude IS NOT NULL
+              AND ST_DWithin(CAST(ST_MakePoint(CAST(longitude AS float8), CAST(latitude AS float8)) AS geography),
+                             CAST(ST_MakePoint(:lng, :lat) AS geography), :radiusMeters)
+            """, nativeQuery = true)
+    long countNearbyPartners(
+            @Param("lat") double lat, @Param("lng") double lng,
+            @Param("radiusMeters") double radiusMeters);
 
     Page<Partner> findByCityAndIsActiveTrue(String city, Pageable pageable);
 
