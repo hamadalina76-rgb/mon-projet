@@ -1,6 +1,8 @@
 package com.speedline.partner.controller;
 
+import com.speedline.partner.dto.AuditLogEntryDTO;
 import com.speedline.partner.dto.CategoryDTO;
+import com.speedline.partner.dto.CategoryStatsDTO;
 import com.speedline.partner.dto.CreateCategoryRequest;
 import com.speedline.partner.dto.UpdateCategoryRequest;
 import com.speedline.partner.service.CategoryService;
@@ -44,6 +46,17 @@ public class CategoryController {
     @GetMapping
     public ResponseEntity<List<CategoryDTO>> getAllCategories() {
         return ResponseEntity.ok(categoryService.getAllCategories());
+    }
+
+    /**
+     * Catégories valides comme parent (profondeur < 2) pour respecter max 3 niveaux.
+     * GET /v1/categories/parent-candidates?excludeId=5
+     */
+    @GetMapping("/parent-candidates")
+    public ResponseEntity<List<CategoryDTO>> getParentCandidates(
+            @RequestParam(required = false) Long excludeId
+    ) {
+        return ResponseEntity.ok(categoryService.getParentCandidates(excludeId));
     }
 
     /**
@@ -93,5 +106,23 @@ public class CategoryController {
     ) {
         categoryService.deleteCategory(id, adminId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Statistiques d'utilisation : produits, partenaires, commandes 30j, graphique.
+     * GET /v1/categories/{id}/stats
+     */
+    @GetMapping("/{id}/stats")
+    public ResponseEntity<CategoryStatsDTO> getCategoryStats(@PathVariable Long id) {
+        return ResponseEntity.ok(categoryService.getCategoryStats(id));
+    }
+
+    /**
+     * Historique des modifications (audit trail).
+     * GET /v1/categories/{id}/audit-trail
+     */
+    @GetMapping("/{id}/audit-trail")
+    public ResponseEntity<List<AuditLogEntryDTO>> getCategoryAuditTrail(@PathVariable Long id) {
+        return ResponseEntity.ok(categoryService.getCategoryAuditTrail(id));
     }
 }

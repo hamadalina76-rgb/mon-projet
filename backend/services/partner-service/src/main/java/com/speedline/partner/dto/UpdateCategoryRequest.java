@@ -17,6 +17,7 @@ public class UpdateCategoryRequest {
     private String description;
     private String icon;
     private String image;
+    private Long parentId;
     private Integer displayOrder;
     private Boolean isFeatured;
     private Boolean isActive;

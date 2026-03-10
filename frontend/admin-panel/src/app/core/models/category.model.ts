@@ -17,6 +17,7 @@ export interface Category {
   icon: string | null;
   image: string | null;
   parentId: number | null;
+  depth: number | null;
   displayOrder: number;
   isActive: boolean;
   isFeatured: boolean;
@@ -58,4 +59,37 @@ export interface UpdateCategoryRequest {
   categoryType?: string;
   backgroundColor?: string;
   textColor?: string;
+}
+
+// ─── Stats & Audit ────────────────────────────────────────────────────────────
+
+export interface DailyOrderStat {
+  day: string;
+  orders: number;
+}
+
+export interface CategoryStats {
+  categoryId: number;
+  categoryName: string;
+  productCount: number;
+  partnerCount: number;
+  ordersLast30Days: number;
+  orderTrendPercent: number;
+  partnerTrendPercent: number;
+  productTrendPercent: number;
+  topCategory: boolean;
+  topCategoryThreshold: number;
+  dailyOrders: DailyOrderStat[];
+}
+
+export interface AuditLogEntry {
+  id: number;
+  adminId: number;
+  adminName: string;
+  adminRole: string;
+  action: string;
+  timestamp: string;
+  changesBefore: string;
+  changesAfter: string;
+  status: string;
 }

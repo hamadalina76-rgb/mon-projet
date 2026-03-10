@@ -10,6 +10,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * REST Controller pour Order
  *
@@ -42,5 +45,18 @@ public class OrderController {
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return ResponseEntity.ok(orderService.getCustomerOrders(customerId, pageable));
+    }
+
+    /**
+     * Stats journalières de commandes pour une liste de partenaires (endpoint interne).
+     * Consommé par partner-service via Feign pour les statistiques des catégories.
+     * GET /orders/internal/stats/daily?partnerIds=1,2,3&days=30
+     */
+    @GetMapping("/internal/stats/daily")
+    public ResponseEntity<Map<String, Long>> getDailyStatsByPartners(
+            @RequestParam List<Long> partnerIds,
+            @RequestParam(defaultValue = "30") int days
+    ) {
+        return ResponseEntity.ok(orderService.getDailyStatsByPartners(partnerIds, days));
     }
 }

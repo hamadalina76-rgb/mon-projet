@@ -361,6 +361,66 @@ $transition: all 0.25s ease;
   background: var(--border-color, #e2e8f0);
 }
 
+// ─── Subcategories section ────────────────────────────────────────────────────
+.subcategories-section {
+  margin: 10px 0 6px;
+  padding: 10px 12px;
+  background: var(--bg-surface, #f8fafc);
+  border-radius: 8px;
+  border: 1px solid var(--border-light, #e2e8f0);
+
+  .subcategories-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+
+    .sub-icon { font-size: 15px; height: 15px; width: 15px; color: var(--text-secondary, #94a3b8); }
+    .sub-label { font-size: 12px; font-weight: 600; color: var(--text-secondary, #64748b); flex: 1; }
+    .sub-add-link {
+      display: flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--primary, #EC131E); color: #fff; text-decoration: none;
+      position: relative; z-index: 2;
+      mat-icon { font-size: 14px; height: 14px; width: 14px; }
+      &:hover { opacity: 0.85; }
+    }
+  }
+
+  .subcategories-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .sub-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px 3px 6px;
+    border-radius: 20px;
+    background: #fff;
+    border: 1px solid var(--border-color, #e2e8f0);
+    font-size: 12px;
+    color: var(--text-primary, #1a1a2e);
+    text-decoration: none;
+    position: relative; z-index: 2;
+    transition: border-color 0.15s, background 0.15s;
+
+    &:hover { border-color: var(--primary, #EC131E); background: #fff5f5; }
+    &.inactive-chip { opacity: 0.55; }
+
+    .sub-chip-icon { font-size: 13px; height: 13px; width: 13px; color: var(--text-secondary, #94a3b8); }
+    .sub-chip-off  { font-size: 12px; height: 12px; width: 12px; margin-left: 2px; color: #f59e0b; }
+  }
+
+  .sub-empty {
+    font-size: 12px;
+    color: var(--text-disabled, #cbd5e1);
+    font-style: italic;
+  }
+}
+
 // ─── Card footer ─────────────────────────────────────────────────────────────
 .card-footer {
   display: flex;
@@ -368,6 +428,26 @@ $transition: all 0.25s ease;
   justify-content: space-between;
   padding-top: 10px;
   border-top: 1px solid var(--border-light, #f1f5f9);
+}
+
+.analyse-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #EC131E 0%, #b91c1c 100%);
+  color: #fff !important;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  position: relative;
+  z-index: 2;
+  transition: opacity 0.2s, transform 0.2s;
+
+  mat-icon { font-size: 15px; width: 15px; height: 15px; }
+
+  &:hover { opacity: 0.88; transform: translateY(-1px); }
 }
 
 .status-toggle {

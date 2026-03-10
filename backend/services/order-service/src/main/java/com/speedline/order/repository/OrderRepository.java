@@ -136,4 +136,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT COUNT(o) FROM Order o WHERE o.status = 'DELIVERED' AND o.createdAt >= :since")
     long countCompletedOrdersSince(@Param("since") LocalDateTime since);
+
+    // ==================== STATS INTERNES (usage: partner-service stats catégories) ====================
+
+    /**
+     * Compte les commandes par jour pour une liste de partenaires depuis une date donnée.
+     * Retourne des lignes [day (Date), count (Long)].
+     */
+    @Query(value = "SELECT DATE(o.created_at) AS day, COUNT(o.id) AS cnt " +
+                   "FROM orders o " +
+                   "WHERE o.partner_id IN :partnerIds " +
+                   "AND o.created_at >= :since " +
+                   "GROUP BY DATE(o.created_at) " +
+                   "ORDER BY DATE(o.created_at)", nativeQuery = true)
+    List<Object[]> countDailyByPartnerIdsSince(@Param("partnerIds") List<Long> partnerIds,
+                                               @Param("since") LocalDateTime since);
 }

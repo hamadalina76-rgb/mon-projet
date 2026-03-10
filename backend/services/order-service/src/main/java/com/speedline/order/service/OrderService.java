@@ -294,4 +294,16 @@ public interface OrderService {
      * @throws OrderNotFoundException si la commande n'existe pas
      */
     OrderResponse updateEstimatedDeliveryTime(Long orderId, LocalDateTime estimatedTime);
+
+    // ==================== STATS INTERNES ====================
+
+    /**
+     * Obtenir les stats journalières de commandes pour une liste de partenaires.
+     * Utilisé par partner-service pour les statistiques des catégories.
+     *
+     * @param partnerIds Liste des IDs de partenaires
+     * @param days       Nombre de jours dans le passé (ex: 30)
+     * @return Map: date "yyyy-MM-dd" → nombre de commandes ce jour
+     */
+    java.util.Map<String, Long> getDailyStatsByPartners(List<Long> partnerIds, int days);
 }

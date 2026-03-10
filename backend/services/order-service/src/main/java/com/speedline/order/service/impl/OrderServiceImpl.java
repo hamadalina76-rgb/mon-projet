@@ -263,4 +263,23 @@ public class OrderServiceImpl implements OrderService {
         // TODO: Implémenter la mise à jour de l'heure estimée de livraison
         throw new UnsupportedOperationException("À implémenter");
     }
+
+    // ==================== STATS INTERNES ====================
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Long> getDailyStatsByPartners(List<Long> partnerIds, int days) {
+        if (partnerIds == null || partnerIds.isEmpty()) {
+            return java.util.Map.of();
+        }
+        LocalDateTime since = LocalDateTime.now().minusDays(days);
+        List<Object[]> rows = orderRepository.countDailyByPartnerIdsSince(partnerIds, since);
+        java.util.Map<String, Long> result = new java.util.LinkedHashMap<>();
+        for (Object[] row : rows) {
+            String day = row[0].toString(); // "yyyy-MM-dd"
+            Long cnt = ((Number) row[1]).longValue();
+            result.put(day, cnt);
+        }
+        return result;
+    }
 }

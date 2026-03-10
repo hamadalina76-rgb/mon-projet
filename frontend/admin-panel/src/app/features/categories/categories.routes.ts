@@ -18,6 +18,13 @@ export const CATEGORIES_ROUTES: Routes = [
       ),
   },
   {
+    path: ':parentId/create-sub',
+    loadComponent: () =>
+      import('./category-configuration/category-configuration.component').then(
+        (m) => m.CategoryConfigurationComponent
+      ),
+  },
+  {
     path: ':id/edit',
     loadComponent: () =>
       import('./category-configuration/category-configuration.component').then(

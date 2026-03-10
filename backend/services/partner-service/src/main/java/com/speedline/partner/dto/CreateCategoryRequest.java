@@ -18,6 +18,8 @@ public class CreateCategoryRequest {
     private String icon;
     private String image;
 
+    private Long parentId;
+
     @NotNull(message = "L'ordre d'affichage est requis")
     @Min(value = 1, message = "displayOrder doit être >= 1")
     private Integer displayOrder;

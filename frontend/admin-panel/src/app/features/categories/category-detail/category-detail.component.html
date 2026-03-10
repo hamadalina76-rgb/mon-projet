@@ -7,57 +7,43 @@
       <p>Chargement…</p>
     </div>
   } @else if (category()) {
+
     <!-- ── Header ── -->
     <div class="page-header">
       <div class="header-left">
-        <button mat-button class="back-btn" (click)="goBack()">
-          <mat-icon>arrow_back</mat-icon>
-          Catégories
-        </button>
-        <div class="cat-title-row">
-          <div class="cat-icon-lg"
-            [style.background-color]="(category()!.backgroundColor || '#EC131E') + '22'">
-            @if (category()!.icon) {
-              <img [src]="category()!.icon" [alt]="getDisplayName(category()!)" class="icon-img">
-            } @else {
-              <mat-icon [style.color]="category()!.backgroundColor || '#EC131E'">
-                {{ getBusinessTypeIcon(category()!.categoryBusinessType) }}
-              </mat-icon>
-            }
-          </div>
-          <div>
-            <h1 class="page-title">
-              {{ getDisplayName(category()!) }}
-              @if (category()!.isFeatured) {
-                <mat-icon class="star" matTooltip="Mise en avant">star</mat-icon>
-              }
-            </h1>
-            <div class="cat-badges">
-              <span class="badge type-badge">
-                <mat-icon>{{ getBusinessTypeIcon(category()!.categoryBusinessType) }}</mat-icon>
-                {{ getBusinessTypeLabel(category()!.categoryBusinessType) }}
-              </span>
-              <span class="badge" [class.active-badge]="category()!.isActive" [class.inactive-badge]="!category()!.isActive">
-                <mat-icon>{{ category()!.isActive ? 'check_circle' : 'pause_circle' }}</mat-icon>
-                {{ category()!.isActive ? 'Active' : 'Inactive' }}
-              </span>
-              @if (category()!.categoryType) {
-                <span class="badge secondary-badge">{{ category()!.categoryType }}</span>
-              }
-            </div>
-          </div>
+        <nav class="breadcrumb">
+          <button mat-button class="back-btn" (click)="goBack()">
+            <mat-icon>keyboard_arrow_left</mat-icon>
+            Catégories
+          </button>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current">{{ getDisplayName(category()!) }} — Analyse</span>
+        </nav>
+        <div class="title-row">
+          <h1 class="page-title">{{ getDisplayName(category()!) }}</h1>
+          @if (stats()?.topCategory) {
+            <span class="top-category-badge">TOP CATEGORY</span>
+          }
+          <span class="badge" [class.active-badge]="category()!.isActive" [class.inactive-badge]="!category()!.isActive">
+            <mat-icon>{{ category()!.isActive ? 'check_circle' : 'pause_circle' }}</mat-icon>
+            {{ category()!.isActive ? 'Active' : 'Inactive' }}
+          </span>
         </div>
       </div>
 
       <div class="header-actions">
-        <button mat-stroked-button [matMenuTriggerFor]="actionsMenu">
+        <button mat-stroked-button class="export-btn" (click)="exportReport()">
+          <mat-icon>download</mat-icon>
+          Exporter
+        </button>
+        <button mat-raised-button class="edit-btn" (click)="editCategory()">
+          <mat-icon>edit</mat-icon>
+          Modifier
+        </button>
+        <button mat-icon-button [matMenuTriggerFor]="actionsMenu" matTooltip="More actions">
           <mat-icon>more_vert</mat-icon>
-          Actions
         </button>
         <mat-menu #actionsMenu="matMenu">
-          <button mat-menu-item (click)="editCategory()">
-            <mat-icon>edit</mat-icon><span>Modifier</span>
-          </button>
           <button mat-menu-item (click)="toggleStatus()">
             <mat-icon>{{ category()!.isActive ? 'pause_circle' : 'play_circle' }}</mat-icon>
             <span>{{ category()!.isActive ? 'Désactiver' : 'Activer' }}</span>
@@ -67,111 +53,235 @@
             <mat-icon>delete</mat-icon><span>Supprimer</span>
           </button>
         </mat-menu>
-
-        <button mat-raised-button color="primary" class="edit-btn" (click)="editCategory()">
-          <mat-icon>edit</mat-icon>
-          Modifier
-        </button>
       </div>
     </div>
 
-    <!-- ── Content grid ── -->
-    <div class="content-grid">
+    <!-- ── Stat Cards ── -->
+    <div class="stats-row">
 
-      <!-- Stats cards -->
-      <div class="stats-row">
-        <div class="stat-card">
-          <mat-icon class="sc-icon">storefront</mat-icon>
-          <div class="sc-body">
-            <span class="sc-val">{{ category()!.partnerCount ?? 0 }}</span>
-            <span class="sc-lbl">Partenaires</span>
+      <!-- Linked Products -->
+      <div class="stat-card">
+        <div class="sc-top">
+          <div class="sc-icon-wrap sc-products"><mat-icon>inventory_2</mat-icon></div>
+          <div class="sc-trend"
+               [class.trend-up]="(stats()?.productTrendPercent ?? 0) >= 0"
+               [class.trend-down]="(stats()?.productTrendPercent ?? 0) < 0">
+            <mat-icon>{{ (stats()?.productTrendPercent ?? 0) >= 0 ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            {{ formatTrend(stats()?.productTrendPercent) }}
           </div>
         </div>
-        <div class="stat-card">
-          <mat-icon class="sc-icon">inventory_2</mat-icon>
-          <div class="sc-body">
-            <span class="sc-val">{{ category()!.productCount ?? 0 }}</span>
-            <span class="sc-lbl">Produits</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <mat-icon class="sc-icon">format_list_numbered</mat-icon>
-          <div class="sc-body">
-            <span class="sc-val">#{{ category()!.displayOrder }}</span>
-            <span class="sc-lbl">Ordre d'affichage</span>
-          </div>
-        </div>
-        <div class="stat-card color-card"
-          [style.background-color]="category()!.backgroundColor || '#EC131E'"
-          [style.color]="category()!.textColor || '#FFFFFF'">
-          <mat-icon class="sc-icon" style="color:inherit">palette</mat-icon>
-          <div class="sc-body">
-            <span class="sc-val" style="color:inherit">{{ category()!.backgroundColor || '#EC131E' }}</span>
-            <span class="sc-lbl" style="color:inherit; opacity:0.8">Couleur de fond</span>
-          </div>
-        </div>
+        <div class="sc-value">{{ (stats()?.productCount ?? category()!.productCount ?? 0) | number }}</div>
+        <div class="sc-label">Produits liés</div>
       </div>
 
-      <!-- Details tabs -->
-      <mat-card class="details-card">
-        <mat-tab-group [(selectedIndex)]="selectedTabIndex" (selectedIndexChange)="onTabChange($event)">
+      <!-- Active Partners -->
+      <div class="stat-card">
+        <div class="sc-top">
+          <div class="sc-icon-wrap sc-partners"><mat-icon>storefront</mat-icon></div>
+          <div class="sc-trend"
+               [class.trend-up]="(stats()?.partnerTrendPercent ?? 0) >= 0"
+               [class.trend-down]="(stats()?.partnerTrendPercent ?? 0) < 0">
+            <mat-icon>{{ (stats()?.partnerTrendPercent ?? 0) >= 0 ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            {{ formatTrend(stats()?.partnerTrendPercent) }}
+          </div>
+        </div>
+        <div class="sc-value">{{ (stats()?.partnerCount ?? category()!.partnerCount ?? 0) | number }}</div>
+        <div class="sc-label">Partenaires actifs</div>
+      </div>
 
-          <!-- General -->
-          <mat-tab>
-            <ng-template mat-tab-label>
-              <mat-icon class="tab-icon">info</mat-icon>
-              Informations
-            </ng-template>
-            <div class="tab-body">
-              <div class="info-grid">
-                <div class="info-section">
-                  <h3>Général</h3>
-                  <div class="info-row"><span class="il">Slug</span><code class="iv">{{ category()!.slug }}</code></div>
-                  <div class="info-row"><span class="il">Type métier</span><span class="iv">{{ getBusinessTypeLabel(category()!.categoryBusinessType) }}</span></div>
-                  @if (category()!.categoryType) {
-                    <div class="info-row"><span class="il">Sous-type</span><span class="iv">{{ category()!.categoryType }}</span></div>
-                  }
-                  @if (category()!.description) {
-                    <div class="info-row"><span class="il">Description</span><span class="iv">{{ category()!.description }}</span></div>
-                  }
-                  <div class="info-row"><span class="il">Mise en avant</span>
-                    <span class="iv">{{ category()!.isFeatured ? '⭐ Oui' : 'Non' }}</span>
-                  </div>
-                </div>
+      <!-- Orders 30d -->
+      <div class="stat-card">
+        <div class="sc-top">
+          <div class="sc-icon-wrap sc-orders"><mat-icon>shopping_cart</mat-icon></div>
+          <div class="sc-trend"
+               [class.trend-up]="(stats()?.orderTrendPercent ?? 0) >= 0"
+               [class.trend-down]="(stats()?.orderTrendPercent ?? 0) < 0">
+            <mat-icon>{{ (stats()?.orderTrendPercent ?? 0) >= 0 ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            {{ formatTrend(stats()?.orderTrendPercent) }}
+          </div>
+        </div>
+        <div class="sc-value">{{ (stats()?.ordersLast30Days ?? 0) | number }}</div>
+        <div class="sc-label">Commandes (30j)</div>
+      </div>
 
-                <div class="info-section">
-                  <h3>Dates</h3>
-                  <div class="info-row"><span class="il">Créé le</span><span class="iv">{{ category()!.createdAt | date:'dd/MM/yyyy HH:mm' }}</span></div>
-                  <div class="info-row"><span class="il">Modifié le</span><span class="iv">{{ category()!.updatedAt | date:'dd/MM/yyyy HH:mm' }}</span></div>
-                  @if (category()!.createdBy) {
-                    <div class="info-row"><span class="il">Créé par</span><span class="iv">Admin #{{ category()!.createdBy }}</span></div>
-                  }
-                </div>
-              </div>
+    </div>
+
+    <!-- ── Bottom grid: Chart + Info ── -->
+    <div class="bottom-grid">
+
+      <!-- Order Trends Chart -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <div class="chart-header">
+            <div>
+              <h2 class="chart-title">Tendance des commandes</h2>
+              <p class="chart-subtitle">Commandes journalières sur les 30 derniers jours</p>
             </div>
-          </mat-tab>
+            <span class="period-badge">30 derniers jours</span>
+          </div>
+        </mat-card-header>
+        <mat-card-content>
+          @if (statsLoading()) {
+            <div class="chart-loading"><div class="spinner"></div></div>
+          } @else if (stats()?.dailyOrders?.length) {
+            <div class="chart-wrap">
+              <canvas baseChart
+                [data]="chartData()"
+                [options]="chartOptions"
+                [type]="'bar'">
+              </canvas>
+            </div>
+          } @else {
+            <div class="chart-empty">
+              <mat-icon>bar_chart</mat-icon>
+              <p>Aucune donnée disponible</p>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
 
-          <!-- Multilingual names -->
-          <mat-tab>
-            <ng-template mat-tab-label>
-              <mat-icon class="tab-icon">translate</mat-icon>
-              Traductions
-            </ng-template>
-            <div class="tab-body">
+      <!-- Category Info card -->
+      <mat-card class="info-card">
+        <mat-card-header>
+          <h2 class="section-title">Informations</h2>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="info-row">
+            <span class="il">Type métier</span>
+            <span class="iv">{{ getBusinessTypeLabel(category()!.categoryBusinessType) }}</span>
+          </div>
+          @if (category()!.categoryType) {
+            <div class="info-row"><span class="il">Sous-type</span><span class="iv">{{ category()!.categoryType }}</span></div>
+          }
+          <div class="info-row">
+            <span class="il">Mis en avant</span>
+            <span class="iv">{{ category()!.isFeatured ? '⭐ Oui' : 'Non' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="il">Ordre</span>
+            <span class="iv">#{{ category()!.displayOrder }}</span>
+          </div>
+          <div class="info-row">
+            <span class="il">Créé le</span>
+            <span class="iv">{{ category()!.createdAt | date:'dd/MM/yyyy' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="il">Modifié le</span>
+            <span class="iv">{{ category()!.updatedAt | date:'dd/MM/yyyy' }}</span>
+          </div>
+          @if (category()!.createdBy) {
+            <div class="info-row"><span class="il">Créé par</span><span class="iv">Admin #{{ category()!.createdBy }}</span></div>
+          }
+
+          @if (getNameEntries().length > 0) {
+            <div class="lang-section">
+              <h4>Traductions</h4>
               @for (entry of getNameEntries(); track $index) {
                 <div class="lang-row">
                   <span class="lang-key">{{ entry.key.toUpperCase() }}</span>
                   <span class="lang-val">{{ entry.value }}</span>
                 </div>
               }
-              @if (getNameEntries().length === 0) {
-                <p class="empty-msg">Aucune traduction enregistrée.</p>
-              }
             </div>
-          </mat-tab>
-        </mat-tab-group>
+          }
+        </mat-card-content>
       </mat-card>
     </div>
+
+    <!-- ── Audit Trail ── -->
+    <mat-card class="audit-card">
+      <mat-card-header>
+        <div class="audit-hdr">
+          <div>
+            <h2 class="section-title">Journal d'audit</h2>
+            <p class="section-subtitle">Historique des actions sur cette catégorie</p>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content>
+        @if (auditLoading()) {
+          <div class="audit-loading">
+            <div class="spinner"></div>
+            <span>Chargement de l'historique…</span>
+          </div>
+        } @else if (paginatedAudit().length === 0) {
+          <div class="audit-empty">
+            <mat-icon>history</mat-icon>
+            <p>Aucune entrée dans l'audit trail</p>
+          </div>
+        } @else {
+          <div class="audit-table-wrap">
+            <table class="audit-table">
+              <thead>
+                <tr>
+                  <th>UTILISATEUR</th>
+                  <th>ACTION</th>
+                  <th>DATE/HEURE</th>
+                  <th>MODIFICATIONS</th>
+                  <th>STATUT</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (entry of paginatedAudit(); track entry.id) {
+                  <tr>
+                    <td>
+                      <div class="audit-user">
+                        <div class="user-avatar">{{ entry.adminName.charAt(0).toUpperCase() }}</div>
+                        <div>
+                          <div class="user-name">{{ entry.adminName }}</div>
+                          <div class="user-role">{{ entry.adminRole }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="action-badge" [ngClass]="getActionClass(entry.action)">
+                        {{ getActionLabel(entry.action) }}
+                      </span>
+                    </td>
+                    <td class="timestamp-cell">{{ entry.timestamp | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td>
+                      <div class="changes-cell">
+                        <div class="change-row">
+                          <span class="change-lbl">AVANT</span>
+                          <span class="change-val prev-val">{{ entry.changesBefore }}</span>
+                        </div>
+                        <div class="change-row">
+                          <span class="change-lbl">APRÈS</span>
+                          <span class="change-val new-val">{{ entry.changesAfter }}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="status-cell">
+                        <mat-icon class="status-icon">check_circle</mat-icon>
+                        <span>{{ entry.status }}</span>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="audit-pagination">
+            <span class="page-info">
+              Page {{ auditPage() + 1 }} / {{ totalAuditPages() }}
+              &nbsp;·&nbsp; {{ auditTrail().length }} entrée{{ auditTrail().length > 1 ? 's' : '' }}
+            </span>
+            <div class="page-btns">
+              <button mat-stroked-button (click)="prevAuditPage()" [disabled]="auditPage() === 0">
+                <mat-icon>chevron_left</mat-icon> Précédent
+              </button>
+              <button mat-stroked-button (click)="nextAuditPage()" [disabled]="auditPage() >= totalAuditPages() - 1">
+                Suivant <mat-icon>chevron_right</mat-icon>
+              </button>
+            </div>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
   } @else {
     <div class="empty-state">
       <mat-icon>error_outline</mat-icon>
@@ -180,3 +290,4 @@
     </div>
   }
 </div>
+

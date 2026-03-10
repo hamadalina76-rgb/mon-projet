@@ -135,6 +135,13 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
     
     long countByIsActiveTrue();
 
+    /** Nombre de partenaires liés à une catégorie créés entre deux dates (pour calcul de tendance). */
+    @Query("SELECT COUNT(p) FROM Partner p WHERE p.categoryIds LIKE %:categoryId% " +
+           "AND p.createdAt BETWEEN :start AND :end")
+    long countByCategoryIdAndCreatedAtBetween(@Param("categoryId") String categoryId,
+                                              @Param("start") java.time.LocalDateTime start,
+                                              @Param("end") java.time.LocalDateTime end);
+
     @Query("SELECT DISTINCT p.city FROM Partner p WHERE p.isActive = true ORDER BY p.city")
     List<String> findDistinctCities();
 }

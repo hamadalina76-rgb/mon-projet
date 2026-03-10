@@ -5,7 +5,6 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
-import { NgChartsModule } from 'ng2-charts';
 import { AnalyticsService } from '../services/analytics.service';
 
 @Component({
@@ -17,7 +16,6 @@ import { AnalyticsService } from '../services/analytics.service';
     MatButtonToggleModule,
     MatIconModule,
     TranslateModule,
-    NgChartsModule,
   ],
   templateUrl: './users-analytics.component.html',
   styleUrls: ['./users-analytics.component.scss'],
