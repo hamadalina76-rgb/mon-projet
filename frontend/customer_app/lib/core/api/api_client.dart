@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logger/logger.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import 'interceptors/auth_interceptor.dart';
+import '../../config/runtime_config.dart';
 
 /// Client API Singleton pour gérer toutes les requêtes HTTP
 /// 
@@ -37,12 +38,12 @@ class ApiClient {
 
   /// Initialiser Dio avec la configuration
   void _initializeDio() {
-    // Récupérer la configuration depuis .env
-    final baseUrl = dotenv.env['API_BASE_URL'];
-    if (baseUrl == null || baseUrl.isEmpty) {
-      throw StateError('API_BASE_URL must be defined in .env file');
+    // Récupérer la configuration runtime
+    final baseUrl = RuntimeConfig.apiBaseUrl;
+    if (baseUrl.isEmpty) {
+      throw StateError('API_BASE_URL must be defined in runtime config');
     }
-    final timeoutMs = int.tryParse(dotenv.env['API_TIMEOUT'] ?? '30000') ?? 30000;
+    final timeoutMs = RuntimeConfig.apiTimeoutMs;
     final enableLogging = dotenv.env['LOG_NETWORK']?.toLowerCase() == 'true';
 
     _logger.i('🚀 Initialisation API Client');

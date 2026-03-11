@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- ✅ Parent = backend/pom.xml -->
     <parent>
         <groupId>com.speedline</groupId>
         <artifactId>speedline-parent</artifactId>
@@ -15,55 +18,105 @@
     <name>SpeedLine - API Gateway</name>
     <description>API Gateway with routing, authentication and rate limiting</description>
 
+    <properties>
+        <!-- Optionnel : utile si Spring Boot ne détecte pas automatiquement la main class -->
+        <!-- <start-class>com.speedline.apigateway.ApiGatewayApplication</start-class> -->
+        <jjwt.version>0.12.3</jjwt.version>
+    </properties>
+
     <dependencies>
-        <!-- Spring Cloud Gateway -->
+
+        <!-- ===================== SPRING CLOUD GATEWAY ===================== -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway</artifactId>
         </dependency>
-        
-        <!-- Eureka Client -->
+
+        <!-- ===================== DISCOVERY (EUREKA) ======================= -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
-        
-        <!-- Redis for Rate Limiting -->
+
+        <!-- ===================== CONFIG CLIENT (RECOMMANDÉ) =============== -->
+        <!-- Permet au gateway de charger sa config depuis config-server -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+
+        <!-- Optionnel selon ton setup (certaines architectures l'utilisent encore) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-bootstrap</artifactId>
+        </dependency>
+
+        <!-- ===================== REDIS REACTIVE =========================== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
         </dependency>
-        
-        <!-- JWT -->
+
+        <!-- ===================== JWT (JJWT) =============================== -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
-            <version>0.12.3</version>
+            <version>${jjwt.version}</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-impl</artifactId>
-            <version>0.12.3</version>
+            <version>${jjwt.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
-            <version>0.12.3</version>
+            <version>${jjwt.version}</version>
             <scope>runtime</scope>
         </dependency>
-        
-        <!-- Actuator -->
+
+        <!-- ===================== OBSERVABILITY ============================ -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        
-        <!-- Circuit Breaker -->
+
+        <!-- ===================== RESILIENCE4J (Circuit Breaker) ============ -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-circuitbreaker-reactor-resilience4j</artifactId>
         </dependency>
+
+        <!-- ===================== VALIDATION (OPTIONNEL) ==================== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- ===================== SECURITY (WEBFLUX) ======================== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Spring Boot Plugin (version gérée par spring-boot-starter-parent) -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- JIB (si tu construis les images via Maven au lieu de Dockerfile)
+                 Version/config héritées du parent (pluginManagement) -->
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

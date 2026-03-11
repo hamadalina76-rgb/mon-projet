@@ -1,0 +1,65 @@
+# ============================================================================
+# EUREKA SERVER — application-dev.yml (DEV / Cloud Run)
+# ============================================================================
+# Objectifs :
+# - Cloud Run impose PORT => server.port=${PORT:8080}
+# - Eureka Server ne doit pas s'enregistrer lui-même :
+#     register-with-eureka=false
+#     fetch-registry=false
+# - NE PAS mettre eureka.client.enabled=false
+#   car ça supprime des beans nécessaires (ApplicationInfoManager) => crash
+# - On désactive Spring Cloud Config côté Eureka (optionnel mais recommandé)
+# ============================================================================
+
+server:
+  port: ${PORT:8080}
+  address: 0.0.0.0
+
+spring:
+  application:
+    name: ${SPRING_APPLICATION_NAME:eureka-server}
+
+  # Eureka Server n'a pas besoin d'aller chercher sa config sur un Config Server
+  cloud:
+    config:
+      enabled: false
+
+  security:
+    user:
+      name: ${EUREKA_USER:eureka}
+      password: ${EUREKA_PASSWORD:eureka123}
+
+eureka:
+  client:
+    # ✅ NE PAS mettre enabled=false
+    # On garde le client actif pour les beans internes,
+    # mais on empêche l'enregistrement et la récupération.
+    register-with-eureka: false
+    fetch-registry: false
+
+  server:
+    enable-self-preservation: ${EUREKA_SERVER_ENABLE_SELF_PRESERVATION:false}
+    eviction-interval-timer-in-ms: ${EUREKA_SERVER_EVICTION_INTERVAL_TIMER_IN_MS:5000}
+
+management:
+  server:
+    port: ${PORT:8080}
+
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,metrics
+
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.netflix.eureka: WARN
+    com.netflix.discovery: WARN
+    org.springframework: INFO

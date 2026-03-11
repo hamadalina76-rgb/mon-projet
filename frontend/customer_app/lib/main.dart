@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/themes/app_theme.dart';
 import 'config/routes/app_router.dart';
@@ -15,6 +14,7 @@ import 'services/analytics_service.dart';
 import 'services/crash_reporting_service.dart';
 import 'services/local_notification_service.dart';
 import 'package:logger/logger.dart';
+import 'config/runtime_config.dart';
 
 final logger = Logger();
 
@@ -27,11 +27,10 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // Initialize Hive (local storage)
-  await Hive.initFlutter();
-
-  // Load environment variables
-  await dotenv.load(fileName: '.env.development');
+  try {
+    await dotenv.load(fileName: '.env.development');
+  } catch (_) {}
+  await RuntimeConfig.load();
   
   // Initialize SharedPreferences before anything else
   final sharedPreferences = await SharedPreferences.getInstance();

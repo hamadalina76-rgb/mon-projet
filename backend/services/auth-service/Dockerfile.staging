@@ -1,0 +1,56 @@
+# ============================================================================
+# DOCKERFILE STAGING - AUTH SERVICE
+# ============================================================================
+# Image optimisée pour l'environnement de pré-production
+
+FROM maven:3.9-eclipse-temurin-17-alpine AS build
+
+WORKDIR /app
+
+# Copier les fichiers de configuration Maven
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# Copier le code source
+COPY src ./src
+
+# Compiler l'application avec optimisations
+RUN mvn clean package -DskipTests -Dmaven.test.skip=true
+
+# ============================================================================
+# Image finale pour staging
+# ============================================================================
+FROM eclipse-temurin:17-jre-alpine
+
+WORKDIR /app
+
+# Créer un utilisateur non-root
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Installer curl pour healthcheck
+RUN apk add --no-cache curl
+
+# Copier le JAR depuis l'étape de build
+COPY --from=build /app/target/*.jar app.jar
+
+# Variables d'environnement staging
+ENV FLYWAY_LOCATIONS=filesystem:/app/db/migration
+ENV SPRING_PROFILES_ACTIVE=staging
+ENV SERVER_PORT=8081
+
+# Options JVM pour staging
+ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+
+# Exposer les ports
+EXPOSE 8081 9090
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+  CMD curl -f http://localhost:9090/actuator/health || exit 1
+
+# Changer l'utilisateur
+USER appuser
+
+# Démarrer l'application avec options JVM
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+

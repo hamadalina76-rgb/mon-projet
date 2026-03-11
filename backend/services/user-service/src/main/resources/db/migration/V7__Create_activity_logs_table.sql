@@ -13,6 +13,6 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 );
 
 -- Index pour améliorer les performances des recherches
-CREATE INDEX idx_activity_logs_admin_id ON activity_logs(admin_id);
-CREATE INDEX idx_activity_logs_timestamp ON activity_logs(timestamp DESC);
-CREATE INDEX idx_activity_logs_resource ON activity_logs(resource);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_admin_id ON activity_logs(admin_id);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_timestamp ON activity_logs(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_resource ON activity_logs(resource);

@@ -30,7 +30,9 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    baseline-version: 0
     locations: classpath:db/migration
+    table: flyway_schema_history_partner_v2
     validate-on-migrate: true
   data:
     redis:
@@ -48,8 +50,6 @@ spring:
         enabled: true
     gcp:
       project-id: ${GCP_PROJECT_ID:speedline-local}
-      pubsub:
-        emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8090}
 
 # File storage configuration
 file:

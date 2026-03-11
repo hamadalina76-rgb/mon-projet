@@ -1,0 +1,143 @@
+# ============================================================================
+# CONFIGURATION DEV - NOTIFICATION SERVICE
+# ============================================================================
+# Objectif :
+# - compatible Cloud Run
+# - compatible exécution locale
+# - compatible MongoDB Atlas / URI injectée par variables d'environnement
+# - sans dépendance obligatoire à Eureka en dev
+# ============================================================================
+
+server:
+  # --------------------------------------------------------------------------
+  # Cloud Run impose l'utilisation du port fourni dans la variable PORT.
+  # Si PORT n'est pas défini (exécution locale), on utilise 8080 par défaut.
+  # --------------------------------------------------------------------------
+  port: ${PORT:8080}
+
+  # --------------------------------------------------------------------------
+  # Très important pour Cloud Run :
+  # l'application doit écouter sur 0.0.0.0 et non pas seulement localhost.
+  # --------------------------------------------------------------------------
+  address: 0.0.0.0
+
+spring:
+  application:
+    # Nom du microservice dans l'écosystème Spring / logs / observabilité
+    name: notification-service
+
+  data:
+    mongodb:
+      # ----------------------------------------------------------------------
+      # URI MongoDB :
+      # - En priorité on lit MONGODB_URI (nom injecté actuellement par Terraform)
+      # - Sinon on retombe sur MONGO_URI (ancien nom possible dans GitLab CI/CD)
+      #
+      # Cela évite les crashes au démarrage dus à une incohérence de nom
+      # entre les variables Cloud Run / Terraform / GitLab.
+      # ----------------------------------------------------------------------
+      uri: ${MONGODB_URI:${MONGO_URI}}
+
+      # ----------------------------------------------------------------------
+      # Création automatique des index Mongo définis dans les entités/documents.
+      # Utile en DEV pour éviter certaines initialisations manuelles.
+      # ----------------------------------------------------------------------
+      auto-index-creation: true
+
+  cloud:
+    config:
+      # ----------------------------------------------------------------------
+      # Désactivation explicite du Config Client en DEV.
+      # Le service ne va pas essayer d'aller chercher sa config depuis
+      # un Config Server au démarrage.
+      # ----------------------------------------------------------------------
+      enabled: false
+
+    bootstrap:
+      # ----------------------------------------------------------------------
+      # Désactivation du bootstrap context pour éviter le chargement précoce
+      # de configurations distantes ou de comportements Spring Cloud inutiles
+      # en environnement DEV / Cloud Run.
+      # ----------------------------------------------------------------------
+      enabled: false
+
+    gcp:
+      # ----------------------------------------------------------------------
+      # ID du projet GCP :
+      # - si GCP_PROJECT_ID est injecté, il sera utilisé
+      # - sinon fallback sur "speedline-dev"
+      # ----------------------------------------------------------------------
+      project-id: ${GCP_PROJECT_ID:speedline-dev}
+
+      core:
+        # ----------------------------------------------------------------------
+        # Laisser activé si le service utilise réellement des composants GCP
+        # standards dans ce microservice.
+        # ----------------------------------------------------------------------
+        enabled: true
+
+      pubsub:
+        subscriber:
+          # --------------------------------------------------------------------
+          # Paramètres de consommation Pub/Sub en DEV.
+          # Valeurs modestes pour limiter la charge.
+          # --------------------------------------------------------------------
+          parallel-pull-count: 1
+          max-ack-extension-period: 600
+
+eureka:
+  client:
+    # --------------------------------------------------------------------------
+    # Eureka désactivé par défaut en DEV.
+    # Si besoin, activer via EUREKA_ENABLED=true.
+    # --------------------------------------------------------------------------
+    enabled: ${EUREKA_ENABLED:false}
+
+    service-url:
+      # ------------------------------------------------------------------------
+      # URL par défaut de Eureka pour compatibilité locale.
+      # En Cloud Run DEV, si Eureka n'est pas utilisé, ce bloc reste inoffensif
+      # tant que enabled=false.
+      # ------------------------------------------------------------------------
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
+
+  instance:
+    # Préférer l'IP pour l'enregistrement si Eureka est activé
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      # ------------------------------------------------------------------------
+      # Point d'entrée actuator.
+      # Très utile pour health checks, debug et supervision.
+      # ------------------------------------------------------------------------
+      base-path: /actuator
+
+      exposure:
+        # ----------------------------------------------------------------------
+        # Endpoints exposés en DEV.
+        # ----------------------------------------------------------------------
+        include: health,info,metrics
+
+  endpoint:
+    health:
+      # ------------------------------------------------------------------------
+      # Affiche les détails du health endpoint pour faciliter le diagnostic en DEV
+      # ------------------------------------------------------------------------
+      show-details: always
+
+      probes:
+        # ----------------------------------------------------------------------
+        # Active les probes readiness/liveness utilisées souvent par Cloud Run
+        # / Kubernetes / systèmes de supervision.
+        # ----------------------------------------------------------------------
+        enabled: true
+
+logging:
+  level:
+    # Niveau global raisonnable pour DEV
+    root: INFO
+
+    # Logs applicatifs plus verbeux pour faciliter le debug
+    com.speedline: DEBUG

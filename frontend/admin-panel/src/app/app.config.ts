@@ -13,6 +13,7 @@ import { routes } from './app.routes';
 import { authInterceptor } from '@core/interceptors/auth.interceptor';
 import { errorInterceptor } from '@core/interceptors/error.interceptor';
 import { loadingInterceptor } from '@core/interceptors/loading.interceptor';
+import { RuntimeConfigService } from '@core/services/runtime-config.service';
 import { environment } from '@environments/environment';
 
 // const socketConfig: SocketIoConfig = {
@@ -33,6 +34,12 @@ export function initializeTranslations(translate: TranslateService) {
     
     // Load translations before app starts
     await firstValueFrom(translate.use(savedLang));
+  };
+}
+
+export function initializeRuntimeConfig(runtimeConfigService: RuntimeConfigService) {
+  return async (): Promise<void> => {
+    await runtimeConfigService.load();
   };
 }
 
@@ -67,6 +74,12 @@ export const appConfig: ApplicationConfig = {
       // SocketIoModule.forRoot(socketConfig)
     ),
     // Initialize translations at app startup
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeRuntimeConfig,
+      deps: [RuntimeConfigService],
+      multi: true,
+    },
     {
       provide: APP_INITIALIZER,
       useFactory: initializeTranslations,

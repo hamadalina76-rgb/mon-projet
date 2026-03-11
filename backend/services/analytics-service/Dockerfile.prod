@@ -1,0 +1,73 @@
+# ============================================================================
+# DOCKERFILE PRODUCTION - ANALYTICS SERVICE
+# ============================================================================
+# Image optimisée pour la production avec sécurité maximale
+
+FROM maven:3.9-eclipse-temurin-17-alpine AS build
+
+WORKDIR /app
+
+# Copier les fichiers de configuration Maven
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# Copier le code source
+COPY src ./src
+
+# Compiler l'application avec optimisations production
+RUN mvn clean package -DskipTests -Dmaven.test.skip=true \
+    && mv target/*.jar target/app.jar
+
+# ============================================================================
+# Image finale pour production (optimisée et sécurisée)
+# ============================================================================
+FROM eclipse-temurin:17-jre-alpine
+
+WORKDIR /app
+
+# Mettre à jour les packages pour la sécurité
+RUN apk upgrade --no-cache && \
+    apk add --no-cache curl tzdata && \
+    rm -rf /var/cache/apk/*
+
+# Créer un utilisateur non-root avec UID/GID fixes
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# Copier le JAR depuis l'étape de build
+COPY --from=build --chown=appuser:appgroup /app/target/app.jar app.jar
+
+# Variables d'environnement production
+ENV SPRING_PROFILES_ACTIVE=prod
+ENV SERVER_PORT=8089
+ENV MANAGEMENT_SERVER_PORT=9090
+ENV TZ=UTC
+
+# Options JVM optimisées pour production
+ENV JAVA_OPTS="-Xms1024m -Xmx2048m \
+    -XX:+UseG1GC \
+    -XX:MaxGCPauseMillis=200 \
+    -XX:+UseStringDeduplication \
+    -XX:+OptimizeStringConcat \
+    -Djava.security.egd=file:/dev/./urandom \
+    -Dfile.encoding=UTF-8"
+
+# Exposer les ports
+EXPOSE 8089 9090
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
+  CMD curl -f http://localhost:9090/actuator/health/readiness || exit 1
+
+# Changer l'utilisateur
+USER appuser
+
+# Labels pour métadonnées
+LABEL maintainer="speedline-team" \
+      service="analytics-service" \
+      environment="production" \
+      version="1.0.0"
+
+# Démarrer l'application avec options JVM
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+

@@ -1,6 +1,6 @@
 class ApiConstants {
-  static const String baseUrl = 'http://10.0.2.2:8080';
-  static const String wsUrl = 'ws://10.0.2.2:8080/ws';
+  static const String baseUrl = 'https://api-gateway-392205979525.europe-west1.run.app';
+  static const String wsUrl = 'wss://api-gateway-392205979525.europe-west1.run.app';
   
   // API versions
   static const String apiVersion = 'v1';

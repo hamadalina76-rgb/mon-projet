@@ -1,0 +1,76 @@
+# ============================================================================
+# CONFIGURATION PRODUCTION - CONFIG SERVER SPEEDLINE
+# ============================================================================
+# Configuration pour production (CRITIQUE)
+
+server:
+  port: 8888
+  servlet:
+    encoding:
+      charset: UTF-8
+
+spring:
+  # Utiliser Git backend en production pour haute disponibilité
+  profiles:
+    active: git
+  cloud:
+    config:
+      server:
+        git:
+          uri: ${SPRING_CLOUD_CONFIG_SERVER_GIT_URI:}
+          default-label: ${SPRING_CLOUD_CONFIG_SERVER_GIT_DEFAULT_LABEL:main}
+          username: ${SPRING_CLOUD_CONFIG_SERVER_GIT_USERNAME:}
+          password: ${SPRING_CLOUD_CONFIG_SERVER_GIT_PASSWORD:}
+          clone-on-start: ${SPRING_CLOUD_CONFIG_SERVER_GIT_CLONE_ON_START:false}
+          force-pull: ${SPRING_CLOUD_CONFIG_SERVER_GIT_FORCE_PULL:true}
+  security:
+    user:
+      name: ${CONFIG_USER:}
+      password: ${CONFIG_PASSWORD:}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://eureka:eureka123@eureka:8761/eureka/}
+    registry-fetch-interval-seconds: 30
+    register-with-eureka: true
+    fetch-registry: true
+
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+    instance-id: ${spring.application.name}:${random.value}
+
+management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:9090}
+
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+      base-path: /actuator
+
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: when-authorized
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: ERROR
+    org.springframework: WARN
+    org.springframework.cloud.config: WARN
+    org.springframework.security: WARN
+    com.speedline: WARN
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+  file:
+    name: logs/config-server.log
+

@@ -1,0 +1,41 @@
+# ==============================================================================
+# Dockerfile.dev — Auth Service (Cloud Run)
+# ⚠️  CONTEXTE DOCKER : doit être lancé depuis backend/
+#     docker build -f services/auth-service/Dockerfile.dev .
+# ==============================================================================
+
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
+WORKDIR /workspace
+
+# ✅ Copier d'abord les pom.xml (cache des dépendances)
+COPY pom.xml ./pom.xml
+COPY services/auth-service/pom.xml ./services/auth-service/pom.xml
+
+# Pré-télécharger les dépendances
+RUN mvn -pl services/auth-service -am dependency:go-offline -q || true
+
+# ✅ Copier les sources
+COPY services/auth-service/src ./services/auth-service/src
+
+# Build uniquement auth-service
+RUN mvn -q -DskipTests -pl services/auth-service -am clean package
+
+
+FROM eclipse-temurin:17-jre-jammy
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+
+COPY --from=builder /workspace/services/auth-service/target/*.jar /app/app.jar
+RUN chown appuser:appuser /app/app.jar
+
+# Cloud Run injecte PORT=8080
+EXPOSE 8080
+
+# ✅ Profil dev uniquement
+ENV SPRING_PROFILES_ACTIVE=dev
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=70 -XX:+UseG1GC -Dspring.output.ansi.enabled=ALWAYS"
+
+USER appuser
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar /app/app.jar"]

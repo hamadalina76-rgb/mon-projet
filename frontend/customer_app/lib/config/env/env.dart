@@ -1,4 +1,5 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../runtime_config.dart';
 
 enum Environment { development, staging, production }
 
@@ -12,9 +13,9 @@ class Env {
   }
 
   static String get appName => dotenv.env['APP_NAME'] ?? 'SpeedLine Customer';
-  static String get apiBaseUrl => dotenv.env['API_BASE_URL'] ?? 'http://localhost:8080/api/v1';
-  static String get wsUrl => dotenv.env['WS_URL'] ?? 'ws://localhost:8080/ws';
-  static int get apiTimeout => int.tryParse(dotenv.env['API_TIMEOUT'] ?? '30000') ?? 30000;
+  static String get apiBaseUrl => RuntimeConfig.apiBaseUrl;
+  static String get wsUrl => RuntimeConfig.wsUrl;
+  static int get apiTimeout => RuntimeConfig.apiTimeoutMs;
   
   static String get googleMapsApiKey => dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
   static String get stripePublishableKey => dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? '';

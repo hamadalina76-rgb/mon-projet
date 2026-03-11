@@ -1,0 +1,683 @@
+# ==============================================================================
+# CI/CD - SPEEDLINE (DEV) - VERSION CIBLÉE
+# ==============================================================================
+# Objectif :
+# - Build uniquement les services/apps modifiés
+# - Déployer uniquement les services/apps modifiés
+# - Garder Terraform uniquement pour les changements d'infrastructure
+# - Éviter un terraform apply global pour un simple changement applicatif
+#
+# Remarque :
+# - Cette version utilise rules:changes.
+# - Elle est simple et propre.
+# - Si GitLab déclenche trop de jobs sur les tags dev-*, il faudra ensuite
+#   passer à une logique "detect_changed_services" avec script git diff.
+# ==============================================================================
+
+stages:
+  - build
+  - deploy
+  - terraform
+
+# ==============================================================================
+# VARIABLES GLOBALES
+# ==============================================================================
+variables:
+  TF_VERSION: "1.7.5"
+  GIT_DEPTH: "100"
+  MAVEN_CLI_OPTS: "--batch-mode --no-transfer-progress"
+  TF_DIR: "infra/envs/dev"
+
+# ==============================================================================
+# CACHE MAVEN
+# ==============================================================================
+cache:
+  key:
+    files:
+      - backend/pom.xml
+  paths:
+    - .m2/repository/
+  policy: pull-push
+
+# ==============================================================================
+# IMAGE PAR DÉFAUT
+# ==============================================================================
+default:
+  image: google/cloud-sdk:slim
+
+# ==============================================================================
+# AUTHENTIFICATION GCP VIA WORKLOAD IDENTITY FEDERATION (WIF)
+# ==============================================================================
+.gcp_auth_wif:
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends jq curl git ca-certificates unzip gnupg
+    - rm -rf /var/lib/apt/lists/*
+    - test -n "$GCP_PROJECT_ID"
+    - test -n "$GCP_REGION"
+    - test -n "$WIF_PROVIDER"
+    - test -n "$GCP_SA_EMAIL"
+    - test -n "$ARTIFACT_REPO"
+    - export OIDC_TOKEN="${GITLAB_OIDC_TOKEN}"
+    - echo "$OIDC_TOKEN" > /tmp/oidc_token
+    - export GCP_SA_EMAIL_ENC="$(printf '%s' "$GCP_SA_EMAIL" | sed 's/@/%40/g')"
+    - |
+      cat > /tmp/wif_cred.json <<EOF
+      {
+        "type": "external_account",
+        "audience": "//iam.googleapis.com/${WIF_PROVIDER}",
+        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+        "token_url": "https://sts.googleapis.com/v1/token",
+        "credential_source": { "file": "/tmp/oidc_token" },
+        "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SA_EMAIL_ENC}:generateAccessToken"
+      }
+      EOF
+    - gcloud auth login --cred-file=/tmp/wif_cred.json --quiet
+    - gcloud config set project "$GCP_PROJECT_ID"
+    - gcloud config set run/region "$GCP_REGION"
+    - gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" -q
+
+# ==============================================================================
+# TEMPLATE BUILD BACKEND
+# Chaque job :
+# - compile un seul microservice
+# - build + push l'image avec Jib
+# - exporte IMAGE_URI dans un fichier .env pour le job deploy
+# ==============================================================================
+.backend_build_template:
+  stage: build
+  image: maven:3.9.6-eclipse-temurin-17
+  tags:
+    - backend-java
+  interruptible: true
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: "//iam.googleapis.com/${WIF_PROVIDER}"
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends apt-transport-https ca-certificates gnupg curl jq git
+    - mkdir -p /usr/share/keyrings
+    - curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+    - echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" > /etc/apt/sources.list.d/google-cloud-sdk.list
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends google-cloud-cli
+    - rm -rf /var/lib/apt/lists/*
+    - !reference [.gcp_auth_wif, before_script]
+    - export MAVEN_OPTS="-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+    - mkdir -p "$CI_PROJECT_DIR/.m2/repository"
+  script:
+    - cd backend
+    - export TAG="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
+    - export IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPO}/${SERVICE_NAME}:${TAG}"
+    - mvn -Pdev $MAVEN_CLI_OPTS -DskipTests -pl "${MODULE_PATH}" -am clean package
+    - mvn -Pdev $MAVEN_CLI_OPTS -DskipTests -pl "${MODULE_PATH}" jib:build -Djib.to.image="${IMAGE_URI}"
+    - |
+      cat > "$CI_PROJECT_DIR/${SERVICE_NAME}.env" <<EOF
+      SERVICE_NAME=${SERVICE_NAME}
+      IMAGE_URI=${IMAGE_URI}
+      EOF
+  artifacts:
+    reports:
+      dotenv: "${SERVICE_NAME}.env"
+    paths:
+      - "${SERVICE_NAME}.env"
+    expire_in: 1 day
+
+# ==============================================================================
+# TEMPLATE BUILD FRONTEND
+# Chaque job :
+# - build une seule application frontend
+# - push l'image Docker
+# - exporte IMAGE_URI dans un fichier .env pour le job deploy
+# ==============================================================================
+.frontend_build_template:
+  stage: build
+  image: google/cloud-sdk:slim
+  tags:
+    - frontend-docker
+  interruptible: true
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: "//iam.googleapis.com/${WIF_PROVIDER}"
+  before_script:
+    - !reference [.gcp_auth_wif, before_script]
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends ca-certificates curl gnupg jq
+    - install -m 0755 -d /etc/apt/keyrings
+    - curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    - chmod a+r /etc/apt/keyrings/docker.gpg
+    - |
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends docker-ce-cli
+    - rm -rf /var/lib/apt/lists/*
+    - docker version
+    - docker info
+  script:
+    - export TAG="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
+    - export IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPO}/${IMAGE_NAME}:${TAG}"
+    - docker build -t "$IMAGE_URI" "${CONTEXT_PATH}"
+    - docker push "$IMAGE_URI"
+    - |
+      cat > "$CI_PROJECT_DIR/${IMAGE_NAME}.env" <<EOF
+      SERVICE_NAME=${IMAGE_NAME}
+      IMAGE_URI=${IMAGE_URI}
+      EOF
+  artifacts:
+    reports:
+      dotenv: "${IMAGE_NAME}.env"
+    paths:
+      - "${IMAGE_NAME}.env"
+    expire_in: 1 day
+
+# ==============================================================================
+# TEMPLATE DEPLOY CLOUD RUN
+# Chaque job :
+# - récupère IMAGE_URI depuis l'artifact dotenv du job build
+# - déploie uniquement le service ciblé sur Cloud Run
+# ==============================================================================
+.cloudrun_deploy_template:
+  stage: deploy
+  image: google/cloud-sdk:slim
+  tags:
+    - terraform
+  interruptible: true
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: "//iam.googleapis.com/${WIF_PROVIDER}"
+  before_script:
+    - !reference [.gcp_auth_wif, before_script]
+  script:
+    - test -n "$SERVICE_NAME"
+    - test -n "$IMAGE_URI"
+    - export READY_REVISION="$(gcloud run services describe "$SERVICE_NAME" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" --format='value(status.latestReadyRevisionName)' || true)"
+    - |
+      if [ -n "$READY_REVISION" ]; then
+        gcloud run revisions describe "$READY_REVISION" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" --format=json > /tmp/ready-revision.json
+        HAS_SECRET_ENV="$(jq -r '[.spec.containers[0].env[]? | has("valueSource")] | any' /tmp/ready-revision.json)"
+
+        if [ "$HAS_SECRET_ENV" = "true" ]; then
+          gcloud run deploy "$SERVICE_NAME" \
+            --image "$IMAGE_URI" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --update-env-vars SPRING_PROFILES_ACTIVE=dev \
+            --quiet
+        else
+          jq '
+            ([.spec.containers[0].env[]? | select(has("value")) | {(.name): .value}] | add) // {}
+            | .SPRING_PROFILES_ACTIVE = "dev"
+          ' /tmp/ready-revision.json > /tmp/cloudrun-env-vars.json
+
+          gcloud run deploy "$SERVICE_NAME" \
+            --image "$IMAGE_URI" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --env-vars-file /tmp/cloudrun-env-vars.json \
+            --quiet
+        fi
+      else
+        gcloud run deploy "$SERVICE_NAME" \
+          --image "$IMAGE_URI" \
+          --region "$GCP_REGION" \
+          --project "$GCP_PROJECT_ID" \
+          --update-env-vars SPRING_PROFILES_ACTIVE=dev \
+          --quiet
+      fi
+
+# ==============================================================================
+# BACKEND - API GATEWAY
+# ==============================================================================
+build_api_gateway:
+  extends: .backend_build_template
+  variables:
+    SERVICE_NAME: "api-gateway"
+    MODULE_PATH: "api-gateway"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/api-gateway/**
+        - backend/pom.xml
+
+deploy_api_gateway:
+  extends: .cloudrun_deploy_template
+  needs:
+    - job: build_api_gateway
+      artifacts: true
+  variables:
+    SERVICE_NAME: "api-gateway"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/api-gateway/**
+        - backend/pom.xml
+
+# ==============================================================================
+# BACKEND - CONFIG SERVER
+# ==============================================================================
+build_config_server:
+  extends: .backend_build_template
+  variables:
+    SERVICE_NAME: "config-server"
+    MODULE_PATH: "config-server"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/config-server/**
+        - backend/pom.xml
+
+deploy_config_server:
+  extends: .cloudrun_deploy_template
+  needs:
+    - job: build_config_server
+      artifacts: true
+  variables:
+    SERVICE_NAME: "config-server"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/config-server/**
+        - backend/pom.xml
+
+# ==============================================================================
+# BACKEND - EUREKA SERVER
+# ==============================================================================
+build_eureka_server:
+  extends: .backend_build_template
+  variables:
+    SERVICE_NAME: "eureka-server"
+    MODULE_PATH: "eureka-server"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/eureka-server/**
+        - backend/pom.xml
+
+deploy_eureka_server:
+  extends: .cloudrun_deploy_template
+  needs:
+    - job: build_eureka_server
+      artifacts: true
+  variables:
+    SERVICE_NAME: "eureka-server"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/eureka-server/**
+        - backend/pom.xml
+
+# ==============================================================================
+# BACKEND - AUTH SERVICE
+# ==============================================================================
+build_auth_service:
+  extends: .backend_build_template
+  variables:
+    SERVICE_NAME: "auth-service"
+    MODULE_PATH: "services/auth-service"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/services/auth-service/**
+        - backend/pom.xml
+
+deploy_auth_service:
+  extends: .cloudrun_deploy_template
+  needs:
+    - job: build_auth_service
+      artifacts: true
+  variables:
+    SERVICE_NAME: "auth-service"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/services/auth-service/**
+        - backend/pom.xml
+
+# ==============================================================================
+# BACKEND - USER SERVICE
+# ==============================================================================
+build_user_service:
+  extends: .backend_build_template
+  variables:
+    SERVICE_NAME: "user-service"
+    MODULE_PATH: "services/user-service"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/services/user-service/**
+        - backend/pom.xml
+
+deploy_user_service:
+  extends: .cloudrun_deploy_template
+  needs:
+    - job: build_user_service
+      artifacts: true
+  variables:
+    SERVICE_NAME: "user-service"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/services/user-service/**
+        - backend/pom.xml
+
+# ==============================================================================
+# BACKEND - PARTNER SERVICE
+# ==============================================================================
+build_partner_service:
+  extends: .backend_build_template
+  variables:
+    SERVICE_NAME: "partner-service"
+    MODULE_PATH: "services/partner-service"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/services/partner-service/**
+        - backend/pom.xml
+
+deploy_partner_service:
+  extends: .cloudrun_deploy_template
+  needs:
+    - job: build_partner_service
+      artifacts: true
+  variables:
+    SERVICE_NAME: "partner-service"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/services/partner-service/**
+        - backend/pom.xml
+
+# ==============================================================================
+# BACKEND - LOCATION SERVICE
+# ==============================================================================
+build_location_service:
+  extends: .backend_build_template
+  variables:
+    SERVICE_NAME: "location-service"
+    MODULE_PATH: "services/location-service"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/services/location-service/**
+        - backend/pom.xml
+
+deploy_location_service:
+  extends: .cloudrun_deploy_template
+  needs:
+    - job: build_location_service
+      artifacts: true
+  variables:
+    SERVICE_NAME: "location-service"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/services/location-service/**
+        - backend/pom.xml
+
+# ==============================================================================
+# BACKEND - NOTIFICATION SERVICE
+# ==============================================================================
+build_notification_service:
+  extends: .backend_build_template
+  variables:
+    SERVICE_NAME: "notification-service"
+    MODULE_PATH: "services/notification-service"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/services/notification-service/**
+        - backend/pom.xml
+
+deploy_notification_service:
+  extends: .cloudrun_deploy_template
+  needs:
+    - job: build_notification_service
+      artifacts: true
+  variables:
+    SERVICE_NAME: "notification-service"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - backend/services/notification-service/**
+        - backend/pom.xml
+
+# ==============================================================================
+# FRONTEND - PARTNER DASHBOARD
+# ==============================================================================
+build_partner_dashboard:
+  extends: .frontend_build_template
+  variables:
+    IMAGE_NAME: "partner-dashboard"
+    CONTEXT_PATH: "frontend/partner-dashboard"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - frontend/partner-dashboard/**
+
+deploy_partner_dashboard:
+  extends: .cloudrun_deploy_template
+  needs:
+    - job: build_partner_dashboard
+      artifacts: true
+  variables:
+    SERVICE_NAME: "partner-dashboard"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - frontend/partner-dashboard/**
+
+# ==============================================================================
+# FRONTEND - ADMIN PANEL
+# ==============================================================================
+build_admin_panel:
+  extends: .frontend_build_template
+  variables:
+    IMAGE_NAME: "admin-panel"
+    CONTEXT_PATH: "frontend/admin-panel"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - frontend/admin-panel/**
+
+deploy_admin_panel:
+  extends: .cloudrun_deploy_template
+  needs:
+    - job: build_admin_panel
+      artifacts: true
+  variables:
+    SERVICE_NAME: "admin-panel"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - frontend/admin-panel/**
+
+# ==============================================================================
+# FRONTEND - COURIER APP
+# ==============================================================================
+build_courier_app:
+  extends: .frontend_build_template
+  variables:
+    IMAGE_NAME: "courier-app"
+    CONTEXT_PATH: "frontend/courier_app"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - frontend/courier_app/**
+
+deploy_courier_app:
+  extends: .cloudrun_deploy_template
+  needs:
+    - job: build_courier_app
+      artifacts: true
+  variables:
+    SERVICE_NAME: "courier-app"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - frontend/courier_app/**
+
+# ==============================================================================
+# FRONTEND - CUSTOMER APP
+# ==============================================================================
+build_customer_app:
+  extends: .frontend_build_template
+  variables:
+    IMAGE_NAME: "customer-app"
+    CONTEXT_PATH: "frontend/customer_app"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - frontend/customer_app/**
+
+deploy_customer_app:
+  extends: .cloudrun_deploy_template
+  needs:
+    - job: build_customer_app
+      artifacts: true
+  variables:
+    SERVICE_NAME: "customer-app"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - frontend/customer_app/**
+
+# ==============================================================================
+# TERRAFORM DEV
+# IMPORTANT :
+# - Ce job ne sert plus à déployer les images applicatives
+# - Il ne tourne que si le code infra change
+# - On réinjecte ici les variables Terraform obligatoires
+# ==============================================================================
+terraform_apply_dev:
+  stage: terraform
+  image: google/cloud-sdk:slim
+  tags:
+    - terraform
+  interruptible: true
+  resource_group: terraform-dev
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: "//iam.googleapis.com/${WIF_PROVIDER}"
+  before_script:
+    - !reference [.gcp_auth_wif, before_script]
+    - curl -fsSL "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip" -o /tmp/terraform.zip
+    - unzip -o /tmp/terraform.zip -d /usr/local/bin
+    - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/wif_cred.json
+  script:
+    - cd "$TF_DIR"
+
+    # --------------------------------------------------------------------------
+    # Préparer l'URI Git du Config Server pour Terraform
+    # Terraform attend TF_VAR_config_server_git_uri
+    # --------------------------------------------------------------------------
+    - export RAW_CONFIG_SERVER_GIT_URI="${SPRING_CLOUD_CONFIG_SERVER_GIT_URI:-${CONFIG_SERVER_GIT_URI:-${CONFIG_GIT_URI:-${GIT_REPO_URI:-}}}}"
+    - |
+      if echo "$RAW_CONFIG_SERVER_GIT_URI" | grep -q '/-/tree/'; then
+        TF_VAR_config_server_git_uri="${RAW_CONFIG_SERVER_GIT_URI%%/-/tree/*}.git"
+      else
+        TF_VAR_config_server_git_uri="$RAW_CONFIG_SERVER_GIT_URI"
+      fi
+      export TF_VAR_config_server_git_uri
+
+    - |
+      if [ -z "$TF_VAR_config_server_git_uri" ]; then
+        echo "ERROR: Missing config_server_git_uri"
+        exit 1
+      fi
+
+    # --------------------------------------------------------------------------
+    # Préparer l'URI MongoDB pour Terraform
+    # Terraform attend TF_VAR_mongodb_uri
+    # --------------------------------------------------------------------------
+    - export EFFECTIVE_MONGODB_URI="${MONGODB_URI:-${MONGO_URI:-}}"
+    - |
+      if [ -z "$EFFECTIVE_MONGODB_URI" ]; then
+        echo "ERROR: Missing mongodb_uri"
+        exit 1
+      fi
+    - export TF_VAR_mongodb_uri="$EFFECTIVE_MONGODB_URI"
+
+    # --------------------------------------------------------------------------
+    # Variables optionnelles Mongo Atlas
+    # --------------------------------------------------------------------------
+    - export TF_VAR_atlas_public_key="${ATLAS_PUBLIC_KEY:-}"
+    - export TF_VAR_atlas_private_key="${ATLAS_PRIVATE_KEY:-}"
+    - export TF_VAR_atlas_project_id="${ATLAS_PROJECT_ID:-}"
+
+    # --------------------------------------------------------------------------
+    # Exécution Terraform
+    # --------------------------------------------------------------------------
+    - terraform init -input=false
+    - terraform validate
+    - terraform apply -auto-approve -input=false -lock-timeout=5m
+
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes:
+        - infra/**
+
+# ==============================================================================
+# STAGING - SQUELETTE MANUEL
+# ==============================================================================
+build_frontend_staging_images:
+  stage: build
+  image: google/cloud-sdk:slim
+  tags:
+    - frontend-docker
+  when: manual
+  allow_failure: false
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: "//iam.googleapis.com/${WIF_PROVIDER}"
+  script:
+    - echo "Staging frontend build scaffold ready. Configure staging variables et tags avant activation."
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^staging-.*$/'
+
+terraform_apply_staging:
+  stage: terraform
+  image: google/cloud-sdk:slim
+  tags:
+    - terraform
+  when: manual
+  allow_failure: false
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: "//iam.googleapis.com/${WIF_PROVIDER}"
+  script:
+    - echo "Staging terraform scaffold ready. Définir TF_DIR sur infra/envs/staging et les variables staging."
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^staging-.*$/'
+
+# ==============================================================================
+# PROD - SQUELETTE MANUEL
+# ==============================================================================
+build_frontend_prod_images:
+  stage: build
+  image: google/cloud-sdk:slim
+  tags:
+    - frontend-docker
+  when: manual
+  allow_failure: false
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: "//iam.googleapis.com/${WIF_PROVIDER}"
+  script:
+    - echo "Production frontend build scaffold ready. Configurer variables prod et validations avant activation."
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^prod-.*$/'
+
+terraform_apply_prod:
+  stage: terraform
+  image: google/cloud-sdk:slim
+  tags:
+    - terraform
+  when: manual
+  allow_failure: false
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: "//iam.googleapis.com/${WIF_PROVIDER}"
+  script:
+    - echo "Production terraform scaffold ready. Définir TF_DIR sur infra/envs/prod et les variables prod."
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^prod-.*$/'

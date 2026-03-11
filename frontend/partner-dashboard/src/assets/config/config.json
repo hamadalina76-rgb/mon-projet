@@ -1,0 +1,8 @@
+{
+  "env": "dev",
+  "apiBaseUrl": "https://api-gateway-392205979525.europe-west1.run.app",
+  "wsUrl": "wss://api-gateway-392205979525.europe-west1.run.app",
+  "appName": "SpeedLine Partner Dashboard",
+  "defaultLanguage": "fr",
+  "supportedLanguages": ["fr", "en", "ar"]
+}

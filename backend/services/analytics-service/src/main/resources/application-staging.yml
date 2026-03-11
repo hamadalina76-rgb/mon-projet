@@ -1,0 +1,78 @@
+# ============================================================================
+# CONFIGURATION STAGING - ANALYTICS SERVICE
+# ============================================================================
+
+server:
+  port: ${SERVER_PORT:8089}
+  servlet:
+    encoding:
+      charset: UTF-8
+
+spring:
+  application:
+    name: analytics-service
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/analytics_staging}
+    username: ${SPRING_DATASOURCE_USERNAME:analytics_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
+
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: ${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT:org.hibernate.dialect.MySQL8Dialect}
+
+  data:
+    redis:
+      repositories:
+        enabled: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_USER:eureka}:${EUREKA_PASSWORD:eureka123}@eureka:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}
+
+management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:9090}
+
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: when-authorized
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: WARN
+    org.springframework: INFO
+    org.springframework.web: INFO
+    com.speedline: INFO
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+  file:
+    name: logs/analytics-service.log
+
+
+
+
+
