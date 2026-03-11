@@ -1,0 +1,320 @@
+# ============================================================================
+# API GATEWAY — application-dev.yml
+# Profil DEV / Cloud Run READY
+# ============================================================================
+# Objectifs :
+# 1) Démarrage stable sur Cloud Run
+# 2) Écoute sur le port fourni par Cloud Run
+# 3) Pas de dépendance obligatoire à Eureka / Redis / Config Server en DEV
+# 4) Routage direct vers les services Cloud Run
+# 5) Compatibilité temporaire avec certains anciens chemins frontend
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# CONFIGURATION SERVEUR
+# ----------------------------------------------------------------------------
+server:
+  # Cloud Run injecte automatiquement PORT
+  port: ${PORT:8080}
+
+  # Important pour les conteneurs
+  address: 0.0.0.0
+
+# ----------------------------------------------------------------------------
+# CONFIGURATION SPRING
+# ----------------------------------------------------------------------------
+spring:
+  application:
+    # Nom du service pour logs / traces
+    name: ${SPRING_APPLICATION_NAME:api-gateway}
+
+  main:
+    # Accélère un peu le démarrage en dev
+    lazy-initialization: true
+
+  codec:
+    # Limite mémoire pour les payloads
+    max-in-memory-size: 10MB
+
+  # --------------------------------------------------------------------------
+  # Désactivation explicite des composants non nécessaires en DEV Cloud Run
+  # --------------------------------------------------------------------------
+  # Pourquoi ?
+  # - éviter les erreurs Redis si Redis n'est pas prêt
+  # - éviter les tentatives de récupération de config depuis localhost:8888
+  # - rendre le démarrage plus stable
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
+      - org.springframework.boot.actuate.autoconfigure.data.redis.RedisHealthContributorAutoConfiguration
+
+  cloud:
+    # Désactiver explicitement Spring Cloud Config Client en DEV
+    config:
+      enabled: false
+
+    # Désactiver le bootstrap context pour éviter certains comportements
+    bootstrap:
+      enabled: false
+
+    gateway:
+      # ----------------------------------------------------------------------
+      # CORS
+      # ----------------------------------------------------------------------
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - https://admin-panel-392205979525.europe-west1.run.app
+              - https://partner-dashboard-392205979525.europe-west1.run.app
+              - https://courier-app-392205979525.europe-west1.run.app
+              - https://customer-app-392205979525.europe-west1.run.app
+              - http://localhost:4200
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+            maxAge: 3600
+
+      # ----------------------------------------------------------------------
+      # CLIENT HTTP DU GATEWAY
+      # ----------------------------------------------------------------------
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 30s
+        pool:
+          type: ELASTIC
+          max-idle-time: 30s
+
+      # ----------------------------------------------------------------------
+      # DISCOVERY LOCATOR
+      # ----------------------------------------------------------------------
+      # Désactivé en DEV : on route directement vers les URLs Cloud Run
+      discovery:
+        locator:
+          enabled: false
+
+      # ----------------------------------------------------------------------
+      # ROUTES DEV
+      # ----------------------------------------------------------------------
+      routes:
+
+        # ====================================================================
+        # AUTH SERVICE
+        # ====================================================================
+
+        # Route standard attendue par les frontends corrigés
+        - id: auth-service
+          uri: https://auth-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/api/v1/auth/**
+
+        # Route legacy temporaire
+        # À garder seulement tant que certains frontends utilisent encore /v1/auth/**
+        - id: auth-service-legacy
+          uri: https://auth-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/v1/auth/**
+          filters:
+            # /v1/auth/register => /api/v1/auth/register
+            - PrefixPath=/api
+
+        # ====================================================================
+        # USER SERVICE
+        # ====================================================================
+        - id: user-service
+          uri: https://user-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/api/v1/admins/**, /api/v1/admin-roles/**, /api/v1/admin/activity-logs/**, /api/users/**, /api/customers/**, /api/couriers/**, /api/addresses/**
+          filters:
+            - StripPrefix=1
+            - RoleAuthorizationFilter
+
+        # ====================================================================
+        # PARTNER SERVICE — ROUTES STANDARD
+        # ====================================================================
+        # Format standard recommandé :
+        # /api/partners/**, /api/products/**, /api/categories/**
+        - id: partner-service
+          uri: https://partner-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/api/partners/**, /api/products/**, /api/categories/**
+          filters:
+            - StripPrefix=1
+            - RoleAuthorizationFilter
+
+        # --------------------------------------------------------------------
+        # PARTNER SERVICE — ROUTES LEGACY TEMPORAIRES
+        # --------------------------------------------------------------------
+        # Cette route permet au partner-dashboard de fonctionner
+        # s'il envoie encore :
+        # /partners/**, /products/**, /categories/**
+        #
+        # Important :
+        # Ici on NE met PAS StripPrefix, car le backend expose déjà /partners/**
+        # --------------------------------------------------------------------
+        - id: partner-service-legacy
+          uri: https://partner-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/partners/**, /products/**, /categories/**
+          filters:
+            - RoleAuthorizationFilter
+
+        # ====================================================================
+        # PARTNER SERVICE — ADMIN
+        # ====================================================================
+        - id: partner-service-admin
+          uri: https://partner-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/api/v1/admin/partners/**
+          filters:
+            # /api/v1/admin/partners/** => /admin/partners/**
+            - StripPrefix=2
+            - AuthenticationFilter
+            - RoleAuthorizationFilter
+
+        # ====================================================================
+        # LOCATION SERVICE
+        # ====================================================================
+        - id: location-service
+          uri: https://location-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/api/locations/**, /api/zones/**
+          filters:
+            - StripPrefix=1
+
+        # ====================================================================
+        # NOTIFICATION SERVICE (REST)
+        # ====================================================================
+        - id: notification-service
+          uri: https://notification-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/api/notifications/**, /api/push-tokens/**
+          filters:
+            - StripPrefix=1
+            - AuthenticationFilter
+
+        # ====================================================================
+        # NOTIFICATION SERVICE (WEBSOCKET / SOCKJS)
+        # ====================================================================
+
+        # Route WebSocket réelle : uniquement pour les requêtes Upgrade websocket
+        - id: notification-service-ws
+          uri: wss://notification-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/ws/notifications/**
+            - Header=Upgrade, websocket
+
+        # Route HTTP SockJS : /info, /xhr, etc.
+        - id: notification-service-sockjs
+          uri: https://notification-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/ws/notifications/**
+
+        # ====================================================================
+        # SERVICES FUTURS (à décommenter quand déployés)
+        # ====================================================================
+
+        # - id: order-service
+        #   uri: https://order-service-392205979525.europe-west1.run.app
+        #   predicates:
+        #     - Path=/api/orders/**
+        #   filters:
+        #     - StripPrefix=1
+        #     - AuthenticationFilter
+
+        # - id: delivery-service
+        #   uri: https://delivery-service-392205979525.europe-west1.run.app
+        #   predicates:
+        #     - Path=/api/deliveries/**
+        #   filters:
+        #     - StripPrefix=1
+        #     - AuthenticationFilter
+
+        # - id: payment-service
+        #   uri: https://payment-service-392205979525.europe-west1.run.app
+        #   predicates:
+        #     - Path=/api/payments/**, /api/wallets/**, /api/payment-methods/**
+        #   filters:
+        #     - StripPrefix=1
+        #     - AuthenticationFilter
+
+      # ----------------------------------------------------------------------
+      # FILTRES PAR DÉFAUT
+      # ----------------------------------------------------------------------
+      default-filters:
+        # Évite les doublons de headers CORS
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
+        # Retry pour erreurs transitoires / cold starts Cloud Run
+        - name: Retry
+          args:
+            retries: 3
+            statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+            methods: GET,POST,PUT,DELETE,PATCH
+            backoff:
+              firstBackoff: 50ms
+              maxBackoff: 500ms
+              factor: 2
+              basedOnPreviousValue: false
+
+# ----------------------------------------------------------------------------
+# EUREKA
+# ----------------------------------------------------------------------------
+# En DEV Cloud Run, on préfère ne pas dépendre d'Eureka au démarrage.
+# Si besoin plus tard :
+# EUREKA_ENABLED=true
+# EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://.../eureka/
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:false}
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:}
+
+  instance:
+    prefer-ip-address: true
+
+# ----------------------------------------------------------------------------
+# JWT
+# ----------------------------------------------------------------------------
+# En DEV uniquement. En staging/prod => Secret Manager obligatoire.
+jwt:
+  secret: ${JWT_SECRET:speedline-super-secret-key-for-jwt-token-generation-minimum-256-bits}
+
+# ----------------------------------------------------------------------------
+# ACTUATOR
+# ----------------------------------------------------------------------------
+management:
+  server:
+    # Même port que l'application (Cloud Run n'expose qu'un seul port)
+    port: ${PORT:8080}
+
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,gateway
+
+  endpoint:
+    health:
+      show-details: always
+
+# ----------------------------------------------------------------------------
+# LOGGING
+# ----------------------------------------------------------------------------
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    org.springframework.cloud.loadbalancer: WARN
+    org.springframework.web.reactive: INFO
+    com.speedline.gateway: INFO

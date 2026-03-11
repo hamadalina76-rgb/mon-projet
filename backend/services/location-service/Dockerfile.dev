@@ -1,0 +1,37 @@
+# ==============================================================================
+# Dockerfile.dev — Location Service (Cloud Run)
+# ⚠️  CONTEXTE DOCKER : doit être lancé depuis backend/
+#     docker build -f services/location-service/Dockerfile.dev .
+# ==============================================================================
+
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
+WORKDIR /workspace
+
+COPY pom.xml ./pom.xml
+COPY services/location-service/pom.xml ./services/location-service/pom.xml
+
+RUN mvn -pl services/location-service -am dependency:go-offline -q || true
+
+COPY services/location-service/src ./services/location-service/src
+
+RUN mvn -q -DskipTests -pl services/location-service -am clean package
+
+
+FROM eclipse-temurin:17-jre-jammy
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+
+COPY --from=builder /workspace/services/location-service/target/*.jar /app/app.jar
+RUN chown appuser:appuser /app/app.jar
+
+EXPOSE 8080
+
+# ✅ Profil dev Cloud Run
+ENV SPRING_PROFILES_ACTIVE=dev
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=70 -XX:+UseG1GC -Dspring.output.ansi.enabled=ALWAYS"
+
+USER appuser
+# ✅ Cloud Run injecte PORT dynamiquement
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -Dserver.port=${PORT:-8080} -jar /app/app.jar"]

@@ -1,0 +1,18 @@
+# ==============================================================================
+# auth-service - META-INF/spring.factories
+# ==============================================================================
+# ??  CE FICHIER NE LISTE PLUS DE EnvironmentPostProcessors.
+#
+# RAISON: En Spring Boot, spring.factories est ADDITIF (jamais remplaçant).
+# Lister des processors ici n'empêche PAS ceux d'autres JARs de s'exécuter.
+# Tenter de "remplacer" la liste via ce fichier ne fonctionnait pas.
+#
+# ? VRAIE SOLUTION APPLIQUÉE:
+# spring-cloud-gcp-autoconfigure est déclaré avec scope="provided" dans pom.xml.
+# Résultat: ce JAR est absent du fat JAR final ? CloudSqlEnvironmentPostProcessor
+# n'est jamais enregistré ? pas de crash "A database name must be provided".
+#
+# Voir pom.xml, section "FIX CRITIQUE: Exclure spring-cloud-gcp-autoconfigure"
+# ==============================================================================
+
+

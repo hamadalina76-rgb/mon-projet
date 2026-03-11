@@ -13,6 +13,7 @@ import { routes } from './app.routes';
 import { authInterceptor } from '@core/interceptors/auth.interceptor';
 import { errorInterceptor } from '@core/interceptors/error.interceptor';
 import { loadingInterceptor } from '@core/interceptors/loading.interceptor';
+import { RuntimeConfigService } from '@core/services/runtime-config.service';
 import { environment } from '@environments/environment';
 
 // Socket.IO Configuration
@@ -37,13 +38,16 @@ export function HttpLoaderFactory(http: HttpClient) {
   return new CustomTranslateLoader(http);
 }
 
-export function initTranslations(translate: TranslateService) {
-  return () => firstValueFrom(translate.use(environment.defaultLanguage));
+export function initApp(runtimeConfigService: RuntimeConfigService, translate: TranslateService) {
+  return async () => {
+    await runtimeConfigService.load();
+    await firstValueFrom(translate.use(environment.defaultLanguage));
+  };
 }
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    { provide: APP_INITIALIZER, useFactory: initTranslations, deps: [TranslateService], multi: true },
+    { provide: APP_INITIALIZER, useFactory: initApp, deps: [RuntimeConfigService, TranslateService], multi: true },
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(
       withInterceptors([authInterceptor, errorInterceptor, loadingInterceptor])

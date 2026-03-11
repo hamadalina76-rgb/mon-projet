@@ -1,0 +1,89 @@
+# ============================================================================
+# DOCKERFILE PRODUCTION - DELIVERY SERVICE (CLOUD RUN)
+# ============================================================================
+# Image optimisée pour Cloud Run avec Google Cloud Pub/Sub
+
+FROM maven:3.9-eclipse-temurin-17-alpine AS build
+
+WORKDIR /app
+
+# Copier les fichiers de configuration Maven
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# Copier le code source
+COPY src ./src
+
+# Compiler l'application avec optimisations production
+RUN mvn clean package -DskipTests -Dmaven.test.skip=true \
+    && mv target/*.jar target/app.jar
+
+# ============================================================================
+# Image finale pour Cloud Run (optimisée et sécurisée)
+# ============================================================================
+FROM eclipse-temurin:17-jre-alpine
+
+WORKDIR /app
+
+# Mettre à jour les packages pour la sécurité
+RUN apk upgrade --no-cache && \
+    apk add --no-cache curl ca-certificates tzdata && \
+    rm -rf /var/cache/apk/*
+
+# Créer un utilisateur non-root avec UID/GID fixes (Cloud Run recommande 1000)
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# Copier le JAR depuis l'étape de build
+COPY --from=build --chown=appuser:appgroup /app/target/app.jar app.jar
+
+# Copier les migrations Flyway depuis l'étape de build
+COPY --from=build --chown=appuser:appgroup /app/src/main/resources/db/migration /app/db/migration
+
+# ============================================================================
+# Configuration Cloud Run
+# ============================================================================
+# Cloud Run injecte PORT via variable d'environnement (par défaut 8080)
+# On garde 8085 mais on écoute aussi le PORT de Cloud Run
+ENV PORT=8085
+ENV SPRING_PROFILES_ACTIVE=prod
+ENV MANAGEMENT_SERVER_PORT=9090
+ENV TZ=UTC
+ENV FLYWAY_LOCATIONS=filesystem:/app/db/migration
+
+# Options JVM optimisées pour Cloud Run
+# - Réduction memory (Cloud Run a limite de mémoire)
+# - Startup rapide
+# - GC adapté
+ENV JAVA_OPTS="-Xms512m -Xmx1536m \
+    -XX:+UseG1GC \
+    -XX:MaxGCPauseMillis=200 \
+    -XX:+UseStringDeduplication \
+    -XX:+OptimizeStringConcat \
+    -Djava.security.egd=file:/dev/./urandom \
+    -Dfile.encoding=UTF-8 \
+    -XX:+TieredCompilation \
+    -XX:TieredStopAtLevel=2"
+
+# Port pour Cloud Run (peut être surchargé par variable PORT)
+EXPOSE 8085 9090
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
+  CMD curl -f http://localhost:9090/actuator/health/readiness || exit 1
+
+# Changer l'utilisateur
+USER appuser
+
+# Labels pour métadonnées
+LABEL maintainer="speedline-team" \
+      service="delivery-service" \
+      environment="production" \
+      messaging="gcp-pubsub" \
+      platform="cloud-run" \
+      version="1.0.0"
+
+# Démarrer l'application avec options JVM
+# Cloud Run capture STDOUT/STDERR pour les logs
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+

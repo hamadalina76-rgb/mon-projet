@@ -1,0 +1,84 @@
+# ============================================================================
+# PARTNER-SERVICE - application-dev.yml (Cloud Run DEV)
+# Aligné sur le pattern auth-service tout en conservant Pub/Sub.
+# ============================================================================
+server:
+  port: ${PORT:8080}
+  address: 0.0.0.0
+  servlet:
+    encoding:
+      charset: UTF-8
+
+spring:
+  application:
+    name: partner-service
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:5432/speedline_partners}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:postgres123}}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      initialization-fail-timeout: 0
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+    table: flyway_schema_history_partner_v2
+    validate-on-migrate: false
+
+  cloud:
+    config:
+      enabled: false
+    bootstrap:
+      enabled: false
+    gcp:
+      project-id: ${GCP_PROJECT_ID:speedline-dev}
+      sql:
+        enabled: false
+      core:
+        enabled: true
+
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:false}
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+file:
+  upload-dir: ${UPLOAD_DIR:/tmp/uploads}
+  base-url: ${UPLOAD_BASE_URL:http://localhost:8083/uploads}
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.speedline: DEBUG
+

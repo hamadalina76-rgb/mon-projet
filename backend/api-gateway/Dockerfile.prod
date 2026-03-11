@@ -1,0 +1,191 @@
+# ============================================================================
+# DOCKERFILE PRODUCTION - API GATEWAY SPEEDLINE
+# ============================================================================
+# Ce Dockerfile est hautement optimisé pour la production
+# - Sécurité renforcée (absence de vulnérabilités)
+# - Performance et scalabilité
+# - Monitoring et observabilité
+# - Gestion des ressources optimisée
+#
+# BUILD :
+# docker build -f Dockerfile.prod \
+#   --build-arg ARTIFACT_VERSION=1.0.0 \
+#   -t speedline/api-gateway:latest \
+#   -t speedline/api-gateway:1.0.0 .
+#
+# PUSH (GCP Artifact Registry) :
+# docker push gcr.io/speedline-prod/api-gateway:latest
+#
+# SECURITY SCAN :
+# trivy image speedline/api-gateway:latest
+# ============================================================================
+# ============================================================================
+# ÉTAPE 1 : MULTI-STAGE BUILD - RÉDUCTION DE LA TAILLE DE L'IMAGE
+# ============================================================================
+# Image complète pour la compilation (si nécessaire)
+# Cette étape n'est pas utilisée ici car le JAR est pré-compilé
+# Mais elle peut servir pour les builds futurs
+FROM openjdk:17-slim as builder
+LABEL builder="true"
+WORKDIR /build
+# Le JAR est déjà compilé, donc on copie directement
+COPY target/*.jar /build/app.jar
+# ============================================================================
+# ÉTAPE 2 : IMAGE DE RUNTIME PRODUCTION
+# ============================================================================
+# Image de base : OpenJDK 17 ultra-léger (optimisé pour production)
+# slim = ~120MB (sans build tools, docs, etc.)
+# Alternative future : distroless pour encore plus de sécurité
+FROM openjdk:17-slim
+# ============================================================================
+# MÉTADONNÉES DE L'IMAGE
+# ============================================================================
+LABEL maintainer="SpeedLine DevOps Team"
+LABEL environment="production"
+LABEL service="api-gateway"
+LABEL version="1.0.0"
+LABEL description="API Gateway pour l'écosystème de microservices SpeedLine"
+# ============================================================================
+# SÉCURITÉ : INSTALLATION DES OUTILS ESSENTIELS
+# ============================================================================
+# Mettre à jour l'OS et installer uniquement les dépendances critiques
+# curl : pour les health checks
+# ca-certificates : pour les connexions HTTPS sécurisées
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+# ============================================================================
+# SÉCURITÉ : CRÉATION D'UN UTILISATEUR NON-ROOT
+# ============================================================================
+# Créer un utilisateur dédié avec droits minimaux
+# UID 1000 : évite les conflits avec d'autres services
+# -m : crée le home directory
+RUN useradd -m -u 1000 -s /sbin/nologin appuser && \
+    chown -R appuser:appuser /app
+# ============================================================================
+# CONFIGURATION DU RÉPERTOIRE D'APPLICATION
+# ============================================================================
+# Répertoire de travail principal
+WORKDIR /app
+# Créer des répertoires pour logs et data (avec permissions correctes)
+RUN mkdir -p /app/logs /app/data && \
+    chown -R appuser:appuser /app
+# ============================================================================
+# COPIE DU JAR DE L'ÉTAPE BUILD
+# ============================================================================
+# Copier le JAR compilé avec ownership correct
+COPY --from=builder --chown=appuser:appuser /build/app.jar /app/app.jar
+# ============================================================================
+# EXPOSITION DES PORTS
+# ============================================================================
+# Port principal de l'application (Spring Boot embedded Tomcat)
+EXPOSE 8080
+# Port de Spring Boot Actuator (métriques, santé, tracing)
+EXPOSE 9090
+# ============================================================================
+# VARIABLES D'ENVIRONNEMENT - CONFIGURATION PRODUCTION
+# ============================================================================
+# Profil Spring Boot : 'prod' charge application-prod.yml
+# Cette configuration est optimisée au maximum pour la production
+ENV SPRING_PROFILES_ACTIVE=prod
+# Configuration JVM PRODUCTION OPTIMISÉE :
+# ========================================
+# - MaxRAMPercentage=80 : utiliser jusqu'à 80% de la RAM disponible
+#                          (le reste pour l'OS et autres processus)
+# - UseG1GC : Garbage Collector G1GC
+#             Excellent pour les applications avec forte mémoire
+#             Pause pausables + prédictibles < 200ms
+# - +ExitOnOutOfMemoryError : si manque mémoire, exit gracieux
+#                             Kubernetes relancera le pod
+# - -XX:+UnlockExperimentalVMOptions -XX:G1NewCollectionPercentage=30
+#   Optimise G1GC pour moins de pauses
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=80 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:+UnlockExperimentalVMOptions -XX:G1NewCollectionPercentage=30"
+# ============================================================================
+# CONFIGURATION DES SERVICES
+# ============================================================================
+# Config Server pour la gestion centralisée des propriétés
+ENV SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+# Eureka Server pour la découverte dynamique de services
+ENV EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:eureka123@eureka:8761/eureka/
+# Redis pour cache haute performance et rate limiting distribué
+ENV REDIS_HOST=redis
+ENV REDIS_PORT=6379
+# ============================================================================
+# HEALTHCHECK - DÉTECTION DES DÉFAILLANCES
+# ============================================================================
+# Vérification régulière que le service est fonctionnel
+# Très important pour Kubernetes et les orchestrateurs de conteneurs
+#
+# - interval=30s : tester toutes les 30 secondes
+# - timeout=10s : max 10 secondes pour répondre
+# - start-period=40s : laisser 40s pour démarrage JVM initial
+# - retries=3 : marquer unhealthy après 3 échecs
+#
+# Endpoints utilisés :
+# - /actuator/health/liveness : le processus est-il vivant ?
+# - /actuator/health/readiness : peut-on lui envoyer du trafic ?
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -sf http://localhost:9090/actuator/health/readiness || exit 1
+# ============================================================================
+# PERMISSIONS ET SÉCURITÉ
+# ============================================================================
+# Basculer vers l'utilisateur non-root pour la sécurité
+# Limitation de l'impact en cas de compromission du processus
+USER appuser
+# ============================================================================
+# COMMANDE DE DÉMARRAGE
+# ============================================================================
+# Démarrer l'application Java avec les options JVM configurées
+# sh -c : interprète les variables d'environnement ($JAVA_OPTS)
+# Pas de shell interactif pour éviter les accès à un terminal
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar /app/app.jar"]
+# ============================================================================
+# NOTES CRITIQUES POUR LA PRODUCTION
+# ============================================================================
+#
+# 1. SÉCURITÉ DES IMAGES :
+#    - Scan régulier avec : trivy image <image:tag>
+#    - Maintenir les images de base à jour (OpenJDK 17.x LTS)
+#    - Pas de secrets dans les images (utiliser des gestionnaires)
+#
+# 2. MÉTRIQUES ET MONITORING :
+#    - Prometheus : GET /actuator/prometheus
+#    - Logs structurés en JSON via logback
+#    - Distributed tracing via Sleuth + Jaeger/Zipkin
+#
+# 3. GRACEFUL SHUTDOWN :
+#    - Spring Boot a 30s pour fermer proprement (régler si besoin)
+#    - Les connexions actives seront fermées
+#    - Les workers actifs termineront leurs tâches
+#
+# 4. RESSOURCES KUBERNETES :
+#    spec:
+#      containers:
+#      - name: api-gateway
+#        resources:
+#          requests:
+#            memory: "512Mi"
+#            cpu: "250m"
+#          limits:
+#            memory: "1Gi"
+#            cpu: "1000m"
+#
+# 5. SCALING :
+#    - HPA (Horizontal Pod Autoscaling) basé sur CPU/mémoire
+#    - Circuit breaker via Resilience4j
+#    - Rate limiting via Redis
+#
+# 6. VERSIONING :
+#    - Tagger chaque release : v1.0.0, v1.0.1, etc.
+#    - Utiliser des registries privées (GCP Artifact Registry)
+#    - Rotation des tags old versions
+#
+# 7. DISASTER RECOVERY :
+#    - Réplicas multiples > 2
+#    - Pod Disruption Budgets configurés
+#    - Backup des données sensibles
+#
+# ============================================================================

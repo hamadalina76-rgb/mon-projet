@@ -1,0 +1,53 @@
+# ==============================================================================
+# Dockerfile.dev — Analytics Service (Cloud Run)
+# ==============================================================================
+
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
+WORKDIR /workspace
+
+COPY . .
+
+RUN mvn -q -DskipTests -pl services/analytics-service -am clean package
+
+FROM eclipse-temurin:17-jre-jammy
+WORKDIR /app
+
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+
+COPY --from=builder /workspace/services/analytics-service/target/*.jar /app/app.jar
+RUN chown appuser:appuser /app/app.jar
+
+EXPOSE 8080
+
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=70 -XX:+UseG1GC -Dspring.output.ansi.enabled=ALWAYS"
+
+USER appuser
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar /app/app.jar"]
+
+# Créer un utilisateur non-root
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Installer curl pour healthcheck
+RUN apk add --no-cache curl
+
+# Copier le JAR depuis l'étape de build
+COPY --from=build /app/target/*.jar app.jar
+
+# Variables d'environnement par défaut (dev)
+ENV SPRING_PROFILES_ACTIVE=dev
+ENV SERVER_PORT=8089
+ENV MANAGEMENT_SERVER_PORT=9090
+
+# Exposer les ports
+EXPOSE 8089 9090
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:9090/actuator/health || exit 1
+
+# Changer l'utilisateur
+USER appuser
+
+# Démarrer l'application
+ENTRYPOINT ["java", "-jar", "app.jar"]
+

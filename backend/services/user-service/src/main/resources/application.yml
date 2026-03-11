@@ -21,7 +21,9 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    baseline-version: 0
     locations: classpath:db/migration
+    table: flyway_schema_history_user_v2
     validate-on-migrate: true
   servlet:
     multipart:

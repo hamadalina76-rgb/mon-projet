@@ -1,0 +1,76 @@
+# ============================================================================
+# CONFIGURATION STAGING - API GATEWAY SPEEDLINE
+# ============================================================================
+# Ce fichier surcharge UNIQUEMENT les valeurs staging
+# Les routes viennent d'application.yml
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+  tomcat:
+    threads:
+      max: 300
+      min-spare: 20
+spring:
+  main:
+    lazy-initialization: false
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 30
+          max-idle: 15
+          min-idle: 10
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://eureka:eureka123@eureka:8761/eureka/}
+    registry-fetch-interval-seconds: 30
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+    instance-id: ${spring.application.name}:${random.value}
+management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:9090}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: when-authorized
+      probes:
+        enabled: true
+logging:
+  level:
+    root: WARN
+    org.springframework: INFO
+    org.springframework.cloud.gateway: INFO
+    org.springframework.security: INFO
+    com.speedline: INFO
+    com.speedline.gateway: INFO
+    com.speedline.auth: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/api-gateway.log
+resilience4j:
+  circuitbreaker:
+    instances:
+      default:
+        minimum-number-of-calls: 20
+        failure-rate-threshold: 40
+        wait-duration-in-open-state: 60000
+        permitted-number-of-calls-in-half-open-state: 10

@@ -3,7 +3,15 @@
 -- ============================================
 
 -- Enable PostGIS extension
-CREATE EXTENSION IF NOT EXISTS postgis;
+DO $$
+BEGIN
+    BEGIN
+        CREATE EXTENSION IF NOT EXISTS postgis;
+    EXCEPTION
+        WHEN duplicate_object OR unique_violation THEN
+            NULL;
+    END;
+END $$;
 
 -- Table: zones
 CREATE TABLE IF NOT EXISTS zones (

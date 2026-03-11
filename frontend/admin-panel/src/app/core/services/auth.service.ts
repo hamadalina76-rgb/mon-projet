@@ -15,10 +15,10 @@ import {
 import { AdminRole, ROLE_PERMISSIONS, Permission } from '@core/models/role.model';
 import { environment } from '@environments/environment';
 
-const TOKEN_KEY = 'admin_token';
-const REFRESH_TOKEN_KEY = 'admin_refresh_token';
-const USER_KEY = 'admin_user';
-const REMEMBER_KEY = 'admin_remember';
+const TOKEN_KEY = 'access_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
+const USER_KEY = 'user';
+const REMEMBER_KEY = 'remember_me';
 
 /** Rôles autorisés pour le panneau admin (exclut PARTNER, CUSTOMER, COURIER, etc.) */
 const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'FINANCE_ADMIN', 'SUPPORT_ADMIN', 'CONTENT_MODERATOR'];
@@ -103,8 +103,11 @@ export class AuthService {
             throw new Error('ACCESS_DENIED');
           }
 
+          // Store tokens with debug logging
+          console.log('[AuthService] Storing access token:', response.access_token?.substring(0, 20) + '...');
           this.setToken(response.access_token);
           this.setRefreshToken(response.refresh_token);
+          console.log('[AuthService] Tokens stored in', credentials.rememberMe ? 'localStorage' : 'sessionStorage');
 
           // Map backend role to frontend AdminRole
           let frontendRole: AdminRole;
@@ -122,6 +125,7 @@ export class AuthService {
           }
 
           // Fetch admin profile from user-service to get real customPermissions
+          console.log('[AuthService] Fetching admin profile for user ID:', response.user.id);
           return this.http.get<any>(`${environment.apiUrl}/admins/by-user/${response.user.id}`).pipe(
             tap((adminProfile) => {
               // Convert module permissions to sidebar format (module -> module:view)
@@ -159,6 +163,7 @@ export class AuthService {
                 status: 'ACTIVE',
                 createdAt: new Date().toISOString(),
               };
+              console.log('[AuthService] Admin profile loaded. Setting user:', adminUser.email);
               this.setUser(adminUser);
             }),
             switchMap(() => of(response)),
@@ -251,6 +256,7 @@ export class AuthService {
 
   setToken(token: string): void {
     this.storage.setItem(TOKEN_KEY, token);
+    console.log('[AuthService] Token set in storage. Key:', TOKEN_KEY, 'Storage type:', this.storage === localStorage ? 'localStorage' : 'sessionStorage');
   }
 
   private getRefreshToken(): string | null {

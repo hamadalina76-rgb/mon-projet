@@ -1,0 +1,65 @@
+# ============================================================================
+# DOCKERIGNORE - EUREKA SERVER
+# ============================================================================
+# Fichiers à exclure lors du build Docker pour optimiser la taille et vitesse
+# Maven
+target/
+!target/*.jar
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+# Logs
+logs/
+*.log
+*.log.*
+# Git
+.git/
+.gitignore
+.gitattributes
+# Documentation
+README.md
+DEVELOPMENT.md
+STAGING.md
+PRODUCTION.md
+SUMMARY.md
+*.md
+# Environment
+.env
+.env.*
+!.env.dev
+!.env.staging
+!.env.prod
+# Docker
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
+# Tests
+src/test/
+*.test
+*.spec
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+# CI/CD
+.github/
+.gitlab-ci.yml
+Jenkinsfile

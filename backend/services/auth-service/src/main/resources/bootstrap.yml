@@ -1,0 +1,32 @@
+# ============================================================================
+# AUTH-SERVICE - bootstrap.yml
+# ⚠️  DÉSACTIVÉ - spring-cloud-starter-bootstrap a été supprimé du pom.xml
+# ============================================================================
+#
+# RAISON: spring-cloud-starter-bootstrap crée un ApplicationContext PARENT qui
+# interfère avec l'initialisation JPA sur Cloud Run =>
+# "Cannot resolve reference to bean 'jpaSharedEM_entityManagerFactory'"
+#
+# Sur Cloud Run, toute la configuration est injectée via variables d'environnement
+# Terraform (SPRING_DATASOURCE_URL, JWT_SECRET, etc.). Le Config Server n'est
+# pas nécessaire au boot.
+#
+# Ce fichier est gardé à titre de documentation uniquement.
+# Si vous réactivez spring-cloud-starter-bootstrap dans pom.xml pour dev local,
+# ce fichier sera automatiquement rechargé avec la config ci-dessous.
+#
+# spring:
+#   application:
+#     name: auth-service
+#   cloud:
+#     config:
+#       enabled: ${SPRING_CLOUD_CONFIG_ENABLED:false}
+#       uri: ${CONFIG_SERVER_URL:http://localhost:8888}
+#       username: ${CONFIG_USER:config}
+#       password: ${CONFIG_PASSWORD:config123}
+#       fail-fast: false
+#       retry:
+#         max-attempts: 3
+#         initial-interval: 1000
+#         multiplier: 1.5
+#         max-interval: 3000

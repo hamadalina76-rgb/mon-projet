@@ -1,0 +1,18 @@
+# =========================
+# EUREKA-SERVER - PROD
+# =========================
+FROM openjdk:17-slim
+
+WORKDIR /app
+
+COPY target/*.jar app.jar
+
+EXPOSE 8761
+
+# Profil production
+ENV SPRING_PROFILES_ACTIVE=prod
+
+# JVM optimisée production
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=80 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError"
+
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar /app/app.jar"]

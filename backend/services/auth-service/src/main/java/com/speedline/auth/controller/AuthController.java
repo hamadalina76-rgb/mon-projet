@@ -1,7 +1,6 @@
 package com.speedline.auth.controller;
 
 import com.speedline.auth.domain.User;
-import com.speedline.auth.domain.Role;
 import com.speedline.auth.dto.request.*;
 import com.speedline.auth.dto.response.AuthResponse;
 import com.speedline.auth.dto.response.OtpResponse;
@@ -134,11 +133,36 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, String>> logout(@RequestHeader("Authorization") String token) {
+    public ResponseEntity<Map<String, String>> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         log.info("Logout endpoint called");
-        // Extract username from token if needed
-        authService.logout(token);
-        return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+
+        // Le header attendu est: Authorization: Bearer <jwt>
+        if (authHeader == null) {
+            log.warn("Logout: Authorization header manquant ou invalide");
+            return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+        }
+
+        String trimmed = authHeader.trim();
+        if (trimmed.length() <= 7 || !trimmed.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            log.warn("Logout: format Authorization invalide");
+            return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+        }
+
+        String token = trimmed.substring(7).trim();
+        if (token.isEmpty()) {
+            log.warn("Logout: token vide");
+            return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+        }
+
+        try {
+            authService.logout(token);
+            log.info("Logout réussi");
+            return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+        } catch (Exception e) {
+            log.warn("Erreur lors du logout: {}", e.getMessage());
+            // Endpoint idempotent: on retourne 200 pour éviter de bloquer le frontend.
+            return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+        }
     }
 
     @PostMapping("/verify-email")

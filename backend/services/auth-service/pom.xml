@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- =========================================================================
+     AUTH-SERVICE / pom.xml
+     FIX: Import BOM Spring Cloud (sinon Maven ne résout pas les starters cloud)
+     ========================================================================= -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- Parent (multi-modules) -->
     <parent>
         <groupId>com.speedline</groupId>
         <artifactId>speedline-parent</artifactId>
@@ -15,67 +20,222 @@
     <name>SpeedLine - Auth Service</name>
     <description>Authentication and Authorization Service</description>
 
+    <!-- =====================================================================
+         PROPERTIES
+         ===================================================================== -->
+    <properties>
+        <!-- IMPORTANT: Compatible avec Spring Boot 3.2.x -->
+        <spring-cloud.version>2023.0.0</spring-cloud.version>
+    </properties>
+
+    <!-- =====================================================================
+         DEPENDENCY MANAGEMENT (BOM)
+         - Donne automatiquement les versions des dépendances Spring Cloud
+         - Supprime les erreurs rouges "version manquante"
+         NOTE: Idéalement à mettre dans le parent, mais ici c’est un fix immédiat
+         ===================================================================== -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!--
+            ✅ CRITIQUE: Forcer spring-cloud-gcp-autoconfigure en scope provided
+            via dependencyManagement.
+            RAISON: Le BOM spring-cloud-gcp-dependencies (importé dans le parent)
+            gère spring-cloud-gcp-autoconfigure avec scope compile. Maven résout
+            ce scope pour toutes les dépendances transitives qui tirent ce JAR.
+            En le déclarant ici avec scope=provided, on OVERRIDE le scope du BOM
+            => JAR présent à la compilation, ABSENT du fat JAR final.
+            COMBINÉ avec: exclusions directes + spring-boot-maven-plugin excludes.
+            -->
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>spring-cloud-gcp-autoconfigure</artifactId>
+                <version>5.9.0</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <!-- Même chose pour spring-cloud-gcp-starter (souvent bundlé avec autoconfigure) -->
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>spring-cloud-gcp-starter</artifactId>
+                <version>5.9.0</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <!--
+            ✅ CRITIQUE: Forcer spring-cloud-starter-bootstrap en scope provided.
+            RAISON: Ce JAR contient BootstrapApplicationListener qui crée un ApplicationContext
+            PARENT avant le contexte Spring Boot principal. Ce contexte parent initialise JPA
+            indépendamment => duplique 'jpaSharedEM_entityManagerFactory' => crash fatal:
+            "Cannot resolve reference to bean 'jpaSharedEM_entityManagerFactory'"
+            Solution: scope=provided = absent du fat JAR = Bootstrap Context jamais créé = JPA OK.
+            Sur Cloud Run DEV, la config est injectée via env vars Terraform.
+            -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-starter-bootstrap</artifactId>
+                <scope>provided</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
-        <!-- Spring Web -->
+        <!-- ===================== 1) WEB + SECURITY ====================== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        
-        <!-- Spring Security -->
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
-        
-        <!-- Spring Data JPA -->
+
+        <!-- ===================== 2) JPA + POSTGRES + FLYWAY =============== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
-        
-        <!-- PostgreSQL -->
+
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-        
-        <!-- Flyway -->
+
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
         </dependency>
+
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
-        
-        <!-- Redis -->
+
+        <!-- ===================== 3) REDIS ================================ -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
-        
-        <!-- Eureka Client -->
+
+        <!-- ===================== 4) CONFIG CLIENT (DESACTIVE SUR CLOUD RUN) ==
+             spring-cloud-starter-config ET spring-cloud-starter-bootstrap sont
+             VOLONTAIREMENT EXCLUS du classpath Cloud Run.
+             RAISON: spring-cloud-starter-bootstrap crée un ApplicationContext PARENT
+             au démarrage, qui tente d'initialiser JPA dans le mauvais contexte =>
+             "Cannot resolve reference to bean 'jpaSharedEM_entityManagerFactory'".
+             Sur Cloud Run DEV, toute la configuration est injectée directement via
+             les variables d'environnement Terraform (SPRING_DATASOURCE_URL, etc.).
+             Si on veut réactiver Config Server pour dev local uniquement, utiliser
+             spring.cloud.config.enabled=true dans .env.dev localement.
+             ================================================================= -->
+
+        <!-- ===================== 5) EUREKA + FEIGN ======================= -->
+        <!--
+        ⚠️  IMPORTANT: On exclut spring-cloud-starter-bootstrap d'Eureka client.
+        RAISON: spring-cloud-starter-netflix-eureka-client tire transitivement
+        spring-cloud-starter-bootstrap => crée un ApplicationContext PARENT
+        qui duplique les beans JPA => "Cannot resolve reference to bean
+        'jpaSharedEM_entityManagerFactory'" au démarrage sur Cloud Run.
+        Sur Cloud Run, Eureka est désactivé (EUREKA_ENABLED=false) et la
+        découverte de services se fait via URLs directes.
+        -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+            <exclusions>
+                <!-- Exclure bootstrap pour éviter le double contexte Spring (conflit JPA) -->
+                <exclusion>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-bootstrap</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
-        
-        <!-- OpenFeign -->
+
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
+            <exclusions>
+                <!-- Même exclusion par précaution -->
+                <exclusion>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-bootstrap</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
-        
-        <!-- Resilience4j Circuit Breaker for Feign -->
+
+        <!-- ===================== 6) GOOGLE PUB/SUB ======================= -->
+        <!--
+        ⚠️ EXCLUSIONS CRITIQUES sur google-cloud-pubsub:
+        google-cloud-pubsub 1.127.3 tire transitivement spring-cloud-gcp-autoconfigure
+        via google-cloud-core → spring-cloud-gcp-starter → spring-cloud-gcp-autoconfigure.
+        Ce JAR contient CloudSqlEnvironmentPostProcessor (enregistré dans spring.factories)
+        qui s'exécute AVANT le chargement des YAMLs Spring et crash avec:
+        "IllegalArgumentException: A database name must be provided"
+        même avec -Dspring.cloud.gcp.sql.enabled=false.
+        Solution: exclusion EXPLICITE des artefacts spring-cloud-gcp.
+        -->
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-pubsub</artifactId>
+            <version>1.127.3</version>
+            <exclusions>
+                <!-- ✅ CRITIQUE: Exclure spring-cloud-gcp-autoconfigure de pubsub -->
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>spring-cloud-gcp-autoconfigure</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>spring-cloud-gcp-starter</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
-        
-        <!-- JWT -->
+
+        <!-- ===================== 6b) CLOUD SQL CONNECTOR ================== -->
+        <!--
+        ✅ CONNECTEUR CLOUD SQL JDBC (postgres-socket-factory)
+        ========================================================
+        On utilise postgres-socket-factory en VERSION MINIMALE avec exclusions
+        complètes de spring-cloud-gcp.
+
+        URL JDBC utilisée dans Terraform:
+        jdbc:postgresql:///speedline_dev?cloudSqlInstance=PROJECT:REGION:INSTANCE
+        (socketFactory est détecté automatiquement via classpath)
+
+        ⚠️ NE PAS utiliser cloud-sql-connector-jdbc-postgres (Spring GCP integré)
+        car il embarque CloudSqlEnvironmentPostProcessor qui crash au boot.
+        -->
+        <dependency>
+            <groupId>com.google.cloud.sql</groupId>
+            <artifactId>postgres-socket-factory</artifactId>
+            <version>1.19.1</version>
+            <exclusions>
+                <!-- ✅ CRITIQUE: Empêche le crash boot "A database name must be provided" -->
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>spring-cloud-gcp-autoconfigure</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>spring-cloud-gcp-starter</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>spring-cloud-gcp-core</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- ===================== 7) JWT ================================= -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -93,51 +253,134 @@
             <version>0.12.3</version>
             <scope>runtime</scope>
         </dependency>
-        
-        <!-- Validation -->
+
+        <!-- ===================== 8) VALIDATION + MAIL + ACTUATOR ========= -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-        
-        <!-- Mail -->
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
-        
-        <!-- Actuator -->
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        
-        <!-- OAuth2 Client -->
+
+        <!-- ===================== 9) OAUTH2 + SDKs ======================== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-client</artifactId>
         </dependency>
-        
-        <!-- Google API Client -->
+
         <dependency>
             <groupId>com.google.api-client</groupId>
             <artifactId>google-api-client</artifactId>
             <version>2.2.0</version>
         </dependency>
-        
-        <!-- RestFB (Facebook SDK) -->
+
         <dependency>
             <groupId>com.restfb</groupId>
             <artifactId>restfb</artifactId>
             <version>2023.11.0</version>
         </dependency>
-        
-        <!-- SpringDoc OpenAPI (Swagger UI) -->
+
+        <!-- ===================== 10) SWAGGER / OPENAPI =================== -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>2.3.0</version>
         </dependency>
+
+        <!-- =====================================================================
+             ✅ FIX CRITIQUE: Exclure spring-cloud-gcp-autoconfigure du classpath
+             =====================================================================
+             PROBLÈME: spring-cloud-gcp-autoconfigure-5.9.0.jar contient un
+             EnvironmentPostProcessor (CloudSqlEnvironmentPostProcessor) enregistré
+             dans META-INF/spring.factories. Ce processor s'exécute AVANT le
+             chargement des YAMLs/variables d'environnement et crash avec:
+               "IllegalArgumentException: A database name must be provided"
+             même si -Dspring.cloud.gcp.sql.enabled=false est défini.
+
+             Ce JAR arrive transitivement via l'une de ces chaînes:
+             - spring-cloud-starter-netflix-eureka-client
+             - google-cloud-pubsub → spring-cloud-gcp-dependencies
+             - spring-boot-starter-oauth2-client → cloud dependencies
+
+             SOLUTION: Scope "provided" = JAR présent à la COMPILATION uniquement,
+             absent du classpath RUNTIME → CloudSqlEnvironmentPostProcessor ne
+             s'enregistre jamais → pas de crash au démarrage.
+
+             ALTERNATIVE (moins propre): exclude dans chaque dépendance transitive,
+             mais difficile à maintenir car les chemins transitifs changent.
+             ===================================================================== -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>spring-cloud-gcp-autoconfigure</artifactId>
+            <version>5.9.0</version>
+            <scope>provided</scope>
+        </dependency>
+
     </dependencies>
+
+    <!-- =====================================================================
+         BUILD - PLUGINS
+         ===================================================================== -->
+    <build>
+        <plugins>
+            <!--
+            ✅ FIX CRITIQUE: spring-boot-maven-plugin avec exclusion explicite
+            de spring-cloud-gcp-autoconfigure du fat JAR.
+
+            POURQUOI: Même avec scope=provided, si Maven résout spring-cloud-gcp-autoconfigure
+            via un autre chemin transitif (ex: spring-cloud-gcp-starter-pubsub),
+            il peut l'inclure dans le JAR repackagé.
+            Cette exclusion explicite garantit que spring-cloud-gcp-autoconfigure
+            n'est JAMAIS dans le JAR déployé sur Cloud Run.
+
+            EFFET: CloudSqlEnvironmentPostProcessor (META-INF/spring.factories de
+            spring-cloud-gcp-autoconfigure-5.9.0.jar) ne s'enregistre jamais →
+            pas de crash "A database name must be provided" au démarrage.
+            -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                        <!-- ✅ CRITIQUE: Empêche CloudSqlEnvironmentPostProcessor de crasher au boot -->
+                        <exclude>
+                            <groupId>com.google.cloud</groupId>
+                            <artifactId>spring-cloud-gcp-autoconfigure</artifactId>
+                        </exclude>
+                        <!-- ✅ Empêche Bootstrap Context de dupliquer JPA beans -->
+                        <exclude>
+                            <groupId>org.springframework.cloud</groupId>
+                            <artifactId>spring-cloud-starter-bootstrap</artifactId>
+                        </exclude>
+                        <!--
+                        ⚠️ NE PAS exclure spring-cloud-context !
+                        spring-cloud-context contient GenericScope, @RefreshScope,
+                        et l'infrastructure Spring Cloud nécessaire au démarrage.
+                        Sans lui: cascade d'erreurs → jpaSharedEM_entityManagerFactory
+                        non résolu → crash fatal au boot.
+                        -->
+                    </excludes>
+                </configuration>
+            </plugin>
+
+            <!-- ✅ JIB Plugin for Docker image build -->
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
