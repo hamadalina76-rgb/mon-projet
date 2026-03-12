@@ -30,8 +30,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 "https://customer-app-392205979525.europe-west1.run.app",
                 "http://localhost:4200",
                 "http://localhost:4201",
-                "http://localhost:4202"
+                "http://localhost:4202",
+                "http://localhost:4300"
             )
-                .withSockJS();
+            .withSockJS();
     }
 }

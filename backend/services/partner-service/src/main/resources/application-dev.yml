@@ -50,6 +50,10 @@ spring:
         enabled: false
       core:
         enabled: true
+      # Pub/Sub activé en dev déployé : pas d'émulateur, credentials GCP
+      pubsub:
+        enabled: true
+        emulator-host: ""  # vide = pas d'émulateur, utilise le vrai Pub/Sub GCP
 
 eureka:
   client:

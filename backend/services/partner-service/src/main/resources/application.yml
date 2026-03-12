@@ -50,6 +50,14 @@ spring:
         enabled: true
     gcp:
       project-id: ${GCP_PROJECT_ID:speedline-local}
+      sql:
+        enabled: false
+        database-name: speedline_partners
+      # Par défaut (sans profil) : Pub/Sub via émulateur local. Lancer docker-compose up pubsub-emulator.
+      # En déploiement (profil dev) : application-dev.yml utilise les credentials GCP.
+      pubsub:
+        enabled: true
+        emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8090}
 
 # File storage configuration
 file:

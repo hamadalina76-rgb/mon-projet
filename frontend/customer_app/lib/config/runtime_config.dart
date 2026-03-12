@@ -16,8 +16,8 @@ class RuntimeConfig {
 
   static String get env => (_config['env'] as String?) ?? 'dev';
   static String get apiBaseUrl =>
-      (_config['apiBaseUrl'] as String?) ?? 'https://api-gateway-392205979525.europe-west1.run.app';
+      (_config['apiBaseUrl'] as String?) ?? 'http://localhost:8080';
   static String get wsUrl =>
-      (_config['wsUrl'] as String?) ?? 'wss://api-gateway-392205979525.europe-west1.run.app';
+      (_config['wsUrl'] as String?) ?? 'ws://localhost:8080';
   static int get apiTimeoutMs => (_config['apiTimeoutMs'] as int?) ?? 30000;
 }
