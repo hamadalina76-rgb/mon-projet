@@ -4,6 +4,7 @@ import com.speedline.partner.dto.request.*;
 import com.speedline.partner.dto.response.OptionGroupResponse;
 import com.speedline.partner.dto.response.OptionResponse;
 import com.speedline.partner.dto.response.ProductResponse;
+import com.speedline.partner.dto.response.PromotionLogResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
@@ -117,7 +118,23 @@ public interface MenuProductService {
      * @return liste des produits mis à jour
      */
     @Transactional
-    List<ProductResponse> setPromotion(Long partnerId, List<Long> productIds, String promotionLabel, java.time.LocalDate promotionEndDate, Integer discountPercentage);
+    List<ProductResponse> setPromotion(Long partnerId, List<Long> productIds, String promotionLabel,
+                                      java.time.LocalDate promotionStartDate, java.time.LocalDate promotionEndDate, Integer discountPercentage);
+
+    /**
+     * Historique des promotions du partenaire (logs paginés et filtrés).
+     *
+     * @param partnerId identifiant du partenaire
+     * @param pageable  pagination et tri (recommandé : Sort.by("appliedAt").descending())
+     * @param search   recherche optionnelle sur nom produit ou label promo (ignoré si null/blank)
+     * @param dateFrom date d'application au plus tôt (inclus, ignoré si null)
+     * @param dateTo   date d'application au plus tard (inclus, ignoré si null)
+     * @param productId filtre optionnel par id produit (ignoré si null)
+     * @return page de {@link PromotionLogResponse}
+     */
+    Page<PromotionLogResponse> getPromotionLogs(Long partnerId, Pageable pageable,
+                                                String search, java.time.LocalDate dateFrom, java.time.LocalDate dateTo,
+                                                Long productId);
 
     /**
      * Exporte le menu en CSV (id, name, category, price, isAvailable, stock, description). TC-57.

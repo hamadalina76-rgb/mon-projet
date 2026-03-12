@@ -85,12 +85,66 @@ export class ProductService {
     return this.api.patch<Product[]>(`${this.base()}/reorder`, { items });
   }
 
-  /** PATCH /partners/{id}/menu/products/promotions — set promotion label, end date and optional discount %. */
-  setPromotion(productIds: number[], promotionLabel: string | null, promotionEndDate: string | null, discountPercentage: number | null): Observable<Product[]> {
-    const body: { productIds: number[]; promotionLabel?: string; promotionEndDate?: string; discountPercentage?: number } = { productIds };
+  /** PATCH /partners/{id}/menu/products/promotions — set promotion label, start/end date and optional discount %. */
+  setPromotion(
+    productIds: number[],
+    promotionLabel: string | null,
+    promotionStartDate: string | null,
+    promotionEndDate: string | null,
+    discountPercentage: number | null
+  ): Observable<Product[]> {
+    const body: {
+      productIds: number[];
+      promotionLabel?: string;
+      promotionStartDate?: string;
+      promotionEndDate?: string;
+      discountPercentage?: number;
+    } = { productIds };
     if (promotionLabel != null) body.promotionLabel = promotionLabel;
+    if (promotionStartDate != null) body.promotionStartDate = promotionStartDate;
     if (promotionEndDate != null) body.promotionEndDate = promotionEndDate;
     if (discountPercentage != null && discountPercentage > 0) body.discountPercentage = discountPercentage;
     return this.api.patch<Product[]>(`${this.base()}/promotions`, body);
   }
+
+  /** GET /partners/{id}/menu/products/promotions/logs — historique des promotions (paginé et filtré). */
+  getPromotionLogs(params: {
+    page: number;
+    size: number;
+    search?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    productId?: number;
+  }): Observable<{
+    content: PromotionLogEntry[];
+    totalElements: number;
+    totalPages: number;
+    size: number;
+    number: number;
+  }> {
+    const q: Record<string, string | number> = { page: params.page, size: params.size };
+    if (params.search != null && params.search.trim() !== '') q['search'] = params.search.trim();
+    if (params.dateFrom != null && params.dateFrom.trim() !== '') q['dateFrom'] = params.dateFrom.trim();
+    if (params.dateTo != null && params.dateTo.trim() !== '') q['dateTo'] = params.dateTo.trim();
+    if (params.productId != null) q['productId'] = params.productId;
+    return this.api.get<{
+      content: PromotionLogEntry[];
+      totalElements: number;
+      totalPages: number;
+      size: number;
+      number: number;
+    }>(`${this.base()}/promotions/logs`, q);
+  }
+}
+
+/** Entrée d'historique de promotion (réponse API). */
+export interface PromotionLogEntry {
+  id: number;
+  productId: number;
+  productName: string | null;
+  promotionLabel: string | null;
+  promotionStartDate: string | null;
+  promotionEndDate: string | null;
+  discountPercentage: number | null;
+  appliedAt: string;
 }

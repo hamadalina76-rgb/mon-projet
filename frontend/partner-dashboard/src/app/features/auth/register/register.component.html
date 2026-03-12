@@ -1,4 +1,4 @@
-﻿<!-- Register Component - Phase 1: Simple Signup -->
+<!-- Register Component - Phase 1: Simple Signup -->
 <div class="register-container">
   <!-- Header -->
   <div class="header">
@@ -47,7 +47,7 @@
       <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
         <!-- Name Fields -->
         <div class="form-row two-cols">
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>{{ 'auth.register.firstName' | translate }} *</mat-label>
             <span matTextPrefix><mat-icon>person</mat-icon></span>
             <input matInput formControlName="firstName" autocomplete="given-name" />
@@ -59,7 +59,7 @@
             }
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>{{ 'auth.register.lastName' | translate }} *</mat-label>
             <span matTextPrefix><mat-icon>person</mat-icon></span>
             <input matInput formControlName="lastName" autocomplete="family-name" />
@@ -70,7 +70,7 @@
         </div>
 
         <!-- Email -->
-        <mat-form-field appearance="outline" class="full-width">
+        <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
           <mat-label>{{ 'auth.register.email' | translate }} *</mat-label>
           <span matTextPrefix><mat-icon>email</mat-icon></span>
           <input matInput type="email" formControlName="email" autocomplete="email" />
@@ -83,7 +83,7 @@
         </mat-form-field>
 
         <!-- Phone -->
-        <mat-form-field appearance="outline" class="full-width">
+        <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
           <mat-label>{{ 'auth.register.phone' | translate }} *</mat-label>
           <span matTextPrefix><mat-icon>phone</mat-icon></span>
           <input matInput type="tel" formControlName="phoneNumber" placeholder="+216 XX XXX XXX" autocomplete="tel" />
@@ -97,7 +97,7 @@
 
         <!-- Password Fields -->
         <div class="form-row two-cols">
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>{{ 'auth.register.password' | translate }} *</mat-label>
             <input matInput [type]="hidePassword() ? 'password' : 'text'" formControlName="password" autocomplete="new-password" />
             <button matSuffix mat-icon-button type="button" (click)="togglePasswordVisibility()">
@@ -114,7 +114,7 @@
             }
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>{{ 'auth.register.confirmPassword' | translate }} *</mat-label>
             <input matInput [type]="hideConfirmPassword() ? 'password' : 'text'" formControlName="confirmPassword" autocomplete="new-password" />
             <button matSuffix mat-icon-button type="button" (click)="toggleConfirmPasswordVisibility()">

@@ -1,6 +1,8 @@
 // src/app/features/auth/complete-profile/complete-profile.component.ts
 // Phase 2: Partner Profile Completion (after login, authenticated)
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -15,7 +17,6 @@ import { MatStepperModule } from '@angular/material/stepper';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -42,7 +43,6 @@ import { ProfileSuccessDialogComponent } from './profile-success-dialog/profile-
     MatProgressSpinnerModule,
     MatRadioModule,
     MatCheckboxModule,
-    MatChipsModule,
     MatProgressBarModule,
     MatTooltipModule,
     MatDialogModule,
@@ -59,6 +59,11 @@ export class CompleteProfileComponent implements OnInit {
   private router = inject(Router);
   private translate = inject(TranslateService);
   private dialog = inject(MatDialog);
+  private breakpointObserver = inject(BreakpointObserver);
+  private destroyRef = inject(DestroyRef);
+
+  // Stepper orientation: vertical on small screens for better UX
+  stepperOrientation = signal<'horizontal' | 'vertical'>('horizontal');
 
   // Signals
   loading = signal(false);
@@ -80,7 +85,6 @@ export class CompleteProfileComponent implements OnInit {
   legalStatuses: { value: string; label: string }[] = [];
   preparationTimes: {label: string, value: number}[] = [];
   days: string[] = [];
-  availableTags: string[] = [];
   currencies = ['TND', 'EUR', 'USD'];
   countries: string[] = [];
 
@@ -133,7 +137,6 @@ export class CompleteProfileComponent implements OnInit {
   step6Form: FormGroup = this.fb.group({
     shortDescription: ['', [Validators.required, Validators.maxLength(100)]],
     fullDescription: ['', [Validators.required, Validators.maxLength(500)]],
-    tags: [[]],
   });
 
   // Step 7: Validation
@@ -197,6 +200,13 @@ export class CompleteProfileComponent implements OnInit {
       } else {
         minimumControl?.enable();
       }
+    });
+
+    // Responsive stepper: vertical on mobile (max-width: 768px)
+    this.breakpointObserver.observe('(max-width: 768px)').pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(result => {
+      this.stepperOrientation.set(result.matches ? 'vertical' : 'horizontal');
     });
   }
 
@@ -303,13 +313,9 @@ export class CompleteProfileComponent implements OnInit {
 
     // Step 6: Presentation
     if (partner.shortDescription || partner.fullDescription) {
-      const tags = partner.tags 
-        ? (typeof partner.tags === 'string' ? partner.tags.split(',') : partner.tags)
-        : [];
       this.step6Form.patchValue({
         shortDescription: partner.shortDescription || '',
         fullDescription: partner.fullDescription || partner.description || '',
-        tags: tags,
       });
     }
 
@@ -473,22 +479,6 @@ export class CompleteProfileComponent implements OnInit {
     }
   }
 
-  // Tags
-  toggleTag(tag: string): void {
-    const currentTags = this.step6Form.get('tags')?.value || [];
-    const index = currentTags.indexOf(tag);
-    if (index > -1) {
-      currentTags.splice(index, 1);
-    } else {
-      currentTags.push(tag);
-    }
-    this.step6Form.patchValue({ tags: currentTags });
-  }
-
-  isTagSelected(tag: string): boolean {
-    return (this.step6Form.get('tags')?.value || []).includes(tag);
-  }
-
   // Load translations
   loadTranslations(): void {
     this.partnerTypes = [
@@ -527,18 +517,6 @@ export class CompleteProfileComponent implements OnInit {
       { label: this.translate.instant('auth.register.preparationTimes.time4'), value: 45 },
       { label: this.translate.instant('auth.register.preparationTimes.time5'), value: 60 },
       { label: this.translate.instant('auth.register.preparationTimes.time6'), value: 90 },
-    ];
-
-    this.availableTags = [
-      this.translate.instant('auth.register.tags.bio'),
-      this.translate.instant('auth.register.tags.vegetarian'),
-      this.translate.instant('auth.register.tags.vegan'),
-      this.translate.instant('auth.register.tags.halal'),
-      this.translate.instant('auth.register.tags.glutenFree'),
-      this.translate.instant('auth.register.tags.homemade'),
-      this.translate.instant('auth.register.tags.local'),
-      this.translate.instant('auth.register.tags.fastDelivery'),
-      this.translate.instant('auth.register.tags.new'),
     ];
 
     this.countries = [this.translate.instant('auth.register.countries.tunisia')];
@@ -689,7 +667,6 @@ export class CompleteProfileComponent implements OnInit {
       // Step 6: Presentation
       shortDescription: this.step6Form.value.shortDescription,
       fullDescription: this.step6Form.value.fullDescription,
-      tags: Array.isArray(this.step6Form.value.tags) ? this.step6Form.value.tags.join(',') : '',
 
       // Step 7: Terms
       acceptTerms: this.step7Form.value.acceptTerms,

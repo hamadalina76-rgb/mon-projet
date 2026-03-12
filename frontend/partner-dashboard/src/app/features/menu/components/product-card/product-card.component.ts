@@ -45,11 +45,11 @@ export class ProductCardComponent {
   nameChange = output<{ productId: number; name: string }>();
 
   // Computed
-  /** Prix affiché : si promo avec réduction, prix actuel (déjà réduit côté backend). */
+  /** Prix affiché (réduit en promo) : utilise price du backend ou calcule à partir de originalPrice et discountPercentage. */
   priceFormatted = computed(() => {
     const p = this.product();
-    const price = p?.price != null ? p.price : 0;
-    return `${Number(price).toFixed(2)} DT`;
+    const displayPrice = this.getDisplayPrice(p);
+    return `${Number(displayPrice).toFixed(2)} DT`;
   });
 
   /** Prix original (barré) quand une réduction est active. */
@@ -65,6 +65,19 @@ export class ProductCardComponent {
     const p = this.product();
     return (p?.discountPercentage != null && Number(p.discountPercentage) > 0) && (p?.originalPrice != null || p?.price != null);
   });
+
+  /** Prix à afficher : prix réduit si promo (backend envoie price=16, originalPrice=20). */
+  private getDisplayPrice(p: Product | undefined): number {
+    if (!p) return 0;
+    const price = p.price != null ? Number(p.price) : null;
+    const orig = p.originalPrice != null ? Number(p.originalPrice) : null;
+    const pct = p.discountPercentage != null ? Number(p.discountPercentage) : 0;
+    if (pct > 0 && orig != null && orig > 0) {
+      const reduced = orig * (1 - pct / 100);
+      return price != null && price <= orig ? price : reduced;
+    }
+    return price ?? 0;
+  }
 
   isAvailable = computed(() => this.product()?.isAvailable ?? true);
 
