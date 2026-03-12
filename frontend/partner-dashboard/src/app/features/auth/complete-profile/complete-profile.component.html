@@ -41,7 +41,7 @@
           <mat-spinner diameter="40"></mat-spinner>
         </div>
       } @else {
-        <mat-stepper linear #stepper class="registration-stepper">
+        <mat-stepper linear #stepper class="registration-stepper" [orientation]="stepperOrientation()">
 
           <!-- ============== STEP 1: Business Info ============== -->
           <mat-step [stepControl]="step1Form" [label]="'completeProfile.steps.business' | translate">
@@ -566,18 +566,6 @@
                 <textarea matInput formControlName="fullDescription" rows="4"></textarea>
                 <mat-hint>{{ step6Form.get('fullDescription')?.value?.length || 0 }}/500</mat-hint>
               </mat-form-field>
-
-              <!-- Tags -->
-              <div class="form-section">
-                <span class="section-label">{{ 'auth.register.step7.tags' | translate }}</span>
-                <div class="tags-container">
-                  @for (tag of availableTags; track tag) {
-                    <mat-chip-option [selected]="isTagSelected(tag)" (click)="toggleTag(tag)">
-                      {{ tag }}
-                    </mat-chip-option>
-                  }
-                </div>
-              </div>
 
               <div class="step-actions">
                 <button mat-button matStepperPrevious>

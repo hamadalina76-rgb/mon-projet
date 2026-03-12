@@ -66,6 +66,7 @@ export interface Product {
   /** Enrichi par l’API (IN_STOCK, LOW_STOCK, OUT_OF_STOCK). */
   stockStatus?: StockStatus;
   promotionLabel?: string;
+  promotionStartDate?: string;  // ISO date
   promotionEndDate?: string;  // ISO date
   createdAt?: string;
   updatedAt?: string;

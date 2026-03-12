@@ -13,10 +13,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -611,11 +615,43 @@ public class PartnerMenuController {
                     partnerId,
                     request.getProductIds(),
                     request.getPromotionLabel(),
+                    request.getPromotionStartDate(),
                     request.getPromotionEndDate(),
                     request.getDiscountPercentage());
             return ResponseEntity.ok(updated);
         } catch (Exception ex) {
             log.error("setPromotion error: {}", ex.getMessage(), ex);
+            return serverError(ex.getMessage());
+        }
+    }
+
+    /**
+     * GET /partners/{partnerId}/menu/products/promotions/logs
+     * Historique des promotions (paginé et filtré côté serveur).
+     * Filtres optionnels : search, dateFrom, dateTo, productId.
+     */
+    @Operation(summary = "Historique des promotions (paginé et filtré)")
+    @GetMapping("/products/promotions/logs")
+    public ResponseEntity<?> getPromotionLogs(
+            @PathVariable Long partnerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate dateTo,
+            @RequestParam(required = false) Long productId) {
+        try {
+            var pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "appliedAt"));
+            Page<PromotionLogResponse> result = menuProductService.getPromotionLogs(partnerId, pageRequest, search, dateFrom, dateTo, productId);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("content", result.getContent());
+            body.put("totalElements", result.getTotalElements());
+            body.put("totalPages", result.getTotalPages());
+            body.put("size", result.getSize());
+            body.put("number", result.getNumber());
+            return ResponseEntity.ok(body);
+        } catch (Exception ex) {
+            log.error("getPromotionLogs error: {}", ex.getMessage(), ex);
             return serverError(ex.getMessage());
         }
     }

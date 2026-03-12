@@ -51,7 +51,7 @@
             <label class="form-label">
               {{ 'auth.login.emailLabel' | translate }}
             </label>
-            <mat-form-field appearance="outline" class="full-width">
+            <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
               <span matTextPrefix class="input-icon">
                 <mat-icon>person_outline</mat-icon>
               </span>
@@ -85,7 +85,7 @@
                 {{ 'auth.login.forgotPassword' | translate }}
               </button>
             </div>
-            <mat-form-field appearance="outline" class="full-width">
+            <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
               <span matTextPrefix class="input-icon">
                 <mat-icon>lock_outline</mat-icon>
               </span>
@@ -177,7 +177,7 @@
 
           <!-- OTP Form -->
           <form [formGroup]="otpForm" (ngSubmit)="onSubmitOtp()" class="otp-form">
-            <mat-form-field appearance="outline" class="full-width otp-field">
+            <mat-form-field appearance="outline" class="full-width otp-field" subscriptSizing="dynamic">
               <mat-label>{{ 'auth.login.otpLabel' | translate }}</mat-label>
               <input
                 matInput

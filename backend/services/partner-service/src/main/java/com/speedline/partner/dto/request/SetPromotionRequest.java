@@ -22,6 +22,9 @@ public class SetPromotionRequest {
     /** Label affiché en badge (ex. "-20%", "Nouveau"). Null ou vide = supprimer la promo. */
     private String promotionLabel;
 
+    /** Date de début de la promotion. Null = pas de début. */
+    private LocalDate promotionStartDate;
+
     /** Date de fin de la promotion. Null = pas de fin. */
     private LocalDate promotionEndDate;
 

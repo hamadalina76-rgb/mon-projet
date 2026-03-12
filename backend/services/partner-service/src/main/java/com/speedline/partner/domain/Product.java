@@ -202,6 +202,12 @@ public class Product {
     private String promotionLabel;
 
     /**
+     * Date de début de la promotion (null = pas de début).
+     */
+    @Column
+    private java.time.LocalDate promotionStartDate;
+
+    /**
      * Date de fin de la promotion (null = pas de fin).
      */
     @Column

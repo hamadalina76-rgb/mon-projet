@@ -572,6 +572,104 @@
         }
       </div>
     </mat-tab>
+
+    <!-- TAB 4 – Historique des promotions -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">history</mat-icon>
+        {{ 'MENU.LIST.TAB_PROMOTION_LOGS' | translate }}
+      </ng-template>
+      <div class="tab-content promotion-logs-tab">
+        <div class="promotion-logs-header">
+          <h3>{{ 'MENU.PROMOTION_LOGS.TITLE' | translate }}</h3>
+          <p class="promotion-logs-subtitle">{{ 'MENU.PROMOTION_LOGS.SUBTITLE' | translate }}</p>
+        </div>
+        <div class="promotion-logs-filters">
+          <mat-form-field appearance="outline" class="filter-field product-autocomplete-field">
+            <mat-label>{{ 'MENU.PROMOTION_LOGS.FILTER_PRODUCT' | translate }}</mat-label>
+            <mat-icon matPrefix>inventory_2</mat-icon>
+            <input matInput type="text"
+                   [value]="promotionLogsProductInputValue()"
+                   (input)="onPromotionLogsProductInput($any($event.target).value)"
+                   [matAutocomplete]="productLogsAutocomplete"
+                   [placeholder]="'MENU.PROMOTION_LOGS.FILTER_PRODUCT_PLACEHOLDER' | translate" />
+            @if (promotionLogsProductId() != null) {
+              <button mat-icon-button matSuffix type="button" (click)="clearProductLogsFilter()" [attr.aria-label]="'MENU.PROMOTION_LOGS.FILTER_CLEAR' | translate">
+                <mat-icon>close</mat-icon>
+              </button>
+            }
+            <mat-autocomplete #productLogsAutocomplete="matAutocomplete" (optionSelected)="selectProductForLogsFilter($event.option.value)">
+              @for (p of filteredPromotionLogsProducts(); track p.id) {
+                <mat-option [value]="p">{{ p.name }}</mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="filter-field search-field">
+            <mat-label>{{ 'MENU.PROMOTION_LOGS.FILTER_SEARCH' | translate }}</mat-label>
+            <mat-icon matPrefix>search</mat-icon>
+            <input matInput type="text" [value]="promotionLogsSearch()" (input)="onPromotionLogsSearchInput($any($event.target).value)" [placeholder]="'MENU.PROMOTION_LOGS.FILTER_SEARCH_PLACEHOLDER' | translate" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>{{ 'MENU.PROMOTION_LOGS.FILTER_DATE_FROM' | translate }}</mat-label>
+            <mat-icon matPrefix>event</mat-icon>
+            <input matInput type="date" [value]="promotionLogsDateFrom()" (input)="onPromotionLogsDateFromInput($any($event.target).value)" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>{{ 'MENU.PROMOTION_LOGS.FILTER_DATE_TO' | translate }}</mat-label>
+            <mat-icon matPrefix>event</mat-icon>
+            <input matInput type="date" [value]="promotionLogsDateTo()" (input)="onPromotionLogsDateToInput($any($event.target).value)" />
+          </mat-form-field>
+        </div>
+        @if (promotionLogsLoading()) {
+          <app-loading-spinner [message]="'MENU.PROMOTION_LOGS.LOADING' | translate"></app-loading-spinner>
+        } @else if (promotionLogs().length === 0) {
+          <app-empty-state
+            icon="history"
+            [title]="'MENU.PROMOTION_LOGS.EMPTY_TITLE' | translate"
+            [message]="'MENU.PROMOTION_LOGS.EMPTY_MESSAGE' | translate">
+          </app-empty-state>
+        } @else {
+          <div class="promotion-logs-table-wrapper">
+            <table mat-table [dataSource]="promotionLogs()" class="promotion-logs-table">
+              <ng-container matColumnDef="appliedAt">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENU.PROMOTION_LOGS.COL_APPLIED_AT' | translate }}</th>
+                <td mat-cell *matCellDef="let log">{{ log.appliedAt | date:'d/M/yyyy HH:mm' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="productName">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENU.PROMOTION_LOGS.COL_PRODUCT' | translate }}</th>
+                <td mat-cell *matCellDef="let log">{{ log.productName || ('#' + log.productId) }}</td>
+              </ng-container>
+              <ng-container matColumnDef="promotionLabel">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENU.PROMOTION_LOGS.COL_LABEL' | translate }}</th>
+                <td mat-cell *matCellDef="let log">{{ log.promotionLabel || '—' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="startDate">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENU.PROMOTION_LOGS.COL_START' | translate }}</th>
+                <td mat-cell *matCellDef="let log">{{ log.promotionStartDate ? (log.promotionStartDate | date:'d/M/yyyy') : '—' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="endDate">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENU.PROMOTION_LOGS.COL_END' | translate }}</th>
+                <td mat-cell *matCellDef="let log">{{ log.promotionEndDate ? (log.promotionEndDate | date:'d/M/yyyy') : '—' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="discountPercentage">
+                <th mat-header-cell *matHeaderCellDef>{{ 'MENU.PROMOTION_LOGS.COL_DISCOUNT' | translate }}</th>
+                <td mat-cell *matCellDef="let log">{{ log.discountPercentage != null ? (log.discountPercentage + '%') : '—' }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="promotionLogsDisplayedColumns; sticky: true"></tr>
+              <tr mat-row *matRowDef="let row; columns: promotionLogsDisplayedColumns"></tr>
+            </table>
+          </div>
+          <mat-paginator
+            [length]="promotionLogsTotalElements()"
+            [pageSize]="promotionLogsPageSize()"
+            [pageIndex]="promotionLogsPageIndex()"
+            [pageSizeOptions]="promotionLogsPageSizeOptions"
+            (page)="onPromotionLogsPageEvent($event)"
+            showFirstLastButtons>
+          </mat-paginator>
+        }
+      </div>
+    </mat-tab>
   </mat-tab-group>
 
   <!-- Dialog Promotions -->
@@ -598,10 +696,13 @@
                 <label class="promo-product-row">
                   <input type="checkbox" [checked]="isPromotionProductSelected(p.id)" (change)="togglePromotionProduct(p.id)" />
                   <span class="promo-product-name">{{ p.name }}</span>
-                  @if (p.promotionLabel || p.discountPercentage != null || p.promotionEndDate) {
+                  @if (p.promotionLabel || p.discountPercentage != null || p.promotionStartDate || p.promotionEndDate) {
                     <span class="promo-current">
                       @if (p.promotionLabel) { {{ p.promotionLabel }} }
                       @if (p.discountPercentage != null && p.discountPercentage > 0) { ({{ p.discountPercentage }}%) }
+                      @if (p.promotionStartDate) {
+                        <span class="promo-end-date">{{ 'MENU.PROMOTIONS_DIALOG.START_DATE' | translate }}: {{ p.promotionStartDate | date:'d/M/yyyy' }}</span>
+                      }
                       @if (p.promotionEndDate) {
                         <span class="promo-end-date">{{ 'MENU.PROMOTIONS_DIALOG.END_DATE' | translate }}: {{ p.promotionEndDate | date:'d/M/yyyy' }}</span>
                       }
@@ -617,9 +718,10 @@
               @if (getFirstSelectedPromotionProduct(); as product) {
                 <p class="promo-current-summary">
                   {{ 'MENU.PROMOTIONS_DIALOG.CURRENT_FOR' | translate }} « {{ product.name }} » :
-                  @if (product.promotionLabel || product.discountPercentage != null || product.promotionEndDate) {
+                  @if (product.promotionLabel || product.discountPercentage != null || product.promotionStartDate || product.promotionEndDate) {
                     {{ product.promotionLabel || '' }}
                     @if (product.discountPercentage != null && product.discountPercentage > 0) { ({{ product.discountPercentage }}%) }
+                    @if (product.promotionStartDate) { — {{ 'MENU.PROMOTIONS_DIALOG.START_DATE' | translate }} {{ product.promotionStartDate | date:'d/M/yyyy' }} }
                     @if (product.promotionEndDate) { — {{ 'MENU.PROMOTIONS_DIALOG.END_DATE' | translate }} {{ product.promotionEndDate | date:'d/M/yyyy' }} }
                   } @else {
                     {{ 'MENU.PROMOTIONS_DIALOG.NO_CURRENT_PROMO' | translate }}
@@ -638,6 +740,11 @@
                 <mat-icon matPrefix>percent</mat-icon>
                 <input matInput type="number" min="0" max="100" [(ngModel)]="promotionDiscountValue" [placeholder]="'MENU.PROMOTIONS_DIALOG.DISCOUNT_PCT_PLACEHOLDER' | translate" />
                 <mat-hint>{{ 'MENU.PROMOTIONS_DIALOG.DISCOUNT_PCT_HINT' | translate }}</mat-hint>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="promo-field">
+                <mat-label>{{ 'MENU.PROMOTIONS_DIALOG.START_DATE' | translate }}</mat-label>
+                <mat-icon matPrefix>event</mat-icon>
+                <input matInput type="date" [(ngModel)]="promotionStartDateValue" />
               </mat-form-field>
               <mat-form-field appearance="outline" class="promo-field">
                 <mat-label>{{ 'MENU.PROMOTIONS_DIALOG.END_DATE' | translate }}</mat-label>

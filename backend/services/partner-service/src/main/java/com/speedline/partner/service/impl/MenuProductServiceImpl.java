@@ -6,26 +6,32 @@ import com.speedline.partner.domain.Product;
 import com.speedline.partner.domain.ProductOption;
 import com.speedline.partner.domain.ProductStatus;
 import com.speedline.partner.domain.ProductStock;
+import com.speedline.partner.domain.PromotionLog;
 import com.speedline.partner.dto.request.*;
 import com.speedline.partner.dto.response.ImportConfirmResult;
 import com.speedline.partner.dto.response.ImportPreviewResponse;
 import com.speedline.partner.dto.response.OptionGroupResponse;
 import com.speedline.partner.dto.response.OptionResponse;
 import com.speedline.partner.dto.response.ProductResponse;
+import com.speedline.partner.dto.response.PromotionLogResponse;
 import com.speedline.partner.exception.ResourceNotFoundException;
 import com.speedline.partner.repository.*;
 import com.speedline.partner.service.MenuProductService;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -53,6 +59,7 @@ public class MenuProductServiceImpl implements MenuProductService {
     private final ProductOptionRepository productOptionRepository;
     private final OptionValueRepository optionValueRepository;
     private final MenuCategoryRepository menuCategoryRepository;
+    private final PromotionLogRepository promotionLogRepository;
 
     // ========================= PRODUCTS — READ ==============
 
@@ -294,15 +301,18 @@ public class MenuProductServiceImpl implements MenuProductService {
     @Override
     @CacheEvict(value = "menus:full", key = "#partnerId")
     public List<ProductResponse> setPromotion(Long partnerId, List<Long> productIds,
-                                              String promotionLabel, java.time.LocalDate promotionEndDate, Integer discountPercentage) {
+                                              String promotionLabel, java.time.LocalDate promotionStartDate,
+                                              java.time.LocalDate promotionEndDate, Integer discountPercentage) {
         if (productIds == null || productIds.isEmpty()) {
             return List.of();
         }
         List<Product> products = productRepository.findAllById(productIds).stream()
                 .filter(p -> partnerId.equals(p.getPartnerId()))
                 .toList();
+        java.time.LocalDateTime appliedAt = java.time.LocalDateTime.now();
         for (Product p : products) {
             p.setPromotionLabel(promotionLabel != null && !promotionLabel.isBlank() ? promotionLabel.trim() : null);
+            p.setPromotionStartDate(promotionStartDate);
             p.setPromotionEndDate(promotionEndDate);
             if (discountPercentage == null || discountPercentage <= 0) {
                 if (p.getOriginalPrice() != null) {
@@ -321,8 +331,64 @@ public class MenuProductServiceImpl implements MenuProductService {
                 }
             }
             productRepository.save(p);
+            // Historique : log pour chaque produit (même en cas de suppression de promo)
+            promotionLogRepository.save(PromotionLog.builder()
+                    .partnerId(partnerId)
+                    .productId(p.getId())
+                    .productName(p.getName())
+                    .promotionLabel(p.getPromotionLabel())
+                    .promotionStartDate(p.getPromotionStartDate())
+                    .promotionEndDate(p.getPromotionEndDate())
+                    .discountPercentage(p.getDiscountPercentage())
+                    .appliedAt(appliedAt)
+                    .build());
         }
         return products.stream().map(this::toProductResponse).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PromotionLogResponse> getPromotionLogs(Long partnerId, Pageable pageable,
+                                                      String search, LocalDate dateFrom, LocalDate dateTo,
+                                                      Long productId) {
+        Specification<PromotionLog> spec = buildPromotionLogSpec(partnerId, search, dateFrom, dateTo, productId);
+        return promotionLogRepository.findAll(spec, pageable)
+                .map(log -> PromotionLogResponse.builder()
+                        .id(log.getId())
+                        .productId(log.getProductId())
+                        .productName(log.getProductName())
+                        .promotionLabel(log.getPromotionLabel())
+                        .promotionStartDate(log.getPromotionStartDate())
+                        .promotionEndDate(log.getPromotionEndDate())
+                        .discountPercentage(log.getDiscountPercentage())
+                        .appliedAt(log.getAppliedAt())
+                        .build());
+    }
+
+    private static Specification<PromotionLog> buildPromotionLogSpec(Long partnerId, String search,
+                                                                   LocalDate dateFrom, LocalDate dateTo,
+                                                                   Long productId) {
+        return (root, query, cb) -> {
+            var predicates = new ArrayList<Predicate>();
+            predicates.add(cb.equal(root.get("partnerId"), partnerId));
+
+            if (productId != null) {
+                predicates.add(cb.equal(root.get("productId"), productId));
+            }
+            if (search != null && !search.isBlank()) {
+                var pattern = "%" + search.trim().toLowerCase() + "%";
+                var nameLike = cb.like(cb.lower(cb.coalesce(root.get("productName"), "")), pattern);
+                var labelLike = cb.like(cb.lower(cb.coalesce(root.get("promotionLabel"), "")), pattern);
+                predicates.add(cb.or(nameLike, labelLike));
+            }
+            if (dateFrom != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("appliedAt"), dateFrom.atStartOfDay()));
+            }
+            if (dateTo != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("appliedAt"), dateTo.atTime(23, 59, 59, 999_999_999)));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 
     @Override
@@ -758,6 +824,7 @@ public class MenuProductServiceImpl implements MenuProductService {
                 .updatedAt(p.getUpdatedAt())
                 .stockStatus(stockStatus)
                 .promotionLabel(p.getPromotionLabel())
+                .promotionStartDate(p.getPromotionStartDate())
                 .promotionEndDate(p.getPromotionEndDate())
                 .originalPrice(p.getOriginalPrice())
                 .discountPercentage(p.getDiscountPercentage())

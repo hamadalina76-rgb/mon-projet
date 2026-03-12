@@ -17,12 +17,14 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTableModule } from '@angular/material/table';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { LoadingSpinnerComponent } from '@shared/components/loading-spinner/loading-spinner.component';
 import { ConfirmationDialogComponent } from '@shared/components/confirmation-dialog/confirmation-dialog.component';
 import { MenuService } from '../services/menu.service';
-import { ProductService } from '../services/product.service';
+import { ProductService, PromotionLogEntry } from '../services/product.service';
 import { OptionService } from '../services/option.service';
 import { CategoryListComponent } from '../components/category-list/category-list.component';
 import { ProductCardComponent } from '../components/product-card/product-card.component';
@@ -55,6 +57,8 @@ import {
     MatTooltipModule,
     MatChipsModule,
     MatTableModule,
+    MatPaginatorModule,
+    MatAutocompleteModule,
     TranslateModule,
     CategoryListComponent,
     ProductCardComponent,
@@ -178,9 +182,40 @@ export class MenuListComponent implements OnInit {
   promotionProductsLoading = signal(false);
   promotionSelectedIds = signal<number[]>([]);
   promotionLabelValue = '';
+  promotionStartDateValue = '';
   promotionEndDateValue = '';
   promotionDiscountValue = '';
   promotionSaving = signal(false);
+
+  // ─── Historique des promotions (logs) ─────────────────────────────────────
+  promotionLogs = signal<PromotionLogEntry[]>([]);
+  promotionLogsLoading = signal(false);
+  promotionLogsTotalElements = signal(0);
+  promotionLogsPageIndex = signal(0);
+  promotionLogsPageSize = signal(20);
+  /** Filtres (côté backend). */
+  promotionLogsSearch = signal('');
+  promotionLogsDateFrom = signal('');
+  promotionLogsDateTo = signal('');
+  /** Filtre par produit (autocomplete). */
+  promotionLogsProductId = signal<number | null>(null);
+  promotionLogsProductInputValue = signal('');
+  /** Liste des produits pour l'autocomplete (chargée à l'ouverture de l'onglet). */
+  promotionLogsProductOptions = signal<Product[]>([]);
+  private promotionLogsSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Options de taille de page pour le paginator (bonnes pratiques). */
+  readonly promotionLogsPageSizeOptions = [10, 20, 50];
+  /** Colonnes du tableau historique des promotions (une seule source de vérité). */
+  readonly promotionLogsDisplayedColumns: string[] = [
+    'appliedAt', 'productName', 'promotionLabel', 'startDate', 'endDate', 'discountPercentage'
+  ];
+  /** Produits filtrés pour l'autocomplete (par nom). */
+  filteredPromotionLogsProducts = computed(() => {
+    const list = this.promotionLogsProductOptions();
+    const q = this.promotionLogsProductInputValue()?.trim().toLowerCase() ?? '';
+    if (!q) return list;
+    return list.filter(p => p.name.toLowerCase().includes(q));
+  });
 
   // ─── Import menu CSV (TC-58, TC-59) ───────────────────────────────────────
   importDialogOpen = signal(false);
@@ -194,15 +229,26 @@ export class MenuListComponent implements OnInit {
   // ─── Lifecycle ────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
-    const tab = this.route.snapshot.queryParamMap.get('tab');
-    if (tab) this.activeTab.set(+tab);
+    const tabParam = this.route.snapshot.queryParamMap.get('tab');
+    const tabIndex = tabParam != null ? +tabParam : 0;
+    this.activeTab.set(tabIndex);
     this.loadCategories();
     this.loadProductsPage();
+    // Charger les données de l'onglet actif au cas où on arrive avec ?tab= (ex. après refresh)
+    if (tabIndex === 2) this.loadProductsForOptionsTab();
+    if (tabIndex === 3) {
+      this.loadPromotionLogsProductsForAutocomplete();
+      this.loadPromotionLogs();
+    }
   }
 
   onTabChange(index: number): void {
     this.activeTab.set(index);
     if (index === 2) this.loadProductsForOptionsTab();
+    if (index === 3) {
+      this.loadPromotionLogsProductsForAutocomplete();
+      this.loadPromotionLogs();
+    }
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tab: index },
@@ -243,6 +289,7 @@ export class MenuListComponent implements OnInit {
     this.promotionDialogOpen.set(true);
     this.promotionSelectedIds.set([]);
     this.promotionLabelValue = '';
+    this.promotionStartDateValue = '';
     this.promotionEndDateValue = '';
     this.promotionDiscountValue = '';
     this.loadPromotionProducts();
@@ -291,11 +338,13 @@ export class MenuListComponent implements OnInit {
       const product = this.promotionProducts().find(p => p.id === next[0]);
       if (product) {
         this.promotionLabelValue = product.promotionLabel ?? '';
+        this.promotionStartDateValue = product.promotionStartDate ?? '';
         this.promotionEndDateValue = product.promotionEndDate ?? '';
         this.promotionDiscountValue = product.discountPercentage != null ? String(product.discountPercentage) : '';
       }
     } else if (next.length === 0) {
       this.promotionLabelValue = '';
+      this.promotionStartDateValue = '';
       this.promotionEndDateValue = '';
       this.promotionDiscountValue = '';
     }
@@ -306,12 +355,14 @@ export class MenuListComponent implements OnInit {
     if (ids.length === 0) return;
     this.promotionSaving.set(true);
     const label = this.promotionLabelValue?.trim() || null;
+    const startDate = this.promotionStartDateValue?.trim() || null;
     const endDate = this.promotionEndDateValue?.trim() || null;
     const discountRaw = (this.promotionDiscountValue != null ? String(this.promotionDiscountValue) : '').trim();
     const discount = discountRaw ? Math.min(100, Math.max(0, parseInt(discountRaw, 10) || 0)) : null;
-    this.productService.setPromotion(ids, label, endDate, discount).subscribe({
-      next: () => {
+    this.productService.setPromotion(ids, label, startDate, endDate, discount).subscribe({
+      next: (updatedProducts) => {
         this.promotionSaving.set(false);
+        this.mergeProductsFromServer(updatedProducts);
         this.loadProductsPage();
         this.closePromotionsDialog();
         this.snackBar.open(
@@ -335,9 +386,10 @@ export class MenuListComponent implements OnInit {
     const ids = this.promotionSelectedIds();
     if (ids.length === 0) return;
     this.promotionSaving.set(true);
-    this.productService.setPromotion(ids, null, null, null).subscribe({
-      next: () => {
+    this.productService.setPromotion(ids, null, null, null, null).subscribe({
+      next: (updatedProducts) => {
         this.promotionSaving.set(false);
+        this.mergeProductsFromServer(updatedProducts);
         this.loadPromotionProducts();
         this.loadProductsPage();
         this.snackBar.open(
@@ -355,6 +407,91 @@ export class MenuListComponent implements OnInit {
         );
       },
     });
+  }
+
+  /** Charge la liste des produits pour l'autocomplete filtre (onglet Historique). */
+  loadPromotionLogsProductsForAutocomplete(): void {
+    this.productService.getProductsPage({ page: 0, size: 500, status: 'all' }).subscribe({
+      next: (res) => this.promotionLogsProductOptions.set(res.content),
+      error: () => {},
+    });
+  }
+
+  /** Charge une page de l'historique des promotions (pagination + filtres côté backend). */
+  loadPromotionLogs(): void {
+    this.promotionLogsLoading.set(true);
+    this.productService.getPromotionLogs({
+      page: this.promotionLogsPageIndex(),
+      size: this.promotionLogsPageSize(),
+      search: this.promotionLogsSearch() || undefined,
+      dateFrom: this.promotionLogsDateFrom() || undefined,
+      dateTo: this.promotionLogsDateTo() || undefined,
+      productId: this.promotionLogsProductId() ?? undefined,
+    }).subscribe({
+      next: (res) => {
+        this.promotionLogs.set(res.content);
+        this.promotionLogsTotalElements.set(res.totalElements);
+        this.promotionLogsLoading.set(false);
+      },
+      error: () => this.promotionLogsLoading.set(false),
+    });
+  }
+
+  /** Gère le changement de page ou de taille (mat-paginator, bonnes pratiques). */
+  onPromotionLogsPageEvent(event: PageEvent): void {
+    this.promotionLogsPageIndex.set(event.pageIndex);
+    this.promotionLogsPageSize.set(event.pageSize);
+    this.loadPromotionLogs();
+  }
+
+  /** Applique les filtres (remet à la page 0 et recharge). Appelé automatiquement. */
+  applyPromotionLogsFilters(): void {
+    this.promotionLogsPageIndex.set(0);
+    this.loadPromotionLogs();
+  }
+
+  /** Recherche texte : applique les filtres après debounce (automatique). */
+  onPromotionLogsSearchInput(value: string): void {
+    this.promotionLogsSearch.set(value ?? '');
+    if (this.promotionLogsSearchDebounceTimer != null) clearTimeout(this.promotionLogsSearchDebounceTimer);
+    this.promotionLogsSearchDebounceTimer = setTimeout(() => {
+      this.promotionLogsSearchDebounceTimer = null;
+      this.applyPromotionLogsFilters();
+    }, 400);
+  }
+
+  /** Dates : application automatique des filtres. */
+  onPromotionLogsDateFromInput(value: string): void {
+    this.promotionLogsDateFrom.set(value ?? '');
+    this.applyPromotionLogsFilters();
+  }
+
+  onPromotionLogsDateToInput(value: string): void {
+    this.promotionLogsDateTo.set(value ?? '');
+    this.applyPromotionLogsFilters();
+  }
+
+  /** Sélection d'un produit dans l'autocomplete : filtre automatique. */
+  selectProductForLogsFilter(p: Product): void {
+    this.promotionLogsProductId.set(p.id);
+    this.promotionLogsProductInputValue.set(p.name);
+    this.applyPromotionLogsFilters();
+  }
+
+  /** Efface le filtre produit et réapplique. */
+  clearProductLogsFilter(): void {
+    this.promotionLogsProductId.set(null);
+    this.promotionLogsProductInputValue.set('');
+    this.applyPromotionLogsFilters();
+  }
+
+  /** Input produit : met à jour la valeur (filtre liste) ; si vide, efface le filtre et applique. */
+  onPromotionLogsProductInput(value: string): void {
+    this.promotionLogsProductInputValue.set(value ?? '');
+    if ((value ?? '').trim() === '') {
+      this.promotionLogsProductId.set(null);
+      this.applyPromotionLogsFilters();
+    }
   }
 
   onImportFileSelected(event: Event): void {
@@ -619,6 +756,14 @@ export class MenuListComponent implements OnInit {
   }
 
   // ─── Products ────────────────────────────────────────────────────────────
+
+  /** Met à jour les produits affichés avec la réponse du PATCH promotions (prix réduit, originalPrice, etc.). */
+  private mergeProductsFromServer(updated: Product[] | { content?: Product[]; data?: Product[] }): void {
+    const list = Array.isArray(updated) ? updated : (updated?.content ?? updated?.data ?? []);
+    if (!list.length) return;
+    const byId = new Map(list.map((p: Product) => [p.id, p]));
+    this.products.update(current => current.map(p => byId.get(p.id) ?? p));
+  }
 
   loadProductsPage(): void {
     this.productsLoading.set(true);
