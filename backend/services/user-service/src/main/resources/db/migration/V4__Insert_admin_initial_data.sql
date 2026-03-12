@@ -4,13 +4,14 @@
 -- Description: Insertion des rôles et permissions par défaut
 -- ============================================
 
--- Insertion des rôles par défaut
+-- Insertion des rôles par défaut (idempotent : ignore si déjà présents)
 INSERT INTO admin_roles (code, label, description, color, trust_level, max_refund_amount, requires_approval, active) VALUES
 ('SUPER_ADMIN', 'Super Admin', 'Accès complet à toutes les fonctionnalités du système', '#E31E24', 100, 10000.00, false, true),
 ('ADMIN', 'Admin', 'Gestion des utilisateurs, commandes et partenaires', '#FF6B35', 80, 5000.00, false, true),
 ('MODERATOR', 'Modérateur', 'Modération du contenu et support client avancé', '#4ECDC4', 60, 1000.00, true, true),
 ('SUPPORT', 'Support', 'Support client et consultation des données', '#95E1D3', 40, 500.00, true, true),
-('VIEWER', 'Visualiseur', 'Consultation en lecture seule', '#F0F0F0', 20, 0.00, true, true);
+('VIEWER', 'Visualiseur', 'Consultation en lecture seule', '#F0F0F0', 20, 0.00, true, true)
+ON CONFLICT (code) DO NOTHING;
 
 -- Permissions pour SUPER_ADMIN (accès complet)
 INSERT INTO permissions (role_id, module, module_label, icon, description, enabled) VALUES

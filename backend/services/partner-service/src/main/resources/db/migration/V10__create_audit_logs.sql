@@ -11,6 +11,6 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     timestamp   TIMESTAMP     NOT NULL DEFAULT NOW()
     );
 
-CREATE INDEX idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
-CREATE INDEX idx_audit_logs_admin  ON audit_logs(admin_id);
-CREATE INDEX idx_audit_logs_ts     ON audit_logs(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_admin  ON audit_logs(admin_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_ts     ON audit_logs(timestamp DESC);

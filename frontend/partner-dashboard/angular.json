@@ -76,6 +76,11 @@
                   "with": "src/environments/environment.development.ts"
                 }
               ]
+            },
+            "local": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
             }
           },
           "defaultConfiguration": "production"
@@ -88,9 +93,13 @@
             },
             "development": {
               "buildTarget": "partner-dashboard:build:development"
+            },
+            "local": {
+              "buildTarget": "partner-dashboard:build:local",
+              "proxyConfig": "proxy.conf.local.json"
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "local"
         },
         "test": {
           "builder": "@angular-devkit/build-angular:karma",

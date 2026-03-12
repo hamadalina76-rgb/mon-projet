@@ -19,7 +19,11 @@ public class CorsConfig {
             "http://localhost:3000",
             "http://localhost:4200",
             "http://localhost:4300",
-            "http://localhost:8080"
+            "http://localhost:8080",
+                "https://admin-panel-392205979525.europe-west1.run.app",
+                "https://partner-dashboard-392205979525.europe-west1.run.app",
+                "https://courier-app-392205979525.europe-west1.run.app",
+                "https://customer-app-392205979525.europe-west1.run.app"
         ));
         corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         corsConfig.setAllowedHeaders(List.of("*"));
