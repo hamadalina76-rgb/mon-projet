@@ -4,7 +4,16 @@
 # Sur Cloud Run, la config est injectée via variables d'environnement Terraform.
 # spring-cloud-starter-bootstrap et spring-cloud-starter-config sont SUPPRIMÉS
 # du classpath pom.xml => pas de Bootstrap Context => pas de crash JPA.
+#
+# Envoi d'emails (OTP) : définir MAIL_USERNAME et MAIL_PASSWORD (env ou
+# application-dev.local.yml à la racine du module, fichier non committé).
+# Voir env.example.
 # ============================================================================
+spring:
+  config:
+    import: optional:file:./application-dev.local.yml
+
+---
 server:
   port: ${PORT:8080}
   address: 0.0.0.0
@@ -61,19 +70,19 @@ spring:
       enabled: false
 
   mail:
-    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
-    port: ${SPRING_MAIL_PORT:587}
-    username: ${SPRING_MAIL_USERNAME:}
-    password: ${SPRING_MAIL_PASSWORD:}
+    host: ${SPRING_MAIL_HOST:${MAIL_HOST:smtp.gmail.com}}
+    port: ${SPRING_MAIL_PORT:${MAIL_PORT:587}}
+    username: ${SPRING_MAIL_USERNAME:${MAIL_USERNAME:}}
+    password: ${SPRING_MAIL_PASSWORD:${MAIL_PASSWORD:}}
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
-          connectiontimeout: 3000
-          timeout: 3000
-          writetimeout: 3000
+          connectiontimeout: ${MAIL_CONNECTION_TIMEOUT:15000}
+          timeout: ${MAIL_TIMEOUT:15000}
+          writetimeout: ${MAIL_WRITE_TIMEOUT:15000}
 
 eureka:
   client:
@@ -105,6 +114,7 @@ otp:
   expiration:
     minutes: ${OTP_EXPIRATION_MINUTES:3}
 
+# Désactive le health check mail en dev si MAIL_USERNAME/MAIL_PASSWORD non configurés (évite "no password specified").
 management:
   endpoints:
     web:
@@ -116,6 +126,9 @@ management:
       show-details: always
       probes:
         enabled: true
+  health:
+    mail:
+      enabled: false
 
 logging:
   level:
