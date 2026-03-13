@@ -1,7 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../config/di/injection_container.dart';
+import '../../../../services/notification_service.dart';
+import '../../../auth/domain/repositories/auth_repository.dart';
 import 'courier_home_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 
@@ -14,9 +19,48 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
+  bool _canAccessApp = true;
+  StreamSubscription<void>? _profileRefreshedSub;
 
-  final List<Widget> _screens = [
-    const CourierHomeScreen(),
+  @override
+  void initState() {
+    super.initState();
+    _loadCourierAccess();
+    // Rafraîchir l'accès en temps réel quand une notif "compte approuvé/bloqué" est reçue
+    _profileRefreshedSub = NotificationService().onProfileRefreshed.listen((_) {
+      if (mounted) _loadCourierAccess();
+    });
+  }
+
+  @override
+  void dispose() {
+    _profileRefreshedSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadCourierAccess() async {
+    if (!getIt.isRegistered<AuthRepository>()) return;
+    try {
+      final c = await getIt<AuthRepository>().getCurrentCourier();
+      if (!mounted) return;
+      final canAccess = c?.canAccessApp ?? true;
+      if (c != null && c.isBlocked) {
+        context.go('/rejected');
+        return;
+      }
+      if (c != null && c.isPendingApproval) {
+        context.go('/pending');
+        return;
+      }
+      setState(() {
+        _canAccessApp = canAccess;
+        if (!canAccess) _currentIndex = 4;
+      });
+    } catch (_) {}
+  }
+
+  List<Widget> get _screens => [
+    CourierHomeScreen(canAccessApp: _canAccessApp),
     const Center(child: Text('Orders')), // TODO: Implement OrdersScreen
     const Center(child: Text('Earnings')), // TODO: Implement EarningsScreen
     const Center(child: Text('Support')), // TODO: Implement SupportScreen
@@ -83,12 +127,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     required int index,
   }) {
     final isActive = _currentIndex == index;
-    
+    final isProfile = index == 4;
+    final isDisabled = !_canAccessApp && !isProfile;
+
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _currentIndex = index;
-        });
+        if (isDisabled) {
+          setState(() => _currentIndex = 4);
+          return;
+        }
+        setState(() => _currentIndex = index);
       },
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
@@ -98,7 +146,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         ),
         child: Icon(
           isActive ? activeIcon : icon,
-          color: isActive ? AppColors.primary : Colors.grey[600],
+          color: isActive
+              ? AppColors.primary
+              : (isDisabled ? Colors.grey[400] : Colors.grey[600]),
           size: 28.sp,
         ),
       ),

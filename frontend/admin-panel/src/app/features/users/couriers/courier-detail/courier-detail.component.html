@@ -1,39 +1,326 @@
-<!-- Courier Detail Component Template -->
-<div class="courier-detail-page">
+<!-- Courier Detail - same design as Partner Details -->
+<div class="partner-detail-page courier-detail-page">
+  @if (courier()) {
+    <nav class="breadcrumbs">
+      <a routerLink="/users/couriers">{{ 'users.couriers.title' | translate }}</a>
+      <span class="sep">›</span>
+      <span class="current">{{ getFullName(courier()) }}</span>
+    </nav>
+  }
+
   <header class="page-header">
     <div class="header-left">
-      <button mat-icon-button routerLink="/users/couriers">
+      <button mat-icon-button (click)="goBack()" class="btn-back">
         <mat-icon>arrow_back</mat-icon>
       </button>
-      <h1>Détails du livreur</h1>
+      <h1 class="page-title">{{ 'users.couriers.detail' | translate }}</h1>
     </div>
+    @if (courier()) {
     <div class="header-actions">
-      <!-- Action buttons -->
+      @if (isPendingApproval(courier())) {
+        <button mat-raised-button color="warn" (click)="reject()" [disabled]="actionLoading()">
+          <mat-icon>close</mat-icon>
+          {{ 'users.couriers.reject' | translate }}
+        </button>
+        <button mat-raised-button color="primary" (click)="approve()" [disabled]="actionLoading()">
+          <mat-icon>check</mat-icon>
+          {{ 'users.couriers.approve' | translate }}
+        </button>
+        <button mat-stroked-button (click)="goToApproval()">
+          <mat-icon>fact_check</mat-icon>
+          {{ 'users.couriers.review' | translate }}
+        </button>
+        <button mat-stroked-button (click)="requestMoreInfo()" [disabled]="actionLoading()">
+          <mat-icon>info</mat-icon>
+          {{ 'users.couriers.requestMoreInfo' | translate }}
+        </button>
+      }
+      @if (canActivate(courier())) {
+        <button mat-raised-button color="primary" (click)="activate()" [disabled]="actionLoading()">
+          <mat-icon>check_circle</mat-icon>
+          {{ 'users.couriers.activate' | translate }}
+        </button>
+      }
+      @if (canDeactivate(courier())) {
+        <button mat-stroked-button (click)="deactivate()" [disabled]="actionLoading()">
+          <mat-icon>block</mat-icon>
+          {{ 'users.couriers.deactivate' | translate }}
+        </button>
+      }
+      @if (canSuspend(courier())) {
+        <button mat-raised-button color="warn" (click)="suspend()" [disabled]="actionLoading()">
+          <mat-icon>gpp_bad</mat-icon>
+          {{ 'users.couriers.suspend' | translate }}
+        </button>
+      }
     </div>
+    }
   </header>
 
-  <div class="courier-content" *ngIf="courier">
-    <!-- Courier info card -->
-    <mat-card class="info-card">
-      <!-- Courier information -->
-    </mat-card>
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner></mat-spinner>
+    </div>
+  }
 
-    <!-- Tabs -->
-    <mat-card class="tabs-card">
-      <mat-tab-group>
-        <mat-tab label="Livraisons">
-          <!-- Deliveries list -->
-        </mat-tab>
-        <mat-tab label="Documents">
-          <!-- Documents list -->
-        </mat-tab>
-        <mat-tab label="Performance">
-          <!-- Performance metrics -->
-        </mat-tab>
-        <mat-tab label="Paiements">
-          <!-- Payment history -->
-        </mat-tab>
-      </mat-tab-group>
-    </mat-card>
+  @if (courier() && !loading()) {
+  <div class="partner-content">
+    <!-- Courier header card (same style as partner: logo/initials + name + status badge + meta) -->
+    <div class="partner-header-card">
+      <div class="partner-header">
+        <div class="partner-logo-wrap">
+          @if (courier().profilePhoto) {
+            <img [src]="docUrl(courier().profilePhoto)" [alt]="getFullName(courier())" class="partner-logo-img" />
+          } @else {
+            <div class="partner-logo-placeholder">
+              {{ (getFullName(courier()) || '?').substring(0, 2).toUpperCase() }}
+            </div>
+          }
+          <span class="status-dot" [ngClass]="'dot-' + (courier().status || '').toLowerCase().replace('_', '-')"></span>
+        </div>
+        <div class="partner-title-block">
+          <h2 class="partner-name">
+            {{ getFullName(courier()) }}
+            <span class="status-badge" [ngClass]="'badge-' + (courier().status || '').toLowerCase().replace('_', '-')">
+              {{ getStatusLabel(courier().status) }}
+            </span>
+          </h2>
+          <p class="partner-meta">
+            {{ getVehicleTypeLabel(courier().vehicleType) }} • {{ 'users.couriers.id' | translate }} : {{ getCourierIdDisplay() }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs (General Info, Documents, Vehicle) -->
+    <mat-tab-group class="detail-tabs" animationDuration="0ms">
+      <mat-tab [label]="'users.couriers.tabs.general' | translate">
+        <div class="tab-content two-cols">
+          <div class="col-left">
+            <!-- Contact / Profile -->
+            <mat-card class="info-card">
+              <div class="card-head">
+                <h3>{{ 'users.couriers.profileInfo' | translate }}</h3>
+              </div>
+              <mat-divider></mat-divider>
+              <div class="info-rows">
+                <div class="info-row">
+                  <span class="label">{{ 'users.couriers.identityNumber' | translate }}</span>
+                  <span class="value">{{ courier().identityNumber || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'users.couriers.email' | translate }}</span>
+                  <span class="value">{{ courier().email || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'users.couriers.phone' | translate }}</span>
+                  <span class="value">{{ courier().phoneNumber || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'users.couriers.registeredOn' | translate }}</span>
+                  <span class="value">{{ courier().createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'users.couriers.lastLogin' | translate }}</span>
+                  <span class="value">{{ courier().lastLoginAt ? (courier().lastLoginAt | date:'dd/MM/yyyy HH:mm') : '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'users.couriers.documentsVerified' | translate }}</span>
+                  <span class="value">{{ courier().documentsVerified ? ('common.yes' | translate) : ('common.no' | translate) }}</span>
+                </div>
+              </div>
+            </mat-card>
+
+            <!-- Vehicle summary -->
+            <mat-card class="info-card">
+              <h3>{{ 'users.couriers.vehicleInfo' | translate }}</h3>
+              <mat-divider></mat-divider>
+              <div class="info-rows">
+                <div class="info-row">
+                  <span class="label">{{ 'users.couriers.vehicleType' | translate }}</span>
+                  <span class="value">{{ getVehicleTypeLabel(courier().vehicleType) }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'users.couriers.vehicleNumber' | translate }}</span>
+                  <span class="value">{{ courier().vehicleNumber || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'users.couriers.vehicleModel' | translate }}</span>
+                  <span class="value">{{ courier().vehicleModel || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'users.couriers.vehicleColor' | translate }}</span>
+                  <span class="value">{{ courier().vehicleColor || '—' }}</span>
+                </div>
+              </div>
+            </mat-card>
+
+            <!-- Banking -->
+            <mat-card class="info-card">
+              <h3>{{ 'users.couriers.bankInfo' | translate }}</h3>
+              <mat-divider></mat-divider>
+              <div class="info-rows">
+                <div class="info-row">
+                  <span class="label">{{ 'users.couriers.bankAccountHolder' | translate }}</span>
+                  <span class="value">{{ courier().bankAccountHolder || '—' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'users.couriers.bankIban' | translate }}</span>
+                  <span class="value">{{ courier().bankIban || '—' }}</span>
+                </div>
+              </div>
+            </mat-card>
+
+            <!-- Status / Admin notes (rejection, suspension, request more info) -->
+            @if (courier().rejectionReason || courier().suspensionReason || courier().requestMoreInfoMessage) {
+              <mat-card class="info-card">
+                <h3>{{ 'users.couriers.statusNotes' | translate }}</h3>
+                <mat-divider></mat-divider>
+                <div class="info-rows">
+                  @if (courier().rejectionReason) {
+                    <div class="info-row full-width">
+                      <span class="label">{{ 'users.couriers.rejectionReason' | translate }}</span>
+                      <span class="value">{{ courier().rejectionReason }}</span>
+                    </div>
+                  }
+                  @if (courier().suspensionReason) {
+                    <div class="info-row full-width">
+                      <span class="label">{{ 'users.couriers.suspensionReason' | translate }}</span>
+                      <span class="value">{{ courier().suspensionReason }}</span>
+                    </div>
+                  }
+                  @if (courier().requestMoreInfoMessage) {
+                    <div class="info-row full-width">
+                      <span class="label">{{ 'users.couriers.requestMoreInfoMessage' | translate }}</span>
+                      <span class="value">{{ courier().requestMoreInfoMessage }}</span>
+                    </div>
+                  }
+                </div>
+              </mat-card>
+            }
+          </div>
+
+          <div class="col-right">
+            <!-- Performance -->
+            <mat-card class="info-card performance-card">
+              <h3>{{ 'users.couriers.performance' | translate }}</h3>
+              <mat-divider></mat-divider>
+              <div class="perf-rating">
+                <span class="rating-value">{{ courier().rating != null ? (courier().rating | number:'1.1-1') + '/5' : '—' }}</span>
+                @if (courier().totalRatings != null) {
+                  <span class="total-ratings">({{ courier().totalRatings }} avis)</span>
+                }
+              </div>
+              <div class="perf-stats">
+                <div class="perf-stat">
+                  <span class="label">{{ 'users.couriers.totalDeliveries' | translate }}</span>
+                  <span class="value">{{ courier().totalDeliveries ?? '—' }}</span>
+                </div>
+                <div class="perf-stat">
+                  <span class="label">{{ 'users.couriers.totalEarnings' | translate }}</span>
+                  <span class="value">{{ courier().totalEarnings != null ? (courier().totalEarnings | number:'1.2-2') + ' TND' : '—' }}</span>
+                </div>
+                <div class="perf-stat">
+                  <span class="label">{{ 'users.couriers.availableBalance' | translate }}</span>
+                  <span class="value">{{ courier().availableBalance != null ? (courier().availableBalance | number:'1.2-2') + ' TND' : '—' }}</span>
+                </div>
+              </div>
+            </mat-card>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="'users.couriers.documents' | translate">
+        <div class="tab-content">
+          <mat-card class="info-card">
+            <h3>{{ 'users.couriers.documents' | translate }}</h3>
+            <mat-divider></mat-divider>
+            <div class="info-rows">
+              <div class="info-row">
+                <span class="label">{{ 'users.couriers.identityNumber' | translate }}</span>
+                <span class="value">{{ courier().identityNumber || '—' }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">{{ 'users.couriers.licenseNumber' | translate }}</span>
+                <span class="value">{{ courier().drivingLicenseNumber || '—' }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">{{ 'users.couriers.licenseExpiry' | translate }}</span>
+                <span class="value">{{ courier().drivingLicenseExpiry ? (courier().drivingLicenseExpiry | date:'dd/MM/yyyy') : '—' }}</span>
+              </div>
+            </div>
+            <div class="documents-grid">
+              @if (courier().identityDocumentFrontImage) {
+                <div class="document-card">
+                  <label>{{ 'users.couriers.cinFront' | translate }}</label>
+                  <a [href]="docUrl(courier().identityDocumentFrontImage)" target="_blank" rel="noopener">
+                    <img [src]="docUrl(courier().identityDocumentFrontImage)" [attr.alt]="'users.couriers.cinFront' | translate" class="doc-img" />
+                  </a>
+                  <a [href]="docUrl(courier().identityDocumentFrontImage)" target="_blank" mat-button>
+                    <mat-icon>visibility</mat-icon>
+                    {{ 'users.couriers.view' | translate }}
+                  </a>
+                </div>
+              }
+              @if (courier().identityDocumentBackImage) {
+                <div class="document-card">
+                  <label>{{ 'users.couriers.cinBack' | translate }}</label>
+                  <a [href]="docUrl(courier().identityDocumentBackImage)" target="_blank" rel="noopener">
+                    <img [src]="docUrl(courier().identityDocumentBackImage)" [attr.alt]="'users.couriers.cinBack' | translate" class="doc-img" />
+                  </a>
+                  <a [href]="docUrl(courier().identityDocumentBackImage)" target="_blank" mat-button>
+                    <mat-icon>visibility</mat-icon>
+                    {{ 'users.couriers.view' | translate }}
+                  </a>
+                </div>
+              }
+              @if (courier().drivingLicenseImage) {
+                <div class="document-card">
+                  <label>{{ 'users.couriers.drivingLicense' | translate }}</label>
+                  <a [href]="docUrl(courier().drivingLicenseImage)" target="_blank" rel="noopener">
+                    <img [src]="docUrl(courier().drivingLicenseImage)" [attr.alt]="'users.couriers.drivingLicense' | translate" class="doc-img" />
+                  </a>
+                  <a [href]="docUrl(courier().drivingLicenseImage)" target="_blank" mat-button>
+                    <mat-icon>visibility</mat-icon>
+                    {{ 'users.couriers.view' | translate }}
+                  </a>
+                </div>
+              }
+            </div>
+            @if (!courier().identityDocumentFrontImage && !courier().identityDocumentBackImage && !courier().drivingLicenseImage) {
+              <p class="no-docs">{{ 'users.couriers.noDocuments' | translate }}</p>
+            }
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="'users.couriers.vehicleInfo' | translate">
+        <div class="tab-content">
+          <mat-card class="info-card">
+            <h3>{{ 'users.couriers.vehicleInfo' | translate }}</h3>
+            <mat-divider></mat-divider>
+            <div class="info-rows">
+              <div class="info-row">
+                <span class="label">{{ 'users.couriers.vehicleType' | translate }}</span>
+                <span class="value">{{ getVehicleTypeLabel(courier().vehicleType) }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">{{ 'users.couriers.vehicleNumber' | translate }}</span>
+                <span class="value">{{ courier().vehicleNumber || '—' }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">{{ 'users.couriers.vehicleModel' | translate }}</span>
+                <span class="value">{{ courier().vehicleModel || '—' }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">{{ 'users.couriers.vehicleColor' | translate }}</span>
+                <span class="value">{{ courier().vehicleColor || '—' }}</span>
+              </div>
+            </div>
+          </mat-card>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
   </div>
+  }
 </div>

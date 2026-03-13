@@ -5,6 +5,8 @@ import 'package:dio/dio.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../config/di/injection_container.dart';
+import '../../../../services/notification_service.dart';
+import '../../domain/entities/courier.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/exceptions/auth_exceptions.dart';
 
@@ -26,6 +28,13 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoginTab = true;
   bool _acceptTerms = false;
   bool _isLoading = false;
+
+  void _registerPushTokenIfPossible(Courier courier) {
+    final userId = int.tryParse(courier.userId ?? '') ?? int.tryParse(courier.id);
+    if (userId != null) {
+      NotificationService().registerWithBackend(userId);
+    }
+  }
 
   @override
   void dispose() {
@@ -59,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
           password: _passwordController.text,
         );
         
-        print('📋 Login response - courier ID: ${courier.id}, isEmailVerified: ${courier.isEmailVerified}, documentsVerified: ${courier.documentsVerified}');
+        print('📋 Login response - courier ID: ${courier.id}, status: ${courier.status}, isEmailVerified: ${courier.isEmailVerified}, documentsVerified: ${courier.documentsVerified}');
         
         if (mounted) {
           // Check if email is verified (first-time login)
@@ -72,11 +81,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 duration: Duration(seconds: 3),
               ),
             );
-            // Navigate to email verification screen with email parameter
             context.go('/email-verification?email=${Uri.encodeComponent(_emailController.text.trim())}');
+            return;
           }
           // Check if documents are verified
-          else if (!courier.documentsVerified) {
+          if (!courier.documentsVerified) {
             print('⚠️ Documents not verified, redirecting to documentation screen');
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -85,11 +94,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 duration: Duration(seconds: 3),
               ),
             );
+            _registerPushTokenIfPossible(courier);
             context.go('/documentation');
-          } else {
-            print('✅ Email and documents verified, redirecting to home');
-            context.go('/home');
+            return;
           }
+          print('✅ Email and documents verified, redirecting to home');
+          _registerPushTokenIfPossible(courier);
+          context.go('/home');
         }
       } on EmailVerificationRequiredException catch (e) {
         // Email verification required - redirect to verification screen

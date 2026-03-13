@@ -89,6 +89,7 @@ public class UserServiceImpl implements UserService {
                 .phoneNumber(user.getPhoneNumber())
                 .profilePicture(user.getProfilePicture())
                 .role(user.getRole().name())
+                .isEmailVerified(Boolean.TRUE.equals(user.getIsEmailVerified()))
                 .build();
     }
 }

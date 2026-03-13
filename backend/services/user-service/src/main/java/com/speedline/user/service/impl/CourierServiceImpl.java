@@ -1,6 +1,7 @@
 package com.speedline.user.service.impl;
 
 import com.speedline.user.client.AuthServiceClient;
+import com.speedline.user.client.NotificationServiceClient;
 import com.speedline.user.domain.Courier;
 import com.speedline.user.domain.CourierStatus;
 import com.speedline.user.domain.VehicleType;
@@ -21,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -40,13 +42,16 @@ public class CourierServiceImpl implements CourierService {
 
     private final CourierRepository courierRepository;
     private final AuthServiceClient authServiceClient;
+    private final NotificationServiceClient notificationServiceClient;
     private final String uploadBaseDir;
 
     public CourierServiceImpl(CourierRepository courierRepository,
                              AuthServiceClient authServiceClient,
+                             NotificationServiceClient notificationServiceClient,
                              @Value("${file.upload.dir}") String uploadBaseDir) {
         this.courierRepository = courierRepository;
         this.authServiceClient = authServiceClient;
+        this.notificationServiceClient = notificationServiceClient;
 
         // Convert relative path to absolute path
         java.io.File uploadDir = new java.io.File(uploadBaseDir);
@@ -98,6 +103,17 @@ public class CourierServiceImpl implements CourierService {
 
         courier = courierRepository.save(courier);
         log.info("Profil livreur créé avec succès. ID: {}, userId: {}", courier.getId(), courier.getUserId());
+
+        try {
+            notificationServiceClient.sendAdminBroadcast(NotificationServiceClient.AdminBroadcastRequest.builder()
+                    .type("COURIER")
+                    .title("Nouveau livreur inscrit")
+                    .message("Un nouveau livreur a soumis son inscription.")
+                    .data(Map.of("action", "REVIEW_COURIER", "courierId", courier.getId()))
+                    .build());
+        } catch (Exception e) {
+            log.warn("Could not send admin notification for new courier: {}", e.getMessage());
+        }
 
         return mapToDTO(courier);
     }
@@ -580,22 +596,81 @@ public class CourierServiceImpl implements CourierService {
     @Override
     @Transactional
     public CourierDTO verifyDocuments(Long courierId) {
-        // Non implémenté - admin only, hors scope
-        throw new UnsupportedOperationException("Validation admin non implémentée");
+        log.info("Admin: validation des documents pour livreur {}", courierId);
+        Courier courier = findCourierById(courierId);
+        if (courier.getStatus() != CourierStatus.PENDING_APPROVAL) {
+            throw new IllegalStateException("Seul un livreur en attente peut être approuvé. Statut actuel: " + courier.getStatus());
+        }
+        courier.setDocumentsVerified(true);
+        courier.setStatus(CourierStatus.ACTIVE);
+        courier.setRejectionReason(null);
+        courier = courierRepository.save(courier);
+        log.info("Livreur {} approuvé (ACTIVE)", courierId);
+        try {
+            notificationServiceClient.sendNotification(NotificationServiceClient.SendNotificationRequest.builder()
+                    .userId(courier.getUserId())
+                    .type("COURIER")
+                    .title("Votre compte est activé")
+                    .message("Félicitations ! Votre inscription a été approuvée. Vous pouvez maintenant accéder à l'application.")
+                    .data(Map.of("action", "COURIER_APPROVED", "courierId", courierId))
+                    .channel("IN_APP")
+                    .build());
+        } catch (Exception e) {
+            log.warn("Could not notify courier of approval: {}", e.getMessage());
+        }
+        return mapToDTO(courier);
     }
 
     @Override
     @Transactional
     public void rejectDocuments(Long courierId, String reason) {
-        // Non implémenté - admin only, hors scope
-        throw new UnsupportedOperationException("Rejet admin non implémenté");
+        log.info("Admin: rejet des documents pour livreur {}, raison: {}", courierId, reason);
+        Courier courier = findCourierById(courierId);
+        courier.setStatus(CourierStatus.REJECTED);
+        courier.setRejectionReason(reason != null ? reason : "");
+        courier = courierRepository.save(courier);
+        log.info("Livreur {} rejeté", courierId);
+        try {
+            notificationServiceClient.sendNotification(NotificationServiceClient.SendNotificationRequest.builder()
+                    .userId(courier.getUserId())
+                    .type("COURIER")
+                    .title("Inscription refusée")
+                    .message(reason != null && !reason.isBlank() ? "Votre inscription a été refusée. Raison : " + reason : "Votre inscription a été refusée.")
+                    .data(Map.of("action", "COURIER_REJECTED", "courierId", courierId, "reason", reason != null ? reason : ""))
+                    .channel("IN_APP")
+                    .build());
+        } catch (Exception e) {
+            log.warn("Could not notify courier of rejection: {}", e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void requestMoreInfo(Long courierId, String message) {
+        log.info("Admin: demande d'informations complémentaires pour livreur {}", courierId);
+        Courier courier = findCourierById(courierId);
+        courier.setRequestMoreInfoMessage(message != null ? message : "");
+        courier = courierRepository.save(courier);
+        log.info("Message enregistré pour livreur {}", courierId);
+        try {
+            notificationServiceClient.sendNotification(NotificationServiceClient.SendNotificationRequest.builder()
+                    .userId(courier.getUserId())
+                    .type("COURIER")
+                    .title("Informations complémentaires demandées")
+                    .message(message != null && !message.isBlank() ? message : "L'équipe demande des informations complémentaires pour votre dossier.")
+                    .data(Map.of("action", "COURIER_INFO_REQUESTED", "courierId", courierId))
+                    .channel("IN_APP")
+                    .build());
+        } catch (Exception e) {
+            log.warn("Could not notify courier of info request: {}", e.getMessage());
+        }
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<CourierDTO> getCouriersAwaitingApproval(Pageable pageable) {
-        // Non implémenté - admin only, hors scope
-        throw new UnsupportedOperationException("Liste admin non implémentée");
+        return courierRepository.findByStatus(CourierStatus.PENDING_APPROVAL, pageable)
+                .map(this::mapToDTO);
     }
 
     // ==================== STATISTIQUES ET PERFORMANCES ====================
@@ -700,43 +775,124 @@ public class CourierServiceImpl implements CourierService {
     @Override
     @Transactional(readOnly = true)
     public Page<CourierDTO> getAllCouriers(Pageable pageable) {
-        // Non implémenté - hors scope
-        throw new UnsupportedOperationException("Liste non implémentée");
+        return courierRepository.findAll(pageable).map(this::mapToDTO);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<CourierDTO> getCouriersByStatus(CourierStatus status, Pageable pageable) {
-        // Non implémenté - hors scope
-        throw new UnsupportedOperationException("Liste par statut non implémentée");
+        return courierRepository.findByStatus(status, pageable).map(this::mapToDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CourierDTO> searchCouriers(String search, CourierStatus status, Pageable pageable) {
+        String term = (search != null && !search.isBlank()) ? search.trim() : null;
+        if (term == null && status == null) {
+            return courierRepository.findAll(pageable).map(this::mapToDTO);
+        }
+        if (term == null) {
+            return courierRepository.findByStatus(status, pageable).map(this::mapToDTO);
+        }
+        return courierRepository.searchCouriers(status, term, pageable).map(this::mapToDTO);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<CourierDTO> getOnlineCouriers(Pageable pageable) {
-        // Non implémenté - hors scope
-        throw new UnsupportedOperationException("Liste en ligne non implémentée");
+        return courierRepository.findByIsAvailableTrueAndIsOnlineTrue(pageable).map(this::mapToDTO);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<CourierDTO> getTopRatedCouriers(BigDecimal minRating, Pageable pageable) {
-        // Non implémenté - hors scope
-        throw new UnsupportedOperationException("Top livreurs non implémenté");
+        return courierRepository.findTopRatedCouriers(minRating, pageable).map(this::mapToDTO);
+    }
+
+    @Override
+    @Transactional
+    public void deactivateCourier(Long courierId, String reason) {
+        log.info("Admin: désactivation (block) du livreur {}, raison: {}", courierId, reason);
+        Courier courier = findCourierById(courierId);
+        courier.setStatus(CourierStatus.DEACTIVATED);
+        courier.setSuspensionReason(reason != null ? reason : "");
+        courier.setIsAvailable(false);
+        courier.setIsOnline(false);
+        courierRepository.save(courier);
+        log.info("Livreur {} désactivé (DEACTIVATED)", courierId);
+        try {
+            notificationServiceClient.sendNotification(NotificationServiceClient.SendNotificationRequest.builder()
+                    .userId(courier.getUserId())
+                    .type("COURIER")
+                    .title("Compte désactivé")
+                    .message(reason != null && !reason.isBlank() ? "Votre compte a été désactivé. Raison : " + reason : "Votre compte a été désactivé. Contactez le support.")
+                    .data(Map.of("action", "COURIER_DEACTIVATED", "courierId", courierId, "reason", reason != null ? reason : ""))
+                    .channel("IN_APP")
+                    .build());
+        } catch (Exception e) {
+            log.warn("Could not notify courier of deactivation: {}", e.getMessage());
+        }
     }
 
     @Override
     @Transactional
     public void suspendCourier(Long courierId, String reason) {
-        // Non implémenté - admin only, hors scope
-        throw new UnsupportedOperationException("Suspension admin non implémentée");
+        log.info("Admin: suspension du livreur {}, raison: {}", courierId, reason);
+        Courier courier = findCourierById(courierId);
+        courier.setStatus(CourierStatus.SUSPENDED);
+        courier.setSuspensionReason(reason != null ? reason : "");
+        courier.setIsAvailable(false);
+        courier.setIsOnline(false);
+        courierRepository.save(courier);
+        log.info("Livreur {} suspendu", courierId);
+        try {
+            notificationServiceClient.sendNotification(NotificationServiceClient.SendNotificationRequest.builder()
+                    .userId(courier.getUserId())
+                    .type("COURIER")
+                    .title("Compte suspendu")
+                    .message(reason != null && !reason.isBlank() ? "Votre compte a été suspendu. Raison : " + reason : "Votre compte a été suspendu. Contactez le support.")
+                    .data(Map.of("action", "COURIER_SUSPENDED", "courierId", courierId, "reason", reason != null ? reason : ""))
+                    .channel("IN_APP")
+                    .build());
+        } catch (Exception e) {
+            log.warn("Could not notify courier of suspension: {}", e.getMessage());
+        }
     }
 
     @Override
     @Transactional
     public void reactivateCourier(Long courierId) {
-        // Non implémenté - admin only, hors scope
-        throw new UnsupportedOperationException("Réactivation admin non implémentée");
+        log.info("Admin: réactivation du livreur {}", courierId);
+        Courier courier = findCourierById(courierId);
+        CourierStatus current = courier.getStatus();
+        if (current != CourierStatus.SUSPENDED && current != CourierStatus.DEACTIVATED && current != CourierStatus.REJECTED) {
+            throw new IllegalStateException("Seul un livreur suspendu, désactivé ou rejeté peut être réactivé. Statut actuel: " + current);
+        }
+        if (current == CourierStatus.REJECTED) {
+            courier.setStatus(CourierStatus.PENDING_APPROVAL);
+            courier.setRejectionReason(null);
+            log.info("Livreur {} remis en attente d'approbation (REJECTED → PENDING_APPROVAL)", courierId);
+        } else {
+            courier.setStatus(CourierStatus.ACTIVE);
+            courier.setSuspensionReason(null);
+            log.info("Livreur {} réactivé (ACTIVE)", courierId);
+        }
+        courierRepository.save(courier);
+        try {
+            String message = current == CourierStatus.REJECTED
+                    ? "Votre dossier a été réouvert. Vous serez notifié après réexamen."
+                    : "Votre compte a été réactivé. Vous pouvez à nouveau utiliser l'application.";
+            notificationServiceClient.sendNotification(NotificationServiceClient.SendNotificationRequest.builder()
+                    .userId(courier.getUserId())
+                    .type("COURIER")
+                    .title("Compte réactivé")
+                    .message(message)
+                    .data(Map.of("action", "COURIER_REACTIVATED", "courierId", courierId))
+                    .channel("IN_APP")
+                    .build());
+        } catch (Exception e) {
+            log.warn("Could not notify courier of reactivation: {}", e.getMessage());
+        }
     }
 
     @Override
@@ -769,6 +925,9 @@ public class CourierServiceImpl implements CourierService {
         }
         if (status == CourierStatus.DEACTIVATED) {
             throw CourierNotAvailableException.inactive(courier.getId());
+        }
+        if (status == CourierStatus.REJECTED) {
+            throw CourierNotAvailableException.notApproved(courier.getId());
         }
     }
 
@@ -834,6 +993,10 @@ public class CourierServiceImpl implements CourierService {
                 .maxDeliveryRadius(courier.getMaxDeliveryRadius())
                 // Photo
                 .profilePhoto(courier.getProfilePhoto())
+                // Raisons admin
+                .rejectionReason(courier.getRejectionReason())
+                .requestMoreInfoMessage(courier.getRequestMoreInfoMessage())
+                .suspensionReason(courier.getSuspensionReason())
                 // Timestamps
                 .createdAt(courier.getCreatedAt())
                 .lastLoginAt(courier.getLastLoginAt())
@@ -848,6 +1011,9 @@ public class CourierServiceImpl implements CourierService {
             dto.setFirstName(userInfo.getFirstName());
             dto.setLastName(userInfo.getLastName());
             dto.setPhoneNumber(userInfo.getPhoneNumber());
+            if (userInfo.getIsEmailVerified() != null) {
+                dto.setIsEmailVerified(userInfo.getIsEmailVerified());
+            }
         } catch (Exception e) {
             log.error("❌ FAILED to fetch user info from auth-service for userId: {}", courier.getUserId());
             log.error("❌ Error type: {}", e.getClass().getName());

@@ -155,4 +155,12 @@ class AuthRepositoryImpl implements AuthRepository {
       filePaths: filePaths,
     );
   }
+
+  @override
+  Future<Courier> uploadProfilePhoto({required String filePath}) async {
+    final response = await remoteDataSource.uploadProfilePhoto(filePath: filePath);
+    final courier = CourierModel.fromJson(response);
+    await localDataSource.saveCourierData(courier.toJson());
+    return courier;
+  }
 }

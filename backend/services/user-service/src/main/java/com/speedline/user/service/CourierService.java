@@ -266,6 +266,15 @@ public interface CourierService {
      */
     Page<CourierDTO> getCouriersAwaitingApproval(Pageable pageable);
 
+    /**
+     * Demander des informations complémentaires au livreur (Admin only).
+     * Enregistre le message et notifie le livreur.
+     * 
+     * @param courierId ID du profil livreur
+     * @param message Message à transmettre au livreur
+     */
+    void requestMoreInfo(Long courierId, String message);
+
     // ==================== STATISTIQUES ET PERFORMANCES ====================
 
     /**
@@ -357,6 +366,11 @@ public interface CourierService {
     Page<CourierDTO> getCouriersByStatus(CourierStatus status, Pageable pageable);
 
     /**
+     * Recherche admin : liste paginée avec filtre statut et recherche (immat, CIN, permis).
+     */
+    Page<CourierDTO> searchCouriers(String search, CourierStatus status, Pageable pageable);
+
+    /**
      * Obtenir les livreurs actuellement en ligne
      * 
      * @param pageable Pagination
@@ -372,6 +386,14 @@ public interface CourierService {
      * @return Page<CourierDTO> page des meilleurs livreurs
      */
     Page<CourierDTO> getTopRatedCouriers(BigDecimal minRating, Pageable pageable);
+
+    /**
+     * Désactiver (bloquer) un livreur définitivement (Admin only). Statut → DEACTIVATED.
+     *
+     * @param courierId ID du profil livreur
+     * @param reason Raison de la désactivation
+     */
+    void deactivateCourier(Long courierId, String reason);
 
     /**
      * Suspendre un livreur (Admin only)

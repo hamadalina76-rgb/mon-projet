@@ -38,6 +38,12 @@ spring:
           timeout: 30000
           writetimeout: 30000
 
+# Firebase FCM: chemin vers le JSON du compte de service.
+# Fichier dans src/main/resources/credeentials/speedline-b5dba-firebase-adminsdk-fbsvc-d6ee146810.json
+# Préfixe classpath: = chargement depuis les resources (fonctionne en IDE et en JAR).
+firebase:
+  credentials-path: ${FIREBASE_CREDENTIALS_PATH:classpath:credeentials/speedline-b5dba-firebase-adminsdk-fbsvc-d6ee146810.json}
+
 eureka:
   client:
     service-url:

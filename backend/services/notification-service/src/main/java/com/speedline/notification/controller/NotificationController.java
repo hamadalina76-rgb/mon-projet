@@ -2,6 +2,7 @@ package com.speedline.notification.controller;
 
 import com.speedline.notification.domain.NotificationChannel;
 import com.speedline.notification.domain.NotificationType;
+import com.speedline.notification.dto.RegisterPushTokenRequest;
 import com.speedline.notification.dto.SendEmailRequest;
 import com.speedline.notification.dto.SendNotificationRequest;
 import com.speedline.notification.service.NotificationService;
@@ -53,6 +54,56 @@ public class NotificationController {
             log.error("Failed to send email to {}: {}", request.getEmail(), e.getMessage(), e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to send email: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Admin broadcast: create notification for all admins (userId=0) and push to WebSocket.
+     * POST /notifications/admin/broadcast
+     * Body: { "type": "COURIER", "title": "...", "message": "...", "data": { "action": "REVIEW_COURIER", "courierId": 1 } }
+     */
+    @PostMapping("/admin/broadcast")
+    public ResponseEntity<?> adminBroadcast(@RequestBody Map<String, Object> body) {
+        try {
+            String title = body != null && body.containsKey("title") ? String.valueOf(body.get("title")) : "Notification";
+            String message = body != null && body.containsKey("message") ? String.valueOf(body.get("message")) : "";
+            NotificationType type = NotificationType.SYSTEM;
+            if (body != null && body.containsKey("type")) {
+                try {
+                    type = NotificationType.valueOf(String.valueOf(body.get("type")));
+                } catch (Exception ignored) {}
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (body != null && body.containsKey("data") && body.get("data") instanceof Map)
+                    ? (Map<String, Object>) body.get("data") : Map.of();
+            notificationService.sendAdminBroadcast(type, title, message, data);
+            return ResponseEntity.ok(Map.of("message", "Admin broadcast sent"));
+        } catch (Exception e) {
+            log.error("Failed to send admin broadcast: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to send admin broadcast: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Register FCM push token for a user (e.g. courier app after login).
+     * POST /notifications/push-token
+     */
+    @PostMapping("/push-token")
+    public ResponseEntity<?> registerPushToken(@Valid @RequestBody RegisterPushTokenRequest request) {
+        log.info("Registering push token for user: {}", request.getUserId());
+        try {
+            notificationService.registerPushToken(
+                    request.getUserId(),
+                    request.getToken(),
+                    request.getDeviceType(),
+                    request.getDeviceId()
+            );
+            return ResponseEntity.ok(Map.of("message", "Push token registered"));
+        } catch (Exception e) {
+            log.error("Failed to register push token: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to register push token: " + e.getMessage()));
         }
     }
 

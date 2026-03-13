@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/error/exceptions.dart';
 import '../../../../config/di/injection_container.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/entities/courier.dart';
@@ -446,9 +447,11 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
       }
     } catch (e) {
       print('❌ Documentation upload error: $e');
-      String errorMessage = 'Failed to upload documentation';
+      String errorMessage = 'Une erreur est survenue. Veuillez réessayer.';
 
-      if (e is DioException) {
+      if (e is ApiValidationException) {
+        errorMessage = e.userFriendlyMessage;
+      } else if (e is DioException) {
         if (e.response != null && e.response?.data != null) {
           final data = e.response?.data;
           if (data is Map && data.containsKey('message')) {
@@ -456,13 +459,18 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
           } else if (data is String) {
             errorMessage = data;
           } else {
-            errorMessage = 'Status ${e.response?.statusCode}: ${e.message ?? "Unknown error"}';
+            errorMessage = 'Erreur serveur. Réessayez plus tard.';
           }
         } else {
-          errorMessage = e.message ?? 'Network error';
+          errorMessage = e.message ?? 'Problème de connexion. Vérifiez votre réseau.';
         }
       } else {
-        errorMessage = e.toString();
+        final s = e.toString();
+        if (s.contains('Profile update failed') || s.contains('400')) {
+          errorMessage = 'Vérifiez les informations saisies (ex. format IBAN tunisien).';
+        } else {
+          errorMessage = s;
+        }
       }
 
       if (mounted) {

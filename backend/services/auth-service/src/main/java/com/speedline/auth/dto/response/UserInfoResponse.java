@@ -21,4 +21,5 @@ public class UserInfoResponse {
     private String phoneNumber;
     private String profilePicture;
     private String role;
+    private Boolean isEmailVerified;
 }

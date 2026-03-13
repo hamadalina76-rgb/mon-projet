@@ -8,6 +8,8 @@ import '../../features/auth/presentation/screens/email_verification_screen.dart'
 import '../../features/auth/presentation/screens/documentation_screen.dart';
 import '../../features/auth/presentation/screens/driving_license_screen.dart';
 import '../../features/auth/presentation/screens/payout_details_screen.dart';
+import '../../features/auth/presentation/screens/pending_approval_screen.dart';
+import '../../features/auth/presentation/screens/rejected_screen.dart';
 import '../../features/home/presentation/screens/main_navigation_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -44,6 +46,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/payout-details',
         builder: (context, state) => const PayoutDetailsScreen(),
+      ),
+      GoRoute(
+        path: '/pending',
+        builder: (context, state) => const PendingApprovalScreen(),
+      ),
+      GoRoute(
+        path: '/rejected',
+        builder: (context, state) => const RejectedScreen(),
       ),
       GoRoute(
         path: '/home',

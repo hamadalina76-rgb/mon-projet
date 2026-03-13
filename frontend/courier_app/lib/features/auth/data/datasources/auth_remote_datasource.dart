@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../../../../config/di/injection_container.dart';
+import '../../../../core/error/exceptions.dart';
 import '../../domain/exceptions/auth_exceptions.dart';
 import 'auth_local_datasource.dart';
 
@@ -17,6 +18,7 @@ abstract class AuthRemoteDataSource {
   Future<Map<String, dynamic>> refreshToken({required String refreshToken});
   Future<Map<String, dynamic>> getCourierProfile();
   Future<Map<String, dynamic>> updateProfile({required Map<String, dynamic> data});
+  Future<Map<String, dynamic>> uploadProfilePhoto({required String filePath});
   Future<void> uploadDocumentation({
     required Map<String, dynamic> documentData,
     required Map<String, String> filePaths,
@@ -162,6 +164,94 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
+  Future<Map<String, dynamic>> uploadProfilePhoto({required String filePath}) async {
+    // 1) Déterminer userId et courierId à partir des données locales / JWT
+    String? userId;
+    String? courierId;
+
+    try {
+      final local = getIt<AuthLocalDataSource>();
+      final courierData = await local.getCourierData();
+      if (courierData != null) {
+        userId = (courierData['userId'] ?? courierData['user_id'])?.toString();
+        courierId = (courierData['id'] ?? courierData['courierId'])?.toString();
+      }
+
+      // Fallback: extraire userId depuis le token JWT si nécessaire
+      if (userId == null || userId.isEmpty) {
+        final token = await local.getAccessToken();
+        if (token != null && token.isNotEmpty) {
+          try {
+            final parts = token.split('.');
+            if (parts.length >= 2) {
+              final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+              final Map<String, dynamic> claims = jsonDecode(payload);
+              userId = (claims['userId'] ?? claims['user_id'] ?? claims['sub'])?.toString();
+            }
+          } catch (_) {
+            // ignore parsing errors, we'll fail below if userId is null
+          }
+        }
+      }
+    } catch (e) {
+      print('⚠️ Could not determine user/courier id for uploadProfilePhoto: $e');
+    }
+
+    if (userId == null || userId.isEmpty) {
+      throw Exception('Cannot determine user id for profile photo upload');
+    }
+
+    // 2) Uploader la vraie image vers /users/{userId}/profile-picture (user-service)
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        filePath,
+        filename: filePath.split('/').last,
+      ),
+    });
+
+    final userResp = await dio.post(
+      '/users/$userId/profile-picture',
+      data: formData,
+      options: Options(
+        headers: {'Content-Type': 'multipart/form-data'},
+      ),
+    );
+
+    final dynamic userData = userResp.data;
+    String? profileUrl;
+    if (userData is Map<String, dynamic>) {
+      profileUrl = userData['profilePicture']?.toString();
+    }
+
+    if (profileUrl == null || profileUrl.isEmpty) {
+      // Même si l'URL est manquante, retourner la réponse brute pour debug
+      throw Exception('Profile picture upload did not return a profilePicture URL');
+    }
+
+    // 3) Lier cette URL au livreur via /couriers/{courierId}/documents (PROFILE_PHOTO)
+    // On peut ne pas avoir courierId côté mobile (ex: profil non encore créé) → on s'arrête ici.
+    if (courierId == null || courierId.isEmpty) {
+      // Dans ce cas, l'image est stockée côté user, mais non liée au courier.
+      // On renvoie quand même la réponse user-service pour que l'appelant puisse éventuellement rafraîchir.
+      return <String, dynamic>{'profilePicture': profileUrl};
+    }
+
+    final docResp = await dio.post(
+      '/couriers/$courierId/documents',
+      data: {
+        'documentType': 'PROFILE_PHOTO',
+        'documentUrl': profileUrl,
+      },
+    );
+
+    // docResp.data doit contenir le CourierDTO complet
+    if (docResp.data is Map<String, dynamic>) {
+      return docResp.data as Map<String, dynamic>;
+    }
+    throw Exception('Unexpected response type for uploadProfilePhoto: ${docResp.data.runtimeType}');
+  }
+
+  @override
   Future<Map<String, dynamic>> updateProfile({required Map<String, dynamic> data}) async {
     // Update using PUT /couriers/{id} with JSON payload.
     // Determine courier id from local storage or JWT claims.
@@ -210,15 +300,33 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return response.data;
     } on DioException catch (e) {
       final resp = e.response;
+      final statusCode = resp?.statusCode ?? 0;
+      if (statusCode == 400 && resp?.data != null) {
+        try {
+          final data = resp!.data is Map ? resp.data as Map<String, dynamic> : null;
+          if (data != null) {
+            final msg = data['message']?.toString() ?? 'Erreur de validation';
+            final details = data['details'] is Map
+                ? Map<String, dynamic>.from(data['details'] as Map)
+                : <String, dynamic>{};
+            throw ApiValidationException(
+              statusCode: statusCode,
+              message: msg,
+              details: details,
+            );
+          }
+        } catch (e2) {
+          if (e2 is ApiValidationException) rethrow;
+        }
+      }
       String body = '';
       try {
         if (resp?.data != null) body = resp!.data is String ? resp.data : resp.data.toString();
       } catch (_) {
         body = '<unprintable response body>';
       }
-      print('❌ updateProfile failed: status=${resp?.statusCode}, body=$body, error=${e.message}');
-      // Re-throw a clearer exception for the repository/UI
-      throw Exception('Profile update failed: status=${resp?.statusCode}, body=$body');
+      print('❌ updateProfile failed: status=$statusCode, body=$body, error=${e.message}');
+      throw Exception('Profile update failed: status=$statusCode, body=$body');
     }
   }
 

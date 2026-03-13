@@ -36,5 +36,6 @@ public class AuthResponse {
         private Role role;
         private String profilePicture;
         private Long partnerId; // For PARTNER role users
+        private Boolean isEmailVerified;
     }
 }

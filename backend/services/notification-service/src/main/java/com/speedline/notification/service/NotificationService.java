@@ -70,6 +70,11 @@ public interface NotificationService {
     void markAllAsReadForAdmin(Long adminUserId);
 
     /**
+     * Envoyer une notification broadcast aux admins (userId=0, sauvegardée + push WebSocket).
+     */
+    void sendAdminBroadcast(NotificationType type, String title, String message, Map<String, Object> data);
+
+    /**
      * Enregistrer un token push
      */
     void registerPushToken(Long userId, String token, String deviceType, String deviceId);

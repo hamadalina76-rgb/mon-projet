@@ -161,14 +161,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.2.1"
-  background_location:
-    dependency: "direct main"
-    description:
-      name: background_location
-      sha256: "8d6b5eb886e17f88a7d8d8c840edec1c4f16b1a5269eeed62e4a3ef11a23991d"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.13.2"
   boolean_selector:
     dependency: transitive
     description:
