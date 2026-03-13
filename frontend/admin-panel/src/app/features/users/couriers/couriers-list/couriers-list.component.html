@@ -1,48 +1,131 @@
-<!-- Couriers List Component Template -->
-<div class="couriers-list-page">
-  <header class="page-header">
-    <h1>{{ 'users.couriers.title' | translate }}</h1>
-    <div class="header-actions">
-      <button mat-flat-button color="primary" routerLink="pending">
-        <mat-icon>pending_actions</mat-icon>
-        {{ 'users.couriers.pendingApproval' | translate }}
-      </button>
+<app-list-page
+  [title]="'users.couriers.title'"
+  [showBackButton]="true"
+  backLink="/dashboard"
+  [loading]="loading()"
+  [empty]="paginatedCouriers.length === 0"
+  [emptyMessage]="'users.couriers.noCouriers'"
+  emptyIcon="local_shipping"
+  [totalItems]="totalItems"
+  [currentPage]="currentPage"
+  [itemsPerPage]="itemsPerPage"
+  [itemsPerPageOptions]="[20, 50, 100]"
+  [showPagination]="totalItems > 0"
+  [itemsPerPageLabel]="'users.couriers.itemsPerPage'"
+  [ofLabel]="'users.couriers.of'"
+  (pageChange)="onPageChange($event)"
+>
+  <div filters class="filters-bar">
+    <div class="search-box">
+      <span class="material-icons-round search-icon">search</span>
+      <input
+        type="text"
+        class="search-input"
+        [placeholder]="'users.couriers.searchPlaceholder' | translate"
+        [(ngModel)]="searchText"
+        (ngModelChange)="onSearchChange()"
+      />
     </div>
-  </header>
-
-  <!-- Stats Cards -->
-  <div class="stats-row">
-    <!-- Courier stats -->
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange()">
+        <mat-option value="all">{{ 'users.couriers.allStatuses' | translate }}</mat-option>
+        <mat-option value="PENDING_APPROVAL">{{ 'users.couriers.status.pending' | translate }}</mat-option>
+        <mat-option value="ACTIVE">{{ 'users.couriers.status.approved' | translate }}</mat-option>
+        <mat-option value="REJECTED">{{ 'users.couriers.status.rejected' | translate }}</mat-option>
+        <mat-option value="SUSPENDED">{{ 'users.couriers.status.blocked' | translate }}</mat-option>
+        <mat-option value="DEACTIVATED">{{ 'users.couriers.status.deactivated' | translate }}</mat-option>
+      </mat-select>
+    </mat-form-field>
   </div>
 
-  <!-- Filters -->
-  <mat-card class="filters-card">
-    <div class="filters-row">
-      <mat-form-field appearance="outline">
-        <mat-label>{{ 'common.search' | translate }}</mat-label>
-        <input matInput [(ngModel)]="searchTerm" />
-        <mat-icon matPrefix>search</mat-icon>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>{{ 'common.status' | translate }}</mat-label>
-        <mat-select>
-          <mat-option value="ALL">{{ 'common.all' | translate }}</mat-option>
-          <mat-option value="ONLINE">{{ 'users.couriers.online' | translate }}</mat-option>
-          <mat-option value="OFFLINE">Hors ligne</mat-option>
-          <mat-option value="ON_DELIVERY">{{ 'users.couriers.onDelivery' | translate }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-    </div>
-  </mat-card>
-
-  <!-- Data Table -->
-  <mat-card class="table-card">
-    <app-data-table
-      [data]="couriers"
-      [loading]="loading"
-      [totalItems]="totalCouriers"
-      [pageSize]="pageSize">
-    </app-data-table>
-  </mat-card>
-</div>
+  <table table class="data-table">
+    <thead>
+      <tr>
+        <th class="col-courier">{{ 'users.couriers.courier' | translate | uppercase }}</th>
+        <th class="col-contact">{{ 'users.couriers.contact' | translate | uppercase }}</th>
+        <th class="col-vehicle">{{ 'users.couriers.vehicle' | translate | uppercase }}</th>
+        <th class="col-date">{{ 'users.couriers.registrationDate' | translate | uppercase }}</th>
+        <th class="col-status" scope="col">{{ 'common.status' | translate | uppercase }}</th>
+        <th class="col-actions">{{ 'users.couriers.actions' | translate | uppercase }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (courier of paginatedCouriers; track courier.id) {
+        <tr class="table-row">
+          <td class="col-courier">
+            <div class="courier-info">
+              @if (courier.profilePhoto) {
+                <img [src]="courier.profilePhoto" [alt]="getFullName(courier)" class="courier-avatar-img" />
+              } @else {
+                <div class="courier-avatar" [style.background-color]="getStatusColor(courier.status)">
+                  {{ getInitials(courier) }}
+                </div>
+              }
+              <div class="courier-details">
+                <div class="courier-name">{{ getFullName(courier) }}</div>
+                @if (courier.email) {
+                  <div class="courier-secondary">{{ courier.email }}</div>
+                }
+              </div>
+            </div>
+          </td>
+          <td class="col-contact">{{ courier.phoneNumber || '-' }}</td>
+          <td class="col-vehicle">{{ courier.vehicleNumber || courier.vehicleType || '-' }}</td>
+          <td class="col-date">{{ courier.createdAt | date:'dd/MM/yyyy' }}</td>
+          <td class="col-status">
+            <span class="status-badge" [ngClass]="'status-' + (courier.status || '').toLowerCase().replace('_','-')">
+              {{ getStatusLabel(courier.status) }}
+            </span>
+          </td>
+          <td class="col-actions">
+            <div class="action-buttons">
+              <button
+                class="action-btn"
+                [routerLink]="[courier.id]"
+                [matTooltip]="'users.couriers.view' | translate"
+              >
+                <span class="material-icons-round">visibility</span>
+              </button>
+              @if (courier.status === 'PENDING_APPROVAL') {
+                <button
+                  class="action-btn"
+                  [routerLink]="[courier.id, 'approval']"
+                  [matTooltip]="'users.couriers.review' | translate"
+                >
+                  <span class="material-icons-round">fact_check</span>
+                </button>
+              }
+              <button
+                class="action-btn"
+                [matMenuTriggerFor]="statusMenu"
+                [matTooltip]="'users.couriers.changeStatus' | translate"
+              >
+                <span class="material-icons-round">more_vert</span>
+              </button>
+              <mat-menu #statusMenu="matMenu">
+                @if (canActivate(courier)) {
+                  <button mat-menu-item (click)="activateCourier(courier)">
+                    <span class="material-icons-round" style="color: #10B981">check_circle</span>
+                    <span>{{ 'users.couriers.activate' | translate }}</span>
+                  </button>
+                }
+                @if (canDeactivate(courier)) {
+                  <button mat-menu-item (click)="deactivateCourier(courier)">
+                    <span class="material-icons-round" style="color: #94A3B8">block</span>
+                    <span>{{ 'users.couriers.deactivate' | translate }}</span>
+                  </button>
+                }
+                @if (canSuspend(courier)) {
+                  <button mat-menu-item (click)="suspendCourier(courier)">
+                    <span class="material-icons-round" style="color: #EF4444">gpp_bad</span>
+                    <span>{{ 'users.couriers.suspend' | translate }}</span>
+                  </button>
+                }
+              </mat-menu>
+            </div>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</app-list-page>

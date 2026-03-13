@@ -96,7 +96,9 @@ docker-compose.override.yml
 *.jks
 secrets/
 credentials/
+credeentials/
 firebase-*.json
+*-firebase-adminsdk-*.json
 google-services.json
 
 # ==================== DATABASE ====================

@@ -155,6 +155,24 @@ public class Courier {
     private CourierStatus status = CourierStatus.PENDING_APPROVAL;
 
     /**
+     * Raison du rejet (si status = REJECTED)
+     */
+    @Column(length = 1000)
+    private String rejectionReason;
+
+    /**
+     * Message "demande d'informations complémentaires" envoyé par l'admin
+     */
+    @Column(length = 2000)
+    private String requestMoreInfoMessage;
+
+    /**
+     * Raison de la suspension (si status = SUSPENDED)
+     */
+    @Column(length = 1000)
+    private String suspensionReason;
+
+    /**
      * Disponible pour accepter des livraisons
      */
     @Builder.Default

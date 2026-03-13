@@ -16,4 +16,5 @@ abstract class AuthRepository {
     required Map<String, dynamic> documentData,
     required Map<String, String> filePaths,
   });
+  Future<Courier> uploadProfilePhoto({required String filePath});
 }

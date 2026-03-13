@@ -258,4 +258,15 @@ public interface CourierRepository extends JpaRepository<Courier, Long> {
      */
     @Query("SELECT c FROM Courier c WHERE c.drivingLicenseExpiry IS NOT NULL AND c.drivingLicenseExpiry <= :expiryDate")
     List<Courier> findCouriersWithExpiringLicense(@Param("expiryDate") LocalDateTime expiryDate);
+
+    /**
+     * Recherche admin : par statut et optionnellement par terme (immatriculation, CIN, permis).
+     * Si search est vide, les conditions LIKE sont ignorées (termes vrais).
+     */
+    @Query("SELECT c FROM Courier c WHERE " +
+           "(:status IS NULL OR c.status = :status) AND " +
+           "(:search IS NULL OR :search = '' OR LOWER(COALESCE(c.vehicleNumber, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(COALESCE(c.identityNumber, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(COALESCE(c.drivingLicenseNumber, '')) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Courier> searchCouriers(@Param("status") CourierStatus status, @Param("search") String search, Pageable pageable);
 }

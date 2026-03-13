@@ -1,46 +1,152 @@
-<!-- Courier Approval Component Template -->
 <div class="courier-approval-page">
+  <nav class="breadcrumb-nav">
+    <a routerLink="/users/couriers" class="breadcrumb-link">{{ 'users.couriers.title' | translate }}</a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current">{{ 'users.couriers.approvalTitle' | translate }}</span>
+  </nav>
+
   <header class="page-header">
     <div class="header-left">
-      <button mat-icon-button routerLink="/users/couriers">
+      <button mat-icon-button routerLink="/users/couriers" class="btn-back">
         <mat-icon>arrow_back</mat-icon>
       </button>
-      <h1>Approbation du livreur</h1>
+      <h1>{{ 'users.couriers.approvalTitle' | translate }}</h1>
     </div>
   </header>
 
-  <div class="approval-content" *ngIf="courier">
-    <!-- Personal Info -->
-    <mat-card class="section-card">
-      <h3>Informations personnelles</h3>
-      <mat-divider></mat-divider>
-      <!-- Personal info fields -->
-    </mat-card>
-
-    <!-- Documents -->
-    <mat-card class="section-card">
-      <h3>Documents</h3>
-      <mat-divider></mat-divider>
-      <!-- Documents grid -->
-    </mat-card>
-
-    <!-- Vehicle Info -->
-    <mat-card class="section-card">
-      <h3>Véhicule</h3>
-      <mat-divider></mat-divider>
-      <!-- Vehicle info -->
-    </mat-card>
-
-    <!-- Actions -->
-    <div class="actions-bar">
-      <button mat-stroked-button color="warn" (click)="rejectCourier()">
-        <mat-icon>close</mat-icon>
-        Rejeter
-      </button>
-      <button mat-flat-button color="primary" (click)="approveCourier()">
-        <mat-icon>check</mat-icon>
-        Approuver
-      </button>
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>{{ 'common.loading' | translate }}</p>
     </div>
-  </div>
+  }
+
+  @if (!loading() && courier()) {
+    <mat-card class="partner-header-card">
+      <div class="header-content">
+        <div class="courier-photo">
+          @if (courier().profilePhoto) {
+            <img [src]="docUrl(courier().profilePhoto)" alt="" class="photo-img" />
+          } @else {
+            <div class="photo-placeholder">
+              <mat-icon>person</mat-icon>
+            </div>
+          }
+        </div>
+        <div class="courier-meta">
+          <h2 class="courier-name">{{ getFullName(courier()) }}</h2>
+          <div class="meta-row">
+            <span>{{ 'users.couriers.id' | translate }}: {{ courier().id }}</span>
+            <span>{{ courier().email }}</span>
+            <span>{{ courier().phoneNumber }}</span>
+          </div>
+        </div>
+        <mat-chip class="status-chip">{{ getStatusLabel(courier().status) }}</mat-chip>
+      </div>
+    </mat-card>
+
+    <div class="approval-layout">
+      <div class="info-column">
+        <mat-card class="section-card">
+          <h3>{{ 'users.couriers.profileInfo' | translate }}</h3>
+          <mat-divider></mat-divider>
+          <div class="info-grid">
+            <div class="info-item">
+              <label>{{ 'users.couriers.identityNumber' | translate }}</label>
+              <span>{{ courier().identityNumber || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'users.couriers.licenseNumber' | translate }}</label>
+              <span>{{ courier().drivingLicenseNumber || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'users.couriers.bankAccountHolder' | translate }}</label>
+              <span>{{ courier().bankAccountHolder || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'users.couriers.bankIban' | translate }}</label>
+              <span>{{ courier().bankIban || '-' }}</span>
+            </div>
+          </div>
+        </mat-card>
+
+        <mat-card class="section-card">
+          <h3>{{ 'users.couriers.vehicleInfo' | translate }}</h3>
+          <mat-divider></mat-divider>
+          <div class="info-grid">
+            <div class="info-item">
+              <label>{{ 'users.couriers.vehicleType' | translate }}</label>
+              <span>{{ courier().vehicleType || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'users.couriers.vehicleNumber' | translate }}</label>
+              <span>{{ courier().vehicleNumber || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'users.couriers.vehicleModel' | translate }}</label>
+              <span>{{ courier().vehicleModel || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <label>{{ 'users.couriers.vehicleColor' | translate }}</label>
+              <span>{{ courier().vehicleColor || '-' }}</span>
+            </div>
+          </div>
+        </mat-card>
+
+        <mat-card class="section-card">
+          <h3>{{ 'users.couriers.documents' | translate }}</h3>
+          <mat-divider></mat-divider>
+          <div class="doc-grid">
+            @if (courier().identityDocumentFrontImage) {
+              <div class="doc-item">
+                <label>{{ 'users.couriers.cinFront' | translate }}</label>
+                <a [href]="docUrl(courier().identityDocumentFrontImage)" target="_blank" rel="noopener">
+                  <img [src]="docUrl(courier().identityDocumentFrontImage)" alt="CIN recto" class="doc-img" />
+                </a>
+              </div>
+            }
+            @if (courier().identityDocumentBackImage) {
+              <div class="doc-item">
+                <label>{{ 'users.couriers.cinBack' | translate }}</label>
+                <a [href]="docUrl(courier().identityDocumentBackImage)" target="_blank" rel="noopener">
+                  <img [src]="docUrl(courier().identityDocumentBackImage)" alt="CIN verso" class="doc-img" />
+                </a>
+              </div>
+            }
+            @if (courier().drivingLicenseImage) {
+              <div class="doc-item">
+                <label>{{ 'users.couriers.drivingLicense' | translate }}</label>
+                <a [href]="docUrl(courier().drivingLicenseImage)" target="_blank" rel="noopener">
+                  <img [src]="docUrl(courier().drivingLicenseImage)" alt="Permis" class="doc-img" />
+                </a>
+              </div>
+            }
+          </div>
+        </mat-card>
+      </div>
+
+      @if (courier().status === 'PENDING_APPROVAL') {
+        <div class="actions-column">
+          <div class="actions-bar">
+            <button mat-stroked-button color="warn" (click)="rejectCourier()" [disabled]="actionLoading()" class="action-btn">
+              <mat-icon>close</mat-icon>
+              {{ 'users.couriers.reject' | translate }}
+            </button>
+            <button mat-stroked-button (click)="requestMoreInfo()" [disabled]="actionLoading()" class="action-btn">
+              <mat-icon>info</mat-icon>
+              {{ 'users.couriers.requestMoreInfo' | translate }}
+            </button>
+            <button mat-flat-button color="primary" (click)="approveCourier()" [disabled]="actionLoading()" class="action-btn">
+              @if (actionLoading()) {
+                <mat-spinner diameter="20"></mat-spinner>
+              } @else {
+                <mat-icon>check</mat-icon>
+              }
+              {{ 'users.couriers.approve' | translate }}
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
 </div>

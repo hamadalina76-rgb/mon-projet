@@ -69,6 +69,7 @@ public class UserController {
                 .phoneNumber(user.getPhoneNumber())
                 .profilePicture(user.getProfilePicture())
                 .role(user.getRole().name())
+                .isEmailVerified(Boolean.TRUE.equals(user.getIsEmailVerified()))
                 .build();
         
         log.info("Returning user info response: {}", response);

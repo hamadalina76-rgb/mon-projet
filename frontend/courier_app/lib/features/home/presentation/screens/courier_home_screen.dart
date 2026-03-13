@@ -4,7 +4,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class CourierHomeScreen extends StatelessWidget {
-  const CourierHomeScreen({super.key});
+  const CourierHomeScreen({super.key, this.canAccessApp = true});
+
+  final bool canAccessApp;
 
   @override
   Widget build(BuildContext context) {
@@ -63,77 +65,118 @@ class CourierHomeScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                
-                SizedBox(height: 24.h),
-                
-                // Online Status Card
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(20.w),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [AppColors.primary, AppColors.primary.withOpacity(0.7)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                if (!canAccessApp) ...[
+                  SizedBox(height: 16.h),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: Colors.orange.shade200),
                     ),
-                    borderRadius: BorderRadius.circular(20.r),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'You are Offline',
-                            style: TextStyle(
-                              fontSize: 20.sp,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.orange.shade700, size: 24.sp),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: Text(
+                            'Votre compte est en cours d\'examen. Seul votre profil est accessible. Les notifications vous indiqueront quand votre compte sera activé.',
+                            style: TextStyle(fontSize: 13.sp, color: Colors.orange.shade900),
                           ),
-                          SizedBox(height: 8.h),
-                          Text(
-                            'Go online to receive orders',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              color: Colors.white.withOpacity(0.9),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 16.h),
+                ],
+                SizedBox(height: 24.h),
+                // Online Status Card
+                Opacity(
+                  opacity: canAccessApp ? 1 : 0.5,
+                  child: IgnorePointer(
+                    ignoring: !canAccessApp,
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(20.w),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [AppColors.primary, AppColors.primary.withOpacity(0.7)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20.r),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'You are Offline',
+                                style: TextStyle(
+                                  fontSize: 20.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: 8.h),
+                              Text(
+                                'Go online to receive orders',
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            width: 60.w,
+                            height: 32.h,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(20.r),
+                            ),
+                            child: Switch(
+                              value: false,
+                              onChanged: canAccessApp ? (value) {} : null,
+                              activeColor: Colors.green,
+                              inactiveThumbColor: Colors.white,
+                              inactiveTrackColor: Colors.transparent,
                             ),
                           ),
                         ],
                       ),
-                      Container(
-                        width: 60.w,
-                        height: 32.h,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(20.r),
-                        ),
-                        child: Switch(
-                          value: false,
-                          onChanged: (value) {
-                            // TODO: Implement online/offline toggle
-                          },
-                          activeColor: Colors.green,
-                          inactiveThumbColor: Colors.white,
-                          inactiveTrackColor: Colors.transparent,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-                
                 SizedBox(height: 32.h),
-                
                 // Today's Summary
-                Text(
+                Opacity(
+                  opacity: canAccessApp ? 1 : 0.5,
+                  child: IgnorePointer(ignoring: !canAccessApp, child: _buildSummarySection(context)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummarySection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
                   'Today\'s Summary',
                   style: TextStyle(
                     fontSize: 20.sp,
@@ -235,11 +278,7 @@ class CourierHomeScreen extends StatelessWidget {
                     // TODO: Navigate to support
                   },
                 ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      ],
     );
   }
 

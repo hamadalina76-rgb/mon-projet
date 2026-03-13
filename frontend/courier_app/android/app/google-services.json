@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "933197063315",
+    "project_id": "speedline-b5dba",
+    "storage_bucket": "speedline-b5dba.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:933197063315:android:0904c1e4e9ab5030921966",
+        "android_client_info": {
+          "package_name": "com.speedline.courier_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9ITitJ1T36ONdcGqSIV_Kxv8ngM45HpE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

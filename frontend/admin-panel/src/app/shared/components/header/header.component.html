@@ -69,7 +69,7 @@
               @for (notif of notifications(); track notif.id) {
                 <button class="notif-item" [class.unread]="!notif.isRead" (click)="navigateToPartner(notif)">
                   <span class="material-icons-round notif-icon">
-                    {{ notif.data['action'] === 'REVIEW_PARTNER' ? 'store' : 'notifications' }}
+                    {{ notif.data['action'] === 'REVIEW_COURIER' ? 'local_shipping' : notif.data['action'] === 'REVIEW_PARTNER' ? 'store' : 'notifications' }}
                   </span>
                   <div class="notif-content">
                     <span class="notif-title">{{ notif.title }}</span>

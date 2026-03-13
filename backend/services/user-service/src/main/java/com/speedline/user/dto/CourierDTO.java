@@ -85,6 +85,15 @@ public class CourierDTO {
     @Schema(description = "Statut du livreur", example = "AVAILABLE")
     private CourierStatus status;
 
+    @Schema(description = "Raison du rejet (si rejeté)")
+    private String rejectionReason;
+
+    @Schema(description = "Message de demande d'informations complémentaires")
+    private String requestMoreInfoMessage;
+
+    @Schema(description = "Raison de la suspension (si suspendu)")
+    private String suspensionReason;
+
     @Schema(description = "Livreur disponible pour des livraisons", example = "true")
     private Boolean isAvailable;
 
@@ -93,6 +102,9 @@ public class CourierDTO {
 
     @Schema(description = "Documents vérifiés par l'admin", example = "true")
     private Boolean documentsVerified;
+
+    @Schema(description = "Email vérifié (OTP première connexion)", example = "true")
+    private Boolean isEmailVerified;
     
     // Position actuelle
     @Schema(description = "Latitude actuelle", example = "33.5731")

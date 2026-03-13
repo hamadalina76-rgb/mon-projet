@@ -142,9 +142,17 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   navigateToPartner(notif: WebSocketNotification): void {
     this.markNotificationRead(notif);
-    const partnerId = notif.data?.['partnerId'];
-    if (partnerId) {
-      this.router.navigate(['/partners', partnerId, 'approval']);
+    const action = notif.data?.['action'];
+    if (action === 'REVIEW_COURIER') {
+      const courierId = notif.data?.['courierId'];
+      if (courierId != null) {
+        this.router.navigate(['/users/couriers', courierId, 'approval']);
+      }
+    } else if (action === 'REVIEW_PARTNER') {
+      const partnerId = notif.data?.['partnerId'];
+      if (partnerId) {
+        this.router.navigate(['/partners', partnerId, 'approval']);
+      }
     }
     this.showNotifMenu.set(false);
   }

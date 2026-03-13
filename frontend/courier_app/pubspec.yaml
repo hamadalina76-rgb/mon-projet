@@ -33,7 +33,6 @@ dependencies:
   google_maps_flutter: ^2.5.3
   flutter_polyline_points: ^3.1.0
   geocoding: ^4.0.0
-  background_location: ^0.13.2
   location: ^8.0.1
   
   # NAVIGATION
@@ -136,6 +135,14 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_launcher_icons: ^0.14.4
+
+# Icône et nom de l'app (notifications, launcher) = SpeedLine
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/speedline_logo.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/speedline_logo.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

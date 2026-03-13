@@ -256,6 +256,7 @@ public class AuthServiceImpl implements AuthService {
                             .role(user.getRole())
                             .profilePicture(user.getProfilePicture())
                             .partnerId(user.getPartnerId())
+                            .isEmailVerified(Boolean.TRUE.equals(user.getIsEmailVerified()))
                             .build())
                     .build();
         }
@@ -451,6 +452,7 @@ public class AuthServiceImpl implements AuthService {
                             .role(user.getRole())
                             .profilePicture(user.getProfilePicture())
                             .partnerId(user.getPartnerId())
+                            .isEmailVerified(Boolean.TRUE.equals(user.getIsEmailVerified()))
                             .build())
                     .build();
         }

@@ -36,6 +36,11 @@ public enum CourierStatus {
     SUSPENDED,
     
     /**
+     * Inscription rejetée par l'admin
+     */
+    REJECTED,
+
+    /**
      * Compte désactivé définitivement
      */
     DEACTIVATED

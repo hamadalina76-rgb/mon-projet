@@ -48,7 +48,7 @@ public class CourierUpdateRequest {
     @Schema(description = "Rayon maximum de livraison en km", example = "15", minimum = "1", maximum = "50")
     private Integer maxDeliveryRadius;
 
-    @Pattern(regexp = "^(?i)TN[0-9]{2}[0-9A-Z]{20}$", message = "Format IBAN tunisien invalide")
+    @Pattern(regexp = "^(?i)TN[0-9]{2}[0-9A-Z]{18,24}$", message = "Format IBAN tunisien invalide (ex: TN59 + 20 à 24 caractères)")
     @Schema(description = "IBAN pour les virements (format tunisien)", example = "TN5914207207100707129648")
     private String bankIban;
 

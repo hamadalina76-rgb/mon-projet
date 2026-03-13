@@ -3,6 +3,7 @@ import '../../domain/entities/courier.dart';
 class CourierModel extends Courier {
   const CourierModel({
     required String id,
+    String? userId,
     required String firstName,
     required String lastName,
     required String email,
@@ -26,8 +27,12 @@ class CourierModel extends Courier {
     bool isVerified = false,
     bool isEmailVerified = false,
     bool documentsVerified = false,
+    String? status,
+    String? rejectionReason,
+    String? suspensionReason,
   }) : super(
           id: id,
+          userId: userId,
           firstName: firstName,
           lastName: lastName,
           email: email,
@@ -51,17 +56,21 @@ class CourierModel extends Courier {
           isVerified: isVerified,
           isEmailVerified: isEmailVerified,
           documentsVerified: documentsVerified,
+          status: status,
+          rejectionReason: rejectionReason,
+          suspensionReason: suspensionReason,
         );
 
   factory CourierModel.fromJson(Map<String, dynamic> json) {
     print('👤 Parsing CourierModel from JSON: $json');
     return CourierModel(
       id: json['id']?.toString() ?? '',
+      userId: json['userId']?.toString(),
       firstName: json['firstName'] ?? json['first_name'] ?? '',
       lastName: json['lastName'] ?? json['last_name'] ?? '',
       email: json['email'] ?? '',
       phone: json['phone'] ?? json['phoneNumber'] ?? json['phone_number'] ?? '',
-      photoUrl: json['photoUrl'] ?? json['profilePhoto'] as String?,
+      photoUrl: json['photoUrl'] ?? json['profilePhoto'] ?? json['profilePicture'] as String?,
       rating: (json['rating'] as num?)?.toDouble(),
       totalDeliveries: json['totalDeliveries'] as int? ?? 0,
       vehicleType: json['vehicleType'] as String?,
@@ -80,12 +89,16 @@ class CourierModel extends Courier {
       isVerified: json['isVerified'] as bool? ?? false,
       isEmailVerified: json['isEmailVerified'] as bool? ?? json['emailVerified'] as bool? ?? false,
       documentsVerified: json['documentsVerified'] as bool? ?? false,
+      status: json['status']?.toString(),
+      rejectionReason: json['rejectionReason'] as String?,
+      suspensionReason: json['suspensionReason'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'userId': userId,
       'firstName': firstName,
       'lastName': lastName,
       'email': email,
@@ -109,11 +122,15 @@ class CourierModel extends Courier {
       'isVerified': isVerified,
       'isEmailVerified': isEmailVerified,
       'documentsVerified': documentsVerified,
+      'status': status,
+      'rejectionReason': rejectionReason,
+      'suspensionReason': suspensionReason,
     };
   }
 
   CourierModel copyWith({
     String? id,
+    String? userId,
     String? firstName,
     String? lastName,
     String? email,
@@ -137,9 +154,12 @@ class CourierModel extends Courier {
     bool? isVerified,
     bool? isEmailVerified,
     bool? documentsVerified,
+    String? status,
+    String? rejectionReason,
   }) {
     return CourierModel(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       email: email ?? this.email,
@@ -163,6 +183,9 @@ class CourierModel extends Courier {
       isVerified: isVerified ?? this.isVerified,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       documentsVerified: documentsVerified ?? this.documentsVerified,
+      status: status ?? this.status,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      suspensionReason: suspensionReason ?? this.suspensionReason,
     );
   }
 }

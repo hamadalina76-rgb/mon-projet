@@ -9,6 +9,8 @@ import '../../data/repositories/auth_repository_impl.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/datasources/auth_local_datasource.dart';
 import '../../../../config/di/injection_container.dart' show getIt;
+import '../../../../services/notification_service.dart';
+import '../../domain/entities/courier.dart';
 
 class EmailVerificationScreen extends StatefulWidget {
   final String email;
@@ -142,14 +144,14 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       );
       print('📋 OTP verified. Initial courier.documentsVerified = ${courier.documentsVerified}');
 
-      // Fetch fresh profile from backend to get authoritative documentsVerified from DB
-      bool documentsVerified = courier.documentsVerified;
+      // Fetch fresh profile for status and documentsVerified
+      var profileForNav = courier;
       try {
         final freshProfile = await authRepository.fetchCourierProfile();
-        documentsVerified = freshProfile.documentsVerified;
-        print('🔄 Fetched fresh profile from /couriers/profile. documentsVerified = $documentsVerified');
+        profileForNav = freshProfile;
+        print('🔄 Fetched fresh profile. status=${freshProfile.status}, documentsVerified=${freshProfile.documentsVerified}');
       } catch (e) {
-        print('⚠️ Could not fetch fresh profile: $e. Using OTP response value: $documentsVerified');
+        print('⚠️ Could not fetch fresh profile: $e. Using OTP response.');
       }
 
       if (!mounted) return;
@@ -160,11 +162,12 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
         isError: false,
       );
       
-      // Navigate depending on documentation status
+      // Register FCM token so courier receives push (e.g. account approved/blocked)
+      _registerPushTokenIfPossible(profileForNav);
+      // Navigate by documentation then home (no separate pending/rejected screens)
       await Future.delayed(const Duration(milliseconds: 800));
       if (mounted) {
-        print('🔎 Using documentsVerified=$documentsVerified for navigation');
-        if (documentsVerified == false) {
+        if (profileForNav.documentsVerified == false) {
           context.go('/documentation');
         } else {
           context.go('/home');
@@ -232,6 +235,13 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  void _registerPushTokenIfPossible(Courier courier) {
+    final userId = int.tryParse(courier.userId ?? '') ?? int.tryParse(courier.id);
+    if (userId != null) {
+      NotificationService().registerWithBackend(userId);
     }
   }
 

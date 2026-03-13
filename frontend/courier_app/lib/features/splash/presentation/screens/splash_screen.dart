@@ -3,6 +3,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../config/di/injection_container.dart';
+import '../../../../services/notification_service.dart';
+import '../../../auth/domain/repositories/auth_repository.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -41,10 +44,36 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     
     _animationController.forward();
     
-    // Navigate to onboarding after 2.5 seconds
-    Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) {
+    // After animation: if already logged in, fetch profile and redirect by status; else onboarding
+    Future.delayed(const Duration(milliseconds: 2500), () async {
+      if (!mounted) return;
+      if (!getIt.isRegistered<AuthRepository>()) {
         context.go('/onboarding');
+        return;
+      }
+      final authRepository = getIt<AuthRepository>();
+      final loggedIn = await authRepository.isLoggedIn();
+      if (!mounted) return;
+      if (!loggedIn) {
+        context.go('/onboarding');
+        return;
+      }
+      try {
+        final profile = await authRepository.fetchCourierProfile();
+        if (!mounted) return;
+        final userId = int.tryParse(profile.userId ?? '') ?? int.tryParse(profile.id);
+        if (userId != null) NotificationService().registerWithBackend(userId);
+        if (!profile.isEmailVerified) {
+          context.go('/login');
+        } else if (profile.isBlocked) {
+          context.go('/rejected');
+        } else if (!profile.documentsVerified) {
+          context.go('/documentation');
+        } else {
+          context.go('/home');
+        }
+      } catch (_) {
+        if (mounted) context.go('/onboarding');
       }
     });
   }

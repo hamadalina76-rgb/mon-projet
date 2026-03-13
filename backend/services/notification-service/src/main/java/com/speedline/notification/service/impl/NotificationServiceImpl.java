@@ -3,8 +3,11 @@ package com.speedline.notification.service.impl;
 import com.speedline.notification.domain.Notification;
 import com.speedline.notification.domain.NotificationChannel;
 import com.speedline.notification.domain.NotificationType;
+import com.speedline.notification.domain.PushToken;
 import com.speedline.notification.repository.NotificationRepository;
+import com.speedline.notification.repository.PushTokenRepository;
 import com.speedline.notification.service.NotificationService;
+import com.speedline.notification.service.impl.FCMServiceImpl;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,9 +37,11 @@ import java.util.Map;
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final PushTokenRepository pushTokenRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
+    private final FCMServiceImpl fcmService;
 
     @Override
     public void sendNotification(Long userId, NotificationType type, String title,
@@ -59,9 +64,18 @@ public class NotificationServiceImpl implements NotificationService {
         notification = notificationRepository.save(notification);
         log.info("Notification saved with id: {}", notification.getId());
 
-        // Push via WebSocket if IN_APP channel
+        // Push via WebSocket if IN_APP or PUSH channel
         if (channel == NotificationChannel.IN_APP || channel == NotificationChannel.PUSH) {
             pushToWebSocket(userId, notification);
+            // Also send FCM push so mobile app receives notification on device (like Facebook)
+            try {
+                Map<String, Object> fcmData = data != null ? new java.util.HashMap<>(data) : new java.util.HashMap<>();
+                fcmData.put("notificationId", notification.getId());
+                fcmData.put("type", type != null ? type.name() : "SYSTEM");
+                fcmService.sendToUser(userId, title, message, fcmData);
+            } catch (Exception e) {
+                log.warn("FCM send failed for user {}: {}", userId, e.getMessage());
+            }
         }
     }
 
@@ -176,12 +190,54 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void registerPushToken(Long userId, String token, String deviceType, String deviceId) {
-        log.info("Push token registration not yet implemented. UserId: {}, Token: {}", userId, token);
+        if (userId == null || token == null || token.isBlank()) {
+            log.warn("Cannot register push token: userId or token missing");
+            return;
+        }
+        pushTokenRepository.findByToken(token).ifPresentOrElse(
+                existing -> {
+                    existing.setUserId(userId);
+                    existing.setLastUsedAt(LocalDateTime.now());
+                    existing.setIsActive(true);
+                    if (deviceType != null && !deviceType.isBlank()) {
+                        try {
+                            existing.setDeviceType(PushToken.DeviceType.valueOf(deviceType.toUpperCase()));
+                        } catch (Exception ignored) {}
+                    }
+                    if (deviceId != null) existing.setDeviceId(deviceId);
+                    pushTokenRepository.save(existing);
+                    log.info("Push token updated for user {}", userId);
+                },
+                () -> {
+                    PushToken.DeviceType dt = PushToken.DeviceType.ANDROID;
+                    if (deviceType != null && !deviceType.isBlank()) {
+                        try {
+                            dt = PushToken.DeviceType.valueOf(deviceType.toUpperCase());
+                        } catch (Exception ignored) {}
+                    }
+                    PushToken newToken = PushToken.builder()
+                            .userId(userId)
+                            .token(token.trim())
+                            .deviceType(dt)
+                            .deviceId(deviceId)
+                            .isActive(true)
+                            .createdAt(LocalDateTime.now())
+                            .lastUsedAt(LocalDateTime.now())
+                            .build();
+                    pushTokenRepository.save(newToken);
+                    log.info("Push token registered for user {}", userId);
+                }
+        );
     }
 
     @Override
     public void removePushToken(String token) {
-        log.info("Push token removal not yet implemented. Token: {}", token);
+        if (token == null || token.isBlank()) return;
+        pushTokenRepository.findByToken(token).ifPresent(pt -> {
+            pt.setIsActive(false);
+            pushTokenRepository.save(pt);
+            log.info("Push token deactivated");
+        });
     }
 
     /**
@@ -195,6 +251,25 @@ public class NotificationServiceImpl implements NotificationService {
         } catch (Exception e) {
             log.warn("Failed to push WebSocket notification to user {}: {}", userId, e.getMessage());
         }
+    }
+
+    @Override
+    public void sendAdminBroadcast(NotificationType type, String title, String message, Map<String, Object> data) {
+        log.info("Sending admin broadcast: {}", title);
+        Notification notification = Notification.builder()
+                .userId(0L)
+                .type(type != null ? type : NotificationType.SYSTEM)
+                .title(title)
+                .message(message)
+                .data(data != null ? data : Map.of())
+                .channel(NotificationChannel.IN_APP)
+                .isRead(false)
+                .isSent(true)
+                .sentAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now())
+                .build();
+        notification = notificationRepository.save(notification);
+        pushToAdminTopic(notification);
     }
 
     /**

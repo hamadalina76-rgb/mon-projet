@@ -1,5 +1,5 @@
 package com.speedline.notification.domain;
 
 public enum NotificationType {
-    ORDER, DELIVERY, PAYMENT, PROMOTION, SYSTEM, PARTNER
+    ORDER, DELIVERY, PAYMENT, PROMOTION, SYSTEM, PARTNER, COURIER
 }
