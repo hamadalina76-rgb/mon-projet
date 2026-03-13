@@ -36,7 +36,7 @@ public class OtpService {
     private final JavaMailSender mailSender;
     private final EmailTemplateLoader templateLoader;
     
-    @Value("${spring.mail.username}")
+    @Value("${spring.mail.username:}")
     private String fromEmail;
     
     @Value("${otp.expiration.minutes:15}")
@@ -93,17 +93,22 @@ public class OtpService {
         otpRepository.save(otp);
         log.info("OTP generated for user {}: {}", email, otpCode);
         
-        // Send OTP via email (or log in dev mode if SMTP blocked)
+        // Send OTP via email (or log in dev mode if SMTP disabled)
         if (mailDevMode) {
             log.warn("MAIL_DEV_MODE=true : OTP non envoyé par email. Utilisez ce code pour {} : {}", email, otpCode);
+            return;
+        }
+        if (fromEmail == null || fromEmail.isBlank()) {
+            log.warn("spring.mail.username non configuré : OTP non envoyé. Utilisez ce code pour {} : {}", email, otpCode);
             return;
         }
         try {
             sendOtpEmail(email, firstName, otpCode);
             log.info("OTP sent successfully to {}", email);
-        } catch (MessagingException e) {
-            log.error("Failed to send email to: {}. Error: {} - Vérifiez firewall, port 587, ou activez MAIL_DEV_MODE=true", email, e.getMessage());
-            throw new OtpEmailException("Failed to send OTP email", e);
+        } catch (Exception e) {
+            log.error("Failed to send email to: {}. Error: {} - Vérifiez SMTP (port 465 ou 587, pare-feu) ou activez MAIL_DEV_MODE=true", email, e.getMessage());
+            log.warn("OTP pour {} (saisir ce code pour continuer) : {}", email, otpCode);
+            // Ne pas faire échouer le login : l'utilisateur peut récupérer le code dans les logs.
         }
     }
 
@@ -185,6 +190,9 @@ public class OtpService {
      * Send OTP via email
      */
     private void sendOtpEmail(String email, String firstName, String otpCode) throws MessagingException {
+        if (fromEmail == null || fromEmail.isBlank()) {
+            throw new MessagingException("Sender email (spring.mail.username) is not configured");
+        }
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
@@ -218,7 +226,10 @@ public class OtpService {
             log.warn("MAIL_DEV_MODE=true : Email admin non envoyé. Credentials pour {} : password={}", email, temporaryPassword);
             return;
         }
-        
+        if (fromEmail == null || fromEmail.isBlank()) {
+            log.warn("spring.mail.username non configuré : email admin non envoyé. Credentials pour {} : password={}", email, temporaryPassword);
+            return;
+        }
         try {
             // Charger et formater le template
             Map<String, String> variables = new HashMap<>();

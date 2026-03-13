@@ -13,4 +13,6 @@ infra/envs/*/images.auto.tfvars.json
 **/terraform.rc
 .vscode/
 .idea/
-.idea/
+# Local env / config (credentials)
+**/.env
+**/application-*-local.yml
