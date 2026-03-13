@@ -272,6 +272,7 @@ module "eureka_server" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = true # ✅ Force port 8080 via JAVA_TOOL_OPTIONS
+    min_instances         = 0
 
   env_vars = {
     SPRING_PROFILES_ACTIVE  = "dev"
@@ -299,6 +300,7 @@ module "config_server" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = true # ✅ Force port 8080 via JAVA_TOOL_OPTIONS
+    min_instances         = 0
 
   env_vars = {
     SPRING_PROFILES_ACTIVE  = "dev"
@@ -337,6 +339,7 @@ module "api_gateway" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = true # ✅ Force port 8080 via JAVA_TOOL_OPTIONS
+  min_instances         = 1     # ✅ Éviter les cold starts
 
   env_vars = {
     SPRING_PROFILES_ACTIVE = "dev"
@@ -367,6 +370,7 @@ module "auth_service" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false # JAVA_TOOL_OPTIONS géré manuellement dans env_vars
+  min_instances         = 1     # ✅ Éviter les cold starts
 
   # ✅ Augmenter la mémoire pour auth-service (DB + Redis + JWT)
   memory = "1Gi"
@@ -447,6 +451,7 @@ module "user_service" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false
+  min_instances         = 1     # ✅ Éviter les cold starts
 
   memory = "1Gi"
   cpu    = "1"
@@ -489,6 +494,7 @@ module "partner_service" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false
+  min_instances         = 1     # ✅ Éviter les cold starts
 
   memory = "1Gi"
   cpu    = "1"
@@ -500,6 +506,7 @@ module "partner_service" {
     SPRING_APPLICATION_NAME = "partner-service"
     EUREKA_ENABLED          = "false"
     JAVA_TOOL_OPTIONS       = "-Dserver.port=8080 -Dspring.cloud.bootstrap.enabled=false -Dspring.cloud.config.enabled=false -Dspring.cloud.gcp.sql.enabled=false"
+    SPRING_AUTOCONFIGURE_EXCLUDE = "com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
 
     SPRING_CLOUD_GCP_SQL_ENABLED  = "false"
     SPRING_CLOUD_GCP_CORE_ENABLED = "true"
@@ -535,6 +542,7 @@ module "location_service" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false
+    min_instances         = 0
 
   memory = "1Gi"
   cpu    = "1"
@@ -576,6 +584,7 @@ module "notification_service" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = true
+    min_instances         = 0
 
   memory = "1Gi"
   cpu    = "1"
@@ -613,6 +622,7 @@ module "partner_dashboard" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false
+    min_instances         = 0
 
   env_vars = {
     ENV          = var.frontend_env
@@ -643,6 +653,7 @@ module "admin_panel" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false
+    min_instances         = 0
 
   env_vars = {
     ENV                   = var.frontend_env
@@ -676,6 +687,7 @@ module "courier_app" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false
+    min_instances         = 0
 
   env_vars = {
     ENV          = var.frontend_env
@@ -706,6 +718,7 @@ module "customer_app" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false
+    min_instances         = 0
 
   env_vars = {
     ENV            = var.frontend_env

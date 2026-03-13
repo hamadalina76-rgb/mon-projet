@@ -156,7 +156,7 @@ default:
   script:
     - export TAG="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
     - export IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPO}/${IMAGE_NAME}:${TAG}"
-    - docker build -t "$IMAGE_URI" "${CONTEXT_PATH}"
+    - docker build -f "${DOCKERFILE_PATH:-${CONTEXT_PATH}/Dockerfile}" -t "$IMAGE_URI" "${CONTEXT_PATH}"
     - docker push "$IMAGE_URI"
     - |
       cat > "$CI_PROJECT_DIR/${IMAGE_NAME}.env" <<EOF
@@ -192,21 +192,45 @@ default:
     - test -n "$IMAGE_URI"
     - export READY_REVISION="$(gcloud run services describe "$SERVICE_NAME" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" --format='value(status.latestReadyRevisionName)' || true)"
     - |
+      PARTNER_EXCLUDE="com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
+      if [ "$SERVICE_NAME" = "partner-service" ]; then
+        CLOUDRUN_UPDATE_ENV_VARS="SPRING_PROFILES_ACTIVE=dev,SPRING_AUTOCONFIGURE_EXCLUDE=${PARTNER_EXCLUDE}"
+      else
+        CLOUDRUN_UPDATE_ENV_VARS="SPRING_PROFILES_ACTIVE=dev"
+      fi
+    - |
       if [ -n "$READY_REVISION" ]; then
         gcloud run revisions describe "$READY_REVISION" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" --format=json > /tmp/ready-revision.json
         HAS_SECRET_ENV="$(jq -r '[.spec.containers[0].env[]? | has("valueSource")] | any' /tmp/ready-revision.json)"
 
         if [ "$HAS_SECRET_ENV" = "true" ]; then
-          gcloud run deploy "$SERVICE_NAME" \
-            --image "$IMAGE_URI" \
-            --region "$GCP_REGION" \
-            --project "$GCP_PROJECT_ID" \
-            --update-env-vars SPRING_PROFILES_ACTIVE=dev \
-            --quiet
+          if [ "$SERVICE_NAME" = "partner-service" ]; then
+            gcloud run deploy "$SERVICE_NAME" \
+              --image "$IMAGE_URI" \
+              --region "$GCP_REGION" \
+              --project "$GCP_PROJECT_ID" \
+              --update-env-vars "$CLOUDRUN_UPDATE_ENV_VARS" \
+              --remove-env-vars PUBSUB_EMULATOR_HOST,SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST \
+              --quiet
+          else
+            gcloud run deploy "$SERVICE_NAME" \
+              --image "$IMAGE_URI" \
+              --region "$GCP_REGION" \
+              --project "$GCP_PROJECT_ID" \
+              --update-env-vars "$CLOUDRUN_UPDATE_ENV_VARS" \
+              --remove-env-vars PUBSUB_EMULATOR_HOST,SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST \
+              --quiet
+          fi
         else
           jq '
             ([.spec.containers[0].env[]? | select(has("value")) | {(.name): .value}] | add) // {}
             | .SPRING_PROFILES_ACTIVE = "dev"
+            | del(.PUBSUB_EMULATOR_HOST, .SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST)
+            | if env.SERVICE_NAME == "partner-service" then
+                .SPRING_AUTOCONFIGURE_EXCLUDE = "com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
+              else
+                .
+              end
           ' /tmp/ready-revision.json > /tmp/cloudrun-env-vars.json
 
           gcloud run deploy "$SERVICE_NAME" \
@@ -217,12 +241,23 @@ default:
             --quiet
         fi
       else
-        gcloud run deploy "$SERVICE_NAME" \
-          --image "$IMAGE_URI" \
-          --region "$GCP_REGION" \
-          --project "$GCP_PROJECT_ID" \
-          --update-env-vars SPRING_PROFILES_ACTIVE=dev \
-          --quiet
+        if [ "$SERVICE_NAME" = "partner-service" ]; then
+          gcloud run deploy "$SERVICE_NAME" \
+            --image "$IMAGE_URI" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --update-env-vars "$CLOUDRUN_UPDATE_ENV_VARS" \
+            --remove-env-vars PUBSUB_EMULATOR_HOST,SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST \
+            --quiet
+        else
+          gcloud run deploy "$SERVICE_NAME" \
+            --image "$IMAGE_URI" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --update-env-vars "$CLOUDRUN_UPDATE_ENV_VARS" \
+            --remove-env-vars PUBSUB_EMULATOR_HOST,SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST \
+            --quiet
+        fi
       fi
 
 # ==============================================================================
@@ -449,6 +484,7 @@ build_partner_dashboard:
   variables:
     IMAGE_NAME: "partner-dashboard"
     CONTEXT_PATH: "frontend/partner-dashboard"
+    DOCKERFILE_PATH: "frontend/partner-dashboard/Dockerfile.dev"
   rules:
     - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
       changes:
@@ -474,6 +510,7 @@ build_admin_panel:
   variables:
     IMAGE_NAME: "admin-panel"
     CONTEXT_PATH: "frontend/admin-panel"
+    DOCKERFILE_PATH: "frontend/admin-panel/Dockerfile.dev"
   rules:
     - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
       changes:
