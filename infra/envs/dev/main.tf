@@ -610,8 +610,9 @@ module "notification_service" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = true
-    min_instances         = 0
-  cpu_boost             = true  # ✅ Réduit le cold start au démarrage
+  min_instances         = 1   # Maintient une instance active pour le streaming Pub/Sub pull
+  cpu_boost             = true
+  cpu_idle              = false # CPU toujours alloué - requis pour le thread streaming pull Pub/Sub
 
   memory = "1Gi"
   cpu    = "1"

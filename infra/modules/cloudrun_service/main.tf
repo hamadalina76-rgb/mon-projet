@@ -127,7 +127,8 @@ resource "google_cloud_run_v2_service" "this" {
           cpu    = var.cpu
           memory = var.memory
         }
-        startup_cpu_boost = var.cpu_boost  # ✅ Réduit le cold start (containers.resources)
+        startup_cpu_boost = var.cpu_boost
+        cpu_idle          = var.cpu_idle
       }
 
       # ------------------------------------------------------------------------

@@ -96,6 +96,17 @@ public class PartnerServiceImpl implements PartnerService {
         staffMemberRepository.save(owner);
         log.info("StaffMember OWNER created for partner {} userId {}", partner.getId(), userId);
         
+        // Notifier l'admin qu'un nouveau partenaire vient de s'inscrire
+        partnerEventPublisher.publish(PartnerEvent.builder()
+            .eventType(PartnerEvent.EventType.PARTNER_REQUEST_SUBMITTED)
+            .partnerId(partner.getId())
+            .userId(partner.getUserId())
+            .businessName(partner.getBusinessName())
+            .email(partner.getEmail())
+            .status(partner.getStatus().name())
+            .timestamp(LocalDateTime.now())
+            .build());
+
         return convertToDTO(partner);
     }
 

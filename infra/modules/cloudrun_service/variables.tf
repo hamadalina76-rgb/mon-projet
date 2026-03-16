@@ -158,3 +158,13 @@ variable "cpu_boost" {
   type        = bool
   default     = false
 }
+
+# ✅ CPU always allocated : désactive le throttling CPU quand idle
+# Nécessaire pour les services avec des background threads (ex: Pub/Sub streaming pull)
+# false = CPU toujours alloué (recommandé pour Pub/Sub pull + min_instances >= 1)
+# true  = CPU throttlé hors requêtes (défaut Cloud Run - économise des ressources)
+variable "cpu_idle" {
+  description = "Si true, le CPU est throttlé quand le container ne traite pas de requêtes. Mettre false pour les services avec threads background (Pub/Sub streaming pull)."
+  type        = bool
+  default     = true
+}
