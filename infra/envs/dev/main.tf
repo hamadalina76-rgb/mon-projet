@@ -433,6 +433,10 @@ module "auth_service" {
     # ✅ JWT obligatoire sinon ton app fail au boot
     JWT_SECRET = var.jwt_secret
 
+    # Feign inter-service URLs (Eureka désactivé en DEV — communication directe Cloud Run)
+    PARTNER_SERVICE_URL = "https://partner-service-392205979525.europe-west1.run.app"
+    USER_SERVICE_URL    = "https://user-service-392205979525.europe-west1.run.app"
+
     SPRING_MAIN_LAZY_INITIALIZATION = "true"
     SPRING_CLOUD_DISCOVERY_ENABLED  = "false"
   }
@@ -531,6 +535,9 @@ module "partner_service" {
 
     # GCP Pub/Sub runtime
     GCP_PROJECT_ID = var.project_id
+
+    # Feign inter-service URLs (Eureka désactivé en DEV — communication directe Cloud Run)
+    AUTH_SERVICE_URL = "https://auth-service-392205979525.europe-west1.run.app"
 
     SPRING_MAIN_LAZY_INITIALIZATION = "true"
     SPRING_CLOUD_DISCOVERY_ENABLED  = "false"
