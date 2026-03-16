@@ -72,7 +72,7 @@ resource "google_cloud_run_v2_service" "this" {
   labels  = coalesce(var.labels, {})
 
   template {
-    service_account = var.service_account_email
+    service_account  = var.service_account_email
 
     scaling {
       min_instance_count = var.min_instances
@@ -127,6 +127,7 @@ resource "google_cloud_run_v2_service" "this" {
           cpu    = var.cpu
           memory = var.memory
         }
+        startup_cpu_boost = var.cpu_boost  # ✅ Réduit le cold start (containers.resources)
       }
 
       # ------------------------------------------------------------------------

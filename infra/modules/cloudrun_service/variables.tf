@@ -151,3 +151,10 @@ variable "startup_probe_timeout" {
   type        = number
   default     = 240
 }
+
+# ✅ Startup CPU boost: alloue davantage de CPU au démarrage pour réduire le cold start
+variable "cpu_boost" {
+  description = "Active le CPU boost au démarrage du container (réduit le cold start)"
+  type        = bool
+  default     = false
+}

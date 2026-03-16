@@ -25,6 +25,9 @@ spring:
   application:
     name: auth-service
 
+  main:
+    lazy-initialization: true  # ✅ Réduit le cold start
+
   # Datasource Cloud SQL via postgres-socket-factory (connecteur JDBC GCP pur)
   # URL format: jdbc:postgresql:///DB_NAME?cloudSqlInstance=PROJECT:REGION:INSTANCE&socketFactory=com.google.cloud.sql.postgres.SocketFactory
   # Credentials: authentification ADC automatique via Service Account Cloud Run.

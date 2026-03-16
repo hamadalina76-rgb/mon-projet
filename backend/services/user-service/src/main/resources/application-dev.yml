@@ -13,6 +13,9 @@ spring:
   application:
     name: user-service
 
+  main:
+    lazy-initialization: true  # ✅ Réduit le cold start
+
   # Cloud SQL via postgres-socket-factory (env injectées par Terraform)
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:5432/speedline_users}

@@ -340,6 +340,7 @@ module "api_gateway" {
   allow_unauthenticated = true
   inject_cloud_run_port = true # ✅ Force port 8080 via JAVA_TOOL_OPTIONS
   min_instances         = 1     # ✅ Éviter les cold starts
+  cpu_boost             = true  # ✅ Réduit le cold start au démarrage
 
   env_vars = {
     SPRING_PROFILES_ACTIVE = "dev"
@@ -347,6 +348,8 @@ module "api_gateway" {
     EUREKA_ENABLED         = "false"
     # IMPORTANT: même secret que auth-service pour valider correctement les JWT signés.
     JWT_SECRET             = var.jwt_secret
+    SPRING_MAIN_LAZY_INITIALIZATION = "true"
+    SPRING_CLOUD_DISCOVERY_ENABLED  = "false"
   }
 
   labels = {
@@ -370,7 +373,8 @@ module "auth_service" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false # JAVA_TOOL_OPTIONS géré manuellement dans env_vars
-  min_instances         = 1     # ✅ Éviter les cold starts
+  min_instances         = 0     # ✅ Scale to zero — warmed up via Cloud Scheduler
+  cpu_boost             = true  # ✅ Réduit le cold start au démarrage
 
   # ✅ Augmenter la mémoire pour auth-service (DB + Redis + JWT)
   memory = "1Gi"
@@ -428,6 +432,9 @@ module "auth_service" {
 
     # ✅ JWT obligatoire sinon ton app fail au boot
     JWT_SECRET = var.jwt_secret
+
+    SPRING_MAIN_LAZY_INITIALIZATION = "true"
+    SPRING_CLOUD_DISCOVERY_ENABLED  = "false"
   }
 
   labels = {
@@ -451,7 +458,8 @@ module "user_service" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false
-  min_instances         = 1     # ✅ Éviter les cold starts
+  min_instances         = 0     # ✅ Scale to zero
+  cpu_boost             = true  # ✅ Réduit le cold start au démarrage
 
   memory = "1Gi"
   cpu    = "1"
@@ -471,6 +479,9 @@ module "user_service" {
     SPRING_DATASOURCE_URL      = "jdbc:postgresql:///speedline_dev?cloudSqlInstance=${module.cloudsql.instance_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
     SPRING_DATASOURCE_USERNAME = "auth_dev"
     SPRING_DATASOURCE_PASSWORD = var.db_dev_password
+
+    SPRING_MAIN_LAZY_INITIALIZATION = "true"
+    SPRING_CLOUD_DISCOVERY_ENABLED  = "false"
   }
 
   labels = {
@@ -494,7 +505,8 @@ module "partner_service" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false
-  min_instances         = 1     # ✅ Éviter les cold starts
+  min_instances         = 0     # ✅ Scale to zero
+  cpu_boost             = true  # ✅ Réduit le cold start au démarrage
 
   memory = "1Gi"
   cpu    = "1"
@@ -519,6 +531,9 @@ module "partner_service" {
 
     # GCP Pub/Sub runtime
     GCP_PROJECT_ID = var.project_id
+
+    SPRING_MAIN_LAZY_INITIALIZATION = "true"
+    SPRING_CLOUD_DISCOVERY_ENABLED  = "false"
   }
 
   labels = {
@@ -543,6 +558,7 @@ module "location_service" {
   allow_unauthenticated = true
   inject_cloud_run_port = false
     min_instances         = 0
+  cpu_boost             = true  # ✅ Réduit le cold start au démarrage
 
   memory = "1Gi"
   cpu    = "1"
@@ -561,6 +577,9 @@ module "location_service" {
     SPRING_DATASOURCE_URL      = "jdbc:postgresql:///speedline_dev?cloudSqlInstance=${module.cloudsql.instance_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
     SPRING_DATASOURCE_USERNAME = "auth_dev"
     SPRING_DATASOURCE_PASSWORD = var.db_dev_password
+
+    SPRING_MAIN_LAZY_INITIALIZATION = "true"
+    SPRING_CLOUD_DISCOVERY_ENABLED  = "false"
   }
 
   labels = {
@@ -585,6 +604,7 @@ module "notification_service" {
   allow_unauthenticated = true
   inject_cloud_run_port = true
     min_instances         = 0
+  cpu_boost             = true  # ✅ Réduit le cold start au démarrage
 
   memory = "1Gi"
   cpu    = "1"
@@ -599,6 +619,9 @@ module "notification_service" {
     MONGODB_URI = var.mongodb_uri
 
     JAVA_TOOL_OPTIONS = "-Dspring.cloud.bootstrap.enabled=false -Dspring.cloud.config.enabled=false"
+
+    SPRING_MAIN_LAZY_INITIALIZATION = "true"
+    SPRING_CLOUD_DISCOVERY_ENABLED  = "false"
   }
 
   labels = {
@@ -670,5 +693,28 @@ module "admin_panel" {
     managed-by = "terraform"
     project    = "speedline"
     tier       = "frontend"
+  }
+}
+
+# ==============================================================================
+# CLOUD SCHEDULER — API GATEWAY WARM-UP (DEV)
+# Maintient api-gateway chaud pour éviter les cold starts utilisateur.
+# Appel GET /actuator/health toutes les 5 minutes.
+# Pas d'auth OIDC nécessaire : api-gateway accepte le trafic non authentifié.
+# ==============================================================================
+resource "google_cloud_scheduler_job" "api_gateway_warmup_dev" {
+  depends_on = [module.common, module.api_gateway]
+
+  name             = "api-gateway-warmup-dev"
+  description      = "Periodic GET /actuator/health on api-gateway to prevent cold starts (DEV)"
+  schedule         = "*/5 * * * *"
+  time_zone        = "UTC"
+  attempt_deadline = "30s"
+  region           = var.region
+  project          = var.project_id
+
+  http_target {
+    uri         = "${module.api_gateway.uri}/actuator/health"
+    http_method = "GET"
   }
 }

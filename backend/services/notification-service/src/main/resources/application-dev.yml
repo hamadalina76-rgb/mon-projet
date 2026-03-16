@@ -26,6 +26,9 @@ spring:
     # Nom du microservice dans l'écosystème Spring / logs / observabilité
     name: notification-service
 
+  main:
+    lazy-initialization: true  # ✅ Réduit le cold start
+
   data:
     mongodb:
       # ----------------------------------------------------------------------

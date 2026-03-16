@@ -13,6 +13,9 @@ spring:
   application:
     name: location-service
 
+  main:
+    lazy-initialization: true  # ✅ Réduit le cold start
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:5432/speedline_locations}
     username: ${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:postgres}}
