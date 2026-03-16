@@ -15,6 +15,7 @@
 # ==============================================================================
 
 stages:
+  - verify
   - build
   - deploy
   - terraform
@@ -27,6 +28,23 @@ workflow:
     - if: '$CI_COMMIT_TAG =~ /^staging-.*$/'
     - if: '$CI_COMMIT_TAG =~ /^prod-.*$/'
     - when: never
+
+# ===============================================================================
+# PIPELINE GUARD JOB (always runs for key refs/tags)
+# ===============================================================================
+pipeline_guard:
+  stage: verify
+  image: google/cloud-sdk:slim
+  tags:
+    - terraform
+  script:
+    - echo "Pipeline created for $CI_COMMIT_REF_NAME"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^infra-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^staging-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^prod-.*$/'
 
 # ==============================================================================
 # VARIABLES GLOBALES
@@ -278,10 +296,10 @@ build_api_gateway:
     SERVICE_NAME: "api-gateway"
     MODULE_PATH: "api-gateway"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/api-gateway/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/api-gateway/**/*
+          - backend/pom.xml
 
 deploy_api_gateway:
   extends: .cloudrun_deploy_template
@@ -291,10 +309,10 @@ deploy_api_gateway:
   variables:
     SERVICE_NAME: "api-gateway"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/api-gateway/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/api-gateway/**/*
+          - backend/pom.xml
 
 # ==============================================================================
 # BACKEND - CONFIG SERVER
@@ -305,10 +323,10 @@ build_config_server:
     SERVICE_NAME: "config-server"
     MODULE_PATH: "config-server"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/config-server/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/config-server/**/*
+          - backend/pom.xml
 
 deploy_config_server:
   extends: .cloudrun_deploy_template
@@ -318,10 +336,10 @@ deploy_config_server:
   variables:
     SERVICE_NAME: "config-server"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/config-server/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/config-server/**/*
+          - backend/pom.xml
 
 # ==============================================================================
 # BACKEND - EUREKA SERVER
@@ -332,10 +350,10 @@ build_eureka_server:
     SERVICE_NAME: "eureka-server"
     MODULE_PATH: "eureka-server"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/eureka-server/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/eureka-server/**/*
+          - backend/pom.xml
 
 deploy_eureka_server:
   extends: .cloudrun_deploy_template
@@ -345,10 +363,10 @@ deploy_eureka_server:
   variables:
     SERVICE_NAME: "eureka-server"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/eureka-server/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/eureka-server/**/*
+          - backend/pom.xml
 
 # ==============================================================================
 # BACKEND - AUTH SERVICE
@@ -359,10 +377,10 @@ build_auth_service:
     SERVICE_NAME: "auth-service"
     MODULE_PATH: "services/auth-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/services/auth-service/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/services/auth-service/**/*
+          - backend/pom.xml
 
 deploy_auth_service:
   extends: .cloudrun_deploy_template
@@ -372,10 +390,10 @@ deploy_auth_service:
   variables:
     SERVICE_NAME: "auth-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/services/auth-service/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/services/auth-service/**/*
+          - backend/pom.xml
 
 # ==============================================================================
 # BACKEND - USER SERVICE
@@ -386,10 +404,10 @@ build_user_service:
     SERVICE_NAME: "user-service"
     MODULE_PATH: "services/user-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/services/user-service/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/services/user-service/**/*
+          - backend/pom.xml
 
 deploy_user_service:
   extends: .cloudrun_deploy_template
@@ -399,10 +417,10 @@ deploy_user_service:
   variables:
     SERVICE_NAME: "user-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/services/user-service/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/services/user-service/**/*
+          - backend/pom.xml
 
 # ==============================================================================
 # BACKEND - PARTNER SERVICE
@@ -413,10 +431,10 @@ build_partner_service:
     SERVICE_NAME: "partner-service"
     MODULE_PATH: "services/partner-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/services/partner-service/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/services/partner-service/**/*
+          - backend/pom.xml
 
 deploy_partner_service:
   extends: .cloudrun_deploy_template
@@ -426,10 +444,10 @@ deploy_partner_service:
   variables:
     SERVICE_NAME: "partner-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/services/partner-service/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/services/partner-service/**/*
+          - backend/pom.xml
 
 # ==============================================================================
 # BACKEND - LOCATION SERVICE
@@ -440,10 +458,10 @@ build_location_service:
     SERVICE_NAME: "location-service"
     MODULE_PATH: "services/location-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/services/location-service/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/services/location-service/**/*
+          - backend/pom.xml
 
 deploy_location_service:
   extends: .cloudrun_deploy_template
@@ -453,10 +471,10 @@ deploy_location_service:
   variables:
     SERVICE_NAME: "location-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/services/location-service/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/services/location-service/**/*
+          - backend/pom.xml
 
 # ==============================================================================
 # BACKEND - NOTIFICATION SERVICE
@@ -467,10 +485,10 @@ build_notification_service:
     SERVICE_NAME: "notification-service"
     MODULE_PATH: "services/notification-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/services/notification-service/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/services/notification-service/**/*
+          - backend/pom.xml
 
 deploy_notification_service:
   extends: .cloudrun_deploy_template
@@ -480,10 +498,10 @@ deploy_notification_service:
   variables:
     SERVICE_NAME: "notification-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - backend/services/notification-service/**
-        - backend/pom.xml
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - backend/services/notification-service/**/*
+          - backend/pom.xml
 
 # ==============================================================================
 # FRONTEND - PARTNER DASHBOARD
@@ -495,9 +513,9 @@ build_partner_dashboard:
     CONTEXT_PATH: "frontend/partner-dashboard"
     DOCKERFILE_PATH: "frontend/partner-dashboard/Dockerfile.dev"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - frontend/partner-dashboard/**
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - frontend/partner-dashboard/**/*
 
 deploy_partner_dashboard:
   extends: .cloudrun_deploy_template
@@ -507,9 +525,9 @@ deploy_partner_dashboard:
   variables:
     SERVICE_NAME: "partner-dashboard"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - frontend/partner-dashboard/**
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - frontend/partner-dashboard/**/*
 
 # ==============================================================================
 # FRONTEND - ADMIN PANEL
@@ -521,9 +539,9 @@ build_admin_panel:
     CONTEXT_PATH: "frontend/admin-panel"
     DOCKERFILE_PATH: "frontend/admin-panel/Dockerfile.dev"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - frontend/admin-panel/**
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - frontend/admin-panel/**/*
 
 deploy_admin_panel:
   extends: .cloudrun_deploy_template
@@ -533,9 +551,9 @@ deploy_admin_panel:
   variables:
     SERVICE_NAME: "admin-panel"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - frontend/admin-panel/**
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - frontend/admin-panel/**/*
 
 # ==============================================================================
 # TERRAFORM DEV
@@ -608,13 +626,13 @@ terraform_apply_dev:
     - terraform apply -auto-approve -input=false -lock-timeout=5m
 
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^infra-.*$/'
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
-      changes:
-        - infra/**
-    - if: '$CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
-      changes:
-        - infra/**
+      - if: '$CI_COMMIT_TAG =~ /^infra-.*$/'
+      - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+        changes:
+          - infra/**/*
+      - if: '$CI_COMMIT_BRANCH == "develop-add-branch-devlope-lance-pipline"'
+        changes:
+          - infra/**/*
 
 # ==============================================================================
 # STAGING - SQUELETTE MANUEL
