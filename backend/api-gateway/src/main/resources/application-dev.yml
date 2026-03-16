@@ -224,6 +224,16 @@ spring:
             - StripPrefix=1
             - AuthenticationFilter
 
+        # Route legacy temporaire pour partner-dashboard DEV
+        # Certains déploiements injectent apiBaseUrl sans "/api"
+        # => requêtes /notifications/** et /push-tokens/**
+        - id: notification-service-legacy
+          uri: https://notification-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/notifications/**, /push-tokens/**
+          filters:
+            - AuthenticationFilter
+
         # ====================================================================
         # NOTIFICATION SERVICE (WEBSOCKET / SOCKJS)
         # ====================================================================
