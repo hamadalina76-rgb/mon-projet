@@ -127,6 +127,14 @@ spring:
             # /v1/auth/register => /api/v1/auth/register
             - PrefixPath=/api
 
+        # Internal callback route (inter-service communication)
+        # Partner-service calls PUT /internal/users/{id}/partner-id
+        # No StripPrefix: auth-service exposes /internal/users/** directly
+        - id: auth-service-internal
+          uri: https://auth-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/internal/users/**
+
         # ====================================================================
         # USER SERVICE
         # ====================================================================
