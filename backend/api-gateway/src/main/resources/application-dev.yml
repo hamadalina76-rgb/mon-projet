@@ -152,6 +152,20 @@ spring:
             - RoleAuthorizationFilter
 
         # --------------------------------------------------------------------
+        # PARTNER SERVICE — V1 CATEGORY COMPAT (ADMIN PANEL DEV)
+        # --------------------------------------------------------------------
+        # Frontend admin DEV appelle /api/v1/categories/**
+        # Le backend expose /v1/categories/**
+        # => on retire uniquement /api
+        - id: partner-service-v1-categories
+          uri: https://partner-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/api/v1/categories/**
+          filters:
+            - StripPrefix=1
+            - RoleAuthorizationFilter
+
+        # --------------------------------------------------------------------
         # PARTNER SERVICE — ROUTES LEGACY TEMPORAIRES
         # --------------------------------------------------------------------
         # Cette route permet au partner-dashboard de fonctionner

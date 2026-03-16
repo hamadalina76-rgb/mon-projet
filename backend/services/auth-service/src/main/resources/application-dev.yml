@@ -71,6 +71,13 @@ spring:
       enabled: false
     bootstrap:
       enabled: false
+    openfeign:
+      client:
+        config:
+          user-service:
+            url: ${USER_SERVICE_URL:https://user-service-392205979525.europe-west1.run.app}
+          partner-service:
+            url: ${PARTNER_SERVICE_URL:https://partner-service-392205979525.europe-west1.run.app}
 
   mail:
     host: ${SPRING_MAIL_HOST:${MAIL_HOST:smtp.gmail.com}}
