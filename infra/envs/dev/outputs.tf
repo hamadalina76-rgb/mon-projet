@@ -66,16 +66,6 @@ output "admin_panel_url" {
   description = "URL Cloud Run Admin Panel"
 }
 
-output "courier_app_url" {
-  value       = module.courier_app.uri
-  description = "URL Cloud Run Courier App (Flutter Web)"
-}
-
-output "customer_app_url" {
-  value       = module.customer_app.uri
-  description = "URL Cloud Run Customer App (Flutter Web)"
-}
-
 output "mongo_atlas_project_id" {
   value       = module.mongo_atlas.atlas_project_id
   description = "MongoDB Atlas project ID used by dev env"
