@@ -26,8 +26,16 @@ spring:
     # Nom du microservice dans l'écosystème Spring / logs / observabilité
     name: notification-service
 
+  autoconfigure:
+    # ----------------------------------------------------------------------
+    # En DEV Cloud Run, on force l'exclusion de l'auto-config emulator.
+    # Ceci neutralise l'héritage éventuel de emulator-host depuis
+    # application.yml sans toucher le comportement local des développeurs.
+    # ----------------------------------------------------------------------
+    exclude: com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration
+
   main:
-    lazy-initialization: true  # ✅ Réduit le cold start
+    lazy-initialization: false
 
   data:
     mongodb:
