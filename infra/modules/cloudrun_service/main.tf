@@ -16,7 +16,7 @@
 # => On trie les clés pour stabiliser l'ordre.
 #
 # ✅ Validation scaling :
-# - max_instances >= min_instances (cross-variable)
+# - max_instances >= min_instances (cross-variable),,
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
