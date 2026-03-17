@@ -7,7 +7,6 @@ import com.speedline.partner.dto.StaffMemberDTO;
 import com.speedline.partner.dto.UpdatePartnerStatusRequest;
 import com.speedline.partner.service.FileStorageService;
 import com.speedline.partner.service.PartnerService;
-import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -15,20 +14,14 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.data.domain.Page;
 
 import com.speedline.partner.domain.Partner;
 import com.speedline.partner.repository.PartnerRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -46,22 +39,24 @@ import java.util.Map;
  * GET    /partners - Liste partenaires
  * PUT    /partners/{id}/status - Changer statut
  * GET    /partners/search - Recherche
- *
- * @see PartnerApi for OpenAPI/Swagger documentation
  */
 @RestController
 @RequestMapping("/partners")
 @RequiredArgsConstructor
 @Slf4j
-@Validated
-public class PartnerController implements PartnerApi {
+@Tag(name = "Partners", description = "Gestion des établissements partenaires")
+public class PartnerController {
     
     private final PartnerService partnerService;
     private final FileStorageService fileStorageService;
     private final PartnerRepository partnerRepository;
     private final ObjectMapper objectMapper;
 
-    @Override
+    /**
+     * Endpoint INTERNE: Créer un profil partner initial lors de l'inscription
+     * Appelé par auth-service via Feign Client
+     * POST /partners/internal
+     */
     @PostMapping("/internal")
     public ResponseEntity<?> createPartnerInternal(@RequestBody CreatePartnerRequest request) {
         log.info("Internal endpoint called to create partner for userId: {}", request.getUserId());
@@ -89,7 +84,6 @@ public class PartnerController implements PartnerApi {
      * Récupérer un partner par userId (pour le frontend après login)
      * GET /partners/by-user/{userId}
      */
-    @Override
     @GetMapping("/by-user/{userId}")
     public ResponseEntity<?> getPartnerByUserId(@PathVariable Long userId) {
         log.info("Getting partner by userId: {}", userId);
@@ -104,7 +98,11 @@ public class PartnerController implements PartnerApi {
         }
     }
 
-    @Override
+    /**
+     * Récupérer un partner par ID
+     * GET /partners/{id}
+     */
+    @Operation(summary = "Détail partenaire", description = "Retourne le PartnerDTO complet par id")
     @GetMapping("/{id}")
     public ResponseEntity<?> getPartnerById(@PathVariable Long id) {
         log.info("Getting partner by id: {}", id);
@@ -119,7 +117,10 @@ public class PartnerController implements PartnerApi {
         }
     }
 
-    @Override
+    /**
+     * Compléter le profil partner (Phase 2 - après login)
+     * PUT /partners/{id}/complete-profile
+     */
     @PutMapping("/{id}/complete-profile")
     public ResponseEntity<?> completeProfile(
             @PathVariable Long id,
@@ -140,7 +141,10 @@ public class PartnerController implements PartnerApi {
         }
     }
 
-    @Override
+    /**
+     * Mettre à jour un partner
+     * PUT /partners/{id}
+     */
     @PutMapping("/{id}")
     public ResponseEntity<?> updatePartner(
             @PathVariable Long id,
@@ -157,7 +161,11 @@ public class PartnerController implements PartnerApi {
         }
     }
 
-    @Override
+    /**
+     * Toggle ouvert/fermé (acceptsOrders). Réservé OWNER ou ADMIN.
+     * PATCH /partners/{id}/status
+     */
+    @Operation(summary = "Changer statut ouvert/fermé", description = "Met à jour acceptsOrders (visible dans l'app client). OWNER ou ADMIN.")
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(
             @PathVariable Long id,
@@ -176,7 +184,11 @@ public class PartnerController implements PartnerApi {
         }
     }
 
-    @Override
+    /**
+     * Récupérer les horaires d'ouverture du partenaire.
+     * GET /partners/{id}/opening-hours
+     */
+    @Operation(summary = "Horaires d'ouverture", description = "Retourne la liste des horaires (format JSON stocké)")
     @GetMapping("/{id}/opening-hours")
     public ResponseEntity<?> getOpeningHours(@PathVariable Long id) {
         try {
@@ -191,7 +203,11 @@ public class PartnerController implements PartnerApi {
         }
     }
 
-    @Override
+    /**
+     * Mettre à jour les horaires d'ouverture. Ownership vérifié par filter.
+     * PUT /partners/{id}/opening-hours
+     */
+    @Operation(summary = "Modifier horaires", description = "Met à jour les horaires (body = liste day/isClosed/slots)")
     @PutMapping("/{id}/opening-hours")
     public ResponseEntity<?> putOpeningHours(
             @PathVariable Long id,
@@ -214,7 +230,11 @@ public class PartnerController implements PartnerApi {
         }
     }
 
-    @Override
+    /**
+     * Liste du staff du partenaire (OWNER, MANAGER, STAFF). Ownership vérifié par filter.
+     * GET /partners/{id}/staff
+     */
+    @Operation(summary = "Liste du staff", description = "Retourne les membres du staff (OWNER, MANAGER, STAFF)")
     @GetMapping("/{id}/staff")
     public ResponseEntity<?> getStaff(@PathVariable Long id) {
         try {
@@ -229,7 +249,11 @@ public class PartnerController implements PartnerApi {
         }
     }
 
-    @Override
+    /**
+     * Upload images (logo, cover, photos) for a partner
+     * POST /partners/{id}/images
+     * Accepts multipart/form-data with optional fields: logo, cover, photos (multiple)
+     */
     @PostMapping("/{id}/images")
     public ResponseEntity<?> uploadImages(
             @PathVariable Long id,
@@ -287,7 +311,10 @@ public class PartnerController implements PartnerApi {
         }
     }
 
-    @Override
+    /**
+     * Upload documents (kbis, idCard, insurance, rib) for a partner
+     * POST /partners/{id}/documents
+     */
     @PostMapping("/{id}/documents")
     public ResponseEntity<?> uploadDocuments(
             @PathVariable Long id,
@@ -337,7 +364,21 @@ public class PartnerController implements PartnerApi {
         }
     }
 
-
+    /**
+     * POST /partners/{id}/upload/logo
+     * TC-19 : Upload logo valide → HTTP 200, logoUrl retournée.
+     */
+    @Operation(summary = "Upload logo partenaire",
+               description = "multipart/form-data, champ 'file', max 5 Mo, JPG/PNG/WEBP")
+    @PostMapping(value = "/{id}/upload/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadLogo(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+        log.info("uploadLogo partnerId={} size={}", id, file != null ? file.getSize() : 0);
+        String logoUrl = fileStorageService.storeImage(file, id, "logos");
+        partnerService.updateImages(id, logoUrl, null);
+        return ResponseEntity.ok(Map.of("url", logoUrl, "logoUrl", logoUrl));
+    }
 
     /**
      * POST /partners/{id}/upload/cover
@@ -359,21 +400,6 @@ public class PartnerController implements PartnerApi {
      * Health check
      * GET /partners/health
      */
-    @Override
-    @GetMapping("/nearby")
-    public ResponseEntity<Page<PartnerDTO>> getNearbyPartners(
-            @RequestParam @NotNull
-            @DecimalMin(value = "-90.0",  message = "Latitude invalide : doit être entre -90 et 90")
-            @DecimalMax(value = "90.0",   message = "Latitude invalide : doit être entre -90 et 90") BigDecimal lat,
-            @RequestParam @NotNull
-            @DecimalMin(value = "-180.0", message = "Longitude invalide : doit être entre -180 et 180")
-            @DecimalMax(value = "180.0",  message = "Longitude invalide : doit être entre -180 et 180") BigDecimal lng,
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ResponseEntity.ok(partnerService.getNearbyPartners(lat, lng, page, size));
-    }
-
-    @Override
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of("status", "UP", "service", "partner-service"));

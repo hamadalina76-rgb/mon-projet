@@ -99,6 +99,20 @@ spring:
                 name: deliveryServiceBreaker
                 fallbackUri: forward:/fallback/delivery
 
+        # Delivery Service - WebSocket (tracking courier position)
+        - id: delivery-service-ws
+          uri: lb:ws://delivery-service
+          predicates:
+            - Path=/ws/location,/ws/tracking/**
+
+        # Delivery Service - REST tracking (position from Redis)
+        - id: delivery-service-tracking
+          uri: lb://delivery-service
+          predicates:
+            - Path=/api/v1/tracking/**,/api/v1/docs/tracking-websocket
+          filters:
+            - AuthenticationFilter
+
         # Payment Service
         - id: payment-service
           uri: lb://payment-service
