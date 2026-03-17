@@ -7,6 +7,7 @@ import '../../../../config/routes/route_names.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/speedline_app_bar.dart';
 import '../../../location/data/models/saved_location.dart';
 import '../../../location/presentation/providers/location_provider.dart';
 import '../../data/models/address_model.dart';
@@ -100,11 +101,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text(l10n.translate('profile')),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
+      appBar: SpeedlineAppBar(
+        title: l10n.translate('profile'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),

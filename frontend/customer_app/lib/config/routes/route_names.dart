@@ -27,4 +27,7 @@ class RouteNames {
   static const String addresses = '/addresses';
   static const String addressTypeSelector = '/address-type-selector';
   static const String addressDetails = '/address-details';
+
+  // Partners
+  static const String nearbyPartners = '/explore/nearby-partners';
 }

@@ -7,6 +7,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../config/dependency_injection/injection.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/localization/locale_provider.dart';
+import '../../../../core/widgets/speedline_app_bar.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -119,11 +120,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(l10n.translate('settings')),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
+      appBar: SpeedlineAppBar(
+        title: l10n.translate('settings'),
       ),
       body: ListView(
         children: [

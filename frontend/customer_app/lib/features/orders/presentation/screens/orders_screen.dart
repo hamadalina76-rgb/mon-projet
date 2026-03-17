@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/speedline_app_bar.dart';
 
 /// Orders Screen
 /// Screen for viewing order history and active orders
@@ -11,11 +12,8 @@ class OrdersScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.translate('my_orders')),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
+      appBar: SpeedlineAppBar(
+        title: l10n.translate('my_orders'),
       ),
       body: Center(
         child: Column(

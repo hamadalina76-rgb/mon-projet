@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/themes/app_theme.dart';
 import 'config/routes/app_router.dart';
 import 'config/dependency_injection/injection.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/localization/locale_provider.dart';
+import 'core/constants/app_colors.dart';
 import 'services/firebase_service.dart';
 import 'services/analytics_service.dart';
 import 'services/crash_reporting_service.dart';
@@ -27,11 +29,21 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  try {
-    await dotenv.load(fileName: '.env.development');
-  } catch (_) {}
-  await RuntimeConfig.load();
-  
+  // Global default status bar style for all screens.
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: AppColors.black,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+    ),
+  );
+
+  // Initialize Hive (local storage)
+  await Hive.initFlutter();
+
+  // Load environment variables
+  await dotenv.load(fileName: '.env.development');
+
   // Initialize SharedPreferences before anything else
   final sharedPreferences = await SharedPreferences.getInstance();
   
