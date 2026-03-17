@@ -34,6 +34,10 @@ provider "google" {
   region  = var.region
 }
 
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
 # ==============================================================================
 # ACTIVATION DES APIs (EN PREMIER !)
 # ==============================================================================
@@ -272,7 +276,7 @@ module "eureka_server" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = true # ✅ Force port 8080 via JAVA_TOOL_OPTIONS
-    min_instances         = 0
+  min_instances         = 0
 
   env_vars = {
     SPRING_PROFILES_ACTIVE  = "dev"
@@ -300,7 +304,7 @@ module "config_server" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = true # ✅ Force port 8080 via JAVA_TOOL_OPTIONS
-    min_instances         = 0
+  min_instances         = 0
 
   env_vars = {
     SPRING_PROFILES_ACTIVE  = "dev"
@@ -339,15 +343,15 @@ module "api_gateway" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = true # ✅ Force port 8080 via JAVA_TOOL_OPTIONS
-  min_instances         = 1     # ✅ Éviter les cold starts
-  cpu_boost             = true  # ✅ Réduit le cold start au démarrage
+  min_instances         = 1    # ✅ Éviter les cold starts
+  cpu_boost             = true # ✅ Réduit le cold start au démarrage
 
   env_vars = {
     SPRING_PROFILES_ACTIVE = "dev"
     GCP_PROJECT_ID         = var.project_id
     EUREKA_ENABLED         = "false"
     # IMPORTANT: même secret que auth-service pour valider correctement les JWT signés.
-    JWT_SECRET             = var.jwt_secret
+    JWT_SECRET                      = var.jwt_secret
     SPRING_MAIN_LAZY_INITIALIZATION = "true"
     SPRING_CLOUD_DISCOVERY_ENABLED  = "false"
   }
@@ -462,8 +466,8 @@ module "user_service" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false
-  min_instances         = 0     # ✅ Scale to zero
-  cpu_boost             = true  # ✅ Réduit le cold start au démarrage
+  min_instances         = 0    # ✅ Scale to zero
+  cpu_boost             = true # ✅ Réduit le cold start au démarrage
 
   memory = "1Gi"
   cpu    = "1"
@@ -509,8 +513,8 @@ module "partner_service" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false
-  min_instances         = 0     # ✅ Scale to zero
-  cpu_boost             = true  # ✅ Réduit le cold start au démarrage
+  min_instances         = 0    # ✅ Scale to zero
+  cpu_boost             = true # ✅ Réduit le cold start au démarrage
 
   memory = "1Gi"
   cpu    = "1"
@@ -518,10 +522,10 @@ module "partner_service" {
   cloudsql_instances = [module.cloudsql.instance_connection_name]
 
   env_vars = {
-    SPRING_PROFILES_ACTIVE  = "dev"
-    SPRING_APPLICATION_NAME = "partner-service"
-    EUREKA_ENABLED          = "false"
-    JAVA_TOOL_OPTIONS       = "-Dserver.port=8080 -Dspring.cloud.bootstrap.enabled=false -Dspring.cloud.config.enabled=false -Dspring.cloud.gcp.sql.enabled=false"
+    SPRING_PROFILES_ACTIVE       = "dev"
+    SPRING_APPLICATION_NAME      = "partner-service"
+    EUREKA_ENABLED               = "false"
+    JAVA_TOOL_OPTIONS            = "-Dserver.port=8080 -Dspring.cloud.bootstrap.enabled=false -Dspring.cloud.config.enabled=false -Dspring.cloud.gcp.sql.enabled=false"
     SPRING_AUTOCONFIGURE_EXCLUDE = "com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
 
     SPRING_CLOUD_GCP_SQL_ENABLED  = "false"
@@ -564,8 +568,8 @@ module "location_service" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false
-    min_instances         = 0
-  cpu_boost             = true  # ✅ Réduit le cold start au démarrage
+  min_instances         = 0
+  cpu_boost             = true # ✅ Réduit le cold start au démarrage
 
   memory = "1Gi"
   cpu    = "1"
@@ -610,12 +614,13 @@ module "notification_service" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = true
-  min_instances         = 1   # Maintient une instance active pour le streaming Pub/Sub pull
+  min_instances         = 0 # ✅ Scale to zero pour réduire le coût DEV
+  max_instances         = 1 # ✅ Limite coût/empreinte sur le service de notification en DEV
   cpu_boost             = true
-  cpu_idle              = false # CPU toujours alloué - requis pour le thread streaming pull Pub/Sub
+  cpu_idle              = true # ✅ Comportement CPU par défaut Cloud Run (throttling hors requêtes)
 
-  memory = "1Gi"
-  cpu    = "1"
+  memory = "512Mi"
+  cpu    = "0.5"
 
   env_vars = {
     SPRING_PROFILES_ACTIVE  = "dev"
@@ -653,7 +658,7 @@ module "partner_dashboard" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false
-    min_instances         = 0
+  min_instances         = 0
 
   env_vars = {
     ENV          = var.frontend_env
@@ -684,7 +689,7 @@ module "admin_panel" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = false
-    min_instances         = 0
+  min_instances         = 0
 
   env_vars = {
     ENV                   = var.frontend_env
@@ -724,5 +729,96 @@ resource "google_cloud_scheduler_job" "api_gateway_warmup_dev" {
   http_target {
     uri         = "${module.api_gateway.uri}/actuator/health"
     http_method = "GET"
+  }
+}
+
+# ==============================================================================
+# CLOUD SCHEDULER — NOTIFICATION SERVICE WARM-UP (DEV)
+# Réveille périodiquement notification-service pour permettre au subscriber
+# Pub/Sub pull de traiter les messages même avec min_instances = 0.
+# ==============================================================================
+resource "google_cloud_scheduler_job" "notification_service_warmup_dev" {
+  depends_on = [module.common, module.notification_service]
+
+  name             = "notification-service-warmup-dev"
+  description      = "Periodic GET /actuator/health on notification-service to wake up pull subscriber (DEV)"
+  schedule         = var.notification_warmup_schedule
+  time_zone        = "UTC"
+  attempt_deadline = "30s"
+  region           = var.region
+  project          = var.project_id
+
+  http_target {
+    uri         = "${module.notification_service.uri}/actuator/health"
+    http_method = "GET"
+  }
+}
+
+# ==============================================================================
+# PUB/SUB PUSH PREP (DEV) - PRÉPARATION DE MIGRATION SANS CHANGER LE CODE APP
+# ------------------------------------------------------------------------------
+# Cette section prépare l'infra pour un futur mode Push:
+# - autorise Pub/Sub service agent à invoquer notification-service
+# - autorise Pub/Sub service agent à signer un OIDC token via runtime SA
+# - crée OPTIONNELLEMENT une subscription push (désactivée par défaut)
+#
+# ⚠️ Tant qu'aucun endpoint applicatif compatible Pub/Sub push n'existe,
+# garder notification_push_subscription_enabled = false.
+# ==============================================================================
+resource "google_cloud_run_v2_service_iam_member" "notification_service_pubsub_invoker_dev" {
+  depends_on = [module.common, module.notification_service]
+
+  project  = var.project_id
+  location = var.region
+  name     = module.notification_service.name
+
+  role   = "roles/run.invoker"
+  member = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
+resource "google_service_account_iam_member" "notification_push_oidc_token_creator_dev" {
+  depends_on = [module.common, module.iam]
+
+  service_account_id = "projects/${var.project_id}/serviceAccounts/${module.iam.cloudrun_runtime_sa_email}"
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
+resource "google_pubsub_subscription" "notification_push_prep_dev" {
+  count = var.notification_push_subscription_enabled ? 1 : 0
+
+  depends_on = [
+    module.common,
+    module.pubsub,
+    google_cloud_run_v2_service_iam_member.notification_service_pubsub_invoker_dev,
+    google_service_account_iam_member.notification_push_oidc_token_creator_dev
+  ]
+
+  project = var.project_id
+  name    = var.notification_push_subscription_name
+  topic   = "projects/${var.project_id}/topics/${var.notification_push_source_topic}"
+
+  ack_deadline_seconds       = 30
+  message_retention_duration = "604800s"
+  retain_acked_messages      = false
+
+  retry_policy {
+    minimum_backoff = "10s"
+    maximum_backoff = "600s"
+  }
+
+  push_config {
+    push_endpoint = "${module.notification_service.uri}${var.notification_push_endpoint_path}"
+    oidc_token {
+      service_account_email = module.iam.cloudrun_runtime_sa_email
+      audience              = module.notification_service.uri
+    }
+  }
+
+  labels = {
+    env        = var.environment
+    managed-by = "terraform"
+    project    = "speedline"
+    purpose    = "push-prep"
   }
 }

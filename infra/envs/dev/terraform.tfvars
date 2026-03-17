@@ -35,6 +35,11 @@ vpc_connector_cidr = "10.8.0.0/28"
 redis_instance_name = "speedline-redis-shared"
 
 # ------------------------------------------------------------------------------
+# Notification service runtime cost tuning (DEV)
+# ------------------------------------------------------------------------------
+notification_warmup_schedule = "*/10 * * * *"
+
+# ------------------------------------------------------------------------------
 # Images (sera écrasé automatiquement par images.auto.tfvars.json en CI)
 # Ne pas modifier manuellement en pipeline
 # ------------------------------------------------------------------------------

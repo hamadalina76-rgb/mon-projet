@@ -246,3 +246,36 @@ variable "mongo_allowed_cidr" {
   type        = string
   default     = "0.0.0.0/0"
 }
+
+# ------------------------------------------------------------------------------
+# Notification service - DEV cost/runtime tuning & push migration prep
+# ------------------------------------------------------------------------------
+variable "notification_warmup_schedule" {
+  description = "Cron Cloud Scheduler pour réveiller notification-service en DEV"
+  type        = string
+  default     = "*/10 * * * *"
+}
+
+variable "notification_push_subscription_enabled" {
+  description = "Active la subscription Pub/Sub push de préparation (DEV). Laisser false tant qu'aucun endpoint push compatible n'existe côté app."
+  type        = bool
+  default     = false
+}
+
+variable "notification_push_subscription_name" {
+  description = "Nom de la subscription push de préparation (DEV)"
+  type        = string
+  default     = "notification-push-dev"
+}
+
+variable "notification_push_source_topic" {
+  description = "Topic source pour la subscription push de préparation (DEV)"
+  type        = string
+  default     = "email-events"
+}
+
+variable "notification_push_endpoint_path" {
+  description = "Path HTTP du endpoint Cloud Run qui recevra les push Pub/Sub (doit exister côté app avant activation)."
+  type        = string
+  default     = "/pubsub/push"
+}

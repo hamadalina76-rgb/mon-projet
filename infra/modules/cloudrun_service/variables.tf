@@ -69,8 +69,8 @@ variable "cpu" {
   default     = "1"
 
   validation {
-    condition     = contains(["1", "2", "4"], var.cpu)
-    error_message = "CPU autorisé : 1, 2 ou 4."
+    condition     = contains(["0.5", "1", "2", "4"], var.cpu)
+    error_message = "CPU autorisé : 0.5, 1, 2 ou 4."
   }
 }
 
