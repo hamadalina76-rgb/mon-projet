@@ -216,10 +216,14 @@ default:
     - export READY_REVISION="$(gcloud run services describe "$SERVICE_NAME" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" --format='value(status.latestReadyRevisionName)' || true)"
     - |
       PUBSUB_EMULATOR_EXCLUDE="com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
+      CLOUDRUN_REMOVE_ENV_VARS="PUBSUB_EMULATOR_HOST,SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST"
       if [ "$SERVICE_NAME" = "partner-service" ] || [ "$SERVICE_NAME" = "notification-service" ]; then
         CLOUDRUN_UPDATE_ENV_VARS="SPRING_PROFILES_ACTIVE=dev,SPRING_AUTOCONFIGURE_EXCLUDE=${PUBSUB_EMULATOR_EXCLUDE}"
       else
         CLOUDRUN_UPDATE_ENV_VARS="SPRING_PROFILES_ACTIVE=dev"
+      fi
+      if [ "$SERVICE_NAME" = "notification-service" ]; then
+        CLOUDRUN_REMOVE_ENV_VARS="${CLOUDRUN_REMOVE_ENV_VARS},SPRING_MAIN_LAZY_INITIALIZATION"
       fi
     - |
       if [ -n "$READY_REVISION" ]; then
@@ -232,7 +236,7 @@ default:
             --region "$GCP_REGION" \
             --project "$GCP_PROJECT_ID" \
             --update-env-vars "$CLOUDRUN_UPDATE_ENV_VARS" \
-            --remove-env-vars PUBSUB_EMULATOR_HOST,SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST \
+            --remove-env-vars "$CLOUDRUN_REMOVE_ENV_VARS" \
             --quiet
         else
           jq '
@@ -241,6 +245,11 @@ default:
             | del(.PUBSUB_EMULATOR_HOST, .SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST)
             | if env.SERVICE_NAME == "partner-service" or env.SERVICE_NAME == "notification-service" then
                 .SPRING_AUTOCONFIGURE_EXCLUDE = "com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
+              else
+                .
+              end
+            | if env.SERVICE_NAME == "notification-service" then
+                del(.SPRING_MAIN_LAZY_INITIALIZATION)
               else
                 .
               end
@@ -259,7 +268,7 @@ default:
           --region "$GCP_REGION" \
           --project "$GCP_PROJECT_ID" \
           --update-env-vars "$CLOUDRUN_UPDATE_ENV_VARS" \
-          --remove-env-vars PUBSUB_EMULATOR_HOST,SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST \
+          --remove-env-vars "$CLOUDRUN_REMOVE_ENV_VARS" \
           --quiet
       fi
 

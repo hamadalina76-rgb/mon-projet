@@ -661,8 +661,10 @@ module "notification_service" {
 
     JAVA_TOOL_OPTIONS = "-Dspring.cloud.bootstrap.enabled=false -Dspring.cloud.config.enabled=false"
 
-    SPRING_MAIN_LAZY_INITIALIZATION = "true"
-    SPRING_CLOUD_DISCOVERY_ENABLED  = "false"
+    # SPRING_MAIN_LAZY_INITIALIZATION intentionnellement absent :
+    # les PubSubInboundChannelAdapter sont des beans Lifecycle et ne démarrent
+    # jamais si lazy=true (DefaultLifecycleProcessor ne force pas leur init).
+    SPRING_CLOUD_DISCOVERY_ENABLED = "false"
   }
 
   labels = {

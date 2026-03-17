@@ -80,6 +80,13 @@ spring:
         enabled: true
 
       pubsub:
+        # ----------------------------------------------------------------------
+        # emulator-host n'est PAS défini ici intentionnellement.
+        # Le mode emulator local passe uniquement par la variable
+        # SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST (ou via PUBSUB_EMULATOR_HOST
+        # mappé explicitement dans le launch local).
+        # En DEV Cloud Run on utilise le vrai Pub/Sub + ADC du service account.
+        # ----------------------------------------------------------------------
         subscriber:
           # --------------------------------------------------------------------
           # Paramètres de consommation Pub/Sub en DEV.
