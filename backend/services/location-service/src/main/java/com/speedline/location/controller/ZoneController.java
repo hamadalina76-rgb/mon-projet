@@ -150,6 +150,39 @@ public class ZoneController {
     }
 
     /**
+     * Vérifier via PostGIS si un point est dans une zone.
+     * Si zoneId est fourni, teste uniquement cette zone.
+     * Sinon, cherche la première zone contenant le point.
+     */
+    @PostMapping("/check")
+    public ResponseEntity<com.speedline.location.dto.ZoneCheckResponse> checkPointInAnyZone(
+            @RequestBody com.speedline.location.dto.ZoneCheckRequest request
+    ) {
+        boolean inZone;
+        Long zoneId = null;
+
+        if (request.zoneId() != null) {
+            inZone = zoneService.isPointInZone(
+                    request.zoneId(),
+                    BigDecimal.valueOf(request.lat()),
+                    BigDecimal.valueOf(request.lng())
+            );
+            zoneId = inZone ? request.zoneId() : null;
+        } else {
+            ZoneDTO zone = zoneService.findZoneForPoint(
+                    BigDecimal.valueOf(request.lat()),
+                    BigDecimal.valueOf(request.lng())
+            );
+            inZone = zone != null;
+            if (zone != null) {
+                zoneId = zone.getId();
+            }
+        }
+
+        return ResponseEntity.ok(new com.speedline.location.dto.ZoneCheckResponse(inZone, zoneId));
+    }
+
+    /**
      * Trouver la zone pour un point
      */
     @GetMapping("/find")

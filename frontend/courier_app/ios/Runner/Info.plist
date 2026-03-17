@@ -45,5 +45,16 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SpeedLine utilise votre position pour vous proposer les livraisons proches.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SpeedLine suit votre position en arriere-plan pendant votre tournee pour maintenir le dispatch en temps reel.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>La localisation en arriere-plan est necessaire pour continuer le suivi meme ecran eteint.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>fetch</string>
+	</array>
 </dict>
 </plist>

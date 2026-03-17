@@ -30,6 +30,7 @@ dependencies:
   
   # LOCATION & MAPS
   geolocator: ^14.0.2
+  battery_plus: ^7.0.0
   google_maps_flutter: ^2.5.3
   flutter_polyline_points: ^3.1.0
   geocoding: ^4.0.0

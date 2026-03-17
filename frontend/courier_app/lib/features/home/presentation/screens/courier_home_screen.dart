@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../providers/tracking_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 
-class CourierHomeScreen extends StatelessWidget {
+class CourierHomeScreen extends ConsumerWidget {
   const CourierHomeScreen({super.key, this.canAccessApp = true});
 
   final bool canAccessApp;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final trackingState = ref.watch(trackingProvider);
+    final trackingController = ref.read(trackingProvider.notifier);
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SafeArea(
@@ -117,40 +122,92 @@ class CourierHomeScreen extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'You are Offline',
-                                style: TextStyle(
-                                  fontSize: 20.sp,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  trackingState.isOnline ? 'You are Online' : 'You are Offline',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 20.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(height: 8.h),
-                              Text(
-                                'Go online to receive orders',
-                                style: TextStyle(
-                                  fontSize: 14.sp,
-                                  color: Colors.white.withOpacity(0.9),
+                                SizedBox(height: 8.h),
+                                Text(
+                                  trackingState.isOnline
+                                      ? 'Tracking actif, commandes a proximite'
+                                      : 'Go online to receive orders',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 14.sp,
+                                    color: Colors.white.withOpacity(0.9),
+                                  ),
                                 ),
-                              ),
-                            ],
+                                if (trackingState.queuedCount > 0) ...[
+                                  SizedBox(height: 6.h),
+                                  Text(
+                                    '${trackingState.queuedCount} positions en attente reseau',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12.sp,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                                if (trackingState.permissionBlocked) ...[
+                                  SizedBox(height: 6.h),
+                                  Text(
+                                    'Permission localisation refusee: activez-la dans les reglages.',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12.sp,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
+                          SizedBox(width: 10.w),
                           Container(
-                            width: 60.w,
-                            height: 32.h,
+                            width: 78.w,
+                            height: 38.h,
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.3),
                               borderRadius: BorderRadius.circular(20.r),
                             ),
-                            child: Switch(
-                              value: false,
-                              onChanged: canAccessApp ? (value) {} : null,
-                              activeColor: Colors.green,
-                              inactiveThumbColor: Colors.white,
-                              inactiveTrackColor: Colors.transparent,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Switch(
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                value: trackingState.isOnline,
+                                onChanged: canAccessApp && !trackingState.isBusy && !trackingState.permissionBlocked
+                                    ? (value) async {
+                                        await trackingController.setOnline(
+                                          context,
+                                          value,
+                                          inDelivery: false,
+                                        );
+                                        final message = ref.read(trackingProvider).blockingMessage;
+                                        if (message != null && context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text(message)),
+                                          );
+                                        }
+                                      }
+                                    : null,
+                                activeTrackColor: const Color(0xFFFFCDD2),
+                                activeThumbColor: const Color(0xFFD32F2F),
+                                inactiveThumbColor: Colors.white,
+                                inactiveTrackColor: Colors.transparent,
+                              ),
                             ),
                           ),
                         ],
@@ -159,6 +216,11 @@ class CourierHomeScreen extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 32.h),
+                if (trackingState.isBusy)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 12.h),
+                    child: const LinearProgressIndicator(minHeight: 3),
+                  ),
                 // Today's Summary
                 Opacity(
                   opacity: canAccessApp ? 1 : 0.5,

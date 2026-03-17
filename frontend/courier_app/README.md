@@ -16,6 +16,70 @@ Application de livraison dédiée aux coursiers permettant de:
 
 ---
 
+## 🛰️ Tracking GPS temps réel (WebSocket)
+
+### Services impliqués
+
+- `lib/services/websocket_service.dart`
+  - Gère la connexion WebSocket générique.
+  - Utilise `RuntimeConfig.wsUrl` (par défaut `ws://localhost:8080`) + un `path` (par ex. `/ws/location`).
+  - Ajoute le JWT comme paramètre de query `?token=<access_token>` (limitation des headers sur mobile).
+  - Envoie des messages au format **JSON** (via `jsonEncode`).
+
+- `lib/services/background_location_service.dart`
+  - Utilise Geolocator pour écouter les positions GPS.
+  - Toutes les 5–10 secondes, envoie vers le backend:
+
+    ```json
+    {
+      "type": "POSITION_UPDATE",
+      "payload": {
+        "lat": <double>,
+        "lng": <double>,
+        "accuracy": <double?>,
+        "speed": <double?>,
+        "heading": <double?>,
+        "batteryLevel": <int?>,
+        "timestamp": <ISO8601>
+      }
+    }
+    ```
+
+  - Gère l’ouverture / fermeture propre du WebSocket.
+
+### Utilisation dans l’app
+
+1. **Récupérer le JWT**  
+   Via `AuthLocalDataSource` (clé `access_token`) :
+
+   ```dart
+   final authLocal = AuthLocalDataSourceImpl(storage: const FlutterSecureStorage());
+   final jwt = await authLocal.getAccessToken();
+   ```
+
+2. **Créer les services** (via DI, GetIt, provider…) :
+
+   ```dart
+   final wsService = WebSocketService();
+   final bgLocationService = BackgroundLocationService(webSocketService: wsService);
+   ```
+
+3. **Démarrer le tracking** quand le livreur est en cours de livraison :
+
+   ```dart
+   await bgLocationService.startTracking(jwt);
+   ```
+
+4. **Arrêter le tracking** à la fin de la course ou à la déconnexion :
+
+   ```dart
+   await bgLocationService.stopTracking();
+   ```
+
+> Le backend met ensuite à jour Redis et diffuse la position aux clients de suivi via `ws://host/ws/tracking/{orderId}`.
+
+---
+
 ## 🏗️ Architecture
 
 ### Clean Architecture (Feature-First)

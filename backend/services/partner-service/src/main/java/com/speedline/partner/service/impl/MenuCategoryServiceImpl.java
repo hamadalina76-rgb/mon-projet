@@ -51,7 +51,7 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
         log.debug("getCategories partnerId={}", partnerId);
         return menuCategoryRepository.findByPartnerIdOrderByPositionAsc(partnerId)
                 .stream()
-                .map(cat -> toResponseWithCount(cat, partnerId))
+                .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -226,23 +226,6 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
                 .build();
     }
 
-    private MenuCategoryResponse toResponseWithCount(MenuCategory cat, Long partnerId) {
-        long productCount = productRepository
-                .countByPartnerIdAndCategoryIdAndStatusNot(partnerId, cat.getId(), ProductStatus.DELETED);
-        return MenuCategoryResponse.builder()
-                .id(cat.getId())
-                .partnerId(cat.getPartnerId())
-                .name(cat.getName())
-                .description(cat.getDescription())
-                .imageUrl(cat.getImageUrl())
-                .position(cat.getPosition())
-                .isVisible(cat.getIsVisible())
-                .productCount(productCount)
-                .createdAt(cat.getCreatedAt())
-                .updatedAt(cat.getUpdatedAt())
-                .build();
-    }
-
     private ProductResponse toProductResponse(Product p) {
         List<OptionGroupResponse> optionGroups = productOptionRepository
                 .findByProductIdAndIsActiveTrueOrderByDisplayOrderAsc(p.getId())
@@ -291,10 +274,6 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
                 .optionGroups(optionGroups)
                 .createdAt(p.getCreatedAt())
                 .updatedAt(p.getUpdatedAt())
-                .promotionLabel(p.getPromotionLabel())
-                .promotionEndDate(p.getPromotionEndDate())
-                .originalPrice(p.getOriginalPrice())
-                .discountPercentage(p.getDiscountPercentage())
                 .build();
     }
 

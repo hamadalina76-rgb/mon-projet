@@ -26,6 +26,10 @@ spring:
     openfeign:
       circuitbreaker:
         enabled: true
+    gcp:
+      project-id: ${GCP_PROJECT_ID:speedline-local}
+      pubsub:
+        emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8090}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
