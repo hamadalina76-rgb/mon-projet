@@ -623,10 +623,11 @@ module "notification_service" {
   cpu    = "1"
 
   env_vars = {
-    SPRING_PROFILES_ACTIVE  = "dev"
-    SPRING_APPLICATION_NAME = "notification-service"
-    EUREKA_ENABLED          = "false"
-    GCP_PROJECT_ID          = var.project_id
+    SPRING_PROFILES_ACTIVE       = "dev"
+    SPRING_APPLICATION_NAME      = "notification-service"
+    EUREKA_ENABLED               = "false"
+    GCP_PROJECT_ID               = var.project_id
+    SPRING_AUTOCONFIGURE_EXCLUDE = "com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
 
     # MongoDB Atlas URI injectée depuis GitLab CI/CD (TF_VAR_mongodb_uri)
     MONGODB_URI = var.mongodb_uri

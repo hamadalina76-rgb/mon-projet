@@ -80,6 +80,13 @@ spring:
         enabled: true
 
       pubsub:
+        # --------------------------------------------------------------------
+        # IMPORTANT Cloud Run DEV:
+        # application.yml active l'emulator en local via localhost:8090.
+        # En profil dev Cloud Run, on doit explicitement écraser cette valeur
+        # sinon le subscriber essaie de parler à un emulator inexistant.
+        # --------------------------------------------------------------------
+        emulator-host: ${PUBSUB_EMULATOR_HOST:}
         subscriber:
           # --------------------------------------------------------------------
           # Paramètres de consommation Pub/Sub en DEV.
