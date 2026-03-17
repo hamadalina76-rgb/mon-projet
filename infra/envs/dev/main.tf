@@ -199,7 +199,10 @@ module "pubsub" {
 
   topics = [
     "auth-events",
-    "email-events"
+    "email-events",
+    "partner-events",
+    "partner-product-stock",
+    "partner-promotion-ending"
   ]
 
   dlq_topic = "speedline-dlq"
@@ -215,6 +218,30 @@ module "pubsub" {
 
     "email-events-sub" = {
       topic                 = "email-events"
+      ack_deadline_seconds  = 30
+      max_delivery_attempts = 5
+      minimum_backoff       = "10s"
+      maximum_backoff       = "600s"
+    }
+
+    "partner-events-notification-sub" = {
+      topic                 = "partner-events"
+      ack_deadline_seconds  = 30
+      max_delivery_attempts = 5
+      minimum_backoff       = "10s"
+      maximum_backoff       = "600s"
+    }
+
+    "partner-product-stock-notification-sub" = {
+      topic                 = "partner-product-stock"
+      ack_deadline_seconds  = 30
+      max_delivery_attempts = 5
+      minimum_backoff       = "10s"
+      maximum_backoff       = "600s"
+    }
+
+    "partner-promotion-ending-notification-sub" = {
+      topic                 = "partner-promotion-ending"
       ack_deadline_seconds  = 30
       max_delivery_attempts = 5
       minimum_backoff       = "10s"
