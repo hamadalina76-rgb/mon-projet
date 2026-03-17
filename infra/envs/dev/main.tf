@@ -614,10 +614,10 @@ module "notification_service" {
   service_account_email = module.iam.cloudrun_runtime_sa_email
   allow_unauthenticated = true
   inject_cloud_run_port = true
-  min_instances         = 0 # ✅ Scale to zero pour réduire le coût DEV
+  min_instances         = 1 # ✅ Pub/Sub PULL nécessite une instance active en continu
   max_instances         = 1 # ✅ Limite coût/empreinte sur le service de notification en DEV
   cpu_boost             = true
-  cpu_idle              = true # ✅ Comportement CPU par défaut Cloud Run (throttling hors requêtes)
+  cpu_idle              = false # ✅ CPU always allocated pour thread subscriber Pub/Sub en arrière-plan
 
   memory = "512Mi"
   cpu    = "1"
@@ -755,15 +755,10 @@ resource "google_cloud_scheduler_job" "notification_service_warmup_dev" {
 }
 
 # ==============================================================================
-# PUB/SUB PUSH PREP (DEV) - PRÉPARATION DE MIGRATION SANS CHANGER LE CODE APP
-# ------------------------------------------------------------------------------
-# Cette section prépare l'infra pour un futur mode Push:
-# - autorise Pub/Sub service agent à invoquer notification-service
-# - autorise Pub/Sub service agent à signer un OIDC token via runtime SA
-# - crée OPTIONNELLEMENT une subscription push (désactivée par défaut)
-#
-# ⚠️ Tant qu'aucun endpoint applicatif compatible Pub/Sub push n'existe,
-# garder notification_push_subscription_enabled = false.
+# PUB/SUB PUSH — IAM (DEV)
+# Allows Pub/Sub service agent to invoke notification-service Cloud Run
+# and to generate OIDC tokens using the runtime service account.
+# These are required for authenticated push subscriptions.
 # ==============================================================================
 resource "google_cloud_run_v2_service_iam_member" "notification_service_pubsub_invoker_dev" {
   depends_on = [module.common, module.notification_service]
@@ -784,6 +779,17 @@ resource "google_service_account_iam_member" "notification_push_oidc_token_creat
   member             = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }
 
+# ==============================================================================
+# PUB/SUB PUSH PREP (DEV) - PRÉPARATION DE MIGRATION SANS CHANGER LE CODE APP
+# ------------------------------------------------------------------------------
+# Cette section prépare l'infra pour un futur mode Push:
+# - autorise Pub/Sub service agent à invoquer notification-service
+# - autorise Pub/Sub service agent à signer un OIDC token via runtime SA
+# - crée OPTIONNELLEMENT une subscription push (désactivée par défaut)
+#
+# ⚠️ Tant qu'aucun endpoint applicatif compatible Pub/Sub push n'existe,
+# garder notification_push_subscription_enabled = false.
+# ==============================================================================
 resource "google_pubsub_subscription" "notification_push_prep_dev" {
   count = var.notification_push_subscription_enabled ? 1 : 0
 
