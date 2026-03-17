@@ -620,7 +620,7 @@ module "notification_service" {
   cpu_idle              = true # ✅ Comportement CPU par défaut Cloud Run (throttling hors requêtes)
 
   memory = "512Mi"
-  cpu    = "0.5"
+  cpu    = "1"
 
   env_vars = {
     SPRING_PROFILES_ACTIVE  = "dev"
