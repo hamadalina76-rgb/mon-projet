@@ -215,9 +215,9 @@ default:
     - test -n "$IMAGE_URI"
     - export READY_REVISION="$(gcloud run services describe "$SERVICE_NAME" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" --format='value(status.latestReadyRevisionName)' || true)"
     - |
-      PARTNER_EXCLUDE="com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
-      if [ "$SERVICE_NAME" = "partner-service" ]; then
-        CLOUDRUN_UPDATE_ENV_VARS="SPRING_PROFILES_ACTIVE=dev,SPRING_AUTOCONFIGURE_EXCLUDE=${PARTNER_EXCLUDE}"
+      PUBSUB_EMULATOR_EXCLUDE="com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
+      if [ "$SERVICE_NAME" = "partner-service" ] || [ "$SERVICE_NAME" = "notification-service" ]; then
+        CLOUDRUN_UPDATE_ENV_VARS="SPRING_PROFILES_ACTIVE=dev,SPRING_AUTOCONFIGURE_EXCLUDE=${PUBSUB_EMULATOR_EXCLUDE}"
       else
         CLOUDRUN_UPDATE_ENV_VARS="SPRING_PROFILES_ACTIVE=dev"
       fi
@@ -239,7 +239,7 @@ default:
             ([.spec.containers[0].env[]? | select(has("value")) | {(.name): .value}] | add) // {}
             | .SPRING_PROFILES_ACTIVE = "dev"
             | del(.PUBSUB_EMULATOR_HOST, .SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST)
-            | if env.SERVICE_NAME == "partner-service" then
+            | if env.SERVICE_NAME == "partner-service" or env.SERVICE_NAME == "notification-service" then
                 .SPRING_AUTOCONFIGURE_EXCLUDE = "com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
               else
                 .

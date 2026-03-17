@@ -11,7 +11,7 @@
 # - Redis (Memorystore)
 # - VPC Connector (Cloud Run -> Redis)
 # - Pub/Sub (topics + subscriptions + DLQ + IAM)
-# - Cloud Run : eureka-server, config-server, api-gateway, auth-service
+# - Cloud Run : eureka-server, config-server, api-gateway, auth-service ,,
 # ==============================================================================
 
 terraform {
