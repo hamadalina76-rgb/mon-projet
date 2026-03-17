@@ -5,10 +5,19 @@ import 'package:flutter/material.dart';
 class AppColors {
   // Couleurs principales
   static const Color primary = Color(0xFFE63946); // Rouge SpeedLine
+  static const Color primary2 = Color.fromARGB(255, 189, 43, 55);
+
   static const Color primaryDark = Color(0xFFD32F2F);
+
   static const Color secondaryDark = Color.fromARGB(255, 222, 86, 86);
-  static const Color secondary = Color.fromARGB(255, 242, 130, 130); 
-  
+  static const Color secondaryDark2 = Color.fromARGB(212,212, 35, 41);
+
+
+  static const Color secondary = Color.fromARGB(255, 225, 98, 98); 
+  static const Color secondary2 = Color.fromARGB(112, 233, 185, 133); 
+  static const Color secondary3 =Color.fromARGB(255, 230, 134, 134); 
+
+
   // Backgrounds
   static const Color background = Color(0xFFF8F7F7); // Gris très clair rosé
   static const Color surface = Colors.white;
@@ -41,5 +50,6 @@ class AppColors {
   static const Color secondaryGrey = Color(0xFFBDBDBD);
   static const Color grey = Color(0xFF9E9E9E);
   static const Color darkGrey = Color(0xFF424242);
-  
+  static const Color black = Color.fromARGB(255, 0, 0, 0);
+
 }

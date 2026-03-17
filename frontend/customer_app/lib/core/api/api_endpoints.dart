@@ -48,6 +48,10 @@ class ApiEndpoints {
   static const String SEARCH_PARTNERS = '$PARTNER_BASE/search';
   static const String NEARBY_PARTNERS = '$PARTNER_BASE/nearby';
 
+  // ==================== CATEGORIES ====================
+  static const String CATEGORIES = '/v1/categories';
+  static String categoryById(int id) => '$CATEGORIES/$id';
+
   // ==================== PRODUCTS ====================
   static const String PRODUCT_BASE = '/products';
   static String productById(String id) => '$PRODUCT_BASE/$id';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/speedline_app_bar.dart';
 
 /// Search Screen
 /// Screen for searching restaurants, dishes, and cuisines
@@ -11,11 +12,8 @@ class SearchScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.translate('search')),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
+      appBar: SpeedlineAppBar(
+        title: l10n.translate('search'),
       ),
       body: Center(
         child: Column(

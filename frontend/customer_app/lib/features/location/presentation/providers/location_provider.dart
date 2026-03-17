@@ -118,6 +118,38 @@ class LocationNotifier extends StateNotifier<LocationState> {
     }
   }
 
+  /// Selects a saved address as the active delivery location.
+  /// Stores its coordinates and label in Hive so nearby-partners searches
+  /// use the exact position the user chose, not the GPS position.
+  Future<void> selectAddress({
+    required double latitude,
+    required double longitude,
+    required String label,
+    required AddressType type,
+    String formattedAddress = '',
+    String street = '',
+    String city = '',
+  }) async {
+    final location = SavedLocation(
+      latitude: latitude,
+      longitude: longitude,
+      formattedAddress: formattedAddress.isNotEmpty ? formattedAddress : label,
+      street: street,
+      city: city,
+      savedAt: DateTime.now(),
+      addressType: type,
+      customLabel: label,
+    );
+    try {
+      final box = await Hive.openBox<String>(_kLocationBoxName);
+      await box.put(_kCurrentLocationKey, location.toJson());
+    } catch (_) {}
+    state = state.copyWith(
+      status: LocationStatus.success,
+      location: location,
+    );
+  }
+
   /// Tags the current saved location with an address label and type.
   /// Called after the user successfully saves a named address so the
   /// explore screen header immediately reflects the chosen name.

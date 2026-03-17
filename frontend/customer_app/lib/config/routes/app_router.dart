@@ -20,6 +20,7 @@ import '../../features/profile/presentation/screens/address_details_screen.dart'
 import '../../features/profile/presentation/screens/addresses_screen.dart';
 import '../../features/location/data/models/saved_location.dart';
 import '../../features/profile/data/models/address_model.dart';
+import '../../features/partners/presentation/screens/nearby_partners_screen.dart';
 import 'route_names.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -145,7 +146,13 @@ final appRouter = GoRouter(
         );
       },
     ),
-    
+
+    // Partners
+    GoRoute(
+      path: RouteNames.nearbyPartners,
+      builder: (context, state) => const NearbyPartnersScreen(),
+    ),
+
     // Main App Screens with Bottom Navigation
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
