@@ -89,11 +89,15 @@ spring:
 
       pubsub:
         # ----------------------------------------------------------------------
-        # emulator-host n'est PAS défini ici intentionnellement.
-        # Le mode emulator local passe uniquement par la variable
-        # SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST (ou via PUBSUB_EMULATOR_HOST
-        # mappé explicitement dans le launch local).
-        # En DEV Cloud Run on utilise le vrai Pub/Sub + ADC du service account.
+        # Override explicite en profile dev pour neutraliser tout héritage depuis
+        # application.yml (qui garde localhost:8090 pour le workflow local).
+        # ----------------------------------------------------------------------
+        emulator-host: ""
+
+        # ----------------------------------------------------------------------
+        # En DEV Cloud Run on force l'usage du vrai Pub/Sub + ADC du service
+        # account. Le mode emulator reste réservé au local via application.yml
+        # (ou variables env locales explicites).
         # ----------------------------------------------------------------------
         subscriber:
           # --------------------------------------------------------------------

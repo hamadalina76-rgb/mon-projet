@@ -22,8 +22,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Configuration for GCP Pub/Sub topics and subscriptions.
- * Creates topics/subscriptions if they don't exist (works with emulator and real GCP).
+ * Configuration for GCP Pub/Sub emulator bootstrap.
+ *
+ * Runtime infrastructure in Cloud Run (topics/subscriptions/IAM) is managed by Terraform.
+ * This class only initializes local emulator resources when emulator host is explicitly provided.
  */
 @Configuration
 @Slf4j
@@ -32,30 +34,58 @@ public class PubSubConfig {
     @Value("${spring.cloud.gcp.project-id:speedline-local}")
     private String projectId;
 
-    @Value("${spring.cloud.gcp.pubsub.emulator-host:}")
+    @Value("${PUBSUB_EMULATOR_HOST:${SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST:}}")
     private String emulatorHost;
 
     @PostConstruct
     public void initializePubSub() {
         try {
-            log.info("Initializing Pub/Sub topics and subscriptions for project: {}", projectId);
-            
-            if (emulatorHost != null && !emulatorHost.isEmpty()) {
-                log.info("Using Pub/Sub emulator at: {}", emulatorHost);
-                createTopicsAndSubscriptionsForEmulator();
-            } else {
-                log.info("Using real GCP Pub/Sub (no emulator)");
-                createTopicsAndSubscriptions();
+            log.info("Initializing Pub/Sub bootstrap for project: {}", projectId);
+
+            if (!isEmulatorExplicitlyConfigured()) {
+                log.info("PUBSUB_EMULATOR_HOST not set; skipping emulator bootstrap. Using real GCP Pub/Sub managed by Terraform.");
+                return;
             }
-            
-            log.info("Pub/Sub initialization completed successfully");
+
+            log.info("Using Pub/Sub emulator at: {}", emulatorHost);
+            createTopicsAndSubscriptionsForEmulator();
+            log.info("Pub/Sub emulator bootstrap completed successfully");
         } catch (Exception e) {
-            log.warn("Failed to initialize Pub/Sub (may already exist or emulator not running): {}", e.getMessage());
+            log.warn("Failed to initialize Pub/Sub emulator bootstrap: {}", e.getMessage());
+        }
+    }
+
+    private boolean isEmulatorExplicitlyConfigured() {
+        if (emulatorHost == null || emulatorHost.isBlank()) {
+            return false;
+        }
+
+        if (!emulatorHost.contains(":")) {
+            log.warn("Ignoring invalid PUBSUB_EMULATOR_HOST '{}': expected host:port", emulatorHost);
+            return false;
+        }
+
+        String[] hostPort = emulatorHost.split(":", 2);
+        if (hostPort[0].isBlank() || hostPort[1].isBlank()) {
+            log.warn("Ignoring invalid PUBSUB_EMULATOR_HOST '{}': expected host:port", emulatorHost);
+            return false;
+        }
+
+        try {
+            int port = Integer.parseInt(hostPort[1]);
+            if (port <= 0 || port > 65535) {
+                log.warn("Ignoring invalid PUBSUB_EMULATOR_HOST '{}': port out of range", emulatorHost);
+                return false;
+            }
+            return true;
+        } catch (NumberFormatException ex) {
+            log.warn("Ignoring invalid PUBSUB_EMULATOR_HOST '{}': non-numeric port", emulatorHost);
+            return false;
         }
     }
 
     private void createTopicsAndSubscriptionsForEmulator() throws Exception {
-        String[] hostPort = emulatorHost.split(":");
+        String[] hostPort = emulatorHost.split(":", 2);
         String host = hostPort[0];
         int port = Integer.parseInt(hostPort[1]);
 
@@ -82,34 +112,6 @@ public class PubSubConfig {
 
         try (TopicAdminClient topicAdminClient = TopicAdminClient.create(topicAdminSettings);
              SubscriptionAdminClient subscriptionAdminClient = SubscriptionAdminClient.create(subscriptionAdminSettings)) {
-
-            // Create partner-events topic and subscription
-            createTopicAndSubscription(
-                topicAdminClient,
-                subscriptionAdminClient,
-                "partner-events",
-                "partner-events-notification-sub"
-            );
-            // Create partner-product-stock topic and subscription (stock alerts)
-            createTopicAndSubscription(
-                topicAdminClient,
-                subscriptionAdminClient,
-                "partner-product-stock",
-                "partner-product-stock-notification-sub"
-            );
-            // Create partner-promotion-ending topic and subscription (promo ending in 3 days)
-            createTopicAndSubscription(
-                topicAdminClient,
-                subscriptionAdminClient,
-                "partner-promotion-ending",
-                "partner-promotion-ending-notification-sub"
-            );
-        }
-    }
-
-    private void createTopicsAndSubscriptions() throws Exception {
-        try (TopicAdminClient topicAdminClient = TopicAdminClient.create();
-             SubscriptionAdminClient subscriptionAdminClient = SubscriptionAdminClient.create()) {
 
             // Create partner-events topic and subscription
             createTopicAndSubscription(

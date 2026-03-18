@@ -68,6 +68,14 @@ resource "google_project_iam_member" "runtime_artifact_reader" {
   member  = "serviceAccount:${google_service_account.cloudrun_runtime.email}"
 }
 
+# Permet au runtime Cloud Run de consommer les APIs activées du projet
+# (notamment Pub/Sub) avec une identité de service enregistrée.
+resource "google_project_iam_member" "runtime_serviceusage_consumer" {
+  project = var.project_id
+  role    = "roles/serviceusage.serviceUsageConsumer"
+  member  = "serviceAccount:${google_service_account.cloudrun_runtime.email}"
+}
+
 # -------------------------------------------------------------------
 # ⚠️  IMPORTANT : Les rôles suivants sont gérés MANUELLEMENT via gcloud
 # car le CI SA n'a pas resourcemanager.projects.setIamPolicy
