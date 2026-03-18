@@ -69,8 +69,8 @@ variable "cpu" {
   default     = "1"
 
   validation {
-    condition     = contains(["1", "2", "4"], var.cpu)
-    error_message = "CPU autorisé : 1, 2 ou 4."
+    condition     = contains(["0.5", "1", "2", "4"], var.cpu)
+    error_message = "CPU autorisé : 0.5, 1, 2 ou 4."
   }
 }
 
@@ -150,4 +150,21 @@ variable "startup_probe_timeout" {
   description = "Timeout en secondes pour le startup probe Cloud Run"
   type        = number
   default     = 240
+}
+
+# ✅ Startup CPU boost: alloue davantage de CPU au démarrage pour réduire le cold start
+variable "cpu_boost" {
+  description = "Active le CPU boost au démarrage du container (réduit le cold start)"
+  type        = bool
+  default     = false
+}
+
+# ✅ CPU always allocated : désactive le throttling CPU quand idle
+# Nécessaire pour les services avec des background threads (ex: Pub/Sub streaming pull)
+# false = CPU toujours alloué (recommandé pour Pub/Sub pull + min_instances >= 1)
+# true  = CPU throttlé hors requêtes (défaut Cloud Run - économise des ressources)
+variable "cpu_idle" {
+  description = "Si true, le CPU est throttlé quand le container ne traite pas de requêtes. Mettre false pour les services avec threads background (Pub/Sub streaming pull)."
+  type        = bool
+  default     = true
 }

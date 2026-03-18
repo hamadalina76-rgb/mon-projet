@@ -13,6 +13,9 @@ spring:
   application:
     name: partner-service
 
+  main:
+    lazy-initialization: true  # ✅ Réduit le cold start
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:5432/speedline_partners}
     username: ${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:postgres}}
@@ -44,6 +47,14 @@ spring:
       enabled: false
     bootstrap:
       enabled: false
+    openfeign:
+      client:
+        config:
+          # Feign direct Cloud Run URL — Eureka est désactivé en DEV.
+          # Sans cette URL, createPartnerFromAuth ne peut pas appeler auth-service
+          # pour mettre à jour user.partnerId (PUT /internal/users/{id}/partner-id).
+          auth-service:
+            url: ${AUTH_SERVICE_URL:https://auth-service-392205979525.europe-west1.run.app}
     gcp:
       project-id: ${GCP_PROJECT_ID:speedline-dev}
       sql:

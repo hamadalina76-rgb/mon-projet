@@ -26,6 +26,9 @@ spring:
     # Nom du microservice dans l'écosystème Spring / logs / observabilité
     name: notification-service
 
+  main:
+    lazy-initialization: false
+
   data:
     mongodb:
       # ----------------------------------------------------------------------
@@ -77,6 +80,20 @@ spring:
         enabled: true
 
       pubsub:
+        # ----------------------------------------------------------------------
+        # Override explicite en profile dev pour neutraliser tout héritage depuis
+        # application.yml (qui garde localhost:8090 pour le workflow local).
+        # IMPORTANT: dans Spring Cloud GCP, toute valeur non nulle force le mode
+        # emulator (NoCredentialsProvider). On met explicitement "false" pour
+        # désactiver proprement l'emulator en DEV Cloud Run.
+        # ----------------------------------------------------------------------
+        emulator-host: "false"
+
+        # ----------------------------------------------------------------------
+        # En DEV Cloud Run on force l'usage du vrai Pub/Sub + ADC du service
+        # account. Le mode emulator reste réservé au local via application.yml
+        # (ou variables env locales explicites).
+        # ----------------------------------------------------------------------
         subscriber:
           # --------------------------------------------------------------------
           # Paramètres de consommation Pub/Sub en DEV.

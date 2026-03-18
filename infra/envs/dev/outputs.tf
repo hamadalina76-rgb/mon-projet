@@ -66,16 +66,6 @@ output "admin_panel_url" {
   description = "URL Cloud Run Admin Panel"
 }
 
-output "courier_app_url" {
-  value       = module.courier_app.uri
-  description = "URL Cloud Run Courier App (Flutter Web)"
-}
-
-output "customer_app_url" {
-  value       = module.customer_app.uri
-  description = "URL Cloud Run Customer App (Flutter Web)"
-}
-
 output "mongo_atlas_project_id" {
   value       = module.mongo_atlas.atlas_project_id
   description = "MongoDB Atlas project ID used by dev env"
@@ -84,4 +74,19 @@ output "mongo_atlas_project_id" {
 output "mongo_atlas_cluster_name" {
   value       = module.mongo_atlas.cluster_name
   description = "MongoDB Atlas cluster name used by dev env"
+}
+
+output "notification_warmup_schedule" {
+  description = "Cron schedule currently used by notification-service warm-up job (DEV)"
+  value       = var.notification_warmup_schedule
+}
+
+output "notification_push_subscription_enabled" {
+  description = "Whether optional Pub/Sub push prep subscription is enabled in DEV"
+  value       = var.notification_push_subscription_enabled
+}
+
+output "notification_push_subscription_name" {
+  description = "Name of optional Pub/Sub push prep subscription in DEV (empty when disabled)"
+  value       = var.notification_push_subscription_enabled ? google_pubsub_subscription.notification_push_prep_dev[0].name : ""
 }

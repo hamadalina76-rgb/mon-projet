@@ -43,6 +43,7 @@ locals {
     "secretmanager.googleapis.com",        # Secret Manager
     "iamcredentials.googleapis.com",       # IAM Credentials (pour WIF)
     "sts.googleapis.com",                  # Security Token Service (pour WIF)
+    "cloudscheduler.googleapis.com",       # Cloud Scheduler (warm-up pings)
   ]
 }
 

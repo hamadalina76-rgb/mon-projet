@@ -127,13 +127,21 @@ spring:
             # /v1/auth/register => /api/v1/auth/register
             - PrefixPath=/api
 
+        # Internal callback route (inter-service communication)
+        # Partner-service calls PUT /internal/users/{id}/partner-id
+        # No StripPrefix: auth-service exposes /internal/users/** directly
+        - id: auth-service-internal
+          uri: https://auth-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/internal/users/**
+
         # ====================================================================
         # USER SERVICE
         # ====================================================================
         - id: user-service
           uri: https://user-service-392205979525.europe-west1.run.app
           predicates:
-            - Path=/api/v1/admins/**, /api/v1/admin-roles/**, /api/v1/admin/activity-logs/**, /api/users/**, /api/customers/**, /api/couriers/**, /api/addresses/**
+            - Path=/api/v1/admins/**, /api/v1/admin-roles/**, /api/v1/admin/activity-logs/**, /api/v1/admin/customers/**, /api/v1/admin/couriers/**, /api/users/**, /api/customers/**, /api/couriers/**, /api/addresses/**
           filters:
             - StripPrefix=1
             - RoleAuthorizationFilter
@@ -147,6 +155,20 @@ spring:
           uri: https://partner-service-392205979525.europe-west1.run.app
           predicates:
             - Path=/api/partners/**, /api/products/**, /api/categories/**
+          filters:
+            - StripPrefix=1
+            - RoleAuthorizationFilter
+
+        # --------------------------------------------------------------------
+        # PARTNER SERVICE — V1 CATEGORY COMPAT (ADMIN PANEL DEV)
+        # --------------------------------------------------------------------
+        # Frontend admin DEV appelle /api/v1/categories/**
+        # Le backend expose /v1/categories/**
+        # => on retire uniquement /api
+        - id: partner-service-v1-categories
+          uri: https://partner-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/api/v1/categories/**
           filters:
             - StripPrefix=1
             - RoleAuthorizationFilter
@@ -200,6 +222,16 @@ spring:
             - Path=/api/notifications/**, /api/push-tokens/**
           filters:
             - StripPrefix=1
+            - AuthenticationFilter
+
+        # Route legacy temporaire pour partner-dashboard DEV
+        # Certains déploiements injectent apiBaseUrl sans "/api"
+        # => requêtes /notifications/** et /push-tokens/**
+        - id: notification-service-legacy
+          uri: https://notification-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/notifications/**, /push-tokens/**
+          filters:
             - AuthenticationFilter
 
         # ====================================================================

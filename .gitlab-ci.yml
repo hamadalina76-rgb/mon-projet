@@ -1,23 +1,43 @@
 # ==============================================================================
-# CI/CD - SPEEDLINE (DEV) - VERSION CIBLÉE
+# CI/CD - SPEEDLINE (DEV) - VERSION CIBLÉE SANS PIPELINE_GUARD
 # ==============================================================================
 # Objectif :
 # - Build uniquement les services/apps modifiés
 # - Déployer uniquement les services/apps modifiés
-# - Garder Terraform uniquement pour les changements d'infrastructure
+# - Lancer Terraform uniquement pour les changements d'infrastructure
 # - Éviter un terraform apply global pour un simple changement applicatif
 #
-# Remarque :
-# - Cette version utilise rules:changes.
-# - Elle est simple et propre.
-# - Si GitLab déclenche trop de jobs sur les tags dev-*, il faudra ensuite
-#   passer à une logique "detect_changed_services" avec script git diff.
+# Important :
+# - Cette version NE contient PAS de pipeline_guard
+# - Donc GitLab ne créera un pipeline que si au moins un job match ses rules
+# - Si tu modifies seulement .gitlab-ci.yml ou un fichier hors scope, aucun pipeline
+#   ne sera créé, et c'est normal avec cette approche
 # ==============================================================================
 
 stages:
   - build
   - deploy
   - terraform
+
+# ==============================================================================
+# WORKFLOW GLOBAL
+# ==============================================================================
+# Ce bloc autorise la création du pipeline uniquement pour :
+# - les tags infra-*
+# - les tags dev-*
+# - la branche de travail ciblée
+# - les tags staging-*
+# - les tags prod-*
+# Si aucune règle ne match, aucun pipeline n'est créé.
+# ==============================================================================
+workflow:
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^infra-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^staging-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^prod-.*$/'
+    - when: never
 
 # ==============================================================================
 # VARIABLES GLOBALES
@@ -79,9 +99,10 @@ default:
 
 # ==============================================================================
 # TEMPLATE BUILD BACKEND
-# Chaque job :
+# ==============================================================================
+# Chaque job backend :
 # - compile un seul microservice
-# - build + push l'image avec Jib
+# - build et push une seule image avec Jib
 # - exporte IMAGE_URI dans un fichier .env pour le job deploy
 # ==============================================================================
 .backend_build_template:
@@ -125,9 +146,10 @@ default:
 
 # ==============================================================================
 # TEMPLATE BUILD FRONTEND
-# Chaque job :
+# ==============================================================================
+# Chaque job frontend :
 # - build une seule application frontend
-# - push l'image Docker
+# - push une seule image Docker
 # - exporte IMAGE_URI dans un fichier .env pour le job deploy
 # ==============================================================================
 .frontend_build_template:
@@ -172,7 +194,8 @@ default:
 
 # ==============================================================================
 # TEMPLATE DEPLOY CLOUD RUN
-# Chaque job :
+# ==============================================================================
+# Chaque job deploy :
 # - récupère IMAGE_URI depuis l'artifact dotenv du job build
 # - déploie uniquement le service ciblé sur Cloud Run
 # ==============================================================================
@@ -192,11 +215,15 @@ default:
     - test -n "$IMAGE_URI"
     - export READY_REVISION="$(gcloud run services describe "$SERVICE_NAME" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" --format='value(status.latestReadyRevisionName)' || true)"
     - |
-      PARTNER_EXCLUDE="com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
-      if [ "$SERVICE_NAME" = "partner-service" ]; then
-        CLOUDRUN_UPDATE_ENV_VARS="SPRING_PROFILES_ACTIVE=dev,SPRING_AUTOCONFIGURE_EXCLUDE=${PARTNER_EXCLUDE}"
+      PUBSUB_EMULATOR_EXCLUDE="com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
+      CLOUDRUN_REMOVE_ENV_VARS="PUBSUB_EMULATOR_HOST,SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST"
+      if [ "$SERVICE_NAME" = "partner-service" ] || [ "$SERVICE_NAME" = "notification-service" ]; then
+        CLOUDRUN_UPDATE_ENV_VARS="SPRING_PROFILES_ACTIVE=dev,SPRING_AUTOCONFIGURE_EXCLUDE=${PUBSUB_EMULATOR_EXCLUDE}"
       else
         CLOUDRUN_UPDATE_ENV_VARS="SPRING_PROFILES_ACTIVE=dev"
+      fi
+      if [ "$SERVICE_NAME" = "notification-service" ]; then
+        CLOUDRUN_REMOVE_ENV_VARS="${CLOUDRUN_REMOVE_ENV_VARS},SPRING_MAIN_LAZY_INITIALIZATION"
       fi
     - |
       if [ -n "$READY_REVISION" ]; then
@@ -204,30 +231,25 @@ default:
         HAS_SECRET_ENV="$(jq -r '[.spec.containers[0].env[]? | has("valueSource")] | any' /tmp/ready-revision.json)"
 
         if [ "$HAS_SECRET_ENV" = "true" ]; then
-          if [ "$SERVICE_NAME" = "partner-service" ]; then
-            gcloud run deploy "$SERVICE_NAME" \
-              --image "$IMAGE_URI" \
-              --region "$GCP_REGION" \
-              --project "$GCP_PROJECT_ID" \
-              --update-env-vars "$CLOUDRUN_UPDATE_ENV_VARS" \
-              --remove-env-vars PUBSUB_EMULATOR_HOST,SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST \
-              --quiet
-          else
-            gcloud run deploy "$SERVICE_NAME" \
-              --image "$IMAGE_URI" \
-              --region "$GCP_REGION" \
-              --project "$GCP_PROJECT_ID" \
-              --update-env-vars "$CLOUDRUN_UPDATE_ENV_VARS" \
-              --remove-env-vars PUBSUB_EMULATOR_HOST,SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST \
-              --quiet
-          fi
+          gcloud run deploy "$SERVICE_NAME" \
+            --image "$IMAGE_URI" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --update-env-vars "$CLOUDRUN_UPDATE_ENV_VARS" \
+            --remove-env-vars "$CLOUDRUN_REMOVE_ENV_VARS" \
+            --quiet
         else
           jq '
             ([.spec.containers[0].env[]? | select(has("value")) | {(.name): .value}] | add) // {}
             | .SPRING_PROFILES_ACTIVE = "dev"
             | del(.PUBSUB_EMULATOR_HOST, .SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST)
-            | if env.SERVICE_NAME == "partner-service" then
+            | if env.SERVICE_NAME == "partner-service" or env.SERVICE_NAME == "notification-service" then
                 .SPRING_AUTOCONFIGURE_EXCLUDE = "com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
+              else
+                .
+              end
+            | if env.SERVICE_NAME == "notification-service" then
+                del(.SPRING_MAIN_LAZY_INITIALIZATION)
               else
                 .
               end
@@ -241,23 +263,13 @@ default:
             --quiet
         fi
       else
-        if [ "$SERVICE_NAME" = "partner-service" ]; then
-          gcloud run deploy "$SERVICE_NAME" \
-            --image "$IMAGE_URI" \
-            --region "$GCP_REGION" \
-            --project "$GCP_PROJECT_ID" \
-            --update-env-vars "$CLOUDRUN_UPDATE_ENV_VARS" \
-            --remove-env-vars PUBSUB_EMULATOR_HOST,SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST \
-            --quiet
-        else
-          gcloud run deploy "$SERVICE_NAME" \
-            --image "$IMAGE_URI" \
-            --region "$GCP_REGION" \
-            --project "$GCP_PROJECT_ID" \
-            --update-env-vars "$CLOUDRUN_UPDATE_ENV_VARS" \
-            --remove-env-vars PUBSUB_EMULATOR_HOST,SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST \
-            --quiet
-        fi
+        gcloud run deploy "$SERVICE_NAME" \
+          --image "$IMAGE_URI" \
+          --region "$GCP_REGION" \
+          --project "$GCP_PROJECT_ID" \
+          --update-env-vars "$CLOUDRUN_UPDATE_ENV_VARS" \
+          --remove-env-vars "$CLOUDRUN_REMOVE_ENV_VARS" \
+          --quiet
       fi
 
 # ==============================================================================
@@ -269,9 +281,9 @@ build_api_gateway:
     SERVICE_NAME: "api-gateway"
     MODULE_PATH: "api-gateway"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/api-gateway/**
+        - backend/api-gateway/**/*
         - backend/pom.xml
 
 deploy_api_gateway:
@@ -282,9 +294,9 @@ deploy_api_gateway:
   variables:
     SERVICE_NAME: "api-gateway"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/api-gateway/**
+        - backend/api-gateway/**/*
         - backend/pom.xml
 
 # ==============================================================================
@@ -296,9 +308,9 @@ build_config_server:
     SERVICE_NAME: "config-server"
     MODULE_PATH: "config-server"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/config-server/**
+        - backend/config-server/**/*
         - backend/pom.xml
 
 deploy_config_server:
@@ -309,9 +321,9 @@ deploy_config_server:
   variables:
     SERVICE_NAME: "config-server"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/config-server/**
+        - backend/config-server/**/*
         - backend/pom.xml
 
 # ==============================================================================
@@ -323,9 +335,9 @@ build_eureka_server:
     SERVICE_NAME: "eureka-server"
     MODULE_PATH: "eureka-server"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/eureka-server/**
+        - backend/eureka-server/**/*
         - backend/pom.xml
 
 deploy_eureka_server:
@@ -336,9 +348,9 @@ deploy_eureka_server:
   variables:
     SERVICE_NAME: "eureka-server"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/eureka-server/**
+        - backend/eureka-server/**/*
         - backend/pom.xml
 
 # ==============================================================================
@@ -350,9 +362,9 @@ build_auth_service:
     SERVICE_NAME: "auth-service"
     MODULE_PATH: "services/auth-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/services/auth-service/**
+        - backend/services/auth-service/**/*
         - backend/pom.xml
 
 deploy_auth_service:
@@ -363,9 +375,9 @@ deploy_auth_service:
   variables:
     SERVICE_NAME: "auth-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/services/auth-service/**
+        - backend/services/auth-service/**/*
         - backend/pom.xml
 
 # ==============================================================================
@@ -377,9 +389,9 @@ build_user_service:
     SERVICE_NAME: "user-service"
     MODULE_PATH: "services/user-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/services/user-service/**
+        - backend/services/user-service/**/*
         - backend/pom.xml
 
 deploy_user_service:
@@ -390,9 +402,9 @@ deploy_user_service:
   variables:
     SERVICE_NAME: "user-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/services/user-service/**
+        - backend/services/user-service/**/*
         - backend/pom.xml
 
 # ==============================================================================
@@ -404,9 +416,9 @@ build_partner_service:
     SERVICE_NAME: "partner-service"
     MODULE_PATH: "services/partner-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/services/partner-service/**
+        - backend/services/partner-service/**/*
         - backend/pom.xml
 
 deploy_partner_service:
@@ -417,9 +429,9 @@ deploy_partner_service:
   variables:
     SERVICE_NAME: "partner-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/services/partner-service/**
+        - backend/services/partner-service/**/*
         - backend/pom.xml
 
 # ==============================================================================
@@ -431,9 +443,9 @@ build_location_service:
     SERVICE_NAME: "location-service"
     MODULE_PATH: "services/location-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/services/location-service/**
+        - backend/services/location-service/**/*
         - backend/pom.xml
 
 deploy_location_service:
@@ -444,9 +456,9 @@ deploy_location_service:
   variables:
     SERVICE_NAME: "location-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/services/location-service/**
+        - backend/services/location-service/**/*
         - backend/pom.xml
 
 # ==============================================================================
@@ -458,9 +470,9 @@ build_notification_service:
     SERVICE_NAME: "notification-service"
     MODULE_PATH: "services/notification-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/services/notification-service/**
+        - backend/services/notification-service/**/*
         - backend/pom.xml
 
 deploy_notification_service:
@@ -471,9 +483,9 @@ deploy_notification_service:
   variables:
     SERVICE_NAME: "notification-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - backend/services/notification-service/**
+        - backend/services/notification-service/**/*
         - backend/pom.xml
 
 # ==============================================================================
@@ -486,9 +498,9 @@ build_partner_dashboard:
     CONTEXT_PATH: "frontend/partner-dashboard"
     DOCKERFILE_PATH: "frontend/partner-dashboard/Dockerfile.dev"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - frontend/partner-dashboard/**
+        - frontend/partner-dashboard/**/*
 
 deploy_partner_dashboard:
   extends: .cloudrun_deploy_template
@@ -498,9 +510,9 @@ deploy_partner_dashboard:
   variables:
     SERVICE_NAME: "partner-dashboard"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - frontend/partner-dashboard/**
+        - frontend/partner-dashboard/**/*
 
 # ==============================================================================
 # FRONTEND - ADMIN PANEL
@@ -512,9 +524,9 @@ build_admin_panel:
     CONTEXT_PATH: "frontend/admin-panel"
     DOCKERFILE_PATH: "frontend/admin-panel/Dockerfile.dev"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - frontend/admin-panel/**
+        - frontend/admin-panel/**/*
 
 deploy_admin_panel:
   extends: .cloudrun_deploy_template
@@ -524,66 +536,16 @@ deploy_admin_panel:
   variables:
     SERVICE_NAME: "admin-panel"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
       changes:
-        - frontend/admin-panel/**
-
-# ==============================================================================
-# FRONTEND - COURIER APP
-# ==============================================================================
-build_courier_app:
-  extends: .frontend_build_template
-  variables:
-    IMAGE_NAME: "courier-app"
-    CONTEXT_PATH: "frontend/courier_app"
-  rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
-      changes:
-        - frontend/courier_app/**
-
-deploy_courier_app:
-  extends: .cloudrun_deploy_template
-  needs:
-    - job: build_courier_app
-      artifacts: true
-  variables:
-    SERVICE_NAME: "courier-app"
-  rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
-      changes:
-        - frontend/courier_app/**
-
-# ==============================================================================
-# FRONTEND - CUSTOMER APP
-# ==============================================================================
-build_customer_app:
-  extends: .frontend_build_template
-  variables:
-    IMAGE_NAME: "customer-app"
-    CONTEXT_PATH: "frontend/customer_app"
-  rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
-      changes:
-        - frontend/customer_app/**
-
-deploy_customer_app:
-  extends: .cloudrun_deploy_template
-  needs:
-    - job: build_customer_app
-      artifacts: true
-  variables:
-    SERVICE_NAME: "customer-app"
-  rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
-      changes:
-        - frontend/customer_app/**
+        - frontend/admin-panel/**/*
 
 # ==============================================================================
 # TERRAFORM DEV
-# IMPORTANT :
-# - Ce job ne sert plus à déployer les images applicatives
-# - Il ne tourne que si le code infra change
-# - On réinjecte ici les variables Terraform obligatoires
+# ==============================================================================
+# Ce job :
+# - ne sert qu'aux changements d'infrastructure
+# - ne doit pas partir pour un simple changement backend/frontend
 # ==============================================================================
 terraform_apply_dev:
   stage: terraform
@@ -605,7 +567,6 @@ terraform_apply_dev:
 
     # --------------------------------------------------------------------------
     # Préparer l'URI Git du Config Server pour Terraform
-    # Terraform attend TF_VAR_config_server_git_uri
     # --------------------------------------------------------------------------
     - export RAW_CONFIG_SERVER_GIT_URI="${SPRING_CLOUD_CONFIG_SERVER_GIT_URI:-${CONFIG_SERVER_GIT_URI:-${CONFIG_GIT_URI:-${GIT_REPO_URI:-}}}}"
     - |
@@ -624,7 +585,6 @@ terraform_apply_dev:
 
     # --------------------------------------------------------------------------
     # Préparer l'URI MongoDB pour Terraform
-    # Terraform attend TF_VAR_mongodb_uri
     # --------------------------------------------------------------------------
     - export EFFECTIVE_MONGODB_URI="${MONGODB_URI:-${MONGO_URI:-}}"
     - |
@@ -649,9 +609,18 @@ terraform_apply_dev:
     - terraform apply -auto-approve -input=false -lock-timeout=5m
 
   rules:
+    # Un tag infra-* doit lancer Terraform
+    - if: '$CI_COMMIT_TAG =~ /^infra-.*$/'
+
+    # Un tag dev-* ne lance Terraform que si infra a changé
     - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
       changes:
-        - infra/**
+        - infra/**/*
+
+    # Sur la branche ciblée, Terraform ne part que si infra a changé
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      changes:
+        - infra/**/*
 
 # ==============================================================================
 # STAGING - SQUELETTE MANUEL

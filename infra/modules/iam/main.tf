@@ -82,5 +82,9 @@ resource "google_project_iam_member" "runtime_artifact_reader" {
 #     --member="serviceAccount:cloudrun-runtime-sa-dev@PROJECT_ID.iam.gserviceaccount.com" \
 #     --role="roles/pubsub.editor"
 #
+#   gcloud projects add-iam-policy-binding PROJECT_ID \
+#     --member="serviceAccount:cloudrun-runtime-sa-dev@PROJECT_ID.iam.gserviceaccount.com" \
+#     --role="roles/serviceusage.serviceUsageConsumer"
+#
 # STATUS : ✅ Appliqués manuellement le 2026-03-03
 # -------------------------------------------------------------------
