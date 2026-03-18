@@ -45,6 +45,7 @@ class TrackingOrchestratorService {
     required String jwt,
     required bool highAccuracy,
     void Function(int queueSize)? onQueueChanged,
+    void Function(Map<String, dynamic> payload)? onPositionCollected,
   }) async {
     if (_isOnline) {
       return;
@@ -73,6 +74,7 @@ class TrackingOrchestratorService {
     await _backgroundLocationService.startTracking(
       highAccuracy: highAccuracy,
       onPositionPayload: (payload) async {
+        onPositionCollected?.call(payload);
         await _sendOrQueue(payload, onQueueChanged: onQueueChanged);
       },
       onBatteryLow: (level) async {
@@ -120,7 +122,7 @@ class TrackingOrchestratorService {
     }
 
     AppLogger.warning('Tracking payload queued offline (network/ws unavailable)');
-    await _queueService.enqueue(payload);
+    await _queueService.enqueue(payload, maxSize: AppConstants.trackingQueueMaxPoints);
     onQueueChanged?.call(_queueService.size);
   }
 
@@ -134,7 +136,7 @@ class TrackingOrchestratorService {
         return;
       }
 
-      final pending = await _queueService.peek(maxItems: 200);
+      final pending = await _queueService.peek(maxItems: AppConstants.trackingQueueFlushBatchSize);
       if (pending.isEmpty) {
         onQueueChanged?.call(0);
         return;

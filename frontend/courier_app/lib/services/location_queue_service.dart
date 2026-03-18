@@ -1,5 +1,6 @@
 import 'package:hive_flutter/hive_flutter.dart';
 
+import '../core/constants/app_constants.dart';
 import '../core/utils/logger.dart';
 
 class QueuedLocationPayload {
@@ -19,7 +20,10 @@ class LocationQueueService {
 
   int get size => _box?.length ?? 0;
 
-  Future<void> enqueue(Map<String, dynamic> payload, {int maxSize = 1000}) async {
+  Future<void> enqueue(
+    Map<String, dynamic> payload, {
+    int maxSize = AppConstants.trackingQueueMaxPoints,
+  }) async {
     await initialize();
     if (_box!.length >= maxSize) {
       final firstKey = _box!.keys.isNotEmpty ? _box!.keys.first : null;
@@ -31,7 +35,7 @@ class LocationQueueService {
     AppLogger.info('Queued offline location payload. Queue size=${_box!.length}');
   }
 
-  Future<List<QueuedLocationPayload>> peek({int maxItems = 100}) async {
+  Future<List<QueuedLocationPayload>> peek({int maxItems = AppConstants.trackingQueueFlushBatchSize}) async {
     await initialize();
     final items = <QueuedLocationPayload>[];
     for (final key in _box!.keys.take(maxItems)) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../providers/location_websocket_provider.dart';
 import '../../../../providers/tracking_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 
@@ -13,6 +14,7 @@ class CourierHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final trackingState = ref.watch(trackingProvider);
+    final wsState = ref.watch(locationWebSocketProvider);
     final trackingController = ref.read(trackingProvider.notifier);
 
     return Scaffold(
@@ -148,6 +150,31 @@ class CourierHomeScreen extends ConsumerWidget {
                                     color: Colors.white.withOpacity(0.9),
                                   ),
                                 ),
+                                SizedBox(height: 8.h),
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 10.w,
+                                      height: 10.w,
+                                      decoration: BoxDecoration(
+                                        color: _connectionDotColor(wsState.status),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    SizedBox(width: 6.w),
+                                    Expanded(
+                                      child: Text(
+                                        'WS: ${_connectionLabel(wsState.status)}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                                 if (trackingState.queuedCount > 0) ...[
                                   SizedBox(height: 6.h),
                                   Text(
@@ -168,6 +195,18 @@ class CourierHomeScreen extends ConsumerWidget {
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize: 12.sp,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                                if (wsState.lastError != null && wsState.lastError!.isNotEmpty) ...[
+                                  SizedBox(height: 6.h),
+                                  Text(
+                                    'Erreur WS: ${wsState.lastError}',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 11.sp,
                                       color: Colors.white,
                                     ),
                                   ),
@@ -232,6 +271,32 @@ class CourierHomeScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Color _connectionDotColor(LocationWebSocketStatus status) {
+    switch (status) {
+      case LocationWebSocketStatus.connected:
+        return Colors.greenAccent;
+      case LocationWebSocketStatus.connecting:
+        return Colors.amberAccent;
+      case LocationWebSocketStatus.disconnected:
+        return Colors.redAccent;
+      case LocationWebSocketStatus.error:
+        return Colors.red;
+    }
+  }
+
+  String _connectionLabel(LocationWebSocketStatus status) {
+    switch (status) {
+      case LocationWebSocketStatus.connected:
+        return 'Connected';
+      case LocationWebSocketStatus.connecting:
+        return 'Connecting';
+      case LocationWebSocketStatus.disconnected:
+        return 'Disconnected';
+      case LocationWebSocketStatus.error:
+        return 'Error';
+    }
   }
 
   Widget _buildSummarySection(BuildContext context) {

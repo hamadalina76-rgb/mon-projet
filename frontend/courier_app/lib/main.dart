@@ -22,6 +22,9 @@ void main() async {
   ]);
   
   await RuntimeConfig.load();
+  AppLogger.info(
+    'Runtime config loaded: apiBaseUrl=${RuntimeConfig.apiBaseUrl}, wsUrl=${RuntimeConfig.wsUrl}',
+  );
   await Hive.initFlutter();
   
   // Firebase (FCM) : optionnel. Si google-services.json est absent sur Android, l'app démarre sans push.

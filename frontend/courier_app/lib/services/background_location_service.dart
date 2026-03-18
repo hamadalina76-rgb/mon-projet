@@ -14,6 +14,7 @@ class BackgroundLocationService {
   bool _isTracking = false;
   bool _highAccuracy = false;
   bool _lowBatteryNotified = false;
+  DateTime? _lastFallbackAttemptAt;
 
   DateTime? _lastSentAt;
   DateTime? _lastMovementAt;
@@ -59,6 +60,7 @@ class BackgroundLocationService {
     _lastMovementAt = null;
     _lastMovementAnchor = null;
     _latestPosition = null;
+    _lastFallbackAttemptAt = null;
     _lowBatteryNotified = false;
 
     AppLogger.info('Location tracking stopped');
@@ -128,12 +130,10 @@ class BackgroundLocationService {
       return;
     }
 
-    Position? position = _latestPosition;
-    position ??= await Geolocator.getCurrentPosition(
-      locationSettings: LocationSettings(
-        accuracy: _highAccuracy ? LocationAccuracy.high : LocationAccuracy.medium,
-      ),
-    );
+    final position = await _resolvePosition();
+    if (position == null) {
+      return;
+    }
 
     final batteryLevel = await _safeBatteryLevel();
     if (batteryLevel != null) {
@@ -154,7 +154,43 @@ class BackgroundLocationService {
     };
 
     _lastSentAt = now;
-    await _onPositionPayload!(payload);
+    try {
+      await _onPositionPayload!(payload);
+    } catch (e) {
+      // Never let timer callback exceptions crash tracking loop.
+      AppLogger.error('Failed to dispatch position payload', e);
+    }
+  }
+
+  Future<Position?> _resolvePosition() async {
+    if (_latestPosition != null) {
+      return _latestPosition;
+    }
+
+    // Avoid repeatedly triggering OS location resolution prompts on emulator/device.
+    final now = DateTime.now();
+    if (_lastFallbackAttemptAt != null &&
+        now.difference(_lastFallbackAttemptAt!).inSeconds < 15) {
+      return null;
+    }
+    _lastFallbackAttemptAt = now;
+
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      AppLogger.warning('Location service disabled; waiting for stream position');
+      return null;
+    }
+
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: LocationSettings(
+          accuracy: _highAccuracy ? LocationAccuracy.high : LocationAccuracy.medium,
+        ),
+      );
+    } catch (e) {
+      AppLogger.warning('Unable to get fallback position: $e');
+      return null;
+    }
   }
 
   Future<void> _handleBatteryGuardrail(int batteryLevel) async {
