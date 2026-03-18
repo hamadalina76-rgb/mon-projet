@@ -36,7 +36,7 @@ spring:
     baseline-on-migrate: true
     baseline-version: 0
     locations: classpath:db/migration
-    table: flyway_schema_history_partner_v2
+    table: flyway_schema_history
     validate-on-migrate: false
 
   cloud:
