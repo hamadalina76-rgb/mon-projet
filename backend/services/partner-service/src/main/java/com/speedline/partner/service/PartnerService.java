@@ -2,8 +2,10 @@ package com.speedline.partner.service;
 
 import com.speedline.partner.domain.PartnerStatus;
 import com.speedline.partner.domain.PartnerType;
+import com.speedline.partner.dto.AdminPartnerUpdateDTO;
 import com.speedline.partner.dto.CompletePartnerProfileRequest;
 import com.speedline.partner.dto.PartnerDTO;
+import com.speedline.partner.dto.PartnerApprovalDTO;
 import com.speedline.partner.dto.StaffMemberDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -178,6 +180,18 @@ public interface PartnerService {
     PartnerDTO approvePartner(Long partnerId);
 
     /**
+     * Approuver un partenaire avec configuration de commission (Admin only)
+     * Change le statut de PENDING à ACTIVE et configure la commission
+     * 
+     * @param partnerId ID du partenaire
+     * @param approvalData Données de commission et catégories
+     * @return PartnerDTO avec status=ACTIVE, isActive=true, commission configurée
+     * @throws PartnerNotFoundException si non trouvé
+     * @throws InvalidStatusTransitionException si le statut actuel n'est pas PENDING
+     */
+    PartnerDTO approvePartnerWithCommission(Long partnerId, PartnerApprovalDTO approvalData);
+
+    /**
      * Rejeter un partenaire (Admin only)
      * 
      * @param partnerId ID du partenaire
@@ -235,6 +249,15 @@ public interface PartnerService {
      * @return PartnerDTO mis à jour
      */
     PartnerDTO updateInternalNotes(Long partnerId, String notes);
+
+    /**
+     * Modifier les informations de base d'un partenaire (Admin only).
+     *
+     * @param partnerId ID du partenaire
+     * @param dto       Champs à mettre à jour (null = inchangé)
+     * @return PartnerDTO mis à jour
+     */
+    PartnerDTO adminUpdatePartner(Long partnerId, AdminPartnerUpdateDTO dto);
 
     // ==================== PARAMÈTRES DE LIVRAISON ====================
 

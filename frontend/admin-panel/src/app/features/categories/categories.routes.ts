@@ -32,6 +32,13 @@ export const CATEGORIES_ROUTES: Routes = [
       ),
   },
   {
+    path: 'sub/:id/edit',
+    loadComponent: () =>
+      import('./subcategory-edit/subcategory-edit.component').then(
+        (m) => m.SubcategoryEditComponent
+      ),
+  },
+  {
     path: ':id',
     loadComponent: () =>
       import('./category-detail/category-detail.component').then(

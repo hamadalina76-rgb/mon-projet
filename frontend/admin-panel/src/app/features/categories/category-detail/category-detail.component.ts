@@ -16,7 +16,7 @@ import { ToastrService } from 'ngx-toastr';
 import { BaseChartDirective } from 'ng2-charts';
 import { Chart, ChartData, ChartOptions, registerables } from 'chart.js';
 import { CategoriesService } from '../services/categories.service';
-import { Category, CategoryBusinessType, CategoryStats, AuditLogEntry } from '@core/models/category.model';
+import { Category, CategoryStats, AuditLogEntry } from '@core/models/category.model';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '@shared/components/confirmation-dialog/confirmation-dialog.component';
 
 Chart.register(...registerables);
@@ -55,23 +55,29 @@ export class CategoryDetailComponent implements OnInit, OnDestroy {
   categoryId = signal<number | null>(null);
   selectedTabIndex = signal(0);
 
+  currentLang = signal(this.translate.currentLang || 'fr');
+  isRtl = computed(() => this.currentLang() === 'ar');
+
   stats = signal<CategoryStats | null>(null);
   statsLoading = signal(false);
   auditTrail = signal<AuditLogEntry[]>([]);
   auditLoading = signal(false);
   auditPage = signal(0);
+  totalAuditElements = signal(0);
   readonly PAGE_SIZE = 5;
 
   chartData = computed<ChartData<'bar'>>(() => {
     const s = this.stats();
+    this.currentLang(); // reactive dependency — re-compute label on language change
+    const label = this.translate.instant('categories.chartOrdersLabel');
     if (!s?.dailyOrders?.length) {
-      return { labels: [], datasets: [{ data: [], label: 'Commandes' }] };
+      return { labels: [], datasets: [{ data: [], label }] };
     }
     return {
       labels: s.dailyOrders.map(d => d.day),
       datasets: [{
         data: s.dailyOrders.map(d => d.orders),
-        label: 'Commandes',
+        label,
         backgroundColor: 'rgba(236, 19, 30, 0.2)',
         borderColor: '#EC131E',
         borderWidth: 2,
@@ -88,7 +94,8 @@ export class CategoryDetailComponent implements OnInit, OnDestroy {
       legend: { display: false },
       tooltip: {
         callbacks: {
-          label: (ctx: import('chart.js').TooltipItem<'bar'>) => `${ctx.parsed.y} commandes`
+          label: (ctx: import('chart.js').TooltipItem<'bar'>) =>
+            `${ctx.parsed.y} ${this.translate.instant('categories.chartOrdersLabel').toLowerCase()}`
         }
       }
     },
@@ -105,13 +112,10 @@ export class CategoryDetailComponent implements OnInit, OnDestroy {
     }
   };
 
-  paginatedAudit = computed(() => {
-    const all = this.auditTrail();
-    const page = this.auditPage();
-    return all.slice(page * this.PAGE_SIZE, (page + 1) * this.PAGE_SIZE);
-  });
+  /** Le backend renvoie déjà la bonne page — on expose directement le signal. */
+  paginatedAudit = computed(() => this.auditTrail());
 
-  totalAuditPages = computed(() => Math.ceil(this.auditTrail().length / this.PAGE_SIZE));
+  totalAuditPages = computed(() => Math.ceil(this.totalAuditElements() / this.PAGE_SIZE));
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -124,6 +128,9 @@ export class CategoryDetailComponent implements OnInit, OnDestroy {
     } else {
       this.router.navigate(['/categories']);
     }
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(e => this.currentLang.set(e.lang));
   }
 
   ngOnDestroy(): void {
@@ -141,7 +148,7 @@ export class CategoryDetailComponent implements OnInit, OnDestroy {
           this.loading.set(false);
         },
         error: () => {
-          this.toastr.error('Impossible de charger la catégorie');
+          this.toastr.error(this.translate.instant('categories.loadError'));
           this.loading.set(false);
           this.router.navigate(['/categories']);
         }
@@ -160,10 +167,14 @@ export class CategoryDetailComponent implements OnInit, OnDestroy {
 
   private loadAuditTrail(id: number): void {
     this.auditLoading.set(true);
-    this.categoriesService.getCategoryAuditTrail(id)
+    this.categoriesService.getCategoryAuditTrail(id, this.auditPage(), this.PAGE_SIZE)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (entries) => { this.auditTrail.set(entries); this.auditLoading.set(false); },
+        next: ({ content, totalElements }) => {
+          this.auditTrail.set(content);
+          this.totalAuditElements.set(totalElements);
+          this.auditLoading.set(false);
+        },
         error: () => this.auditLoading.set(false)
       });
   }
@@ -173,80 +184,37 @@ export class CategoryDetailComponent implements OnInit, OnDestroy {
   goBack(): void { this.router.navigate(['/categories']); }
 
   editCategory(): void {
-    const id = this.categoryId();
-    if (id) this.router.navigate(['/categories', id, 'edit']);
+    const id  = this.categoryId();
+    const cat = this.category();
+    if (!id) return;
+    if (cat?.parentId) {
+      this.router.navigate(['/categories/sub', id, 'edit']);
+    } else {
+      this.router.navigate(['/categories', id, 'edit']);
+    }
   }
 
   exportReport(): void {
-    const cat = this.category();
-    const s = this.stats();
-    if (!cat) return;
-
-    const name = this.getDisplayName(cat);
-    const now = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
-
-    // ── Contenu CSV ──────────────────────────────────────────────────────────
-    const lines: string[] = [];
-
-    // Infos générales
-    lines.push('=== RAPPORT CATÉGORIE ===');
-    lines.push(`Catégorie;${name}`);
-    lines.push(`Slug;${cat.slug ?? ''}`);
-    lines.push(`Type métier;${this.getBusinessTypeLabel(cat.categoryBusinessType)}`);
-    lines.push(`Statut;${cat.isActive ? 'Active' : 'Inactive'}`);
-    lines.push(`Mise en avant;${cat.isFeatured ? 'Oui' : 'Non'}`);
-    lines.push(`Créée le;${cat.createdAt ? new Date(cat.createdAt).toLocaleDateString('fr-FR') : ''}`);
-    lines.push('');
-
-    // Stats
-    if (s) {
-      lines.push('=== STATISTIQUES (30 JOURS) ===');
-      lines.push(`Produits liés;${s.productCount}`);
-      lines.push(`Partenaires actifs;${s.partnerCount}`);
-      lines.push(`Commandes (30j);${s.ordersLast30Days}`);
-      lines.push(`Tendance commandes;${s.orderTrendPercent >= 0 ? '+' : ''}${s.orderTrendPercent}%`);
-      lines.push(`TOP Catégorie;${s.topCategory ? 'Oui' : 'Non'}`);
-      lines.push('');
-
-      // Graphique journalier
-      if (s.dailyOrders?.length) {
-        lines.push('=== COMMANDES JOURNALIÈRES ===');
-        lines.push('Date;Commandes');
-        s.dailyOrders.forEach(d => lines.push(`${d.day};${d.orders}`));
-        lines.push('');
-      }
-    }
-
-    // Audit trail
-    const audit = this.auditTrail();
-    if (audit.length) {
-      lines.push('=== JOURNAL D\'AUDIT ===');
-      lines.push('Date;Utilisateur;Rôle;Action;Détails;Statut');
-      audit.forEach(e => {
-        const ts = new Date(e.timestamp).toLocaleDateString('fr-FR') + ' ' + new Date(e.timestamp).toLocaleTimeString('fr-FR');
-        lines.push(`${ts};${e.adminName};${e.adminRole};${this.getActionLabel(e.action)};${e.changesAfter};${e.status}`);
-      });
-    }
-
-    // Téléchargement
-    const csv = '\uFEFF' + lines.join('\n'); // BOM pour Excel
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `rapport-categorie-${cat.slug ?? cat.id}-${now}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-
-    this.toastr.success('Rapport exporté avec succès');
+    const id = this.categoryId();
+    if (!id) return;
+    this.categoriesService.exportCategoryReport(id);
+    this.toastr.success(this.translate.instant('categories.exportInProgress'));
   }
 
   prevAuditPage(): void {
-    if (this.auditPage() > 0) this.auditPage.update(p => p - 1);
+    if (this.auditPage() > 0) {
+      this.auditPage.update(p => p - 1);
+      const id = this.categoryId();
+      if (id) this.loadAuditTrail(id);
+    }
   }
 
   nextAuditPage(): void {
-    if (this.auditPage() < this.totalAuditPages() - 1) this.auditPage.update(p => p + 1);
+    if (this.auditPage() < this.totalAuditPages() - 1) {
+      this.auditPage.update(p => p + 1);
+      const id = this.categoryId();
+      if (id) this.loadAuditTrail(id);
+    }
   }
 
   toggleStatus(): void {
@@ -257,9 +225,9 @@ export class CategoryDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (updated) => {
           this.category.set(updated);
-          this.toastr.success('Statut mis à jour');
+          this.toastr.success(this.translate.instant('categories.categoryStatusUpdated'));
         },
-        error: () => this.toastr.error('Erreur lors de la mise à jour')
+        error: () => this.toastr.error(this.translate.instant('categories.statusUpdateError'))
       });
   }
 
@@ -269,10 +237,10 @@ export class CategoryDetailComponent implements OnInit, OnDestroy {
     if (!cat || !id) return;
 
     const dialogData: ConfirmationDialogData = {
-      title: 'Supprimer la catégorie',
-      message: `Êtes-vous sûr de vouloir supprimer "${this.getDisplayName(cat)}" ?`,
-      confirmLabel: 'Supprimer',
-      cancelLabel: 'Annuler',
+      title: this.translate.instant('categories.deleteTitle'),
+      message: this.translate.instant('categories.deleteMessage', { name: this.getDisplayName(cat) }),
+      confirmLabel: this.translate.instant('categories.delete'),
+      cancelLabel: this.translate.instant('categories.cancelBtn'),
       type: 'danger'
     };
 
@@ -283,17 +251,17 @@ export class CategoryDetailComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe({
               next: () => {
-                this.toastr.success('Catégorie supprimée');
+                this.toastr.success(this.translate.instant('categories.categoryDeleted'));
                 this.router.navigate(['/categories']);
               },
-              error: () => this.toastr.error('Erreur lors de la suppression')
+              error: () => this.toastr.error(this.translate.instant('categories.deleteError'))
             });
         }
       });
   }
 
   getDisplayName(cat: Category): string {
-    const lang = this.translate.currentLang || 'fr';
+    const lang = this.currentLang();
     return cat.nameI18n[lang]
       || cat.nameI18n['fr']
       || cat.nameI18n['en']
@@ -309,26 +277,6 @@ export class CategoryDetailComponent implements OnInit, OnDestroy {
       .map(([key, value]) => ({ key, value: value! }));
   }
 
-  getBusinessTypeLabel(type: CategoryBusinessType): string {
-    const labels: Record<CategoryBusinessType, string> = {
-      RESTAURANT: 'Restaurant',
-      GROCERY: 'Épicerie',
-      PHARMACY: 'Pharmacie',
-      OTHER: 'Autre',
-    };
-    return labels[type] ?? type;
-  }
-
-  getBusinessTypeIcon(type: CategoryBusinessType): string {
-    const icons: Record<CategoryBusinessType, string> = {
-      RESTAURANT: 'restaurant',
-      GROCERY: 'local_grocery_store',
-      PHARMACY: 'local_pharmacy',
-      OTHER: 'category',
-    };
-    return icons[type] ?? 'category';
-  }
-
   getActionClass(action: string): string {
     const map: Record<string, string> = {
       CREATE: 'action-create',
@@ -341,14 +289,15 @@ export class CategoryDetailComponent implements OnInit, OnDestroy {
   }
 
   getActionLabel(action: string): string {
-    const map: Record<string, string> = {
-      CREATE: 'Créé',
-      UPDATE: 'Modifié',
-      DELETE: 'Supprimé',
-      ACTIVATE: 'Activé',
-      DEACTIVATE: 'Désactivé',
+    const keyMap: Record<string, string> = {
+      CREATE: 'categories.actionCreate',
+      UPDATE: 'categories.actionUpdate',
+      DELETE: 'categories.actionDelete',
+      ACTIVATE: 'categories.actionActivate',
+      DEACTIVATE: 'categories.actionDeactivate',
     };
-    return map[action] ?? action;
+    const key = keyMap[action];
+    return key ? this.translate.instant(key) : action;
   }
 
   formatTrend(value: number | undefined): string {

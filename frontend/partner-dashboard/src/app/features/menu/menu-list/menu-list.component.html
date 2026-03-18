@@ -143,7 +143,7 @@
                       <span class="toggle-hint">{{ 'MENU.LIST.FORM.VISIBLE_HINT' | translate }}</span>
                     </div>
                   </div>
-                  <mat-slide-toggle formControlName="isVisible" color="primary"></mat-slide-toggle>
+                  <mat-slide-toggle formControlName="isVisible"></mat-slide-toggle>
                 </div>
 
                 <div class="panel-actions">
@@ -175,7 +175,7 @@
                 <mat-icon>category</mat-icon>
               </div>
               <p>{{ 'MENU.LIST.PANEL_EMPTY_TEXT' | translate }}</p>
-              <button mat-stroked-button (click)="openCreatePanel()" color="primary">
+              <button mat-stroked-button (click)="openCreatePanel()">
                 <mat-icon>add</mat-icon> {{ 'MENU.LIST.PANEL_EMPTY_CTA' | translate }}
               </button>
             </div>

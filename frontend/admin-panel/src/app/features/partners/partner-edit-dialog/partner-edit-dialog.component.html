@@ -1,0 +1,152 @@
+<div class="edit-dialog" [attr.dir]="isRtl ? 'rtl' : 'ltr'">
+  <!-- Header -->
+
+ <div class="dialog-header">
+  <div class="dialog-icon-left">
+    <span class="material-icons-round">edit</span>
+  </div>
+  <div class="dialog-header-content">
+    <h2 mat-dialog-title>{{ 'partners.edit.title' | translate }}</h2>
+    <p class="dialog-subtitle">{{ data.partner.brandName || data.partner.businessName }}</p>
+  </div>
+  <button type="button" class="dialog-close-btn" (click)="dialogRef.close(false)" aria-label="Annuler">
+    <span class="material-icons-round">close</span>
+  </button>
+</div>
+
+  <mat-dialog-content>
+
+    <!-- ─ Section : Commission ─ -->
+    <div class="section-label">
+      <span class="material-icons-round sl-icon">percent</span>
+      <span>{{ 'partners.edit.commissionSection' | translate }}</span>
+    </div>
+
+    <div class="commission-type-row">
+      <!-- PERCENTAGE card -->
+      <button type="button" class="type-card"
+              [class.selected]="form.commissionType === 'PERCENTAGE'"
+              (click)="form.commissionType = 'PERCENTAGE'">
+        <span class="tc-icon tc-icon--pct material-icons-round">percent</span>
+        <div class="tc-body">
+          <span class="tc-name">{{ 'partners.edit.typePercentage' | translate }}</span>
+          <span class="tc-desc">{{ 'partners.edit.typePercentageDesc' | translate }}</span>
+        </div>
+        <span class="tc-check material-icons-round" *ngIf="form.commissionType === 'PERCENTAGE'">check_circle</span>
+      </button>
+
+      <!-- MARKUP card -->
+      <button type="button" class="type-card"
+              [class.selected]="form.commissionType === 'MARKUP'"
+              (click)="form.commissionType = 'MARKUP'">
+        <span class="tc-icon tc-icon--mkp material-icons-round">price_change</span>
+        <div class="tc-body">
+          <span class="tc-name">{{ 'partners.edit.typeMarkup' | translate }}</span>
+          <span class="tc-desc">{{ 'partners.edit.typeMarkupDesc' | translate }}</span>
+        </div>
+        <span class="tc-check material-icons-round" *ngIf="form.commissionType === 'MARKUP'">check_circle</span>
+      </button>
+    </div>
+
+    <div class="rate-row">
+      <mat-form-field appearance="outline" class="rate-field">
+        <mat-label>{{ 'partners.edit.rateLabel' | translate }}</mat-label>
+        <input matInput type="number" [(ngModel)]="form.commissionRate"
+               name="commissionRate" min="0.1" max="100" step="0.5" />
+        <mat-icon matSuffix class="pct-suffix-icon">percent</mat-icon>
+      </mat-form-field>
+      <div class="rate-preview"
+           [class.pct]="form.commissionType === 'PERCENTAGE'"
+           [class.mkp]="form.commissionType === 'MARKUP'">
+        <span class="rate-value">{{ form.commissionRate }}%</span>
+        <span class="rate-type">{{ form.commissionType === 'PERCENTAGE' ? ('partners.edit.typePercentage' | translate) : ('partners.edit.typeMarkup' | translate) }}</span>
+      </div>
+    </div>
+
+    <mat-divider class="section-divider"></mat-divider>
+
+    <!-- ─ Section : Catégories ─ -->
+    <div class="section-label">
+      <span class="material-icons-round sl-icon">category</span>
+      <span>{{ 'partners.edit.categoriesSection' | translate }}</span>
+    </div>
+
+    <!-- loading categories -->
+    <div class="cats-loading" *ngIf="categoriesLoading()">
+      <mat-icon class="spin-icon">refresh</mat-icon>
+      <span>{{ 'partners.edit.categoriesLoading' | translate }}</span>
+    </div>
+
+    <ng-container *ngIf="!categoriesLoading()">
+      <!-- Main category select -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{ 'partners.edit.mainCategory' | translate }}</mat-label>
+        <mat-select [ngModel]="selectedCategoryId()"
+                    name="categoryId"
+                    [compareWith]="compareCategoryId"
+                    (ngModelChange)="onCategoryChange($event)">
+          <mat-option [value]="null">{{ 'partners.edit.categoryNone' | translate }}</mat-option>
+          @for (cat of rootCategories(); track cat.id) {
+            <mat-option [value]="cat.id">
+              <span class="cat-color-dot"
+                    *ngIf="cat.backgroundColor"
+                    [style.background]="cat.backgroundColor"></span>
+              @if (isIconUrl(cat.icon)) {
+                <img [src]="cat.icon" class="cat-opt-img" alt="" (error)="$any($event.target).style.display='none'">
+              } @else if (cat.icon) {
+                <span class="cat-opt-emoji">{{ cat.icon }}</span>
+              }
+              {{ getCategoryName(cat) }}
+            </mat-option>
+          }
+        </mat-select>
+        <mat-icon matPrefix>folder</mat-icon>
+      </mat-form-field>
+
+      <!-- Subcategories chips -->
+      <div class="sub-section" *ngIf="subcategories().length > 0">
+        <p class="sub-label">
+          {{ 'partners.edit.subcategories' | translate }}
+          <span class="sub-count">{{ subcategories().length }} {{ 'partners.edit.available' | translate }}</span>
+        </p>
+        <div class="sub-chips">
+          @for (sub of subcategories(); track sub.id) {
+            <button type="button"
+                    class="sub-chip"
+                    [class.selected]="isSubSelected(sub.id)"
+                    (click)="toggleSubcategory(sub.id)"
+                    [matTooltip]="getCategoryName(sub)"
+                    [style.background]="sub.backgroundColor || null"
+                    [style.color]="sub.textColor || null"
+                    [style.border-color]="sub.backgroundColor || null">
+              @if (isIconUrl(sub.icon)) {
+                <img [src]="sub.icon" class="cat-opt-img" alt="" (error)="$any($event.target).style.display='none'">
+              } @else if (sub.icon) {
+                <span class="cat-emoji">{{ sub.icon }}</span>
+              }
+              {{ getCategoryName(sub) }}
+              <span class="material-icons-round chip-check" *ngIf="isSubSelected(sub.id)">check</span>
+            </button>
+          }
+        </div>
+        <p class="sub-hint">{{ selectedSubcategoryIds().length }} {{ 'partners.edit.selected' | translate }}</p>
+      </div>
+
+      <p class="no-sub-msg" *ngIf="selectedCategoryId() && subcategories().length === 0">
+        <span class="material-icons-round">info</span>
+        {{ 'partners.edit.noSubcategories' | translate }}
+      </p>
+    </ng-container>
+
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button class="btn-cancel" (click)="onCancel()">
+      {{ 'partners.edit.cancel' | translate }}
+    </button>
+    <button mat-flat-button class="btn-save" [disabled]="!isValid()" (click)="onSave()">
+      <span class="material-icons-round">save</span>
+      {{ 'partners.edit.save' | translate }}
+    </button>
+  </mat-dialog-actions>
+</div>

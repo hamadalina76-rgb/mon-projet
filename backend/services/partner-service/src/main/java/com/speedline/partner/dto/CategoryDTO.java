@@ -1,6 +1,5 @@
 package com.speedline.partner.dto;
 
-import com.speedline.partner.domain.CategoryBusinessType;
 import lombok.*;
 import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
@@ -33,8 +32,6 @@ public class CategoryDTO {
 
     @NotNull
     private Boolean isFeatured;
-
-    private CategoryBusinessType categoryBusinessType; // ✅ Enum au lieu de String
 
     private String categoryType;
 

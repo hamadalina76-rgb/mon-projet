@@ -1,6 +1,5 @@
 package com.speedline.partner.controller;
 
-import com.speedline.partner.dto.AuditLogEntryDTO;
 import com.speedline.partner.dto.CategoryDTO;
 import com.speedline.partner.dto.CategoryStatsDTO;
 import com.speedline.partner.dto.CreateCategoryRequest;
@@ -9,7 +8,9 @@ import com.speedline.partner.service.CategoryService;
 import com.speedline.partner.service.FileStorageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -66,10 +67,24 @@ public class CategoryController {
     @GetMapping("/search")
     public ResponseEntity<List<CategoryDTO>> searchCategories(
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) String businessType,
             @RequestParam(required = false) String status
     ) {
-        return ResponseEntity.ok(categoryService.searchCategories(q, businessType, status));
+        return ResponseEntity.ok(categoryService.searchCategories(q, status));
+    }
+
+    /**
+     * Liste paginée côté serveur : ne retourne que les catégories racines de la page
+     * demandée, plus leurs sous-catégories directes.
+     * GET /v1/categories/paged?q=&status=&page=0&size=4
+     */
+    @GetMapping("/paged")
+    public ResponseEntity<Map<String, Object>> getCategoriesPaged(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "4")  int size
+    ) {
+        return ResponseEntity.ok(categoryService.getCategoriesPaged(q, status, page, size));
     }
 
     @GetMapping("/{id}")
@@ -118,11 +133,31 @@ public class CategoryController {
     }
 
     /**
-     * Historique des modifications (audit trail).
-     * GET /v1/categories/{id}/audit-trail
+     * Export CSV du rapport complet (infos + stats + commandes journalières + audit).
+     * GET /v1/categories/{id}/export
+     */
+    @GetMapping(value = "/{id}/export", produces = "text/csv;charset=UTF-8")
+    public ResponseEntity<byte[]> exportCategoryReport(@PathVariable Long id) {
+        byte[] csv = categoryService.exportCategoryReport(id);
+        String filename = "rapport-categorie-" + id + "-"
+                + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
+                + ".csv";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("text/csv;charset=UTF-8"));
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
+        return ResponseEntity.ok().headers(headers).body(csv);
+    }
+
+    /**
+     * Historique des modifications (audit trail) — paginé côté serveur.
+     * GET /v1/categories/{id}/audit-trail?page=0&size=5
      */
     @GetMapping("/{id}/audit-trail")
-    public ResponseEntity<List<AuditLogEntryDTO>> getCategoryAuditTrail(@PathVariable Long id) {
-        return ResponseEntity.ok(categoryService.getCategoryAuditTrail(id));
+    public ResponseEntity<Map<String, Object>> getCategoryAuditTrail(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size
+    ) {
+        return ResponseEntity.ok(categoryService.getCategoryAuditTrailPaged(id, page, size));
     }
 }

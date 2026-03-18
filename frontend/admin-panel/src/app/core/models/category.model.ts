@@ -2,13 +2,6 @@
  * Category models aligned with partner-service CategoryDTO and requests.
  */
 
-export enum CategoryBusinessType {
-  RESTAURANT = 'RESTAURANT',
-  GROCERY = 'GROCERY',
-  PHARMACY = 'PHARMACY',
-  OTHER = 'OTHER',
-}
-
 export interface Category {
   id: number;
   nameI18n: Record<string, string>;
@@ -21,7 +14,6 @@ export interface Category {
   displayOrder: number;
   isActive: boolean;
   isFeatured: boolean;
-  categoryBusinessType: CategoryBusinessType;
   categoryType: string | null;
   backgroundColor: string | null;
   textColor: string | null;
@@ -40,7 +32,6 @@ export interface CreateCategoryRequest {
   parentId?: number;
   displayOrder: number;
   isFeatured: boolean;
-  categoryBusinessType: CategoryBusinessType;
   categoryType?: string;
   backgroundColor?: string;
   textColor?: string;
@@ -55,7 +46,6 @@ export interface UpdateCategoryRequest {
   displayOrder?: number;
   isFeatured?: boolean;
   isActive?: boolean;
-  categoryBusinessType: CategoryBusinessType;
   categoryType?: string;
   backgroundColor?: string;
   textColor?: string;

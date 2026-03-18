@@ -1,6 +1,5 @@
 package com.speedline.partner.dto;
 
-import com.speedline.partner.domain.CategoryBusinessType;
 import lombok.*;
 import jakarta.validation.constraints.*;
 import java.util.Map;
@@ -21,11 +20,6 @@ public class UpdateCategoryRequest {
     private Integer displayOrder;
     private Boolean isFeatured;
     private Boolean isActive;
-
-    @NotNull(message = "Le type métier est requis")
-    private CategoryBusinessType categoryBusinessType; // ✅ Majuscule
-
-    private String categoryType;
 
     @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Format couleur invalide (#RRGGBB)")
     private String backgroundColor;

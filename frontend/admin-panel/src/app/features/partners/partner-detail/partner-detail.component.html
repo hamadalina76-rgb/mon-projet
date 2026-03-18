@@ -15,18 +15,31 @@
       <h1 class="page-title">{{ 'partners.detail.title' | translate }}</h1>
     </div>
     <div class="header-actions" *ngIf="partner()">
-      <button mat-raised-button color="warn" (click)="rejectPartner()" *ngIf="partner().status === 'PENDING'">
+      <button mat-raised-button class="btn-edit" (click)="openEditDialog()"
+              *ngIf="partner().status !== 'PENDING'">
+        <mat-icon>edit</mat-icon>
+        {{ 'partners.edit.tooltip' | translate }}
+      </button>
+      <button mat-raised-button class="btn-reject" (click)="rejectPartner()" *ngIf="partner().status === 'PENDING'">
         <mat-icon>close</mat-icon>
         {{ 'partners.approval.reject' | translate }}
       </button>
-      <button mat-raised-button color="primary" (click)="approvePartner()" *ngIf="partner().status === 'PENDING'">
+      <button mat-raised-button class="btn-approve" (click)="approvePartner()" *ngIf="partner().status === 'PENDING'">
         <mat-icon>check</mat-icon>
         {{ 'partners.approval.approve' | translate }}
       </button>
-      <button mat-raised-button color="primary" (click)="activatePartner()"
+      <button mat-raised-button class="btn-activate" (click)="activatePartner()"
               *ngIf="partner().status === 'SUSPENDED' || partner().status === 'INACTIVE'">
         <mat-icon>check_circle</mat-icon>
         {{ 'partners.activate' | translate }}
+      </button>
+      <button mat-raised-button class="btn-suspend" (click)="suspendPartner()" *ngIf="partner().status === 'ACTIVE'">
+        <mat-icon>pause_circle</mat-icon>
+        {{ 'partners.detail.suspend' | translate }}
+      </button>
+      <button mat-raised-button class="btn-deactivate" (click)="deactivatePartner()" *ngIf="partner().status === 'ACTIVE'">
+        <mat-icon>block</mat-icon>
+        {{ 'partners.detail.deactivate' | translate }}
       </button>
     </div>
   </header>
@@ -110,6 +123,17 @@
                 <div class="info-row">
                   <span class="label">{{ 'partners.detail.registeredOn' | translate }}</span>
                   <span class="value">{{ partner().createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'partners.detail.approvalDateLabel' | translate }}</span>
+                  <span class="value">
+                    <ng-container *ngIf="approvalDate(); else noApproval">
+                      {{ approvalDate() | date:'dd/MM/yyyy HH:mm' }}
+                    </ng-container>
+                    <ng-template #noApproval>
+                      <span class="text-muted">{{ 'partners.detail.noApprovalDate' | translate }}</span>
+                    </ng-template>
+                  </span>
                 </div>
               </div>
             </mat-card>
@@ -247,20 +271,85 @@
               </div>
             </mat-card>
 
-            <!-- Categories / Tags -->
-            <mat-card class="info-card" *ngIf="(partner().categoryIds && partner().categoryIds.length) || (partner().tags && partner().tags.length)">
-              <h3>{{ 'partners.detail.categoriesTags' | translate }}</h3>
-              <mat-divider></mat-divider>
-              <div class="info-rows">
-                <div class="info-row" *ngIf="partner().categoryIds?.length">
-                  <span class="label">{{ 'partners.detail.categories' | translate }}</span>
-                  <span class="value">{{ partner().categoryIds?.join(', ') }}</span>
-                </div>
-                <div class="info-row" *ngIf="partner().tags?.length">
-                  <span class="label">{{ 'partners.detail.tags' | translate }}</span>
-                  <span class="value">{{ partner().tags?.join(', ') }}</span>
-                </div>
+            <!-- Commission & Categories -->
+            <mat-card class="info-card commission-section-card">
+              <div class="commission-head">
+                <mat-icon class="commission-head-icon">percent</mat-icon>
+                <h3>{{ 'partners.detail.commissionSection' | translate }}</h3>
               </div>
+              <mat-divider></mat-divider>
+
+              <!-- Commission type + rate KPIs -->
+              @if (partner().commissionType) {
+                <div class="commission-kpi-row">
+                  <div class="kpi-box">
+                    <span class="kpi-label">{{ 'partners.detail.commissionType' | translate }}</span>
+                    <div class="commission-type-badge" [ngClass]="partner().commissionType === 'PERCENTAGE' ? 'badge-pct' : 'badge-mkp'">
+                      <mat-icon class="badge-icon">{{ partner().commissionType === 'PERCENTAGE' ? 'percent' : 'trending_up' }}</mat-icon>
+                      {{ commissionTypeLabel() }}
+                    </div>
+                  </div>
+                  <div class="kpi-box">
+                    <span class="kpi-label">{{ 'partners.detail.commissionRate' | translate }}</span>
+                    <span class="commission-rate-big">{{ partner().commissionRate }}%</span>
+                  </div>
+                </div>
+              }
+              @if (!partner().commissionType) {
+                <p class="no-commission-msg">
+                  <mat-icon>info_outline</mat-icon>
+                  {{ 'partners.detail.noCommission' | translate }}
+                </p>
+              }
+
+              <!-- Main Category -->
+              @if (partnerMainCategory()) {
+                <div class="cat-block">
+                  <span class="cat-block-label">{{ 'partners.detail.mainCategory' | translate }}</span>
+                  <div class="chips-row">
+                    <span class="cat-chip main-cat-chip"
+                          [style.background-color]="partnerMainCategory()!.backgroundColor || null"
+                          [style.color]="partnerMainCategory()!.textColor || null"
+                          [style.border-color]="partnerMainCategory()!.backgroundColor || null">
+                      <mat-icon class="cat-chip-icon">category</mat-icon>
+                      {{ partnerMainCategory()!.nameI18n['fr'] || partnerMainCategory()!.nameI18n['en'] || ('ID: ' + partnerMainCategory()!.id) }}
+                    </span>
+                  </div>
+                </div>
+              }
+
+              <!-- Subcategories -->
+              @if (partnerSubcategories().length > 0) {
+                <div class="cat-block">
+                  <span class="cat-block-label">{{ 'partners.detail.subcategories' | translate }}</span>
+                  <div class="chips-row">
+                    @for (sub of partnerSubcategories(); track sub.id) {
+                      <span class="cat-chip sub-cat-chip"
+                            [style.background-color]="sub.backgroundColor || null"
+                            [style.color]="sub.textColor || null"
+                            [style.border-color]="sub.backgroundColor || null">
+                        {{ sub.nameI18n['fr'] || sub.nameI18n['en'] || ('ID: ' + sub.id) }}
+                      </span>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- Tags -->
+              @if (partner().tags?.length) {
+                <div class="cat-block">
+                  <span class="cat-block-label">{{ 'partners.detail.tags' | translate }}</span>
+                  <div class="chips-row">
+                    @for (tag of partner().tags; track tag) {
+                      <span class="cat-chip tag-chip">{{ tag }}</span>
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (partnerCategoryIds().length === 0 && !partner().tags?.length) {
+                <p class="no-categories-msg">—</p>
+              }
             </mat-card>
           </div>
 
@@ -275,7 +364,7 @@
                 {{ partner().city }}{{ partner().postalCode ? ', ' + partner().postalCode : '' }}<br />
                 {{ partner().state || '' }}{{ partner().country ? ', ' + partner().country : '' }}
               </p>
-              <button mat-stroked-button color="primary" class="btn-update-coords">{{ 'partners.detail.updateCoords' | translate }}</button>
+              <button mat-stroked-button class="btn-update-coords">{{ 'partners.detail.updateCoords' | translate }}</button>
             </mat-card>
 
             <!-- Store Performance -->
@@ -322,7 +411,32 @@
                 <mat-label>{{ 'partners.detail.addNotePlaceholder' | translate }}</mat-label>
                 <textarea matInput [(ngModel)]="internalNotes" rows="4"></textarea>
               </mat-form-field>
-              <button mat-flat-button color="primary" (click)="saveNote()">{{ 'partners.detail.saveNote' | translate }}</button>
+              <button mat-flat-button class="btn-save-note" (click)="saveNote()">{{ 'partners.detail.saveNote' | translate }}</button>
+            </mat-card>
+
+            <!-- Status Timeline -->
+            <mat-card class="info-card">
+              <div class="card-head">
+                <h3>{{ 'partners.detail.statusTimeline' | translate }}</h3>
+              </div>
+              <mat-divider></mat-divider>
+              <div class="status-timeline" *ngIf="statusTimeline().length > 0; else noTimeline">
+                <div class="tl-entry" *ngFor="let entry of statusTimeline()">
+                  <div class="tl-spine">
+                    <span class="tl-dot" [ngClass]="'dot-' + entry.action?.toLowerCase()"></span>
+                  </div>
+                  <div class="tl-content">
+                    <span class="tl-action">{{ entry.action }}</span>
+                    <div class="tl-meta">
+                      <span>{{ entry.changedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                      <span *ngIf="entry.adminName">— {{ entry.adminName }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <ng-template #noTimeline>
+                <p class="tl-empty">{{ 'partners.detail.noStatusHistory' | translate }}</p>
+              </ng-template>
             </mat-card>
           </div>
         </div>
@@ -334,7 +448,7 @@
             <mat-card class="document-card" *ngIf="partner().kbisUrl">
               <mat-icon>description</mat-icon>
               <h4>{{ 'partners.approval.kbis' | translate }}</h4>
-              <a [href]="partner().kbisUrl" target="_blank" mat-button>
+              <a [href]="partner().kbisUrl" target="_blank" mat-button class="btn-view-doc">
                 <mat-icon>visibility</mat-icon>
                 {{ 'partners.approval.viewDoc' | translate }}
               </a>
@@ -342,7 +456,7 @@
             <mat-card class="document-card" *ngIf="partner().idCardUrl">
               <mat-icon>badge</mat-icon>
               <h4>{{ 'partners.approval.idCard' | translate }}</h4>
-              <a [href]="partner().idCardUrl" target="_blank" mat-button>
+              <a [href]="partner().idCardUrl" target="_blank" mat-button class="btn-view-doc">
                 <mat-icon>visibility</mat-icon>
                 {{ 'partners.approval.viewDoc' | translate }}
               </a>
@@ -350,7 +464,7 @@
             <mat-card class="document-card" *ngIf="partner().insuranceUrl">
               <mat-icon>shield</mat-icon>
               <h4>{{ 'partners.approval.insurance' | translate }}</h4>
-              <a [href]="partner().insuranceUrl" target="_blank" mat-button>
+              <a [href]="partner().insuranceUrl" target="_blank" mat-button class="btn-view-doc">
                 <mat-icon>visibility</mat-icon>
                 {{ 'partners.approval.viewDoc' | translate }}
               </a>
@@ -358,7 +472,7 @@
             <mat-card class="document-card" *ngIf="partner().ribUrl">
               <mat-icon>account_balance</mat-icon>
               <h4>{{ 'partners.approval.rib' | translate }}</h4>
-              <a [href]="partner().ribUrl" target="_blank" mat-button>
+              <a [href]="partner().ribUrl" target="_blank" mat-button class="btn-view-doc">
                 <mat-icon>visibility</mat-icon>
                 {{ 'partners.approval.viewDoc' | translate }}
               </a>
@@ -382,6 +496,286 @@
           <p class="coming-soon">{{ 'partners.detail.comingSoon' | translate }}</p>
         </div>
       </mat-tab>
+
+        <mat-tab [label]="'partners.detail.logs.tabLabel' | translate">
+
+  <app-list-page
+    title=""
+    [showBackButton]="false"
+    [loading]="changeLogsLoading()"
+    [empty]="!changeLogsLoading() && logsTotalElements() === 0"
+    emptyIcon="history"
+    [emptyMessage]="'partners.detail.logs.empty'"
+    [showPagination]="false"
+    [totalItems]="logsTotalElements()"
+  >
+
+    <!-- ===================== -->
+    <!-- BARRE FILTRES / SEARCH -->
+    <!-- ===================== -->
+
+    <div class="logs-filters" filters>
+
+      <!-- SEARCH -->
+      <div class="search-box">
+        <span class="material-icons-round search-icon">search</span>
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Rechercher..."
+          [ngModel]="logsSearchText()"
+          (ngModelChange)="logsSearchTextChanged($event)"
+        />
+        <button
+          mat-icon-button
+          class="clear-btn"
+          *ngIf="logsSearchText()"
+          (click)="logsSearchTextChanged('')"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <!-- ACTION -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>{{ 'partners.detail.logs.filterAction' | translate }}</mat-label>
+        <mat-select
+          [(ngModel)]="logsFilterActionValue"
+          (ngModelChange)="logsFilterAction.set($event)"
+        >
+          <mat-option value="">{{ 'common.all' | translate }}</mat-option>
+          <mat-option value="APPROVE">{{ 'partners.detail.logs.actions.APPROVE' | translate }}</mat-option>
+          <mat-option value="APPROVE_WITH_COMMISSION">{{ 'partners.detail.logs.actions.APPROVE_WITH_COMMISSION' | translate }}</mat-option>
+          <mat-option value="REJECT">{{ 'partners.detail.logs.actions.REJECT' | translate }}</mat-option>
+          <mat-option value="ACTIVATE">{{ 'partners.detail.logs.actions.ACTIVATE' | translate }}</mat-option>
+          <mat-option value="DEACTIVATE">{{ 'partners.detail.logs.actions.DEACTIVATE' | translate }}</mat-option>
+          <mat-option value="SUSPEND">{{ 'partners.detail.logs.actions.SUSPEND' | translate }}</mat-option>
+          <mat-option value="UPDATE_INFO">{{ 'partners.detail.logs.actions.UPDATE_INFO' | translate }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- ADMIN -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>{{ 'partners.detail.logs.filterAdmin' | translate }}</mat-label>
+        <mat-select
+          [(ngModel)]="logsFilterAdminIdValue"
+          (ngModelChange)="logsFilterAdminId.set($event || null)"
+        >
+          <mat-option [value]="null">{{ 'common.all' | translate }}</mat-option>
+          @for (admin of uniqueAdmins(); track admin.id) {
+            <mat-option [value]="admin.id">{{ admin.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <!-- DATE -->
+      <mat-form-field appearance="outline" class="filter-field filter-field--date">
+        <mat-label>Date de modification</mat-label>
+        <input
+          matInput
+          type="date"
+          [(ngModel)]="logsFilterDateValue"
+          (ngModelChange)="applyLogsFilters()"
+        />
+      </mat-form-field>
+
+      <!-- BUTTONS -->
+      <div class="filter-actions">
+        <button
+          mat-flat-button
+          class="btn-filter-apply"
+          (click)="applyLogsFilters()"
+        >
+          <span class="material-icons-round">search</span>
+          {{ 'common.apply' | translate }}
+        </button>
+        <button
+          mat-button
+          class="btn-filter-reset"
+          [disabled]="!hasActiveFilters()"
+          (click)="resetLogsFilters()"
+        >
+          <span class="material-icons-round">restart_alt</span>
+          {{ 'common.reset' | translate }}
+        </button>
+      </div>
+
+    </div>
+
+    <!-- ===================== -->
+    <!-- RESULT FILTER BADGE -->
+    <!-- ===================== -->
+
+    <p class="logs-count" *ngIf="hasActiveFilters()">
+      <span class="material-icons-round">filter_list</span>
+      {{ filteredChangeLogs().length }}
+      {{ 'partners.detail.logs.resultsFiltered' | translate }}
+    </p>
+
+    <p class="logs-empty" *ngIf="hasActiveFilters() && filteredChangeLogs().length === 0">
+      <span class="material-icons-round">info</span>
+      Aucun résultat pour ce filtre.
+    </p>
+
+    <!-- ===================== -->
+    <!-- TABLE -->
+    <!-- ===================== -->
+
+    <table table class="data-table">
+
+      <thead>
+        <tr>
+          <th class="col-admin">
+            {{ 'partners.detail.logs.colAdmin' | translate | uppercase }}
+          </th>
+
+          <th class="col-permissions">
+            {{ 'partners.detail.logs.colChanges' | translate | uppercase }}
+          </th>
+
+          <th class="col-last-login">
+            {{ 'partners.detail.logs.colDate' | translate | uppercase }}
+          </th>
+
+          <th class="col-status">
+            {{ 'partners.detail.logs.colAction' | translate | uppercase }}
+          </th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        @for (log of paginatedChangeLogs(); track log.id) {
+
+        <tr class="table-row">
+
+          <!-- ADMIN -->
+          <td class="col-admin">
+
+            <div class="admin-info">
+
+              <div
+                class="admin-avatar"
+                [style.background-color]="getAdminAvatarColor(log)"
+              >
+                {{ getAdminName(log).charAt(0).toUpperCase() }}
+              </div>
+
+              <div class="admin-details">
+                <div class="admin-name">
+                  {{ getAdminName(log) }}
+                </div>
+
+                <div class="admin-email" *ngIf="log.adminEmail">
+                  {{ log.adminEmail }}
+                </div>
+              </div>
+
+            </div>
+
+          </td>
+
+          <!-- CHANGES -->
+          <td class="col-permissions">
+
+            <div class="permissions-cell">
+
+              <div class="permissions-chips">
+
+                <span class="permission-chip"
+                      *ngIf="log.statusBefore || log.statusAfter">
+
+                  <span
+                    *ngIf="log.statusBefore"
+                    style="text-decoration:line-through;opacity:.6"
+                  >
+                    {{ log.statusBefore }}
+                  </span>
+
+                  <span *ngIf="log.statusBefore && log.statusAfter">
+                    →
+                  </span>
+
+                  <span *ngIf="log.statusAfter">
+                    {{ log.statusAfter }}
+                  </span>
+
+                </span>
+
+                <span class="permission-chip"
+                      *ngIf="log.commissionTypeAfter || log.commissionRateAfter">
+
+                  <span *ngIf="log.commissionTypeAfter">
+                    {{ log.commissionTypeAfter }}
+                  </span>
+
+                  <span *ngIf="log.commissionTypeAfter && log.commissionRateAfter">
+                    —
+                  </span>
+
+                  <span *ngIf="log.commissionRateAfter">
+                    {{ log.commissionRateAfter }}%
+                  </span>
+
+                </span>
+
+                <span class="permission-chip" *ngIf="log.categoryIdsAfter">
+                  {{ log.categoryIdsAfter }}
+                </span>
+
+                <span class="no-permissions"
+                      *ngIf="!log.statusBefore && !log.statusAfter &&
+                             !log.commissionTypeAfter && !log.commissionRateAfter &&
+                             !log.categoryIdsAfter">
+                  —
+                </span>
+
+              </div>
+
+            </div>
+
+          </td>
+
+          <!-- DATE -->
+          <td class="col-last-login">
+            {{ log.changedAt | date:'dd MMM yyyy, HH:mm' }}
+          </td>
+
+          <!-- ACTION -->
+          <td class="col-status">
+
+            <span
+              class="status-badge"
+              [ngClass]="'status-' + (log.action || '').toLowerCase().replace('_','-')"
+            >
+              {{ getActionLabel(log.action) }}
+            </span>
+
+          </td>
+
+        </tr>
+
+        }
+
+      </tbody>
+
+    </table>
+
+  </app-list-page>
+
+  @if (filteredChangeLogs().length > LOGS_PAGE_SIZE) {
+    <mat-paginator
+      class="logs-paginator"
+      [length]="filteredChangeLogs().length"
+      [pageSize]="LOGS_PAGE_SIZE"
+      [pageIndex]="logsCurrentPage()"
+      [pageSizeOptions]="[10, 25, 50]"
+      [hidePageSize]="false"
+      (page)="onLogsPageChange($event)">
+    </mat-paginator>
+  }
+
+</mat-tab>
     </mat-tab-group>
   </div>
 </div>

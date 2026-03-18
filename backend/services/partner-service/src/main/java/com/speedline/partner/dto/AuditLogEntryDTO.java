@@ -17,5 +17,6 @@ public class AuditLogEntryDTO {
     private LocalDateTime timestamp;
     private String        changesBefore;
     private String        changesAfter;
+    private String        reason;
     private String        status;       // "SUCCESS"
 }

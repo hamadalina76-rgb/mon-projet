@@ -1,0 +1,263 @@
+<div class="config-container" [dir]="isRtl() ? 'rtl' : 'ltr'">
+
+  <!-- ───── Loading ───── -->
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-icon class="icon-spin">autorenew</mat-icon>
+      <span>{{ 'categories.loading' | translate }}</span>
+    </div>
+  }
+
+  @if (!loading()) {
+
+    <!-- ───── Header ───── -->
+    <div class="page-header">
+      <div class="header-left">
+        <div class="breadcrumb">
+          <a routerLink="/categories" class="breadcrumb-link">
+            <mat-icon>arrow_back</mat-icon>
+            {{ 'categories.title' | translate }}
+          </a>
+          @if (parentCat()) {
+            <span class="sep">/</span>
+            <a [routerLink]="['/categories']" class="breadcrumb-link">
+              {{ getCatName(parentCat()) }}
+            </a>
+          }
+          <span class="sep">/</span>
+          <span>{{ 'categories.edit' | translate }}</span>
+        </div>
+        <h1 class="page-title">
+          {{ 'categories.configTitleEditSub' | translate }} — {{ getCatName(subcategory()) }}
+        </h1>
+      </div>
+    </div>
+
+    <!-- ───── Form ───── -->
+    <form [formGroup]="form" class="form-layout">
+
+      <!-- ── Left column ── -->
+      <div class="form-main">
+
+        <!-- Parent info banner -->
+        @if (parentCat()) {
+          <div class="parent-banner">
+            <mat-icon class="banner-icon">subdirectory_arrow_right</mat-icon>
+            <div class="banner-info">
+              <span class="banner-label">{{ 'categories.parentSearchLabel' | translate }}</span>
+              <span class="banner-name">{{ getCatName(parentCat()) }}</span>
+            </div>
+            <span class="banner-badge">{{ 'categories.level' | translate }} {{ (parentCat()!.depth ?? 0) + 1 }}/3</span>
+          </div>
+        }
+
+        <!-- Names (multilingual) -->
+        <mat-card class="form-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar class="card-icon">translate</mat-icon>
+            <mat-card-title>{{ 'categories.formNamesTitle' | translate }}</mat-card-title>
+            <mat-card-subtitle>{{ 'categories.formNamesSubtitle' | translate }}</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <mat-tab-group [(selectedIndex)]="selectedTabIndex" (selectedIndexChange)="onTabChange($event)" class="lang-tabs">
+
+              <mat-tab label="🇫🇷 Français">
+                <div class="tab-body">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>{{ 'categories.nameFrLabel' | translate }} *</mat-label>
+                    <input matInput formControlName="nameFr" [placeholder]="'categories.nameFrPlaceholder' | translate">
+                    <mat-error>{{ getError('nameFr') }}</mat-error>
+                  </mat-form-field>
+                </div>
+              </mat-tab>
+
+              <mat-tab label="🇬🇧 English">
+                <div class="tab-body">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>{{ 'categories.nameEnLabel' | translate }} *</mat-label>
+                    <input matInput formControlName="nameEn" [placeholder]="'categories.nameEnPlaceholder' | translate">
+                    <mat-error>{{ getError('nameEn') }}</mat-error>
+                  </mat-form-field>
+                </div>
+              </mat-tab>
+
+              <mat-tab label="🇸🇦 العربية">
+                <div class="tab-body">
+                  <mat-form-field appearance="outline" class="full-width" dir="rtl">
+                    <mat-label>{{ 'categories.nameArLabel' | translate }}</mat-label>
+                    <input matInput formControlName="nameAr" [placeholder]="'categories.nameArPlaceholder' | translate">
+                  </mat-form-field>
+                </div>
+              </mat-tab>
+
+            </mat-tab-group>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Description -->
+        <mat-card class="form-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar class="card-icon">description</mat-icon>
+            <mat-card-title>{{ 'categories.formDescTitle' | translate }}</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ 'categories.descLabel' | translate }}</mat-label>
+              <textarea matInput formControlName="description" rows="3"
+                [placeholder]="'categories.descPlaceholder' | translate"></textarea>
+            </mat-form-field>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Properties -->
+        <mat-card class="form-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar class="card-icon">tune</mat-icon>
+            <mat-card-title>{{ 'categories.formPropsTitle' | translate }}</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="properties-grid">
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'categories.displayOrderLabel' | translate }} *</mat-label>
+                <input matInput type="number" formControlName="displayOrder" min="1">
+                <mat-hint>{{ 'categories.displayOrderHint' | translate }}</mat-hint>
+                <mat-error>{{ getError('displayOrder') }}</mat-error>
+              </mat-form-field>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Icon -->
+        <mat-card class="form-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar class="card-icon">image</mat-icon>
+            <mat-card-title>{{ 'categories.iconSectionTitle' | translate }}</mat-card-title>
+            <mat-card-subtitle>{{ 'categories.iconSubtitle' | translate }}</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <input type="text" formControlName="icon" style="display:none">
+            <input type="file" #fileInput
+              accept="image/png,image/jpeg,image/svg+xml,image/webp"
+              style="display:none"
+              (change)="onFileSelected($event)">
+
+            <div class="icon-upload-zone" [class.has-preview]="iconPreviewUrl()" (click)="!uploading() && fileInput.click()">
+              @if (uploading()) {
+                <div class="upload-state upload-loading">
+                  <mat-icon class="icon-spin">autorenew</mat-icon>
+                  <span>{{ 'categories.uploadInProgress' | translate }}</span>
+                </div>
+              } @else if (iconPreviewUrl()) {
+                <div class="upload-state icon-preview">
+                  <img [src]="iconPreviewUrl()" alt="Icône" (error)="onIconError($event)" class="preview-img">
+                  <button mat-icon-button class="remove-btn" (click)="removeIcon($event)"
+                    [matTooltip]="'categories.removeIconTooltip' | translate" type="button">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+              } @else {
+                <div class="upload-state upload-placeholder">
+                  <mat-icon>cloud_upload</mat-icon>
+                  <span>{{ 'categories.uploadClick' | translate }}</span>
+                  <small>PNG, JPG, SVG, WEBP</small>
+                </div>
+              }
+            </div>
+
+            @if (iconPreviewUrl() && !uploading()) {
+              <button mat-stroked-button class="change-icon-btn" (click)="fileInput.click()" type="button">
+                <mat-icon>swap_horiz</mat-icon>
+                {{ 'categories.changeIcon' | translate }}
+              </button>
+            }
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Colors -->
+        <mat-card class="form-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar class="card-icon">palette</mat-icon>
+            <mat-card-title>{{ 'categories.colorsSectionTitle' | translate }}</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="colors-grid">
+              <div class="color-field">
+                <label class="color-label">{{ 'categories.bgColorLabel' | translate }}</label>
+                <div class="color-input-row">
+                  <input type="color" formControlName="backgroundColor" class="color-picker">
+                  <mat-form-field appearance="outline" class="color-text">
+                    <input matInput formControlName="backgroundColor" placeholder="#EC131E">
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="color-field">
+                <label class="color-label">{{ 'categories.textColorLabel' | translate }}</label>
+                <div class="color-input-row">
+                  <input type="color" formControlName="textColor" class="color-picker">
+                  <mat-form-field appearance="outline" class="color-text">
+                    <input matInput formControlName="textColor" placeholder="#FFFFFF">
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="color-preview-box"
+                [style.background-color]="form.get('backgroundColor')?.value || '#EC131E'"
+                [style.color]="form.get('textColor')?.value || '#FFFFFF'">
+                <span>{{ 'categories.colorPreview' | translate }}</span>
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+      </div>
+
+      <!-- ── Right column (sidebar) ── -->
+      <div class="form-sidebar">
+
+        <!-- Status & visibility -->
+        <mat-card class="form-card sidebar-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar class="card-icon">toggle_on</mat-icon>
+            <mat-card-title>{{ 'categories.statusSectionTitle' | translate }}</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">{{ 'categories.activeToggleTitle' | translate }}</span>
+                <span class="toggle-desc">{{ 'categories.activeToggleDesc' | translate }}</span>
+              </div>
+              <mat-slide-toggle formControlName="isActive"></mat-slide-toggle>
+            </div>
+            <mat-divider></mat-divider>
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">{{ 'categories.featuredToggleTitle' | translate }}</span>
+                <span class="toggle-desc">{{ 'categories.featuredToggleDesc' | translate }}</span>
+              </div>
+              <mat-slide-toggle formControlName="isFeatured" color="accent"></mat-slide-toggle>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Save card -->
+        <mat-card class="form-card sidebar-card save-card">
+          <mat-card-content>
+            <p class="save-hint">{{ 'categories.saveHintEdit' | translate }}</p>
+            <button mat-raised-button class="btn-save-full"
+              (click)="onSave()" [disabled]="saving()" type="button">
+              <mat-icon>{{ saving() ? 'hourglass_empty' : 'save' }}</mat-icon>
+              {{ saving() ? ('categories.savingBtn' | translate) : ('categories.updateBtn' | translate) }}
+            </button>
+            <button mat-stroked-button class="btn-cancel-full" (click)="onCancel()" type="button">
+              <mat-icon>close</mat-icon>
+              {{ 'categories.cancelBtn' | translate }}
+            </button>
+          </mat-card-content>
+        </mat-card>
+
+      </div>
+    </form>
+  }
+
+</div>

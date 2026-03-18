@@ -36,6 +36,34 @@ export class PartnersService {
     return this.api.post(`admin/partners/${id}/approve`, {});
   }
 
+  approvePartnerWithCommission(id: string, commissionData: {
+    commissionType: string;
+    commissionRate: number;
+    categoryId: number;
+    subcategoryIds: number[];
+  }): Observable<any> {
+    return this.api.post(`admin/partners/${id}/approve`, commissionData);
+  }
+getPartnerChangeLogsFiltered(
+  id: string,
+  page: number = 0,
+  size: number = 10,
+  filters: {
+    action?: string;
+    adminId?: number;
+    dateFrom?: string;
+    dateTo?: string;
+    changedField?: string;
+  } = {}
+): Observable<any> {
+  const body: any = { page, size };
+  if (filters.action)       body['action']       = filters.action;
+  if (filters.adminId)      body['adminId']       = filters.adminId;
+  if (filters.dateFrom)     body['dateFrom']      = filters.dateFrom;
+  if (filters.dateTo)       body['dateTo']        = filters.dateTo;
+  if (filters.changedField) body['changedField']  = filters.changedField;
+  return this.api.post(`admin/partners/${id}/change-logs/filter`, body);
+}
   rejectPartner(id: string, reason: string): Observable<any> {
     return this.api.post(`admin/partners/${id}/reject`, { reason });
   }
@@ -62,5 +90,26 @@ export class PartnersService {
 
   saveInternalNotes(id: string, note: string): Observable<any> {
     return this.api.post(`admin/partners/${id}/internal-notes`, { note });
+  }
+
+  getPartnerChangeLogs(id: string, page: number = 0, size: number = 10): Observable<any> {
+    return this.api.get(`admin/partners/${id}/change-logs?page=${page}&size=${size}`);
+  }
+
+  updatePartner(id: string, data: {
+    businessName?: string;
+    brandName?: string;
+    email?: string;
+    phoneNumber?: string;
+    type?: string;
+    city?: string;
+    address?: string;
+    description?: string;
+    commissionType?: string;
+    commissionRate?: number;
+    categoryId?: number | null;
+    subcategoryIds?: number[];
+  }): Observable<any> {
+    return this.api.put(`admin/partners/${id}`, data);
   }
 }

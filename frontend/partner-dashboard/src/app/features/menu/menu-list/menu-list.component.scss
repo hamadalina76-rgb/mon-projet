@@ -298,6 +298,22 @@
   }
 }
 
+// ─── Slide Toggle (brand red) ──────────────────────────────────────────────────
+::ng-deep .mat-mdc-slide-toggle {
+  --mdc-switch-selected-track-color: #{$speedline-red};
+  --mdc-switch-selected-handle-color: #{$white};
+  --mdc-switch-selected-hover-track-color: #{$speedline-red-dark};
+  --mdc-switch-selected-pressed-track-color: #{$speedline-red-dark};
+  --mdc-switch-selected-focus-track-color: #{$speedline-red};
+  --mdc-switch-selected-hover-handle-color: #{$white};
+  --mdc-switch-selected-pressed-handle-color: #{$white};
+  --mdc-switch-selected-focus-handle-color: #{$white};
+  --mdc-switch-selected-icon-color: #{$speedline-red};
+  --mdc-switch-selected-focus-state-layer-color: #{$speedline-red};
+  --mdc-switch-selected-hover-state-layer-color: #{$speedline-red};
+  --mdc-switch-selected-pressed-state-layer-color: #{$speedline-red};
+}
+
 .panel-header {
   display: flex;
   justify-content: space-between;

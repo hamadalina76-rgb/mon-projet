@@ -17,7 +17,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ToastrService } from 'ngx-toastr';
 import { CategoriesService } from '../services/categories.service';
-import { Category, CategoryBusinessType, CreateCategoryRequest, UpdateCategoryRequest } from '@core/models/category.model';
+import { Category, CreateCategoryRequest, UpdateCategoryRequest } from '@core/models/category.model';
 
 @Component({
   selector: 'app-category-configuration',
@@ -59,10 +59,13 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
   uploading = signal(false);
   iconPreviewUrl = signal<string>('');
 
+  currentLang = signal(this.translate.currentLang || 'fr');
+  isRtl = computed(() => this.currentLang() === 'ar');
+
   // Hierarchy / autocomplete
   parentCandidates = signal<Category[]>([]);
   selectedParent = signal<Category | null>(null);
-  parentSearchCtrl = new FormControl('');
+  parentSearchCtrl = new FormControl<Category | string | null>('');
   filteredParents = signal<Category[]>([]);
 
   /** Breadcrumb path: [root name, …, selected parent name] */
@@ -85,19 +88,16 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
   });
 
   isSubcategoryMode = computed(() => this.selectedParent() !== null || !!this.categoryForm?.get('parentId')?.value);
+  isRootCategory    = computed(() => !this.isSubcategoryMode());
 
   private iconObjectUrl: string | null = null;
-
-  businessTypes: { value: CategoryBusinessType; label: string; icon: string }[] = [
-    { value: CategoryBusinessType.RESTAURANT, label: 'Restaurant', icon: 'restaurant' },
-    { value: CategoryBusinessType.GROCERY, label: 'Épicerie / Supermarché', icon: 'local_grocery_store' },
-    { value: CategoryBusinessType.PHARMACY, label: 'Pharmacie', icon: 'local_pharmacy' },
-    { value: CategoryBusinessType.OTHER, label: 'Autre', icon: 'category' },
-  ];
 
   ngOnInit(): void {
     this.initializeForm();
     this.checkEditMode();
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(e => this.currentLang.set(e.lang));
   }
 
   ngOnDestroy(): void {
@@ -113,8 +113,6 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
       nameAr: [''],
       description: [''],
       parentId: [null],
-      categoryBusinessType: ['', Validators.required],
-      categoryType: [''],
       displayOrder: [1, [Validators.required, Validators.min(1)]],
       backgroundColor: ['#EC131E'],
       textColor: ['#FFFFFF'],
@@ -126,7 +124,7 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
     // Filter autocomplete on each keystroke
     this.parentSearchCtrl.valueChanges
       .pipe(takeUntil(this.destroy$))
-      .subscribe(term => this.filterParents(term ?? ''));
+      .subscribe(term => this.filterParents(typeof term === 'string' ? term : ''));
   }
 
   private checkEditMode(): void {
@@ -143,18 +141,17 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
       this.loadCategory(Number(id));
     } else {
       this.loadParentCandidates();
-      // Pre-fill parentId from query param (e.g. ?parentId=3)
       if (parentIdParam) {
         const pid = Number(parentIdParam);
         this.categoryForm.patchValue({ parentId: pid });
-        // selectedParent will be resolved once candidates load
-        this.categoriesService.getParentCandidates()
+        // Charger directement la catégorie parente par son ID pour pré-remplir le champ
+        this.categoriesService.getCategoryById(pid)
           .pipe(takeUntil(this.destroy$))
-          .subscribe(candidates => {
-            const found = candidates.find(c => c.id === pid) ?? null;
-            if (found) {
-              this.selectedParent.set(found);
-              this.parentSearchCtrl.setValue(this.getCatName(found), { emitEvent: false });
+          .subscribe({
+            next: parent => {
+              this.selectedParent.set(parent);
+              this.categoryForm.patchValue({ parentId: parent.id }, { emitEvent: false });
+              this.parentSearchCtrl.setValue(parent, { emitEvent: false });
             }
           });
       }
@@ -168,13 +165,13 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
         next: candidates => {
           this.parentCandidates.set(candidates);
           this.filteredParents.set(candidates);
-          // If we already have a parentId (edit mode), resolve the selected parent
+          // Edit mode: resolve parent from form value
           const pid = this.categoryForm.get('parentId')?.value as number | null;
-          if (pid) {
+          if (pid && !this.selectedParent()) {
             const found = candidates.find(c => c.id === pid) ?? null;
             if (found) {
               this.selectedParent.set(found);
-              this.parentSearchCtrl.setValue(this.getCatName(found), { emitEvent: false });
+              this.parentSearchCtrl.setValue(found, { emitEvent: false });
             }
           }
         },
@@ -220,8 +217,6 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
             nameAr: cat.nameI18n['ar'] || '',
             description: cat.description || '',
             parentId: cat.parentId || null,
-            categoryBusinessType: cat.categoryBusinessType,
-            categoryType: cat.categoryType || '',
             displayOrder: cat.displayOrder,
             backgroundColor: cat.backgroundColor || '#EC131E',
             textColor: cat.textColor || '#FFFFFF',
@@ -240,7 +235,7 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
           }
         },
         error: () => {
-          this.toastr.error('Impossible de charger la catégorie');
+          this.toastr.error(this.translate.instant('categories.loadError'));
           this.router.navigate(['/categories']);
         }
       });
@@ -257,7 +252,7 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
   onSave(): void {
     if (this.categoryForm.invalid) {
       this.categoryForm.markAllAsTouched();
-      this.toastr.warning('Veuillez corriger les erreurs dans le formulaire');
+      this.toastr.warning(this.translate.instant('categories.formInvalid'));
       return;
     }
 
@@ -277,8 +272,6 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
         displayOrder: v.displayOrder,
         isFeatured: v.isFeatured,
         isActive: v.isActive,
-        categoryBusinessType: v.categoryBusinessType,
-        categoryType: v.categoryType || undefined,
         backgroundColor: v.backgroundColor || undefined,
         textColor: v.textColor || undefined,
         icon: v.icon || undefined,
@@ -287,11 +280,11 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: () => {
-            this.toastr.success('Catégorie mise à jour');
+            this.toastr.success(this.translate.instant('categories.categoryUpdated'));
             this.router.navigate(['/categories']);
           },
           error: (err) => {
-            this.handleSaveError(err, 'mise à jour');
+            this.handleSaveError(err);
           }
         });
     } else {
@@ -301,8 +294,6 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
         parentId: v.parentId || undefined,
         displayOrder: v.displayOrder,
         isFeatured: v.isFeatured,
-        categoryBusinessType: v.categoryBusinessType,
-        categoryType: v.categoryType || undefined,
         backgroundColor: v.backgroundColor || undefined,
         textColor: v.textColor || undefined,
         icon: v.icon || undefined,
@@ -311,32 +302,33 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: () => {
-            this.toastr.success('Catégorie créée avec succès');
+            this.toastr.success(this.translate.instant('categories.categoryCreated'));
             this.router.navigate(['/categories']);
           },
           error: (err) => {
-            this.handleSaveError(err, 'création');
+            this.handleSaveError(err);
           }
         });
     }
   }
 
-  private handleSaveError(err: any, action: string): void {
-    if (err.status === 409) {
-      this.toastr.error('Ce nom de catégorie existe déjà pour cette locale');
-    } else if (err.status === 400) {
-      this.toastr.error(err.error?.message || 'Données invalides');
+  private handleSaveError(err: unknown): void {
+    const typedErr = err as { status?: number; error?: { message?: string } };
+    if (typedErr.status === 409) {
+      this.toastr.error(this.translate.instant('categories.duplicateName'));
+    } else if (typedErr.status === 400) {
+      this.toastr.error(typedErr.error?.message ?? this.translate.instant('categories.invalidData'));
     } else {
-      this.toastr.error(`Erreur lors de la ${action}`);
+      this.toastr.error(this.translate.instant('categories.saveError'));
     }
     this.saving.set(false);
   }
 
   getError(field: string): string {
     const ctrl = this.categoryForm.get(field);
-    if (ctrl?.hasError('required')) return 'Ce champ est requis';
-    if (ctrl?.hasError('minlength')) return `Minimum ${ctrl.getError('minlength').requiredLength} caractères`;
-    if (ctrl?.hasError('min')) return `Valeur minimum: ${ctrl.getError('min').min}`;
+    if (ctrl?.hasError('required')) return this.translate.instant('categories.fieldRequired');
+    if (ctrl?.hasError('minlength')) return this.translate.instant('categories.minLength', { count: ctrl.getError('minlength').requiredLength });
+    if (ctrl?.hasError('min')) return this.translate.instant('categories.minValue', { min: ctrl.getError('min').min });
     return '';
   }
 
@@ -364,7 +356,7 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
           this.uploading.set(false);
         },
         error: () => {
-          this.toastr.error("Erreur lors de l'upload de l'icône");
+          this.toastr.error(this.translate.instant('categories.uploadError'));
           this.iconPreviewUrl.set('');
           if (this.iconObjectUrl) { URL.revokeObjectURL(this.iconObjectUrl); this.iconObjectUrl = null; }
           this.uploading.set(false);
@@ -379,4 +371,5 @@ export class CategoryConfigurationComponent implements OnInit, OnDestroy {
     this.iconPreviewUrl.set('');
     if (this.iconObjectUrl) { URL.revokeObjectURL(this.iconObjectUrl); this.iconObjectUrl = null; }
   }
+
 }
