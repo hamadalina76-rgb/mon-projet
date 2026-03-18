@@ -25,7 +25,7 @@ spring:
     gcp:
       project-id: ${GCP_PROJECT_ID:speedline-dev}
       pubsub:
-        emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8085}
+        emulator-host: ${PUBSUB_EMULATOR_HOST:}
         subscriber:
           parallel-pull-count: 1
           max-outstanding-element-count: 100

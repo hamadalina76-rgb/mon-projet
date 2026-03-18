@@ -83,11 +83,9 @@ spring:
         # ----------------------------------------------------------------------
         # Override explicite en profile dev pour neutraliser tout héritage depuis
         # application.yml (qui garde localhost:8090 pour le workflow local).
-        # IMPORTANT: dans Spring Cloud GCP, toute valeur non nulle force le mode
-        # emulator (NoCredentialsProvider). On met explicitement "false" pour
-        # désactiver proprement l'emulator en DEV Cloud Run.
+        # Valeur vide par défaut en DEV Cloud Run => pas d'emulator, vrai Pub/Sub.
         # ----------------------------------------------------------------------
-        emulator-host: "false"
+        emulator-host: ${PUBSUB_EMULATOR_HOST:}
 
         # ----------------------------------------------------------------------
         # En DEV Cloud Run on force l'usage du vrai Pub/Sub + ADC du service
@@ -101,6 +99,30 @@ spring:
           # --------------------------------------------------------------------
           parallel-pull-count: 1
           max-ack-extension-period: 600
+
+  # Email Configuration (OTP, bienvenue partenaire)
+  # Port 465 (SSL) : souvent autorisé quand le port 587 est bloqué. Pour 587/STARTTLS : MAIL_PORT=587, MAIL_USE_465=false
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:465}
+    username: devwisetunisie@gmail.com
+    password: owiq ixkt efgl wkte
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          socketFactory:
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+            fallback: false
+          starttls:
+            enable: false
+          connectiontimeout: ${MAIL_CONNECTION_TIMEOUT:15000}
+          timeout: ${MAIL_TIMEOUT:15000}
+          writetimeout: ${MAIL_WRITE_TIMEOUT:15000}
 
 eureka:
   client:
