@@ -75,6 +75,9 @@ public class PartnerDTO {
     private Boolean isFeatured;
     private Boolean isCurrentlyOpen;
 
+    /** Type de commission (PERCENTAGE ou MARKUP) */
+    private String commissionType;
+
     /** Taux de commission (ticket: commissionRate) */
     private BigDecimal commissionRate;
     
@@ -118,6 +121,7 @@ public class PartnerDTO {
     
     // Timestamps
     private LocalDateTime createdAt;
+        private LocalDateTime updatedAt; // Added updatedAt field
     
     // Distance (calculée côté client ou service)
     private Double distanceKm;

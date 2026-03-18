@@ -18,6 +18,7 @@ import { ToastrService } from 'ngx-toastr';
 import { PartnersService } from '../services/partners.service';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '@shared/components/confirmation-dialog/confirmation-dialog.component';
 import { ListPageComponent } from '@shared/components/list-page/list-page.component';
+import { PartnerEditDialogComponent, PartnerEditDialogData } from '../partner-edit-dialog/partner-edit-dialog.component';
 
 @Component({
   selector: 'app-partners-list',
@@ -179,6 +180,35 @@ export class PartnersListComponent implements OnInit, OnDestroy {
   }
 
   // ---- Status actions with confirmation (same as admins) ----
+
+  openEditDialog(partner: any): void {
+    const dialogRef = this.dialog.open(PartnerEditDialogComponent, {
+      width: '660px',
+      maxHeight: '90vh',
+      data: { partner } as PartnerEditDialogData,
+    });
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.partnersService.updatePartner(partner.id, result).subscribe({
+          next: () => {
+            const name = partner.brandName || partner.businessName;
+            this.toastr.success(
+              this.translate.instant('partners.edit.successMessage', { name }),
+              this.translate.instant('partners.edit.successTitle')
+            );
+            this.loadPartners();
+          },
+          error: (err) => {
+            console.error('Erreur modification partenaire:', err);
+            this.toastr.error(
+              this.translate.instant('partners.edit.errorMessage'),
+              this.translate.instant('common.error')
+            );
+          },
+        });
+      }
+    });
+  }
 
   activatePartner(partner: any): void {
     const name = partner.brandName || partner.businessName;

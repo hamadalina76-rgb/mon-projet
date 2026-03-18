@@ -1,0 +1,204 @@
+<div class="commission-dialog">
+
+  <!-- Header -->
+  <div class="dialog-header">
+    <div class="header-left">
+      <div class="header-icon-wrap">
+        <mat-icon>storefront</mat-icon>
+      </div>
+      <div>
+        <h2 class="header-title">{{ 'partners.commission.setupTitle' | translate }}</h2>
+        <p class="header-subtitle">{{ data.partnerName }}</p>
+      </div>
+    </div>
+    <button mat-icon-button mat-dialog-close class="close-btn">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Steps indicator -->
+  <div class="steps-bar">
+    <div class="step" [class.active]="true" [class.done]="true">
+      <div class="step-dot"><mat-icon>percent</mat-icon></div>
+      <span>{{ 'partners.commission.typeTitle' | translate }}</span>
+    </div>
+    <div class="step-line" [class.done]="selectedCategory()"></div>
+    <div class="step" [class.active]="true" [class.done]="selectedCategory()">
+      <div class="step-dot"><mat-icon>category</mat-icon></div>
+      <span>{{ 'partners.commission.categoryTitle' | translate }}</span>
+    </div>
+    <div class="step-line" [class.done]="subcategories().length > 0 && selectedSubcategoryIds().length > 0"></div>
+    <div class="step" [class.active]="!!selectedCategory()" [class.done]="selectedSubcategoryIds().length > 0">
+      <div class="step-dot"><mat-icon>folder_open</mat-icon></div>
+      <span>{{ 'partners.commission.subcategoriesTitle' | translate }}</span>
+    </div>
+  </div>
+
+  <div class="dialog-body" [formGroup]="commissionForm">
+
+    <!-- STEP 1: Commission Type + Rate -->
+    <div class="section">
+      <div class="section-label">
+        <span class="step-number">1</span>
+        <span>{{ 'partners.commission.typeTitle' | translate }}</span>
+      </div>
+
+      <mat-radio-group formControlName="commissionType" class="type-cards">
+
+        <label class="type-card" [class.selected]="selectedCommissionType() === 'PERCENTAGE'">
+          <mat-radio-button value="PERCENTAGE"></mat-radio-button>
+          <div class="type-card-body">
+            <div class="type-card-icon percentage">
+              <mat-icon>percent</mat-icon>
+            </div>
+            <div class="type-card-text">
+              <strong>{{ 'partners.commission.percentage' | translate }}</strong>
+              <p>{{ 'partners.commission.percentageDescription' | translate }}</p>
+            </div>
+          </div>
+        </label>
+
+        <label class="type-card" [class.selected]="selectedCommissionType() === 'MARKUP'">
+          <mat-radio-button value="MARKUP"></mat-radio-button>
+          <div class="type-card-body">
+            <div class="type-card-icon markup">
+              <mat-icon>trending_up</mat-icon>
+            </div>
+            <div class="type-card-text">
+              <strong>{{ 'partners.commission.markup' | translate }}</strong>
+              <p>{{ 'partners.commission.markupDescription' | translate }}</p>
+            </div>
+          </div>
+        </label>
+
+      </mat-radio-group>
+
+      <div class="rate-row">
+        <mat-form-field appearance="outline" class="rate-field">
+          <mat-label>
+            {{ selectedCommissionType() === 'PERCENTAGE' ? ('partners.commission.percentageLabel' | translate) : ('partners.commission.markupLabel' | translate) }}
+          </mat-label>
+          <input matInput type="number" formControlName="commissionRate" min="0" max="100" step="0.1">
+          <span matSuffix class="suffix-pct">%</span>
+          <mat-error *ngIf="commissionForm.get('commissionRate')?.hasError('required')">{{ 'partners.commission.rateRequired' | translate }}</mat-error>
+          <mat-error *ngIf="commissionForm.get('commissionRate')?.hasError('min')">{{ 'partners.commission.rateMin' | translate }}</mat-error>
+          <mat-error *ngIf="commissionForm.get('commissionRate')?.hasError('max')">{{ 'partners.commission.rateMax' | translate }}</mat-error>
+        </mat-form-field>
+
+        <div class="rate-preview" *ngIf="commissionForm.get('commissionRate')?.value">
+          <span class="rate-preview-value">{{ commissionForm.get('commissionRate')?.value }}%</span>
+          <span class="rate-preview-label">{{ selectedCommissionType() === 'PERCENTAGE' ? ('partners.commission.percentage' | translate) : ('partners.commission.markup' | translate) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <!-- STEP 2: Category -->
+    <div class="section">
+      <div class="section-label">
+        <span class="step-number">2</span>
+        <span>{{ 'partners.commission.categoryTitle' | translate }}</span>
+      </div>
+      <p class="section-desc">{{ 'partners.commission.categoryDescription' | translate }}</p>
+
+      <div class="category-grid">
+        <div *ngFor="let cat of rootCategories(); trackBy: trackByCategoryId"
+             class="cat-card"
+             [class.selected]="selectedCategoryId() === cat.id"
+             [style.background-color]="selectedCategoryId() === cat.id ? (cat.backgroundColor || null) : null"
+             [style.color]="selectedCategoryId() === cat.id ? (cat.textColor || null) : null"
+             [style.border-color]="cat.backgroundColor || null"
+             (click)="onCategoryChange(cat.id)">
+          <mat-icon class="cat-card-icon" *ngIf="cat.icon">{{ cat.icon }}</mat-icon>
+          <span>{{ getCategoryName(cat) }}</span>
+          <mat-icon class="cat-card-check" *ngIf="selectedCategoryId() === cat.id">check_circle</mat-icon>
+        </div>
+      </div>
+      <p class="cat-required-hint"
+         *ngIf="commissionForm.get('categoryId')?.touched && commissionForm.get('categoryId')?.invalid">
+        {{ 'partners.commission.categoryRequired' | translate }}
+      </p>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <!-- STEP 3: Subcategories -->
+    <div class="section" *ngIf="selectedCategory()">
+      <div class="section-label">
+        <span class="step-number">3</span>
+        <span>{{ 'partners.commission.subcategoriesTitle' | translate }}</span>
+        <span class="optional-badge">{{ 'partners.commission.subcategoriesDescription' | translate }}</span>
+      </div>
+
+      <!-- Has subcategories -->
+      <div *ngIf="subcategories().length > 0" class="subcategories-wrap">
+        <div class="subcategories-grid">
+          <div *ngFor="let sub of subcategories(); trackBy: trackBySubcategoryId"
+               class="sub-chip"
+               [class.selected]="isSubcategorySelected(sub.id)"
+               [style.background-color]="isSubcategorySelected(sub.id) ? (sub.backgroundColor || null) : null"
+               [style.color]="isSubcategorySelected(sub.id) ? (sub.textColor || null) : null"
+               [style.border-color]="sub.backgroundColor || null"
+               (click)="toggleSubcategory(sub.id)">
+            <mat-icon>{{ isSubcategorySelected(sub.id) ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+            <span>{{ getCategoryName(sub) }}</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- No subcategories -->
+      <div *ngIf="subcategories().length === 0" class="empty-sub">
+        <mat-icon>info_outline</mat-icon>
+        <span>{{ 'partners.commission.noSubcategories' | translate }}</span>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-card" *ngIf="isFormValid()">
+      <div class="summary-header">
+        <mat-icon>task_alt</mat-icon>
+        <span>{{ 'partners.commission.summary' | translate }}</span>
+      </div>
+      <div class="summary-rows">
+        <div class="summary-row">
+          <span class="s-label">{{ 'partners.commission.type' | translate }}</span>
+          <span class="s-badge">
+            {{ selectedCommissionType() === 'PERCENTAGE' ? ('partners.commission.percentage' | translate) : ('partners.commission.markup' | translate) }}
+            · {{ commissionForm.get('commissionRate')?.value }}%
+          </span>
+        </div>
+        <div class="summary-row" *ngIf="selectedCategory()">
+          <span class="s-label">{{ 'partners.commission.category' | translate }}</span>
+          <span class="s-value cat-summary-chip"
+                [style.background-color]="selectedCategory()!.backgroundColor || null"
+                [style.color]="selectedCategory()!.textColor || null">
+            {{ getCategoryName(selectedCategory()!) }}
+          </span>
+        </div>
+        <div class="summary-row" *ngIf="selectedSubcategoryIds().length > 0">
+          <span class="s-label">{{ 'partners.commission.subcategories' | translate }}</span>
+          <span class="s-value">{{ selectedSubcategoryIds().length }} {{ 'partners.commission.subcategoriesCount' | translate }}</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="dialog-footer">
+    <button mat-stroked-button mat-dialog-close class="cancel-btn">
+      <mat-icon>close</mat-icon>
+      {{ 'partners.commission.cancel' | translate }}
+    </button>
+    <button mat-flat-button
+            class="approve-btn"
+            [disabled]="!isFormValid()"
+            (click)="onConfirm()">
+      <mat-icon>check_circle</mat-icon>
+      {{ 'partners.commission.approve' | translate }}
+    </button>
+  </div>
+
+</div>

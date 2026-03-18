@@ -726,7 +726,7 @@
 
 .actions-bar {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   gap: v.$spacing-sm;
   padding: v.$spacing-lg;
   background: v.$background-paper;
@@ -734,36 +734,12 @@
   box-shadow: v.$shadow-sm;
   border: 1px solid v.$gray-200;
 
-  // ✅ FIX: passage en colonne sur tablette (colonne droite étroite)
-  @media (max-width: 1200px) {
-    flex-direction: column;
-    gap: v.$spacing-sm;
-
-    .action-btn {
-      width: 100%;
-      flex: none !important;
-      min-width: auto !important;
-    }
-  }
-
   @media (max-width: 1024px) {
-    // En mode une colonne, on repasse en ligne
-    flex-direction: row;
-
-    .action-btn {
-      width: auto;
-    }
+    flex-direction: column;
   }
 
   @media (max-width: 600px) {
-    flex-direction: column;
     padding: v.$spacing-md;
-
-    .action-btn {
-      width: 100%;
-      flex: none !important;
-      min-width: auto !important;
-    }
   }
 
   .action-btn {
@@ -772,12 +748,11 @@
     justify-content: center !important;
     gap: v.$spacing-xs !important;
     white-space: nowrap !important;
-    flex: 1;
-    min-width: 0;
+    width: 100%;
     border-radius: v.$border-radius-md !important;
     font-weight: 600 !important;
-    font-size: 0.9375rem !important;
-    padding: 0.75rem 1.25rem !important;
+    font-size: 0.875rem !important;
+    padding: 0.625rem 1rem !important;
     letter-spacing: 0.01em;
     transition: all v.$transition-fast !important;
     overflow: hidden;
@@ -807,15 +782,14 @@
     }
 
     &.request-btn {
-      flex: 1;
       background: v.$white !important;
-      border-color: #93C5FD !important;
+      border-color: v.$gray-300 !important;
       color: v.$text-primary !important;
-      min-width: 0; // ✅ FIX: suppression de min-width fixe
 
       &:hover:not(:disabled) {
-        border-color: #60A5FA !important;
-        background: #EFF6FF !important;
+        border-color: v.$primary-color !important;
+        color: v.$primary-color !important;
+        background: rgba(v.$primary-color, 0.04) !important;
       }
     }
 

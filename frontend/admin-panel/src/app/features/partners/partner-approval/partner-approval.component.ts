@@ -12,9 +12,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { TranslateModule } from '@ngx-translate/core';
 import { PartnersService } from '../services/partners.service';
+import { CategoriesService } from '@features/categories/services/categories.service';
+import { Category } from '@core/models/category.model';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '@shared/components/confirmation-dialog/confirmation-dialog.component';
 import { RejectDialogComponent } from './reject-dialog.component';
 import { RequestMoreInfoDialogComponent } from './request-more-info-dialog.component';
+import { CommissionSetupDialogComponent, CommissionSetupData, CommissionSetupResult } from './commission-setup-dialog.component';
 import { environment } from '@environments/environment';
 
 declare const mapboxgl: any;
@@ -41,11 +44,13 @@ export class PartnerApprovalComponent implements OnInit, AfterViewInit, OnDestro
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private partnersService = inject(PartnersService);
+  private categoriesService = inject(CategoriesService);
   private dialog = inject(MatDialog);
 
   @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
 
   partner = signal<any>(null);
+  allCategories = signal<Category[]>([]);
   loading = signal(false);
   actionLoading = signal(false);
   private map: any = null;
@@ -62,6 +67,41 @@ export class PartnerApprovalComponent implements OnInit, AfterViewInit, OnDestro
     } catch {
       return [];
     }
+  });
+
+  /** IDs de catégories du partenaire (premier = catégorie racine, reste = sous-catégories) */
+  partnerCategoryIds = computed<number[]>(() => {
+    const p = this.partner();
+    if (!p) return [];
+    const ids = p.categoryIds;
+    if (Array.isArray(ids)) return ids.map((n: any) => Number(n)).filter((n: number) => !isNaN(n));
+    if (typeof ids === 'string' && ids.trim()) {
+      return ids.split(',').map((s: string) => parseInt(s.trim(), 10)).filter((n: number) => !isNaN(n));
+    }
+    return [];
+  });
+
+  /** Catégorie principale (racine) — premier ID de la liste */
+  partnerMainCategory = computed<Category | null>(() => {
+    const ids = this.partnerCategoryIds();
+    if (ids.length === 0) return null;
+    return this.allCategories().find(c => c.id === ids[0]) ?? null;
+  });
+
+  /** Sous-catégories — tous les IDs sauf le premier */
+  partnerSubcategories = computed<Category[]>(() => {
+    const ids = this.partnerCategoryIds();
+    if (ids.length <= 1) return [];
+    const subIds = ids.slice(1);
+    return this.allCategories().filter(c => subIds.includes(c.id));
+  });
+
+  /** Label du type de commission */
+  commissionTypeLabel = computed<string>(() => {
+    const type = this.partner()?.commissionType;
+    if (type === 'PERCENTAGE') return 'Pourcentage';
+    if (type === 'MARKUP') return 'Markup';
+    return type ?? '';
   });
 
   /** Format date de soumission */
@@ -110,6 +150,10 @@ export class PartnerApprovalComponent implements OnInit, AfterViewInit, OnDestro
     if (id) {
       this.loadPartner(id);
     }
+    this.categoriesService.getCategories().subscribe({
+      next: (cats) => this.allCategories.set(cats),
+      error: () => {}, // non-bloquant
+    });
   }
 
   ngAfterViewInit(): void {
@@ -181,21 +225,31 @@ export class PartnerApprovalComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   approvePartner(): void {
-    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
-      width: '420px',
+    const partner = this.partner();
+    if (!partner) return;
+
+    const dialogRef = this.dialog.open(CommissionSetupDialogComponent, {
+      width: '620px',
+      disableClose: true,
       data: {
-        title: 'Approuver ce partenaire ?',
-        message: 'Le partenaire pourra commencer à recevoir des commandes immédiatement.',
-        type: 'info',
-        confirmLabel: 'Approuver',
-        icon: 'check_circle',
-      } as ConfirmationDialogData,
+        partnerId: partner.id.toString(),
+        partnerName: partner.businessName || partner.brandName || 'Partenaire'
+      } as CommissionSetupData,
     });
 
-    dialogRef.afterClosed().subscribe((confirmed: boolean) => {
-      if (confirmed) {
+    dialogRef.afterClosed().subscribe((result: CommissionSetupResult | undefined) => {
+      if (result) {
         this.actionLoading.set(true);
-        this.partnersService.approvePartner(this.partner().id.toString()).subscribe({
+        
+        // Create approval data with commission information
+        const approvalData = {
+          commissionType: result.commissionType,
+          commissionRate: result.commissionRate,
+          categoryId: result.categoryId,
+          subcategoryIds: result.subcategoryIds
+        };
+
+        this.partnersService.approvePartnerWithCommission(partner.id.toString(), approvalData).subscribe({
           next: () => {
             this.actionLoading.set(false);
             this.router.navigate(['/partners']);

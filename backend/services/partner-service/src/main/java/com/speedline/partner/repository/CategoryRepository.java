@@ -1,6 +1,8 @@
 package com.speedline.partner.repository;
 
 import com.speedline.partner.domain.Category;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -37,13 +39,40 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
             (:search IS NULL OR :search = '' OR
                 LOWER(CAST(name_i18n AS text)) LIKE LOWER(CONCAT('%', :search, '%')) OR
                 LOWER(slug)                    LIKE LOWER(CONCAT('%', :search, '%')))
-        AND (:businessType IS NULL OR category_business_type = :businessType)
         AND (:status IS NULL OR is_active = CAST(:status AS boolean))
         ORDER BY display_order ASC NULLS LAST
     """, nativeQuery = true)
     List<Category> findFiltered(
             @Param("search")       String search,
-            @Param("businessType") String businessType,
             @Param("status")       String status
     );
+
+    /**
+     * Pagination serveur : uniquement les catégories racines (parent_id IS NULL),
+     * filtrées par search et status. Le countQuery est nécessaire pour Spring Data Page.
+     */
+    @Query(value = """
+        SELECT * FROM categories
+        WHERE parent_id IS NULL
+        AND (:search IS NULL OR :search = '' OR
+                LOWER(CAST(name_i18n AS text)) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                LOWER(slug)                    LIKE LOWER(CONCAT('%', :search, '%')))
+        AND (:status IS NULL OR is_active = CAST(:status AS boolean))
+        ORDER BY display_order ASC NULLS LAST
+    """, countQuery = """
+        SELECT COUNT(*) FROM categories
+        WHERE parent_id IS NULL
+        AND (:search IS NULL OR :search = '' OR
+                LOWER(CAST(name_i18n AS text)) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                LOWER(slug)                    LIKE LOWER(CONCAT('%', :search, '%')))
+        AND (:status IS NULL OR is_active = CAST(:status AS boolean))
+    """, nativeQuery = true)
+    Page<Category> findRootFilteredPaged(
+            @Param("search") String search,
+            @Param("status") String status,
+            Pageable pageable
+    );
+
+    /** Toutes les sous-catégories directes d'une liste de parents. */
+    List<Category> findByParentIdIn(List<Long> parentIds);
 }

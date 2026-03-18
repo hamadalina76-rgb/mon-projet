@@ -1,8 +1,7 @@
 ﻿import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { FormsModule } from '@angular/forms';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
+import { FormsModule } from '@angular/forms';import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
@@ -19,7 +18,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
 import { ToastrService } from 'ngx-toastr';
 import { CategoriesService } from '../services/categories.service';
-import { Category, CategoryBusinessType, UpdateCategoryRequest } from '@core/models/category.model';
+import { Category, UpdateCategoryRequest } from '@core/models/category.model';
 import { CdkDrag, CdkDropList, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '@shared/components/confirmation-dialog/confirmation-dialog.component';
@@ -61,35 +60,27 @@ export class CategoriesListComponent implements OnInit, OnDestroy {
 
   allCategories = signal<Category[]>([]);
   loading = signal(false);
+  totalElements = signal(0);
 
   searchQuery = signal('');
-  selectedBusinessType = signal<CategoryBusinessType | ''>('');
   selectedStatus = signal<'all' | 'active' | 'inactive'>('all');
   sortBy = signal<'name' | 'order' | 'products' | 'partners'>('order');
   sortOrder = signal<'asc' | 'desc'>('asc');
 
-  businessTypes: { value: CategoryBusinessType | ''; label: string; icon: string }[] = [
-    { value: '', label: 'Tous les types', icon: 'apps' },
-    { value: CategoryBusinessType.RESTAURANT, label: 'Restaurant', icon: 'restaurant' },
-    { value: CategoryBusinessType.GROCERY, label: 'Epicerie', icon: 'local_grocery_store' },
-    { value: CategoryBusinessType.PHARMACY, label: 'Pharmacie', icon: 'local_pharmacy' },
-    { value: CategoryBusinessType.OTHER, label: 'Autre', icon: 'category' },
-  ];
-
-  statusOptions = [
-    { value: 'all', label: 'Tous' },
-    { value: 'active', label: 'Actives' },
-    { value: 'inactive', label: 'Inactives' },
+  statusOptions: { value: 'all' | 'active' | 'inactive'; label: string }[] = [
+    { value: 'all',      label: 'categories.statusAll' },
+    { value: 'active',   label: 'categories.statusActive' },
+    { value: 'inactive', label: 'categories.statusInactive' },
   ];
 
   sortOptions = [
-    { value: 'order', label: 'Ordre affichage' },
-    { value: 'name', label: 'Nom' },
-    { value: 'products', label: 'Produits' },
-    { value: 'partners', label: 'Partenaires' },
+    { value: 'order',    label: 'categories.sortOrder' },
+    { value: 'name',     label: 'categories.sortName' },
+    { value: 'products', label: 'categories.sortProducts' },
+    { value: 'partners', label: 'categories.sortPartners' },
   ];
 
-  readonly PAGE_SIZE = 50;
+  pageSize    = signal(4);
   currentPage = signal(0);
 
   // Le tri reste client-side car déjà chargé ; search/type/status viennent du backend
@@ -123,12 +114,17 @@ export class CategoriesListComponent implements OnInit, OnDestroy {
     this.filteredCategories().filter(c => c.parentId == null)
   );
 
-  paginatedCategories = computed(() => {
-    const list = this.rootCategories();
-    if (list.length <= this.PAGE_SIZE) return list;
-    const start = this.currentPage() * this.PAGE_SIZE;
-    return list.slice(start, start + this.PAGE_SIZE);
-  });
+  /** La pagination est gérée côté serveur — rootCategories contient déjà la bonne page. */
+  paginatedCategories = computed(() => this.rootCategories());
+
+  /** Indique si au moins un filtre actif (hors tri par défaut) */
+  hasActiveFilters = computed(() =>
+    this.searchQuery() !== '' || this.selectedStatus() !== 'all'
+  );
+
+  /** Langue courante (fr/en/ar) — pilote RTL dans le template */
+  currentLang = signal(this.translate.currentLang || 'fr');
+  isRtl = computed(() => this.currentLang() === 'ar');
 
   /** Retourne les sous-catégories directes d'une catégorie (triées par ordre) */
   getSubcategories(parentId: number): Category[] {
@@ -140,6 +136,9 @@ export class CategoriesListComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.setupSearch();
     this.loadCategories();
+    this.translate.onLangChange
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(e => this.currentLang.set(e.lang));
   }
 
   ngOnDestroy(): void {
@@ -160,14 +159,16 @@ export class CategoriesListComponent implements OnInit, OnDestroy {
 
   loadCategories(): void {
     this.loading.set(true);
-    this.categoriesService.getCategories(
+    this.categoriesService.getCategoriesPaged(
       this.searchQuery() || undefined,
-      this.selectedBusinessType() || undefined,
-      this.selectedStatus()
+      this.selectedStatus(),
+      this.currentPage(),
+      this.pageSize()
     ).pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (categories) => {
-          this.allCategories.set(categories);
+        next: ({ content, totalElements }) => {
+          this.allCategories.set(content);
+          this.totalElements.set(totalElements);
           this.loading.set(false);
         },
         error: (err) => {
@@ -185,12 +186,6 @@ export class CategoriesListComponent implements OnInit, OnDestroy {
     this.searchInput$.next(query);
   }
 
-  onTypeChange(value: CategoryBusinessType | ''): void {
-    this.selectedBusinessType.set(value);
-    this.currentPage.set(0);
-    this.loadCategories();
-  }
-
   onStatusChange(value: 'all' | 'active' | 'inactive'): void {
     this.selectedStatus.set(value);
     this.currentPage.set(0);
@@ -199,16 +194,18 @@ export class CategoriesListComponent implements OnInit, OnDestroy {
 
   clearFilters(): void {
     this.searchQuery.set('');
-    this.selectedBusinessType.set('');
     this.selectedStatus.set('all');
     this.sortBy.set('order');
     this.sortOrder.set('asc');
     this.currentPage.set(0);
+    this.pageSize.set(4);
     this.loadCategories();
   }
 
   onPageChange(event: PageEvent): void {
     this.currentPage.set(event.pageIndex);
+    this.pageSize.set(event.pageSize);
+    this.loadCategories();
   }
 
   toggleCategoryStatus(category: Category, event?: Event): void {
@@ -278,20 +275,6 @@ export class CategoriesListComponent implements OnInit, OnDestroy {
       || '';
   }
 
-  getBusinessTypeIcon(type: CategoryBusinessType): string {
-    const icons: Record<CategoryBusinessType, string> = {
-      RESTAURANT: 'restaurant',
-      GROCERY: 'local_grocery_store',
-      PHARMACY: 'local_pharmacy',
-      OTHER: 'category',
-    };
-    return icons[type] ?? 'category';
-  }
-
-  getBusinessTypeLabel(type: CategoryBusinessType): string {
-    const t = this.businessTypes.find(b => b.value === type);
-    return t ? t.label : type;
-  }
 
   onDrop(event: CdkDragDrop<Category[]>): void {
     if (event.previousIndex === event.currentIndex) return;
@@ -332,7 +315,6 @@ export class CategoriesListComponent implements OnInit, OnDestroy {
         displayOrder: cat.displayOrder,
         isFeatured: cat.isFeatured,
         isActive: cat.isActive,
-        categoryBusinessType: cat.categoryBusinessType,
         categoryType: cat.categoryType || undefined,
         backgroundColor: cat.backgroundColor || undefined,
         textColor: cat.textColor || undefined,

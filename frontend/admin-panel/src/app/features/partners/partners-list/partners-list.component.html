@@ -91,6 +91,13 @@
               >
                 <span class="material-icons-round">visibility</span>
               </button>
+              <button
+                class="action-btn action-btn--edit"
+                (click)="openEditDialog(partner)"
+                [matTooltip]="'partners.edit.tooltip' | translate"
+              >
+                <span class="material-icons-round">edit</span>
+              </button>
               @if (partner.status === 'PENDING') {
                 <button
                   class="action-btn"

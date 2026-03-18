@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.speedline.partner.client.OrderServiceClient;
 import com.speedline.partner.domain.AuditLog;
 import com.speedline.partner.domain.Category;
-import com.speedline.partner.domain.CategoryBusinessType;
 import com.speedline.partner.domain.JsonNameI18nConverter;
 import com.speedline.partner.dto.AuditLogEntryDTO;
 import com.speedline.partner.dto.CategoryDTO;
@@ -29,6 +28,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -94,8 +94,7 @@ public class CategoryService {
                 .displayOrder(request.getDisplayOrder())
                 .isActive(true)
                 .isFeatured(request.getIsFeatured() != null ? request.getIsFeatured() : false)
-                .categoryBusinessType(request.getCategoryBusinessType()) // ✅ Direct enum
-                .categoryType(request.getCategoryType() != null ? request.getCategoryType() : "PARTNER")
+                .categoryType(request.getParentId() != null ? "SUB" : "PARTNER")
                 .backgroundColor(request.getBackgroundColor())
                 .textColor(request.getTextColor())
                 .createdBy(adminId)
@@ -131,17 +130,7 @@ public class CategoryService {
     // ==================== SEARCH / FILTER ====================
 
     @Transactional(readOnly = true)
-    public List<CategoryDTO> searchCategories(String q, String businessType, String status) {
-        // businessType : valeur brute depuis le frontend (ex: "RESTAURANT") ou null
-        String businessTypeParam = null;
-        if (StringUtils.hasText(businessType)) {
-            try {
-                // Valider que c'est un enum connu avant de passer au repo
-                CategoryBusinessType.valueOf(businessType.toUpperCase());
-                businessTypeParam = businessType.toUpperCase();
-            } catch (IllegalArgumentException ignored) {}
-        }
-
+    public List<CategoryDTO> searchCategories(String q, String status) {
         // status : "active" → "true", "inactive" → "false", sinon null
         String statusParam = null;
         if ("active".equalsIgnoreCase(status))   statusParam = "true";
@@ -149,8 +138,39 @@ public class CategoryService {
 
         String searchTerm = StringUtils.hasText(q) ? q.trim() : null;
 
-        return categoryRepository.findFiltered(searchTerm, businessTypeParam, statusParam)
+        return categoryRepository.findFiltered(searchTerm, statusParam)
                 .stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
+
+    // ==================== SEARCH / FILTER PAGINATED ====================
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getCategoriesPaged(String q, String status, int page, int size) {
+        String statusParam = null;
+        if ("active".equalsIgnoreCase(status))   statusParam = "true";
+        if ("inactive".equalsIgnoreCase(status)) statusParam = "false";
+        String searchTerm = StringUtils.hasText(q) ? q.trim() : null;
+
+        org.springframework.data.domain.Page<Category> rootPage = categoryRepository
+                .findRootFilteredPaged(searchTerm, statusParam,
+                        org.springframework.data.domain.PageRequest.of(page, size));
+
+        List<Long> rootIds = rootPage.getContent().stream().map(Category::getId).toList();
+        List<Category> subcategories = rootIds.isEmpty()
+                ? List.of()
+                : categoryRepository.findByParentIdIn(rootIds);
+
+        List<CategoryDTO> content = new ArrayList<>();
+        rootPage.getContent().forEach(c -> content.add(convertToDTO(c)));
+        subcategories.forEach(c -> content.add(convertToDTO(c)));
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", content);
+        result.put("totalElements", rootPage.getTotalElements());
+        result.put("totalPages", rootPage.getTotalPages());
+        result.put("page", page);
+        result.put("size", size);
+        return result;
     }
 
     // ==================== GET BY ID ====================
@@ -213,7 +233,6 @@ public class CategoryService {
         category.setDisplayOrder(request.getDisplayOrder());
         category.setIsActive(request.getIsActive());
         category.setIsFeatured(request.getIsFeatured());
-        category.setCategoryBusinessType(request.getCategoryBusinessType()); // ✅ Direct enum
         category.setBackgroundColor(request.getBackgroundColor());
         category.setTextColor(request.getTextColor());
         category.setUpdatedAt(LocalDateTime.now());
@@ -422,6 +441,73 @@ public class CategoryService {
 
     // ==================== AUDIT TRAIL ====================
 
+    // ==================== EXPORT CSV ====================
+
+    @Transactional(readOnly = true)
+    public byte[] exportCategoryReport(Long categoryId) {
+        Category cat = findByIdOrThrow(categoryId);
+        CategoryStatsDTO stats = getCategoryStats(categoryId);
+
+        Map<String, String> nameMap;
+        try { nameMap = jsonConverter.toMap(cat.getNameI18n()); } catch (Exception e) { nameMap = Map.of(); }
+        String name = nameMap.getOrDefault("fr", nameMap.getOrDefault("en", String.valueOf(categoryId)));
+
+        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        DateTimeFormatter dtFmt   = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+        StringBuilder sb = new StringBuilder("\uFEFF"); // BOM pour Excel
+
+        // ── Infos générales ─────────────────────────────────────────────────
+        sb.append("=== RAPPORT CATÉGORIE ===\n");
+        sb.append("Catégorie;").append(name).append("\n");
+        sb.append("Slug;").append(cat.getSlug() != null ? cat.getSlug() : "").append("\n");
+        sb.append("Statut;").append(Boolean.TRUE.equals(cat.getIsActive()) ? "Active" : "Inactive").append("\n");
+        sb.append("Mise en avant;").append(Boolean.TRUE.equals(cat.getIsFeatured()) ? "Oui" : "Non").append("\n");
+        sb.append("Créée le;").append(cat.getCreatedAt() != null ? cat.getCreatedAt().format(dateFmt) : "").append("\n");
+        sb.append("\n");
+
+        // ── Statistiques ────────────────────────────────────────────────────
+        sb.append("=== STATISTIQUES (30 JOURS) ===\n");
+        sb.append("Produits liés;").append(stats.getProductCount()).append("\n");
+        sb.append("Partenaires actifs;").append(stats.getPartnerCount()).append("\n");
+        sb.append("Commandes (30j);").append(stats.getOrdersLast30Days()).append("\n");
+        double trend = stats.getOrderTrendPercent() != null ? stats.getOrderTrendPercent() : 0.0;
+        sb.append("Tendance commandes;").append(trend >= 0 ? "+" : "").append(trend).append("%\n");
+        sb.append("TOP Catégorie;").append(stats.isTopCategory() ? "Oui" : "Non").append("\n");
+        sb.append("\n");
+
+        // ── Commandes journalières ───────────────────────────────────────────
+        if (stats.getDailyOrders() != null && !stats.getDailyOrders().isEmpty()) {
+            sb.append("=== COMMANDES JOURNALIÈRES ===\n");
+            sb.append("Date;Commandes\n");
+            stats.getDailyOrders().forEach(d ->
+                sb.append(d.getDay()).append(";").append(d.getOrders()).append("\n"));
+            sb.append("\n");
+        }
+
+        // ── Journal d'audit ─────────────────────────────────────────────────
+        List<AuditLogEntryDTO> auditList = auditLogRepository
+                .findByEntityTypeAndEntityIdOrderByTimestampDesc("CATEGORY", categoryId)
+                .stream().map(this::toAuditEntry).toList();
+
+        if (!auditList.isEmpty()) {
+            sb.append("=== JOURNAL D'AUDIT ===\n");
+            sb.append("Date;Utilisateur;Rôle;Action;Détails;Statut\n");
+            auditList.forEach(e -> {
+                String ts = e.getTimestamp() != null ? e.getTimestamp().format(dtFmt) : "";
+                String details = e.getChangesAfter() != null ? e.getChangesAfter().replace(";", ",") : "";
+                sb.append(ts).append(";")
+                  .append(e.getAdminName()).append(";")
+                  .append(e.getAdminRole()).append(";")
+                  .append(e.getAction()).append(";")
+                  .append(details).append(";")
+                  .append(e.getStatus()).append("\n");
+            });
+        }
+
+        return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
     @Transactional(readOnly = true)
     public List<AuditLogEntryDTO> getCategoryAuditTrail(Long categoryId) {
         findByIdOrThrow(categoryId); // 404 if not found
@@ -430,6 +516,23 @@ public class CategoryService {
                 .stream()
                 .map(this::toAuditEntry)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getCategoryAuditTrailPaged(Long categoryId, int page, int size) {
+        findByIdOrThrow(categoryId); // 404 if not found
+        org.springframework.data.domain.Page<AuditLog> result = auditLogRepository
+                .findByEntityTypeAndEntityIdOrderByTimestampDesc(
+                        "CATEGORY", categoryId,
+                        org.springframework.data.domain.PageRequest.of(page, size));
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("content",       result.getContent().stream().map(this::toAuditEntry).toList());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages",    result.getTotalPages());
+        response.put("page",          page);
+        response.put("size",          size);
+        return response;
     }
 
     private AuditLogEntryDTO toAuditEntry(AuditLog log) {
@@ -542,7 +645,6 @@ public class CategoryService {
                 .displayOrder(category.getDisplayOrder())
                 .isActive(category.getIsActive())
                 .isFeatured(category.getIsFeatured())
-                .categoryBusinessType(category.getCategoryBusinessType()) // ✅ Direct enum
                 .categoryType(category.getCategoryType())
                 .backgroundColor(category.getBackgroundColor())
                 .textColor(category.getTextColor())

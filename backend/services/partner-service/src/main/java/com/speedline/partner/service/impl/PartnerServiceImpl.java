@@ -1,17 +1,17 @@
 package com.speedline.partner.service.impl;
 
-import com.speedline.partner.domain.Partner;
-import com.speedline.partner.domain.PartnerStatus;
-import com.speedline.partner.domain.PartnerType;
+import com.speedline.partner.domain.*;
+import com.speedline.partner.dto.AdminPartnerUpdateDTO;
 import com.speedline.partner.dto.CompletePartnerProfileRequest;
 import com.speedline.partner.dto.PartnerDTO;
+import com.speedline.partner.dto.PartnerApprovalDTO;
 import com.speedline.partner.event.PartnerEvent;
 import com.speedline.partner.event.PartnerEventPublisher;
-import com.speedline.partner.domain.StaffMember;
-import com.speedline.partner.domain.StaffRole;
 import com.speedline.partner.dto.StaffMemberDTO;
+import com.speedline.partner.exception.PartnerNotFoundException;
 import com.speedline.partner.repository.PartnerRepository;
 import com.speedline.partner.repository.StaffMemberRepository;
+import com.speedline.partner.service.AuditLogService;
 import com.speedline.partner.service.PartnerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,15 +25,19 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Implémentation du service de gestion des partenaires
@@ -47,12 +51,37 @@ public class PartnerServiceImpl implements PartnerService {
     private final PartnerRepository partnerRepository;
     private final StaffMemberRepository staffMemberRepository;
     private final PartnerEventPublisher partnerEventPublisher;
+    private final AuditLogService auditLogService;
     private final com.speedline.partner.client.AuthServiceClient authServiceClient;
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
 
     @Value("${nearby.default-radius-km:5.0}")
     private double defaultRadiusKm;
+
+    /**
+     * Récupère l'ID de l'admin connecté depuis le header X-User-Id injecté par l'API gateway.
+     *
+     * Utilise Optional pour éviter les retours null et ne capture que les erreurs de parsing.
+     * (À terme, ce serait plus propre de passer par un argument resolver ou un autre mécanisme
+     *  que RequestContextHolder, mais on ne change pas ici la logique métier existante.)
+     */
+    private Optional<Long> getCurrentAdminId() {
+        return Optional.ofNullable(RequestContextHolder.getRequestAttributes())
+                .filter(ServletRequestAttributes.class::isInstance)
+                .map(ServletRequestAttributes.class::cast)
+                .map(ServletRequestAttributes::getRequest)
+                .map(req -> req.getHeader("X-User-Id"))
+                .filter(header -> header != null && !header.isBlank())
+                .flatMap(header -> {
+                    try {
+                        return Optional.of(Long.parseLong(header));
+                    } catch (NumberFormatException ex) {
+                        log.warn("X-User-Id header is not a valid long: '{}'", header);
+                        return Optional.empty();
+                    }
+                });
+    }
 
     // ==================== SYNC AUTH-SERVICE ====================
 
@@ -105,7 +134,7 @@ public class PartnerServiceImpl implements PartnerService {
         log.info("Completing profile for partner id: {}", partnerId);
         
         Partner partner = partnerRepository.findById(partnerId)
-                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
         
         // ======== Business Information ========
         if (request.getBusinessName() != null) {
@@ -239,20 +268,17 @@ public class PartnerServiceImpl implements PartnerService {
         // - La réouverture après DOCUMENTS_MISSING (pour réexamen)
         // Une simple modification de profil ACTIVE/INACTIVE/etc ne déclenche pas de notification.
         if (currentStatus == null || currentStatus == PartnerStatus.DOCUMENTS_MISSING || currentStatus == PartnerStatus.PENDING) {
-            try {
-                partnerEventPublisher.publish(PartnerEvent.builder()
-                        .eventType(PartnerEvent.EventType.PARTNER_REQUEST_SUBMITTED)
-                        .partnerId(partner.getId())
-                        .userId(partner.getUserId())
-                        .businessName(partner.getBusinessName())
-                        .brandName(partner.getBrandName())
-                        .email(partner.getEmail())
-                        .status(partner.getStatus().name())
-                        .timestamp(LocalDateTime.now())
-                        .build());
-            } catch (Exception e) {
-                log.warn("Failed to publish partner event for id {}: {}", partnerId, e.getMessage());
-            }
+            publishPartnerEvent(PartnerEvent.builder()
+                    .eventType(PartnerEvent.EventType.PARTNER_REQUEST_SUBMITTED)
+                    .partnerId(partner.getId())
+                    .userId(partner.getUserId())
+                    .businessName(partner.getBusinessName())
+                    .brandName(partner.getBrandName())
+                    .email(partner.getEmail())
+                    .status(partner.getStatus().name())
+                    .timestamp(LocalDateTime.now())
+                    .build(),
+                    partnerId);
         }
 
         // Update auth-service with partner ID using Feign Client
@@ -298,7 +324,7 @@ public class PartnerServiceImpl implements PartnerService {
     public PartnerDTO getPartnerById(Long partnerId) {
         log.info("Getting partner by id: {}", partnerId);
         Partner partner = partnerRepository.findById(partnerId)
-                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
         return convertToDTO(partner);
     }
 
@@ -314,7 +340,7 @@ public class PartnerServiceImpl implements PartnerService {
     public PartnerDTO getPartnerByUserId(Long userId) {
         log.info("Getting partner by userId: {}", userId);
         Partner partner = partnerRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Partner not found for userId: " + userId));
+                .orElseThrow(() -> new PartnerNotFoundException("Partner not found for userId: " + userId));
         return convertToDTO(partner);
     }
 
@@ -339,7 +365,7 @@ public class PartnerServiceImpl implements PartnerService {
     public PartnerDTO updateImages(Long partnerId, String logo, String coverImage) {
         log.info("Updating images for partner id: {}", partnerId);
         Partner partner = partnerRepository.findById(partnerId)
-                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
         
         if (logo != null) {
             partner.setLogo(logo);
@@ -381,11 +407,12 @@ public class PartnerServiceImpl implements PartnerService {
     public PartnerDTO approvePartner(Long partnerId) {
         log.info("Approving partner id: {}", partnerId);
         Partner partner = partnerRepository.findById(partnerId)
-                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
 
         // Allow approval from PENDING or DOCUMENTS_MISSING status
-        if (partner.getStatus() != PartnerStatus.PENDING && partner.getStatus() != PartnerStatus.DOCUMENTS_MISSING) {
-            throw new RuntimeException("Partner cannot be approved from current status: " + partner.getStatus() + ". Only PENDING or DOCUMENTS_MISSING status can be approved.");
+        if (!EnumSet.of(PartnerStatus.PENDING, PartnerStatus.DOCUMENTS_MISSING)
+                .contains(partner.getStatus())) {
+            throw new IllegalStateException("Partner cannot be approved from status: " + partner.getStatus());
         }
 
         partner.setStatus(PartnerStatus.ACTIVE);
@@ -396,21 +423,87 @@ public class PartnerServiceImpl implements PartnerService {
         partner = partnerRepository.save(partner);
         log.info("Partner {} approved successfully", partnerId);
 
+        auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "APPROVE", partnerId,
+                "PENDING", "ACTIVE",
+                null, null, null, null,
+                null, null, null);
+
         // Publish Pub/Sub event to notify partner
-        try {
-            partnerEventPublisher.publish(PartnerEvent.builder()
-                    .eventType(PartnerEvent.EventType.PARTNER_APPROVED)
-                    .partnerId(partner.getId())
-                    .userId(partner.getUserId())
-                    .businessName(partner.getBusinessName())
-                    .brandName(partner.getBrandName())
-                    .email(partner.getEmail())
-                    .status(PartnerStatus.ACTIVE.name())
-                    .timestamp(LocalDateTime.now())
-                    .build());
-        } catch (Exception e) {
-            log.warn("Failed to publish approval event for partner {}: {}", partnerId, e.getMessage());
+        publishPartnerEvent(PartnerEvent.builder()
+                .eventType(PartnerEvent.EventType.PARTNER_APPROVED)
+                .partnerId(partner.getId())
+                .userId(partner.getUserId())
+                .businessName(partner.getBusinessName())
+                .brandName(partner.getBrandName())
+                .email(partner.getEmail())
+                .status(PartnerStatus.ACTIVE.name())
+                .timestamp(LocalDateTime.now())
+                .build(),
+            partnerId);
+
+        return convertToDTO(partner);
+    }
+
+    @Override
+    @Transactional
+    public PartnerDTO approvePartnerWithCommission(Long partnerId, PartnerApprovalDTO approvalData) {
+        log.info("Approving partner id: {} with commission configuration: {}", partnerId, approvalData);
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
+
+        // Allow approval from PENDING or DOCUMENTS_MISSING status
+        if (!EnumSet.of(PartnerStatus.PENDING, PartnerStatus.DOCUMENTS_MISSING)
+                .contains(partner.getStatus())) {
+            throw new IllegalStateException("Partner cannot be approved from status: " + partner.getStatus());
         }
+
+        // Set partner status and general flags
+        partner.setStatus(PartnerStatus.ACTIVE);
+        partner.setIsActive(true);
+        partner.setIsVerified(true);
+        partner.setAcceptsOrders(true);
+
+        // Configure commission
+        partner.setCommissionType(approvalData.getCommissionType());
+        partner.setCommissionRate(approvalData.getCommissionRate());
+
+        // Configure categories (Java 17 stream style)
+        String categoryIds = Stream.concat(
+                        Stream.of(approvalData.getCategoryId()),
+                        Optional.ofNullable(approvalData.getSubcategoryIds())
+                                .orElse(List.of())
+                                .stream()
+                )
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+        partner.setCategoryIds(categoryIds);
+
+        partner = partnerRepository.save(partner);
+        log.info("Partner {} approved successfully with commission type: {}, rate: {}%, categories: {}", 
+                partnerId, approvalData.getCommissionType(), approvalData.getCommissionRate(), partner.getCategoryIds());
+
+        auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "APPROVE_WITH_COMMISSION", partnerId,
+                "PENDING", "ACTIVE",
+                null,
+                approvalData.getCommissionType() != null ? approvalData.getCommissionType().name() : null,
+                null,
+                approvalData.getCommissionRate(),
+                null,
+                partner.getCategoryIds(),
+                null);
+
+        // Publish Pub/Sub event to notify partner
+        publishPartnerEvent(PartnerEvent.builder()
+                .eventType(PartnerEvent.EventType.PARTNER_APPROVED)
+                .partnerId(partner.getId())
+                .userId(partner.getUserId())
+                .businessName(partner.getBusinessName())
+                .brandName(partner.getBrandName())
+                .email(partner.getEmail())
+                .status(PartnerStatus.ACTIVE.name())
+                .timestamp(LocalDateTime.now())
+                .build(),
+            partnerId);
 
         return convertToDTO(partner);
     }
@@ -420,7 +513,7 @@ public class PartnerServiceImpl implements PartnerService {
     public void rejectPartner(Long partnerId, String reason) {
         log.info("Rejecting partner id: {} with reason: {}", partnerId, reason);
         Partner partner = partnerRepository.findById(partnerId)
-                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
 
         partner.setStatus(PartnerStatus.REJECTED);
         partner.setIsActive(false);
@@ -429,22 +522,24 @@ public class PartnerServiceImpl implements PartnerService {
         partnerRepository.save(partner);
         log.info("Partner {} rejected", partnerId);
 
+        auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "REJECT", partnerId,
+                "PENDING", "REJECTED",
+                null, null, null, null,
+                null, null, reason);
+
         // Publish Pub/Sub event to notify partner
-        try {
-            partnerEventPublisher.publish(PartnerEvent.builder()
-                    .eventType(PartnerEvent.EventType.PARTNER_REJECTED)
-                    .partnerId(partner.getId())
-                    .userId(partner.getUserId())
-                    .businessName(partner.getBusinessName())
-                    .brandName(partner.getBrandName())
-                    .email(partner.getEmail())
-                    .status(PartnerStatus.REJECTED.name())
-                    .reason(reason)
-                    .timestamp(LocalDateTime.now())
-                    .build());
-        } catch (Exception e) {
-            log.warn("Failed to publish rejection event for partner {}: {}", partnerId, e.getMessage());
-        }
+        publishPartnerEvent(PartnerEvent.builder()
+                .eventType(PartnerEvent.EventType.PARTNER_REJECTED)
+                .partnerId(partner.getId())
+                .userId(partner.getUserId())
+                .businessName(partner.getBusinessName())
+                .brandName(partner.getBrandName())
+                .email(partner.getEmail())
+                .status(PartnerStatus.REJECTED.name())
+                .reason(reason)
+                .timestamp(LocalDateTime.now())
+                .build(),
+            partnerId);
     }
 
     @Override
@@ -452,7 +547,7 @@ public class PartnerServiceImpl implements PartnerService {
     public PartnerDTO requestMoreInfo(Long partnerId, String message) {
         log.info("Requesting more info for partner id: {} with message: {}", partnerId, message);
         Partner partner = partnerRepository.findById(partnerId)
-                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
 
         partner.setStatus(PartnerStatus.DOCUMENTS_MISSING);
         partner.setIsActive(false);
@@ -462,21 +557,18 @@ public class PartnerServiceImpl implements PartnerService {
         log.info("Partner {} status changed to DOCUMENTS_MISSING", partnerId);
 
         // Publish Pub/Sub event to notify partner
-        try {
-            partnerEventPublisher.publish(PartnerEvent.builder()
-                    .eventType(PartnerEvent.EventType.PARTNER_INFO_REQUESTED)
-                    .partnerId(partner.getId())
-                    .userId(partner.getUserId())
-                    .businessName(partner.getBusinessName())
-                    .brandName(partner.getBrandName())
-                    .email(partner.getEmail())
-                    .status(PartnerStatus.DOCUMENTS_MISSING.name())
-                    .reason(message)
-                    .timestamp(LocalDateTime.now())
-                    .build());
-        } catch (Exception e) {
-            log.warn("Failed to publish info request event for partner {}: {}", partnerId, e.getMessage());
-        }
+        publishPartnerEvent(PartnerEvent.builder()
+                .eventType(PartnerEvent.EventType.PARTNER_INFO_REQUESTED)
+                .partnerId(partner.getId())
+                .userId(partner.getUserId())
+                .businessName(partner.getBusinessName())
+                .brandName(partner.getBrandName())
+                .email(partner.getEmail())
+                .status(PartnerStatus.DOCUMENTS_MISSING.name())
+                .reason(message)
+                .timestamp(LocalDateTime.now())
+                .build(),
+            partnerId);
 
         return convertToDTO(partner);
     }
@@ -486,7 +578,7 @@ public class PartnerServiceImpl implements PartnerService {
     public void suspendPartner(Long partnerId, String reason) {
         log.info("Suspending partner id: {} with reason: {}", partnerId, reason);
         Partner partner = partnerRepository.findById(partnerId)
-                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
 
         partner.setStatus(PartnerStatus.SUSPENDED);
         partner.setIsActive(false);
@@ -494,23 +586,25 @@ public class PartnerServiceImpl implements PartnerService {
 
         partnerRepository.save(partner);
         log.info("Partner {} suspended", partnerId);
-        
+
+        auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "SUSPEND", partnerId,
+                "ACTIVE", "SUSPENDED",
+                null, null, null, null,
+                null, null, reason);
+
         // Publish Pub/Sub event
-        try {
-            partnerEventPublisher.publish(PartnerEvent.builder()
-                    .eventType(PartnerEvent.EventType.PARTNER_SUSPENDED)
-                    .partnerId(partner.getId())
-                    .userId(partner.getUserId())
-                    .businessName(partner.getBusinessName())
-                    .brandName(partner.getBrandName())
-                    .email(partner.getEmail())
-                    .status(PartnerStatus.SUSPENDED.name())
-                    .reason(reason)
-                    .timestamp(LocalDateTime.now())
-                    .build());
-        } catch (Exception e) {
-            log.warn("Failed to publish suspension event for partner {}: {}", partnerId, e.getMessage());
-        }
+        publishPartnerEvent(PartnerEvent.builder()
+                .eventType(PartnerEvent.EventType.PARTNER_SUSPENDED)
+                .partnerId(partner.getId())
+                .userId(partner.getUserId())
+                .businessName(partner.getBusinessName())
+                .brandName(partner.getBrandName())
+                .email(partner.getEmail())
+                .status(PartnerStatus.SUSPENDED.name())
+                .reason(reason)
+                .timestamp(LocalDateTime.now())
+                .build(),
+            partnerId);
     }
 
     @Override
@@ -518,7 +612,7 @@ public class PartnerServiceImpl implements PartnerService {
     public PartnerDTO activatePartner(Long partnerId) {
         log.info("Activating partner id: {}", partnerId);
         Partner partner = partnerRepository.findById(partnerId)
-                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
 
         partner.setStatus(PartnerStatus.ACTIVE);
         partner.setIsActive(true);
@@ -528,21 +622,23 @@ public class PartnerServiceImpl implements PartnerService {
         partner = partnerRepository.save(partner);
         log.info("Partner {} activated successfully", partnerId);
 
+        auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "ACTIVATE", partnerId,
+                "INACTIVE", "ACTIVE",
+                null, null, null, null,
+                null, null, null);
+
         // Publish Pub/Sub event to notify partner (use PARTNER_ACTIVATED, not PARTNER_APPROVED)
-        try {
-            partnerEventPublisher.publish(PartnerEvent.builder()
-                    .eventType(PartnerEvent.EventType.PARTNER_ACTIVATED)
-                    .partnerId(partner.getId())
-                    .userId(partner.getUserId())
-                    .businessName(partner.getBusinessName())
-                    .brandName(partner.getBrandName())
-                    .email(partner.getEmail())
-                    .status(PartnerStatus.ACTIVE.name())
-                    .timestamp(LocalDateTime.now())
-                    .build());
-        } catch (Exception e) {
-            log.warn("Failed to publish activation event for partner {}: {}", partnerId, e.getMessage());
-        }
+        publishPartnerEvent(PartnerEvent.builder()
+                .eventType(PartnerEvent.EventType.PARTNER_ACTIVATED)
+                .partnerId(partner.getId())
+                .userId(partner.getUserId())
+                .businessName(partner.getBusinessName())
+                .brandName(partner.getBrandName())
+                .email(partner.getEmail())
+                .status(PartnerStatus.ACTIVE.name())
+                .timestamp(LocalDateTime.now())
+                .build(),
+            partnerId);
 
         return convertToDTO(partner);
     }
@@ -552,7 +648,7 @@ public class PartnerServiceImpl implements PartnerService {
     public PartnerDTO deactivatePartner(Long partnerId, String reason) {
         log.info("Deactivating partner id: {} with reason: {}", partnerId, reason);
         Partner partner = partnerRepository.findById(partnerId)
-                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
 
         partner.setStatus(PartnerStatus.INACTIVE);
         partner.setIsActive(false);
@@ -561,22 +657,24 @@ public class PartnerServiceImpl implements PartnerService {
         partner = partnerRepository.save(partner);
         log.info("Partner {} deactivated successfully", partnerId);
 
+        auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "DEACTIVATE", partnerId,
+                "ACTIVE", "INACTIVE",
+                null, null, null, null,
+                null, null, reason);
+
         // Publish Pub/Sub event to notify partner
-        try {
-            partnerEventPublisher.publish(PartnerEvent.builder()
-                    .eventType(PartnerEvent.EventType.PARTNER_DEACTIVATED)
-                    .partnerId(partner.getId())
-                    .userId(partner.getUserId())
-                    .businessName(partner.getBusinessName())
-                    .brandName(partner.getBrandName())
-                    .email(partner.getEmail())
-                    .status(PartnerStatus.INACTIVE.name())
-                    .reason(reason)
-                    .timestamp(LocalDateTime.now())
-                    .build());
-        } catch (Exception e) {
-            log.warn("Failed to publish deactivation event for partner {}: {}", partnerId, e.getMessage());
-        }
+        publishPartnerEvent(PartnerEvent.builder()
+                .eventType(PartnerEvent.EventType.PARTNER_DEACTIVATED)
+                .partnerId(partner.getId())
+                .userId(partner.getUserId())
+                .businessName(partner.getBusinessName())
+                .brandName(partner.getBrandName())
+                .email(partner.getEmail())
+                .status(PartnerStatus.INACTIVE.name())
+                .reason(reason)
+                .timestamp(LocalDateTime.now())
+                .build(),
+            partnerId);
 
         return convertToDTO(partner);
     }
@@ -605,7 +703,7 @@ public class PartnerServiceImpl implements PartnerService {
     @Transactional
     public PartnerDTO updateOpeningHours(Long partnerId, String openingHoursJson) {
         Partner partner = partnerRepository.findById(partnerId)
-                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
         partner.setOpeningHoursJson(openingHoursJson);
         partner = partnerRepository.save(partner);
         log.info("Opening hours updated for partner {}", partnerId);
@@ -616,7 +714,7 @@ public class PartnerServiceImpl implements PartnerService {
     @Transactional(readOnly = true)
     public List<?> getOpeningHours(Long partnerId) {
         Partner partner = partnerRepository.findById(partnerId)
-                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
         String json = partner.getOpeningHoursJson();
         if (json == null || json.isBlank()) return List.of();
         try {
@@ -631,7 +729,7 @@ public class PartnerServiceImpl implements PartnerService {
     @Transactional(readOnly = true)
     public boolean isCurrentlyOpen(Long partnerId) {
         Partner partner = partnerRepository.findById(partnerId)
-                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
         if (!partner.getIsActive() || !partner.getAcceptsOrders()) return false;
         if (partner.getOpeningHoursJson() == null || partner.getOpeningHoursJson().isBlank()) return true;
         // Simple check: could be enhanced with current time vs opening hours
@@ -642,7 +740,7 @@ public class PartnerServiceImpl implements PartnerService {
     @Transactional
     public PartnerDTO updateOpenStatus(Long partnerId, boolean isOpen) {
         Partner partner = partnerRepository.findById(partnerId)
-                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
         partner.setAcceptsOrders(isOpen);
         partner = partnerRepository.save(partner);
         log.info("Partner {} open status set to acceptsOrders={}", partnerId, isOpen);
@@ -653,7 +751,7 @@ public class PartnerServiceImpl implements PartnerService {
     @Transactional(readOnly = true)
     public List<StaffMemberDTO> getStaff(Long partnerId) {
         if (!partnerRepository.existsById(partnerId)) {
-            throw new RuntimeException("Partner not found with id: " + partnerId);
+            throw new PartnerNotFoundException(partnerId);
         }
         return staffMemberRepository.findByPartnerIdOrderByCreatedAtAsc(partnerId).stream()
                 .map(sm -> StaffMemberDTO.builder()
@@ -839,6 +937,68 @@ public class PartnerServiceImpl implements PartnerService {
 
     // ==================== HELPER METHODS ====================
 
+    private void publishPartnerEvent(PartnerEvent event, Long partnerId) {
+        try {
+            partnerEventPublisher.publish(event);
+        } catch (Exception e) {
+            log.warn("Failed to publish event for partner {}: {}", partnerId, e.getMessage());
+        }
+    }
+
+    private void updateBasicInfo(Partner partner, AdminPartnerUpdateDTO dto) {
+        if (dto.getBusinessName() != null && !dto.getBusinessName().isBlank()) {
+            partner.setBusinessName(dto.getBusinessName().trim());
+        }
+        if (dto.getBrandName() != null) {
+            partner.setBrandName(dto.getBrandName().trim());
+        }
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+            partner.setEmail(dto.getEmail().trim());
+        }
+        if (dto.getPhoneNumber() != null) {
+            partner.setPhoneNumber(dto.getPhoneNumber().trim());
+        }
+        Optional.ofNullable(dto.getType())
+                .map(String::trim)
+                .filter(type -> !type.isBlank())
+                .map(String::toUpperCase)
+                .ifPresent(typeStr -> partner.setType(PartnerType.valueOf(typeStr)));
+        if (dto.getCity() != null) {
+            partner.setCity(dto.getCity().trim());
+        }
+        if (dto.getAddress() != null) {
+            partner.setAddress(dto.getAddress().trim());
+        }
+        if (dto.getDescription() != null) {
+            partner.setDescription(dto.getDescription().trim());
+        }
+    }
+
+    private void updateCommission(Partner partner, AdminPartnerUpdateDTO dto) {
+        if (dto.getCommissionType() != null && !dto.getCommissionType().isBlank()) {
+            partner.setCommissionType(CommissionType.valueOf(dto.getCommissionType().toUpperCase()));
+        }
+        if (dto.getCommissionRate() != null) {
+            partner.setCommissionRate(dto.getCommissionRate());
+        }
+    }
+
+    private void updateCategories(Partner partner, AdminPartnerUpdateDTO dto) {
+        if (dto.getCategoryId() == null) {
+            return;
+        }
+
+        String categoryIds = Stream.concat(
+                        Stream.of(dto.getCategoryId()),
+                        Optional.ofNullable(dto.getSubcategoryIds())
+                                .orElse(List.of())
+                                .stream()
+                )
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+        partner.setCategoryIds(categoryIds);
+    }
+
     /**
      * Convertir Partner entity en PartnerDTO
      */
@@ -919,6 +1079,7 @@ public class PartnerServiceImpl implements PartnerService {
                 .isPremium(partner.getIsPremium())
                 .isFeatured(partner.getIsFeatured())
                 .isCurrentlyOpen(Boolean.TRUE.equals(partner.getIsActive()) && Boolean.TRUE.equals(partner.getAcceptsOrders()))
+                .commissionType(partner.getCommissionType() != null ? partner.getCommissionType().name() : null)
                 .commissionRate(partner.getCommissionRate())
                 // Delivery Settings
                 .preparationTime(partner.getPreparationTime())
@@ -948,6 +1109,7 @@ public class PartnerServiceImpl implements PartnerService {
                 .scheduleExceptionsDisplay(partner.getScheduleExceptionsJson())
                 .internalNotes(partner.getInternalNotes())
                 .createdAt(partner.getCreatedAt())
+                .updatedAt(partner.getUpdatedAt())
                 .build();
     }
 
@@ -956,12 +1118,41 @@ public class PartnerServiceImpl implements PartnerService {
         log.info("Updating internal notes for partner id: {}", partnerId);
 
         Partner partner = partnerRepository.findById(partnerId)
-                .orElseThrow(() -> new RuntimeException("Partner not found with id: " + partnerId));
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
 
         partner.setInternalNotes(notes);
         Partner saved = partnerRepository.save(partner);
 
         log.info("Internal notes updated for partner id: {}", partnerId);
+        return convertToDTO(saved);
+    }
+
+    @Override
+    @Transactional
+    public PartnerDTO adminUpdatePartner(Long partnerId, AdminPartnerUpdateDTO dto) {
+        log.info("Admin updating partner id: {}", partnerId);
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new PartnerNotFoundException(partnerId));
+
+        String commissionTypeBefore = partner.getCommissionType() != null ? partner.getCommissionType().name() : null;
+        BigDecimal commissionRateBefore = partner.getCommissionRate();
+        String categoryIdsBefore = partner.getCategoryIds();
+
+        updateBasicInfo(partner, dto);
+        updateCommission(partner, dto);
+        updateCategories(partner, dto);
+
+        Partner saved = partnerRepository.save(partner);
+        log.info("Partner {} updated by admin (commission/categories included)", partnerId);
+
+        String commissionTypeAfter = saved.getCommissionType() != null ? saved.getCommissionType().name() : null;
+
+        auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "UPDATE_INFO", partnerId,
+                null, null,
+                commissionTypeBefore, commissionTypeAfter,
+                commissionRateBefore, saved.getCommissionRate(),
+                categoryIdsBefore, saved.getCategoryIds(), null);
+
         return convertToDTO(saved);
     }
 }

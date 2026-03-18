@@ -10,8 +10,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Entité Partner (Restaurant/Magasin)
@@ -350,6 +348,13 @@ public class Partner {
     // ==================== COMMISSION ====================
 
     /**
+     * Type de commission (PERCENTAGE ou MARKUP)
+     */
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private CommissionType commissionType = CommissionType.PERCENTAGE;
+
+    /**
      * Taux de commission SpeedLine (en %)
      */
     @Column(precision = 5, scale = 2)
@@ -423,15 +428,6 @@ public class Partner {
      * Dernière connexion du propriétaire
      */
     private LocalDateTime lastLoginAt;
-
-    // ==================== RELATIONS ====================
-
-    /**
-     * Produits du partenaire
-     */
-    @OneToMany(mappedBy = "partnerId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<Product> products = new ArrayList<>();
 
     // ==================== MÉTHODES UTILITAIRES ====================
 

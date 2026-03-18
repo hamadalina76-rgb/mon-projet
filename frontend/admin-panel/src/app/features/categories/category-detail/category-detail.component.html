@@ -1,10 +1,10 @@
 <!-- Category Detail -->
-<div class="detail-container">
+<div class="detail-container" [dir]="isRtl() ? 'rtl' : 'ltr'">
 
   @if (loading()) {
     <div class="loading-state">
       <div class="spinner"></div>
-      <p>Chargement…</p>
+      <p>{{ 'categories.loadingText' | translate }}</p>
     </div>
   } @else if (category()) {
 
@@ -14,19 +14,19 @@
         <nav class="breadcrumb">
           <button mat-button class="back-btn" (click)="goBack()">
             <mat-icon>keyboard_arrow_left</mat-icon>
-            Catégories
+            {{ 'categories.title' | translate }}
           </button>
           <span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current">{{ getDisplayName(category()!) }} — Analyse</span>
+          <span class="breadcrumb-current">{{ getDisplayName(category()!) }} — {{ 'categories.breadcrumbAnalysis' | translate }}</span>
         </nav>
         <div class="title-row">
           <h1 class="page-title">{{ getDisplayName(category()!) }}</h1>
           @if (stats()?.topCategory) {
-            <span class="top-category-badge">TOP CATEGORY</span>
+            <span class="top-category-badge">{{ 'categories.topCategoryBadge' | translate }}</span>
           }
           <span class="badge" [class.active-badge]="category()!.isActive" [class.inactive-badge]="!category()!.isActive">
             <mat-icon>{{ category()!.isActive ? 'check_circle' : 'pause_circle' }}</mat-icon>
-            {{ category()!.isActive ? 'Active' : 'Inactive' }}
+            {{ category()!.isActive ? ('categories.activeLabel' | translate) : ('categories.inactiveLabel' | translate) }}
           </span>
         </div>
       </div>
@@ -34,23 +34,25 @@
       <div class="header-actions">
         <button mat-stroked-button class="export-btn" (click)="exportReport()">
           <mat-icon>download</mat-icon>
-          Exporter
+          {{ 'categories.exportBtn' | translate }}
         </button>
-        <button mat-raised-button class="edit-btn" (click)="editCategory()">
-          <mat-icon>edit</mat-icon>
-          Modifier
-        </button>
+        @if (!category()?.parentId) {
+          <button mat-raised-button class="edit-btn" (click)="editCategory()">
+            <mat-icon>edit</mat-icon>
+            {{ 'categories.edit' | translate }}
+          </button>
+        }
         <button mat-icon-button [matMenuTriggerFor]="actionsMenu" matTooltip="More actions">
           <mat-icon>more_vert</mat-icon>
         </button>
         <mat-menu #actionsMenu="matMenu">
           <button mat-menu-item (click)="toggleStatus()">
             <mat-icon>{{ category()!.isActive ? 'pause_circle' : 'play_circle' }}</mat-icon>
-            <span>{{ category()!.isActive ? 'Désactiver' : 'Activer' }}</span>
+            <span>{{ category()!.isActive ? ('categories.deactivate' | translate) : ('categories.activate' | translate) }}</span>
           </button>
           <mat-divider></mat-divider>
           <button mat-menu-item class="delete-item" (click)="deleteCategory()">
-            <mat-icon>delete</mat-icon><span>Supprimer</span>
+            <mat-icon>delete</mat-icon><span>{{ 'categories.delete' | translate }}</span>
           </button>
         </mat-menu>
       </div>
@@ -71,7 +73,7 @@
           </div>
         </div>
         <div class="sc-value">{{ (stats()?.productCount ?? category()!.productCount ?? 0) | number }}</div>
-        <div class="sc-label">Produits liés</div>
+        <div class="sc-label">{{ 'categories.linkedProducts' | translate }}</div>
       </div>
 
       <!-- Active Partners -->
@@ -86,7 +88,7 @@
           </div>
         </div>
         <div class="sc-value">{{ (stats()?.partnerCount ?? category()!.partnerCount ?? 0) | number }}</div>
-        <div class="sc-label">Partenaires actifs</div>
+        <div class="sc-label">{{ 'categories.activePartners' | translate }}</div>
       </div>
 
       <!-- Orders 30d -->
@@ -101,7 +103,7 @@
           </div>
         </div>
         <div class="sc-value">{{ (stats()?.ordersLast30Days ?? 0) | number }}</div>
-        <div class="sc-label">Commandes (30j)</div>
+        <div class="sc-label">{{ 'categories.ordersLast30' | translate }}</div>
       </div>
 
     </div>
@@ -114,10 +116,10 @@
         <mat-card-header>
           <div class="chart-header">
             <div>
-              <h2 class="chart-title">Tendance des commandes</h2>
-              <p class="chart-subtitle">Commandes journalières sur les 30 derniers jours</p>
+              <h2 class="chart-title">{{ 'categories.orderTrendsTitle' | translate }}</h2>
+              <p class="chart-subtitle">{{ 'categories.orderTrendsSubtitle' | translate }}</p>
             </div>
-            <span class="period-badge">30 derniers jours</span>
+            <span class="period-badge">{{ 'categories.periodBadge' | translate }}</span>
           </div>
         </mat-card-header>
         <mat-card-content>
@@ -134,7 +136,7 @@
           } @else {
             <div class="chart-empty">
               <mat-icon>bar_chart</mat-icon>
-              <p>Aucune donnée disponible</p>
+              <p>{{ 'categories.noChartData' | translate }}</p>
             </div>
           }
         </mat-card-content>
@@ -143,39 +145,35 @@
       <!-- Category Info card -->
       <mat-card class="info-card">
         <mat-card-header>
-          <h2 class="section-title">Informations</h2>
+          <h2 class="section-title">{{ 'categories.infoSectionTitle' | translate }}</h2>
         </mat-card-header>
         <mat-card-content>
-          <div class="info-row">
-            <span class="il">Type métier</span>
-            <span class="iv">{{ getBusinessTypeLabel(category()!.categoryBusinessType) }}</span>
-          </div>
           @if (category()!.categoryType) {
-            <div class="info-row"><span class="il">Sous-type</span><span class="iv">{{ category()!.categoryType }}</span></div>
+            <div class="info-row"><span class="il">{{ 'categories.infoSubtype' | translate }}</span><span class="iv">{{ category()!.categoryType }}</span></div>
           }
           <div class="info-row">
-            <span class="il">Mis en avant</span>
-            <span class="iv">{{ category()!.isFeatured ? '⭐ Oui' : 'Non' }}</span>
+            <span class="il">{{ 'categories.infoFeatured' | translate }}</span>
+            <span class="iv">{{ category()!.isFeatured ? ('categories.infoFeaturedYes' | translate) : ('categories.infoFeaturedNo' | translate) }}</span>
           </div>
           <div class="info-row">
-            <span class="il">Ordre</span>
+            <span class="il">{{ 'categories.infoOrder' | translate }}</span>
             <span class="iv">#{{ category()!.displayOrder }}</span>
           </div>
           <div class="info-row">
-            <span class="il">Créé le</span>
+            <span class="il">{{ 'categories.infoCreatedAt' | translate }}</span>
             <span class="iv">{{ category()!.createdAt | date:'dd/MM/yyyy' }}</span>
           </div>
           <div class="info-row">
-            <span class="il">Modifié le</span>
+            <span class="il">{{ 'categories.infoUpdatedAt' | translate }}</span>
             <span class="iv">{{ category()!.updatedAt | date:'dd/MM/yyyy' }}</span>
           </div>
           @if (category()!.createdBy) {
-            <div class="info-row"><span class="il">Créé par</span><span class="iv">Admin #{{ category()!.createdBy }}</span></div>
+            <div class="info-row"><span class="il">{{ 'categories.infoCreatedBy' | translate }}</span><span class="iv">Admin #{{ category()!.createdBy }}</span></div>
           }
 
           @if (getNameEntries().length > 0) {
             <div class="lang-section">
-              <h4>Traductions</h4>
+              <h4>{{ 'categories.infoTranslations' | translate }}</h4>
               @for (entry of getNameEntries(); track $index) {
                 <div class="lang-row">
                   <span class="lang-key">{{ entry.key.toUpperCase() }}</span>
@@ -193,8 +191,8 @@
       <mat-card-header>
         <div class="audit-hdr">
           <div>
-            <h2 class="section-title">Journal d'audit</h2>
-            <p class="section-subtitle">Historique des actions sur cette catégorie</p>
+            <h2 class="section-title">{{ 'categories.auditSectionTitle' | translate }}</h2>
+            <p class="section-subtitle">{{ 'categories.auditSectionSubtitle' | translate }}</p>
           </div>
         </div>
       </mat-card-header>
@@ -202,23 +200,23 @@
         @if (auditLoading()) {
           <div class="audit-loading">
             <div class="spinner"></div>
-            <span>Chargement de l'historique…</span>
+            <span>{{ 'categories.auditLoadingText' | translate }}</span>
           </div>
         } @else if (paginatedAudit().length === 0) {
           <div class="audit-empty">
             <mat-icon>history</mat-icon>
-            <p>Aucune entrée dans l'audit trail</p>
+            <p>{{ 'categories.auditEmptyText' | translate }}</p>
           </div>
         } @else {
           <div class="audit-table-wrap">
             <table class="audit-table">
               <thead>
                 <tr>
-                  <th>UTILISATEUR</th>
-                  <th>ACTION</th>
-                  <th>DATE/HEURE</th>
-                  <th>MODIFICATIONS</th>
-                  <th>STATUT</th>
+                  <th>{{ 'categories.auditColUser' | translate }}</th>
+                  <th>{{ 'categories.auditColAction' | translate }}</th>
+                  <th>{{ 'categories.auditColDate' | translate }}</th>
+                  <th>{{ 'categories.auditColChanges' | translate }}</th>
+                  <th>{{ 'categories.auditColStatus' | translate }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -242,11 +240,11 @@
                     <td>
                       <div class="changes-cell">
                         <div class="change-row">
-                          <span class="change-lbl">AVANT</span>
+                          <span class="change-lbl">{{ 'categories.auditBefore' | translate }}</span>
                           <span class="change-val prev-val">{{ entry.changesBefore }}</span>
                         </div>
                         <div class="change-row">
-                          <span class="change-lbl">APRÈS</span>
+                          <span class="change-lbl">{{ 'categories.auditAfter' | translate }}</span>
                           <span class="change-val new-val">{{ entry.changesAfter }}</span>
                         </div>
                       </div>
@@ -266,15 +264,15 @@
           <!-- Pagination -->
           <div class="audit-pagination">
             <span class="page-info">
-              Page {{ auditPage() + 1 }} / {{ totalAuditPages() }}
-              &nbsp;·&nbsp; {{ auditTrail().length }} entrée{{ auditTrail().length > 1 ? 's' : '' }}
+              {{ 'categories.auditPageLabel' | translate }} {{ auditPage() + 1 }} / {{ totalAuditPages() }}
+              &nbsp;·&nbsp; {{ auditTrail().length }} {{ auditTrail().length > 1 ? ('categories.auditEntries' | translate) : ('categories.auditEntry' | translate) }}
             </span>
             <div class="page-btns">
               <button mat-stroked-button (click)="prevAuditPage()" [disabled]="auditPage() === 0">
-                <mat-icon>chevron_left</mat-icon> Précédent
+                <mat-icon>chevron_left</mat-icon> {{ 'categories.prevPage' | translate }}
               </button>
               <button mat-stroked-button (click)="nextAuditPage()" [disabled]="auditPage() >= totalAuditPages() - 1">
-                Suivant <mat-icon>chevron_right</mat-icon>
+                {{ 'categories.nextPage' | translate }} <mat-icon>chevron_right</mat-icon>
               </button>
             </div>
           </div>
@@ -285,8 +283,8 @@
   } @else {
     <div class="empty-state">
       <mat-icon>error_outline</mat-icon>
-      <p>Catégorie introuvable.</p>
-      <button mat-button (click)="goBack()">Retour</button>
+      <p>{{ 'categories.notFoundText' | translate }}</p>
+      <button mat-button (click)="goBack()">{{ 'categories.backBtn' | translate }}</button>
     </div>
   }
 </div>

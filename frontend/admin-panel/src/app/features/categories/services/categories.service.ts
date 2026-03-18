@@ -5,7 +5,6 @@ import { environment } from '@environments/environment';
 import { AuthService } from '@core/services/auth.service';
 import {
   Category,
-  CategoryBusinessType,
   CreateCategoryRequest,
   UpdateCategoryRequest,
   CategoryStats,
@@ -51,9 +50,6 @@ export class CategoriesService {
         ? JSON.parse(cat.nameI18n)
         : cat.nameI18n ?? {},
 
-      // ✅ categoryBusinessType — cast string → enum
-      categoryBusinessType: cat.categoryBusinessType as CategoryBusinessType,
-
       // ✅ Valeurs null → propres
       slug:             cat.slug             ?? null,
       description:      cat.description      ?? null,
@@ -73,14 +69,13 @@ export class CategoriesService {
 
   // ==================== GET ALL ====================
 
-  getCategories(search?: string, businessType?: string, status?: string): Observable<Category[]> {
-    const hasFilter = !!(search?.trim()) || !!businessType || (!!status && status !== 'all');
+  getCategories(search?: string, status?: string): Observable<Category[]> {
+    const hasFilter = !!(search?.trim()) || (!!status && status !== 'all');
 
     if (hasFilter) {
       // Appel endpoint dédié /search
       let params = new HttpParams();
       if (search?.trim())             params = params.set('q', search.trim());
-      if (businessType)               params = params.set('businessType', businessType);
       if (status && status !== 'all') params = params.set('status', status);
 
       return this.http
@@ -101,6 +96,35 @@ export class CategoriesService {
         map(res => res.map(cat => this.mapCategory(cat))),
         catchError(error => {
           console.error('❌ Erreur chargement catégories:', error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  // ==================== GET PAGED (server-side pagination) ====================
+
+  getCategoriesPaged(
+    search?: string,
+    status?: string,
+    page = 0,
+    size = 4
+  ): Observable<{ content: Category[]; totalElements: number; totalPages: number }> {
+    let params = new HttpParams()
+      .set('page', page)
+      .set('size', size);
+    if (search?.trim())             params = params.set('q', search.trim());
+    if (status && status !== 'all') params = params.set('status', status);
+
+    return this.http
+      .get<any>(`${this.baseUrl}/paged`, { headers: this.adminHeaders(), params })
+      .pipe(
+        map(res => ({
+          content:       (res.content as any[]).map(cat => this.mapCategory(cat)),
+          totalElements: res.totalElements as number,
+          totalPages:    res.totalPages    as number,
+        })),
+        catchError(error => {
+          console.error('❌ Erreur chargement catégories paginées:', error);
           return throwError(() => error);
         })
       );
@@ -246,10 +270,44 @@ export class CategoriesService {
       );
   }
 
-  getCategoryAuditTrail(id: number): Observable<AuditLogEntry[]> {
-    return this.http
-      .get<AuditLogEntry[]>(`${this.baseUrl}/${id}/audit-trail`, { headers: this.adminHeaders() })
+  exportCategoryReport(id: number): void {
+    const headers = this.adminHeaders().set('Accept', 'text/csv');
+    this.http
+      .get(`${this.baseUrl}/${id}/export`, {
+        headers,
+        responseType: 'blob',
+      })
       .pipe(
+        catchError(error => {
+          console.error('❌ Erreur export rapport:', error);
+          return throwError(() => error);
+        })
+      )
+      .subscribe(blob => {
+        const now = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `rapport-categorie-${id}-${now}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+      });
+  }
+
+  getCategoryAuditTrail(
+    id: number,
+    page = 0,
+    size = 5
+  ): Observable<{ content: AuditLogEntry[]; totalElements: number; totalPages: number }> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return this.http
+      .get<any>(`${this.baseUrl}/${id}/audit-trail`, { headers: this.adminHeaders(), params })
+      .pipe(
+        map(res => ({
+          content:       res.content as AuditLogEntry[],
+          totalElements: res.totalElements as number,
+          totalPages:    res.totalPages    as number,
+        })),
         catchError(error => {
           console.error('❌ Erreur chargement audit trail:', error);
           return throwError(() => error);

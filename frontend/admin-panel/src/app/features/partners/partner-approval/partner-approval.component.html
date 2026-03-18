@@ -215,6 +215,55 @@
           </div>
         </mat-card>
 
+        <!-- Commission & Categories -->
+        @if (partner().commissionType || partnerCategoryIds().length > 0) {
+          <mat-card class="section-card commission-card">
+            <div class="section-header">
+              <mat-icon class="section-icon">percent</mat-icon>
+              <h3>{{ 'partners.approval.commissionTitle' | translate }}</h3>
+            </div>
+            <mat-divider></mat-divider>
+            <div class="info-grid">
+              @if (partner().commissionType) {
+                <div class="info-item">
+                  <label>{{ 'partners.approval.commissionType' | translate }}</label>
+                  <mat-chip class="commission-type-chip" [ngClass]="partner().commissionType === 'PERCENTAGE' ? 'chip-percentage' : 'chip-markup'">
+                    <mat-icon class="chip-icon">{{ partner().commissionType === 'PERCENTAGE' ? 'percent' : 'trending_up' }}</mat-icon>
+                    {{ commissionTypeLabel() }}
+                  </mat-chip>
+                </div>
+                <div class="info-item">
+                  <label>{{ 'partners.approval.commissionRate' | translate }}</label>
+                  <span class="commission-rate-value">{{ partner().commissionRate }}%</span>
+                </div>
+              }
+              @if (partnerMainCategory()) {
+                <div class="info-item full-width">
+                  <label>{{ 'partners.approval.category' | translate }}</label>
+                  <div class="chips-list">
+                    <mat-chip class="category-chip main-category-chip">
+                      <mat-icon class="chip-icon">category</mat-icon>
+                      {{ partnerMainCategory()!.nameI18n['fr'] || partnerMainCategory()!.nameI18n['en'] || ('ID: ' + partnerMainCategory()!.id) }}
+                    </mat-chip>
+                  </div>
+                </div>
+              }
+              @if (partnerSubcategories().length > 0) {
+                <div class="info-item full-width">
+                  <label>{{ 'partners.approval.subcategories' | translate }}</label>
+                  <div class="chips-list">
+                    @for (sub of partnerSubcategories(); track sub.id) {
+                      <mat-chip class="category-chip subcategory-chip">
+                        {{ sub.nameI18n['fr'] || sub.nameI18n['en'] || ('ID: ' + sub.id) }}
+                      </mat-chip>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </mat-card>
+        }
+
         <!-- Documents -->
         <mat-card class="section-card">
           <div class="section-header">

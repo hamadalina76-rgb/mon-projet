@@ -34,9 +34,6 @@ public class Category {
     private Boolean isActive;
 
     private Boolean isFeatured;
-    @Enumerated(EnumType.STRING) // ✅ Mapping Enum JPA
-    @Column(name = "category_business_type")
-    private CategoryBusinessType categoryBusinessType; // ✅
     private String categoryType;
     private String backgroundColor;
     private String textColor;

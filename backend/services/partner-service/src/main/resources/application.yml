@@ -95,3 +95,10 @@ resilience4j:
 
 nearby:
   default-radius-km: 5.0
+
+feign:
+  client:
+    user-service:
+      url: http://localhost:8082
+    order-service:
+      url: http://localhost:8084

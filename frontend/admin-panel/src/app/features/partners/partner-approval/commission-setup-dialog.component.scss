@@ -1,0 +1,785 @@
+@use '../../../../assets/styles/variables' as v;
+@use '../../../../assets/styles/mixins' as m;
+
+// ─── Dialog Shell ───────────────────────────────────────────────────────────
+
+.commission-dialog {
+  width: 560px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  background: v.$white;
+  border-radius: v.$border-radius-xl;
+  overflow: hidden;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+// ─── Header ─────────────────────────────────────────────────────────────────
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 16px;
+  background: linear-gradient(135deg, v.$primary-dark 0%, v.$primary-color 100%);
+  color: v.$white;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .header-icon-wrap {
+    width: 40px;
+    height: 40px;
+    border-radius: v.$border-radius-lg;
+    background: rgba(v.$white, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    mat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+      color: v.$white;
+    }
+  }
+
+  .header-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: v.$white;
+    line-height: 1.3;
+  }
+
+  .header-subtitle {
+    margin: 4px 0 0;
+    font-size: 0.8125rem;
+    color: rgba(v.$white, 0.7);
+    font-weight: 400;
+  }
+
+  .close-btn {
+    color: rgba(v.$white, 0.8);
+
+    &:hover {
+      color: v.$white;
+      background: rgba(v.$white, 0.1);
+    }
+  }
+}
+
+// ─── Steps bar ──────────────────────────────────────────────────────────────
+
+.steps-bar {
+  display: flex;
+  align-items: center;
+  padding: 12px 22px;
+  background: v.$gray-50;
+  border-bottom: 1px solid v.$gray-200;
+  gap: 0;
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0.45;
+    transition: opacity v.$transition-fast;
+
+    &.active, &.done { opacity: 1; }
+
+    .step-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: v.$border-radius-full;
+      border: 2px solid v.$gray-300;
+      background: v.$white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all v.$transition-fast;
+      flex-shrink: 0;
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        color: v.$gray-400;
+        transition: color v.$transition-fast;
+      }
+    }
+
+    &.active .step-dot {
+      border-color: v.$primary-color;
+      background: rgba(v.$primary-color, 0.08);
+
+      mat-icon { color: v.$primary-color; }
+    }
+
+    &.done .step-dot {
+      border-color: v.$primary-color;
+      background: rgba(v.$primary-color, 0.1);
+
+      mat-icon { color: v.$primary-color; }
+    }
+
+    span:not(.step-dot) {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: v.$text-secondary;
+      white-space: nowrap;
+    }
+  }
+
+  .step-line {
+    flex: 1;
+    height: 2px;
+    background: v.$gray-200;
+    margin: 0 8px;
+    border-radius: 2px;
+    transition: background v.$transition-fast;
+
+    &.done { background: v.$primary-color; }
+  }
+}
+
+// ─── Body ────────────────────────────────────────────────────────────────────
+
+.dialog-body {
+  padding: 18px 22px;
+  max-height: 58vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-sizing: border-box;
+  width: 100%;
+
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: v.$gray-100; }
+  &::-webkit-scrollbar-thumb {
+    background: v.$gray-300;
+    border-radius: 3px;
+    &:hover { background: v.$gray-400; }
+  }
+}
+
+// ─── Sections ────────────────────────────────────────────────────────────────
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: v.$text-primary;
+
+  .step-number {
+    width: 24px;
+    height: 24px;
+    border-radius: v.$border-radius-full;
+    background: v.$primary-color;
+    color: v.$white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .optional-badge {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: v.$text-muted;
+    background: v.$gray-100;
+    padding: 2px 8px;
+    border-radius: v.$border-radius-full;
+    margin-left: auto;
+  }
+}
+
+.section-desc {
+  margin: -6px 0 0;
+  font-size: 0.8125rem;
+  color: v.$text-muted;
+  line-height: 1.5;
+}
+
+mat-divider {
+  margin: 0 !important;
+}
+
+// ─── Commission Type Cards ────────────────────────────────────────────────────
+
+.type-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+
+  ::ng-deep .mdc-form-field { display: none; }
+}
+
+.type-card {
+  display: flex;
+  flex-direction: column;
+  border: 2px solid v.$gray-200;
+  border-radius: v.$border-radius-lg;
+  padding: 12px;
+  cursor: pointer;
+  transition: all v.$transition-fast;
+  background: v.$white;
+  user-select: none;
+
+  mat-radio-button {
+    display: none;
+  }
+
+  .type-card-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .type-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: v.$border-radius-md;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    &.percentage {
+      background: rgba(v.$primary-color, 0.1);
+      mat-icon { color: v.$primary-color; }
+    }
+
+    &.markup {
+      background: rgba(v.$info-color, 0.1);
+      mat-icon { color: v.$info-color; }
+    }
+  }
+
+  .type-card-text {
+    flex: 1;
+
+    strong {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: v.$text-primary;
+      margin-bottom: 4px;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.75rem;
+      color: v.$text-muted;
+      line-height: 1.4;
+    }
+  }
+
+  &:hover {
+    border-color: v.$gray-400;
+    box-shadow: v.$shadow-sm;
+  }
+
+  &.selected {
+    border-color: v.$primary-color;
+    background: rgba(v.$primary-color, 0.04);
+    box-shadow: 0 0 0 3px rgba(v.$primary-color, 0.1);
+
+    .type-card-icon.percentage,
+    .type-card-icon.markup {
+      background: rgba(v.$primary-color, 0.15);
+      mat-icon { color: v.$primary-color; }
+    }
+
+    .type-card-text strong { color: v.$primary-color; }
+  }
+}
+
+// ─── Rate Row ────────────────────────────────────────────────────────────────
+
+.rate-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+
+  .rate-field {
+    width: 180px;
+    min-width: 0;
+  }
+
+  .rate-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: v.$gray-50;
+    border: 1px solid v.$gray-200;
+    border-radius: v.$border-radius-lg;
+    padding: 10px 20px;
+
+    .rate-preview-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: v.$primary-color;
+      line-height: 1;
+    }
+
+    .rate-preview-label {
+      font-size: 0.7rem;
+      color: v.$text-muted;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 4px;
+    }
+  }
+}
+
+.suffix-pct {
+  font-weight: 600;
+  color: v.$text-secondary;
+}
+
+.full-width { width: 100%; }
+
+// ─── Category Grid ────────────────────────────────────────────────────────────
+
+.category-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cat-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border: 2px solid v.$gray-200;
+  border-radius: v.$border-radius-full;
+  background: v.$white;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: v.$text-secondary;
+  transition: all v.$transition-fast;
+  user-select: none;
+  position: relative;
+
+  .cat-card-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  .cat-card-check {
+    font-size: 15px;
+    width: 15px;
+    height: 15px;
+    margin-left: 2px;
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    box-shadow: v.$shadow-sm;
+    transform: translateY(-1px);
+  }
+
+  &.selected {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+    // background + color + border-color sont injectés via [style] depuis la catégorie
+  }
+
+  // fallback si pas de couleur définie dans la catégorie
+  &.selected:not([style*="background-color"]) {
+    background: v.$primary-color;
+    color: v.$white;
+    border-color: v.$primary-color;
+  }
+}
+
+.cat-required-hint {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: #e53935;
+}
+
+// ─── Category summary chip ────────────────────────────────────────────────────
+
+.cat-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border-radius: v.$border-radius-full;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  // fallback si pas de couleur
+  background: rgba(v.$primary-color, 0.1);
+  color: v.$primary-color;
+}
+
+// ─── Subcategories ────────────────────────────────────────────────────────────
+
+.subcategories-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.subcategories-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sub-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1.5px solid v.$gray-200;
+  border-radius: v.$border-radius-full;
+  background: v.$white;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: v.$text-secondary;
+  transition: all v.$transition-fast;
+  user-select: none;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: v.$gray-400;
+    transition: color v.$transition-fast;
+  }
+
+  &:hover {
+    border-color: v.$primary-color;
+    color: v.$primary-color;
+    background: rgba(v.$primary-color, 0.04);
+
+    mat-icon { color: v.$primary-color; }
+  }
+
+  &.selected {
+    border-color: v.$primary-color;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+    mat-icon { color: inherit; }
+
+    // fallback si pas de couleur définie
+    &:not([style*="background-color"]) {
+      background: v.$primary-color;
+      color: v.$white;
+      border-color: v.$primary-color;
+      mat-icon { color: v.$white; }
+    }
+
+    &:hover {
+      filter: brightness(0.92);
+    }
+  }
+}
+
+.selected-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(v.$primary-color, 0.08);
+  border: 1px solid rgba(v.$primary-color, 0.3);
+  border-radius: v.$border-radius-full;
+  color: v.$primary-color;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  align-self: flex-start;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.empty-sub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: v.$gray-50;
+  border: 1.5px dashed v.$gray-300;
+  border-radius: v.$border-radius-lg;
+  color: v.$text-muted;
+  font-size: 0.8125rem;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: v.$gray-400;
+    flex-shrink: 0;
+  }
+}
+
+// ─── Summary Card ────────────────────────────────────────────────────────────
+
+.summary-card {
+  border: 1px solid v.$gray-200;
+  border-radius: v.$border-radius-lg;
+  overflow: hidden;
+  background: v.$white;
+
+  .summary-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: v.$gray-50;
+    border-bottom: 1px solid v.$gray-200;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: v.$text-primary;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: v.$primary-color;
+    }
+  }
+
+  .summary-rows {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .summary-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid v.$gray-100;
+
+    &:last-child { border-bottom: none; }
+
+    .s-label {
+      font-size: 0.8125rem;
+      color: v.$text-muted;
+    }
+
+    .s-badge {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: v.$primary-color;
+      background: rgba(v.$primary-color, 0.08);
+      padding: 3px 10px;
+      border-radius: v.$border-radius-full;
+    }
+
+    .s-value {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: v.$text-primary;
+    }
+  }
+}
+
+// ─── Footer ──────────────────────────────────────────────────────────────────
+
+.dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 22px 16px;
+  border-top: 1px solid v.$gray-200;
+  background: v.$gray-50;
+
+  .cancel-btn {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: v.$text-secondary;
+    border-color: v.$gray-300;
+
+    &:hover {
+      border-color: v.$gray-400;
+      background: v.$gray-100;
+    }
+  }
+
+  .approve-btn {
+    background: v.$primary-color;
+    color: v.$white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0 20px;
+    height: 40px;
+    border-radius: v.$border-radius-md;
+    box-shadow: 0 2px 8px rgba(v.$primary-color, 0.35);
+    transition: all v.$transition-fast;
+
+    &:hover:not(:disabled) {
+      background: v.$primary-dark;
+      box-shadow: 0 4px 14px rgba(v.$primary-color, 0.45);
+      transform: translateY(-1px);
+    }
+
+    &:disabled {
+      background: v.$gray-300;
+      color: v.$gray-500;
+      box-shadow: none;
+    }
+  }
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+// Small screens (≤ 480px)
+@include m.mobile {
+  .commission-dialog {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0;
+  }
+
+  .dialog-header {
+    padding: 14px 16px 12px;
+
+    .header-icon-wrap {
+      width: 36px;
+      height: 36px;
+
+      mat-icon { font-size: 18px; width: 18px; height: 18px; }
+    }
+
+    .header-title    { font-size: 0.9375rem; }
+    .header-subtitle { font-size: 0.75rem; }
+  }
+
+  .steps-bar {
+    padding: 10px 14px;
+
+    .step span:not(.step-dot) { display: none; }
+
+    .step .step-dot { width: 28px; height: 28px; }
+  }
+
+  .dialog-body {
+    padding: 14px 16px;
+    max-height: 70vh;
+    gap: 16px;
+  }
+
+  .type-cards { grid-template-columns: 1fr; }
+
+  .type-card {
+    padding: 10px;
+
+    .type-card-icon {
+      width: 32px;
+      height: 32px;
+
+      mat-icon { font-size: 16px; width: 16px; height: 16px; }
+    }
+  }
+
+  .rate-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+
+    .rate-field { width: 100%; }
+
+    .rate-preview {
+      flex-direction: row;
+      justify-content: center;
+      gap: 10px;
+      padding: 8px 16px;
+
+      .rate-preview-value { font-size: 1.125rem; }
+    }
+  }
+
+  .category-grid { gap: 8px; }
+
+  .cat-card {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+  }
+
+  .subcategories-grid { gap: 8px; }
+
+  .sub-chip {
+    padding: 7px 11px;
+    font-size: 0.75rem;
+  }
+
+  .dialog-footer {
+    padding: 10px 16px 14px;
+    flex-direction: column-reverse;
+    gap: 8px;
+
+    .cancel-btn,
+    .approve-btn { width: 100%; justify-content: center; }
+  }
+
+  .summary-card .summary-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 10px 14px;
+  }
+}
+
+// Medium screens (481px – 680px)
+@media (min-width: 481px) and (max-width: 680px) {
+  .commission-dialog { width: 100%; }
+
+  .type-cards { grid-template-columns: 1fr; }
+
+  .rate-row {
+    flex-wrap: wrap;
+
+    .rate-field   { width: 100%; }
+    .rate-preview { align-self: stretch; justify-content: center; }
+  }
+
+  .dialog-body { max-height: 68vh; }
+}
+
+// Large screens (> 680px)
+@media (min-width: 681px) {
+  .commission-dialog {
+    width: 580px;
+    max-width: 95vw;
+  }
+}

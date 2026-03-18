@@ -32,6 +32,12 @@ public class AuditLog {
     @Column(name = "reason")
     private String reason;
 
+    @Column(name = "changes_before", columnDefinition = "TEXT")
+    private String changesBefore;
+
+    @Column(name = "changes_after", columnDefinition = "TEXT")
+    private String changesAfter;
+
     @Column(name = "timestamp", nullable = false)
     private LocalDateTime timestamp;
 

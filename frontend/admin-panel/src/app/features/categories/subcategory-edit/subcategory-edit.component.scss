@@ -1,0 +1,387 @@
+// ─── Variables ───────────────────────────────────────────────────────────────
+$brand: #EC131E;
+$brand-dark: #C41118;
+$brand-white: #ffffff;
+$radius: 12px;
+$shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+
+// ─── Slide toggle brand colors ────────────────────────────────────────────────
+::ng-deep .mat-mdc-slide-toggle {
+  --mdc-switch-selected-track-color: #{$brand};
+  --mdc-switch-selected-handle-color: #{$brand-white};
+  --mdc-switch-selected-hover-track-color: #{$brand-dark};
+  --mdc-switch-selected-pressed-track-color: #{$brand-dark};
+  --mdc-switch-selected-focus-track-color: #{$brand};
+  --mdc-switch-selected-hover-handle-color: #{$brand-white};
+  --mdc-switch-selected-pressed-handle-color: #{$brand-white};
+  --mdc-switch-selected-focus-handle-color: #{$brand-white};
+  --mdc-switch-selected-icon-color: #{$brand};
+  --mdc-switch-selected-focus-state-layer-color: #{$brand};
+  --mdc-switch-selected-hover-state-layer-color: #{$brand};
+  --mdc-switch-selected-pressed-state-layer-color: #{$brand};
+}
+
+::ng-deep .btn-cancel-full {
+  --mdc-outlined-button-label-text-color: #6b7280 !important;
+  --mdc-outlined-button-outline-color: #e2e8f0 !important;
+  --mat-outlined-button-state-layer-color: #6b7280 !important;
+  --mat-outlined-button-ripple-color: rgba(107, 114, 128, 0.12) !important;
+}
+
+::ng-deep .btn-save-full {
+  --mdc-protected-button-container-color: #{$brand} !important;
+  --mdc-protected-button-label-text-color: #{$brand-white} !important;
+}
+
+// ─── Container ───────────────────────────────────────────────────────────────
+.config-container {
+  padding: 28px 32px;
+  min-height: 100vh;
+  background: var(--background-color, #f8f9fb);
+
+  @media (max-width: 768px) { padding: 16px; }
+}
+
+// ─── Loading ──────────────────────────────────────────────────────────────────
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 12px;
+  color: var(--text-secondary, #6b7280);
+
+  mat-icon { font-size: 40px; height: 40px; width: 40px; color: $brand; }
+}
+
+// ─── Header ──────────────────────────────────────────────────────────────────
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28px;
+  gap: 16px;
+
+  @media (max-width: 600px) { flex-direction: column; }
+}
+
+.header-left {
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-secondary, #6b7280);
+    margin-bottom: 6px;
+
+    .breadcrumb-link {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: $brand;
+      text-decoration: none;
+      font-weight: 500;
+      transition: opacity 0.2s;
+      &:hover { opacity: 0.8; }
+
+      mat-icon { font-size: 16px; height: 16px; width: 16px; }
+    }
+
+    .sep { color: var(--text-disabled, #cbd5e1); }
+  }
+
+  .page-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary, #1e293b);
+  }
+}
+
+// ─── Parent banner ────────────────────────────────────────────────────────────
+.parent-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba($brand, 0.06);
+  border: 1px solid rgba($brand, 0.2);
+  border-radius: $radius;
+  margin-bottom: 16px;
+
+  .banner-icon { color: $brand; }
+
+  .banner-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .banner-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary, #6b7280);
+    }
+
+    .banner-name {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-primary, #1e293b);
+    }
+  }
+
+  .banner-badge {
+    background: $brand;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+}
+
+// ─── Form layout ─────────────────────────────────────────────────────────────
+.form-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+    .form-sidebar { order: -1; }
+  }
+}
+
+.form-main { display: flex; flex-direction: column; gap: 16px; }
+.form-sidebar { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 80px; }
+
+// ─── Cards ───────────────────────────────────────────────────────────────────
+.form-card {
+  border-radius: $radius !important;
+  box-shadow: $shadow !important;
+  border: 1px solid var(--border-color, #e8edf2) !important;
+
+  &.sidebar-card { border-radius: $radius !important; }
+  &.save-card { border-top: 3px solid $brand !important; }
+
+  mat-card-header {
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+  }
+
+  mat-card-content {
+    padding-top: 4px;
+  }
+}
+
+.card-icon {
+  color: $brand !important;
+  background: rgba($brand, 0.08) !important;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// ─── Tab body ─────────────────────────────────────────────────────────────────
+.tab-body {
+  padding: 16px 0 0;
+}
+
+// ─── Properties grid ─────────────────────────────────────────────────────────
+.properties-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+// ─── Icon upload ─────────────────────────────────────────────────────────────
+.icon-upload-zone {
+  border: 2px dashed var(--border-color, #e2e8f0);
+  border-radius: $radius;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+  overflow: hidden;
+
+  &:hover {
+    border-color: $brand;
+    background: rgba($brand, 0.02);
+  }
+
+  &.has-preview {
+    border-style: solid;
+    border-color: $brand;
+    cursor: default;
+  }
+}
+
+.upload-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+
+  &.upload-loading {
+    mat-icon { color: $brand; font-size: 36px; }
+    span { color: var(--text-secondary, #6b7280); font-size: 13px; }
+  }
+
+  &.upload-placeholder {
+    mat-icon { font-size: 40px; height: 40px; width: 40px; color: var(--text-disabled, #cbd5e1); }
+    span { font-weight: 500; color: var(--text-secondary, #6b7280); }
+    small { color: var(--text-disabled, #94a3b8); font-size: 11px; }
+  }
+
+  &.icon-preview {
+    padding: 12px;
+
+    .preview-img {
+      max-width: 100px;
+      max-height: 100px;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .remove-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      width: 28px;
+      height: 28px;
+      mat-icon { font-size: 16px; }
+    }
+  }
+}
+
+.change-icon-btn {
+  margin-top: 10px;
+  width: 100%;
+}
+
+// ─── Colors grid ─────────────────────────────────────────────────────────────
+.colors-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+
+  @media (max-width: 600px) { grid-template-columns: 1fr; }
+}
+
+.color-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .color-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .color-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .color-picker {
+    width: 44px;
+    height: 44px;
+    padding: 2px;
+    border: 2px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    cursor: pointer;
+    background: none;
+    flex-shrink: 0;
+  }
+
+  .color-text {
+    flex: 1;
+    .mat-mdc-form-field { width: 100%; }
+  }
+}
+
+.color-preview-box {
+  grid-column: 1 / -1;
+  padding: 16px 20px;
+  border-radius: $radius;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  box-shadow: $shadow;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+// ─── Status toggles ───────────────────────────────────────────────────────────
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  gap: 12px;
+
+  .toggle-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .toggle-title { font-weight: 600; font-size: 14px; color: var(--text-primary, #1e293b); }
+    .toggle-desc  { font-size: 12px; color: var(--text-secondary, #6b7280); }
+  }
+}
+
+mat-divider { margin: 4px 0 !important; }
+
+// ─── Save card ────────────────────────────────────────────────────────────────
+.save-hint {
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.btn-save-full {
+  width: 100%;
+  margin-bottom: 10px;
+  background: $brand !important;
+  color: white !important;
+
+  mat-icon { margin-right: 6px; }
+}
+
+.btn-cancel-full {
+  width: 100%;
+  mat-icon { margin-right: 6px; }
+}
+
+// ─── Spin animation ───────────────────────────────────────────────────────────
+.icon-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+// ─── Full-width form fields ───────────────────────────────────────────────────
+.full-width { width: 100%; }

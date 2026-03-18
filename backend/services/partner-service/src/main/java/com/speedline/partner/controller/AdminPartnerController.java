@@ -1,7 +1,8 @@
 package com.speedline.partner.controller;
 
 import com.speedline.partner.domain.PartnerStatus;
-import com.speedline.partner.dto.PartnerDTO;
+import com.speedline.partner.dto.*;
+import com.speedline.partner.service.AuditLogService;
 import com.speedline.partner.service.PartnerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +13,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * REST Controller for Admin Partner Management
@@ -33,6 +36,7 @@ import java.util.Map;
 public class AdminPartnerController {
 
     private final PartnerService partnerService;
+    private final AuditLogService auditLogService;
 
     /**
      * List all partners with optional status and search (by name, brand, city).
@@ -134,15 +138,20 @@ public class AdminPartnerController {
     }
 
     /**
-     * Approve a partner
+     * Approve a partner with commission setup
      * POST /admin/partners/{id}/approve
      */
     @PostMapping("/{id}/approve")
-    public ResponseEntity<?> approvePartner(@PathVariable Long id) {
-        log.info("Admin: Approving partner id: {}", id);
+    public ResponseEntity<?> approvePartner(@PathVariable Long id, 
+                                           @RequestBody(required = false) @Valid PartnerApprovalDTO approvalData) {
+        log.info("Admin: Approving partner id: {} with commission data: {}", id, approvalData);
 
         try {
-            PartnerDTO partner = partnerService.approvePartner(id);
+            PartnerDTO partner = Optional.ofNullable(approvalData)
+                    .map(data -> partnerService.approvePartnerWithCommission(id, data))
+                    // Fallback to simple approval for backward compatibility
+                    .orElseGet(() -> partnerService.approvePartner(id));
+            
             return ResponseEntity.ok(Map.of(
                     "message", "Partner approved successfully",
                     "partner", partner
@@ -289,6 +298,72 @@ public class AdminPartnerController {
         } catch (RuntimeException e) {
             log.error("Failed to update internal notes for partner {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Historique des modifications du partenaire (paginé)
+     * GET /admin/partners/{id}/change-logs?page=0&size=10
+     */
+    @GetMapping("/{id}/change-logs")
+    public ResponseEntity<?> getPartnerChangeLogs(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "10") int size) {
+        log.info("Admin: Getting change logs for partner id: {}, page={}, size={}", id, page, size);
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "changedAt"));
+            return ResponseEntity.ok(auditLogService.getPartnerChangeLogs(id, pageable));
+        } catch (Exception e) {
+            log.error("Failed to get change logs for partner {}: {}", id, e.getMessage());
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Modifier les informations de base d'un partenaire (Admin only)
+     * PUT /admin/partners/{id}
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updatePartner(
+            @PathVariable Long id,
+            @RequestBody AdminPartnerUpdateDTO dto) {
+        log.info("Admin: Updating partner id: {}", id);
+        try {
+            PartnerDTO updated = partnerService.adminUpdatePartner(id, dto);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Partner updated successfully",
+                    "partner", updated
+            ));
+        } catch (RuntimeException e) {
+            log.error("Failed to update partner {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+    /**
+     * Historique des modifications filtré (filtres via POST body)
+     * POST /admin/partners/{id}/change-logs/filter
+     */
+    @PostMapping("/{id}/change-logs/filter")
+    public ResponseEntity<?> getPartnerChangeLogsFiltered(
+            @PathVariable Long id,
+            @RequestBody PartnerChangeLogFilterDTO filters) {
+        log.info("Admin: Filtering change logs for partner id={}, filters={}", id, filters);
+        try {
+            Pageable pageable = PageRequest.of(
+                    filters.getPage(),
+                    filters.getSize(),
+                    Sort.by(Sort.Direction.DESC, "changedAt")
+            );
+            return ResponseEntity.ok(
+                    auditLogService.getPartnerChangeLogsFiltered(id, filters, pageable)
+            );
+        } catch (Exception e) {
+            log.error("Failed to filter change logs for partner {}: {}", id, e.getMessage());
+            return ResponseEntity.internalServerError()
                     .body(Map.of("error", e.getMessage()));
         }
     }
