@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'location_websocket_provider.dart';
 import '../core/storage/secure_storage.dart';
 import '../core/utils/permission_utils.dart';
 import '../services/background_location_service.dart';
@@ -10,7 +11,6 @@ import '../services/location_queue_service.dart';
 import '../services/tracking_background_runtime_service.dart';
 import '../services/tracking_orchestrator_service.dart';
 import '../services/tracking_transport.dart';
-import '../services/websocket_service.dart';
 import '../services/websocket_tracking_transport.dart';
 
 class TrackingState {
@@ -54,18 +54,14 @@ class TrackingState {
   );
 }
 
-final _webSocketServiceProvider = Provider<WebSocketService>((ref) {
-  return WebSocketService();
+final trackingTransportProvider = Provider<TrackingTransport>((ref) {
+  return WebSocketTrackingTransport(ref.read(webSocketServiceProvider));
 });
 
-final _trackingTransportProvider = Provider<TrackingTransport>((ref) {
-  return WebSocketTrackingTransport(ref.read(_webSocketServiceProvider));
-});
-
-final _trackingOrchestratorProvider = Provider<TrackingOrchestratorService>((ref) {
+final trackingOrchestratorProvider = Provider<TrackingOrchestratorService>((ref) {
   return TrackingOrchestratorService(
     backgroundLocationService: BackgroundLocationService(),
-    transport: ref.read(_trackingTransportProvider),
+    transport: ref.read(trackingTransportProvider),
     connectivityService: ConnectivityService(),
     queueService: LocationQueueService(),
     localNotificationService: LocalNotificationService(),
@@ -78,7 +74,7 @@ class TrackingController extends Notifier<TrackingState> {
 
   @override
   TrackingState build() {
-    _orchestrator = ref.read(_trackingOrchestratorProvider);
+    _orchestrator = ref.read(trackingOrchestratorProvider);
     return TrackingState.initial;
   }
 
@@ -94,6 +90,7 @@ class TrackingController extends Notifier<TrackingState> {
     if (!online) {
       state = state.copyWith(isBusy: true, clearBlockingMessage: true);
       await _orchestrator.stop();
+      ref.read(locationWebSocketProvider.notifier).setQueuedCount(0);
       state = state.copyWith(isBusy: false, isOnline: false);
       return;
     }
@@ -126,7 +123,11 @@ class TrackingController extends Notifier<TrackingState> {
       jwt: jwt,
       highAccuracy: inDelivery,
       onQueueChanged: (queueSize) {
+        ref.read(locationWebSocketProvider.notifier).setQueuedCount(queueSize);
         state = state.copyWith(queuedCount: queueSize);
+      },
+      onPositionCollected: (payload) {
+        ref.read(locationWebSocketProvider.notifier).publishPosition(payload);
       },
     );
 

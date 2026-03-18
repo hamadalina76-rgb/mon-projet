@@ -307,4 +307,35 @@ void main() {
 
     expect(notifications.lowBatteryLevels, [14]);
   });
+
+  test('caps offline queue to 50 points when websocket stays disconnected', () async {
+    final background = FakeBackgroundLocationService();
+    final transport = FakeTrackingTransport()
+      ..connected = false
+      ..allowSend = false;
+    final connectivity = FakeConnectivityService(online: false);
+    final queue = FakeLocationQueueService();
+    final notifications = FakeLocalNotificationService();
+    final runtime = FakeTrackingBackgroundRuntimeService();
+
+    final orchestrator = buildOrchestrator(
+      background: background,
+      transport: transport,
+      connectivity: connectivity,
+      queue: queue,
+      notifications: notifications,
+      runtime: runtime,
+    );
+
+    await orchestrator.start(jwt: 'jwt', highAccuracy: false);
+
+    for (var i = 0; i < 60; i++) {
+      await background.emitPosition({
+        'type': 'POSITION_UPDATE',
+        'payload': {'lat': i.toDouble(), 'lng': i.toDouble()},
+      });
+    }
+
+    expect(queue.size, AppConstants.trackingQueueMaxPoints);
+  });
 }

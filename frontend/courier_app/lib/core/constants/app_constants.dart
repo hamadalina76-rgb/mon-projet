@@ -16,8 +16,13 @@ class AppConstants {
   static const int lowBatteryThreshold = 15; // percent
 
   // WebSocket reconnect
-  static const int reconnectBaseDelaySeconds = 2;
+  static const int reconnectBaseDelaySeconds = 1;
   static const int reconnectMaxDelaySeconds = 30;
+  static const int webSocketHeartbeatIntervalSeconds = 25;
+
+  // Tracking queue
+  static const int trackingQueueMaxPoints = 50;
+  static const int trackingQueueFlushBatchSize = 50;
 
   // Local persistence
   static const String trackingOnlinePrefKey = 'tracking_online';
