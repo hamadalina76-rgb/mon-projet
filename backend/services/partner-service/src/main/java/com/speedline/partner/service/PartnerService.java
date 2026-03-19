@@ -7,6 +7,7 @@ import com.speedline.partner.dto.CompletePartnerProfileRequest;
 import com.speedline.partner.dto.PartnerDTO;
 import com.speedline.partner.dto.PartnerApprovalDTO;
 import com.speedline.partner.dto.StaffMemberDTO;
+import com.speedline.partner.dto.request.PartnerFilterRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -437,6 +438,11 @@ public interface PartnerService {
      * @return Page<PartnerDTO> triés : ouverts d'abord, puis par distance, puis par note
      */
     Page<PartnerDTO> getNearbyPartners(BigDecimal latitude, BigDecimal longitude, int page, int size);
+
+    /**
+     * Obtenir les partenaires proches avec filtres combinables + tri avancé.
+     */
+    Page<PartnerDTO> getNearbyPartners(PartnerFilterRequest filterRequest);
 
     /**
      * Obtenir les partenaires en vedette

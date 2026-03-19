@@ -7,6 +7,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -207,6 +211,12 @@ public class Partner {
      */
     @Column(precision = 11, scale = 8)
     private BigDecimal longitude;
+
+    /**
+     * Champ spatial PostGIS (SRID 4326) pour ST_Distance / ST_DWithin.
+     */
+    @Column(columnDefinition = "geography(Point,4326)")
+    private Point location;
 
     /**
      * Rayon de livraison (en mètres)
@@ -443,6 +453,25 @@ public class Partner {
                     .replaceAll("-+", "-")
                     + "-" + System.currentTimeMillis() % 10000;
         }
+
+        // Synchronise le point PostGIS avec latitude/longitude avant insert.
+        syncLocationFromLatLng();
+    }
+
+    @PreUpdate
+    public void updateLocationFromLatLng() {
+        // Synchronise le point PostGIS avec latitude/longitude avant update.
+        syncLocationFromLatLng();
+    }
+
+    private void syncLocationFromLatLng() {
+        if (latitude == null || longitude == null) {
+            return;
+        }
+        GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+        this.location = geometryFactory.createPoint(
+                new Coordinate(longitude.doubleValue(), latitude.doubleValue())
+        );
     }
 
     /**
