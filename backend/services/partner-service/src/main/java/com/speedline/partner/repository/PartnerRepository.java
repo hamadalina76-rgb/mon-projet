@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repository pour Partner
+ * Repository pour Partner.
  */
 @Repository
 public interface PartnerRepository extends JpaRepository<Partner, Long> {
@@ -24,29 +24,27 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
     // ==================== RECHERCHE PAR IDENTIFIANTS ====================
 
     Optional<Partner> findBySlug(String slug);
-    
+
     Optional<Partner> findByUserId(Long userId);
-    
+
     boolean existsBySlug(String slug);
-    
+
     boolean existsByUserId(Long userId);
 
     // ==================== RECHERCHE PAR STATUT ====================
 
     Page<Partner> findByStatus(PartnerStatus status, Pageable pageable);
 
-    /**
-     * Recherche admin : par statut (optionnel) et par nom/ville (businessName, brandName, city).
-     * search ne doit pas être null ni vide (à gérer en service).
-     */
     @Query("SELECT p FROM Partner p WHERE (:status IS NULL OR p.status = :status) AND " +
            "(LOWER(p.businessName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(COALESCE(p.brandName, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(COALESCE(p.city, '')) LIKE LOWER(CONCAT('%', :search, '%')))")
-    Page<Partner> findByStatusAndSearch(@Param("status") PartnerStatus status, @Param("search") String search, Pageable pageable);
-    
+    Page<Partner> findByStatusAndSearch(@Param("status") PartnerStatus status,
+                                        @Param("search") String search,
+                                        Pageable pageable);
+
     Page<Partner> findByIsActiveTrueAndAcceptsOrdersTrue(Pageable pageable);
-    
+
     List<Partner> findByStatusAndIsActiveTrue(PartnerStatus status);
 
     // ==================== RECHERCHE PAR TYPE ====================
@@ -55,35 +53,223 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
 
     // ==================== RECHERCHE PAR LOCALISATION ====================
 
-    @Query(value = """
-            SELECT id,
-                   ST_Distance(CAST(ST_MakePoint(CAST(longitude AS float8), CAST(latitude AS float8)) AS geography),
-                               CAST(ST_MakePoint(:lng, :lat) AS geography)) / 1000.0 AS distance_km
-            FROM partners
-            WHERE is_active = true
-              AND latitude IS NOT NULL AND longitude IS NOT NULL
-              AND ST_DWithin(CAST(ST_MakePoint(CAST(longitude AS float8), CAST(latitude AS float8)) AS geography),
-                             CAST(ST_MakePoint(:lng, :lat) AS geography), :radiusMeters)
-            ORDER BY CASE WHEN accepts_orders THEN 0 ELSE 1 END ASC,
-                     distance_km ASC,
-                     rating DESC NULLS LAST
-            LIMIT :size OFFSET :offset
-            """, nativeQuery = true)
-    List<Object[]> findNearbyPartnersSorted(
-            @Param("lat") double lat, @Param("lng") double lng,
-            @Param("radiusMeters") double radiusMeters,
-            @Param("size") int size, @Param("offset") int offset);
+    /**
+     * Nearby paginé avec filtres combinables (AND) et tri dynamique.
+     * Retourne [id, distance_km] pour éviter tout recalcul de distance côté Java.
+     */
+       @Query(value = """
+                     SELECT
+                            p.id,
+                            ST_Distance(
+                                   CAST(p.location AS geography),
+                                   CAST(ST_SetSRID(ST_MakePoint(:lng, :lat), 4326) AS geography)
+                            ) / 1000.0 AS distance_km
+                     FROM partners p
+                     WHERE p.is_active = true
+                       AND p.location IS NOT NULL
+                       AND ST_DWithin(
+                                   CAST(p.location AS geography),
+                                   CAST(ST_SetSRID(ST_MakePoint(:lng, :lat), 4326) AS geography),
+                                   :radiusMeters
+                       )
+                       AND (
+                                   :isOpen IS NULL
+                                   OR (
+                                          :isOpen = true
+                                          AND COALESCE(p.accepts_orders, false) = true
+                                          AND p.opening_hours_json IS NOT NULL
+                                          AND BTRIM(p.opening_hours_json) <> ''
+                                          AND BTRIM(p.opening_hours_json) <> '[]'
+                                          AND EXISTS (
+                                                 SELECT 1
+                                                 FROM jsonb_array_elements(CAST(p.opening_hours_json AS jsonb)) oh
+                                                 WHERE CAST(NULLIF(oh->>'dayOfWeek', '') AS integer) = CAST(EXTRACT(ISODOW FROM CURRENT_TIMESTAMP) AS integer)
+                                                   AND COALESCE(CAST(NULLIF(oh->>'isClosed', '') AS boolean), false) = false
+                                                   AND (
+                                                               COALESCE(CAST(NULLIF(oh->>'is24Hours', '') AS boolean), false) = true
+                                                               OR (
+                                                                      (oh->>'openTime') IS NOT NULL
+                                                                      AND (oh->>'closeTime') IS NOT NULL
+                                                                      AND (
+                                                                             (
+                                                                                    CAST(NULLIF(oh->>'openTime', '') AS time) <= CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                                    AND LOCALTIME >= CAST(NULLIF(oh->>'openTime', '') AS time)
+                                                                                    AND LOCALTIME < CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                             )
+                                                                             OR (
+                                                                                    CAST(NULLIF(oh->>'openTime', '') AS time) > CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                                    AND (
+                                                                                           LOCALTIME >= CAST(NULLIF(oh->>'openTime', '') AS time)
+                                                                                           OR LOCALTIME < CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                                    )
+                                                                             )
+                                                                      )
+                                                               )
+                                                   )
+                                          )
+                                   )
+                                   OR (
+                                          :isOpen = false
+                                          AND (
+                                                 COALESCE(p.accepts_orders, false) = false
+                                                 OR p.opening_hours_json IS NULL
+                                                 OR BTRIM(p.opening_hours_json) = ''
+                                                 OR BTRIM(p.opening_hours_json) = '[]'
+                                                 OR NOT EXISTS (
+                                                        SELECT 1
+                                                        FROM jsonb_array_elements(CAST(p.opening_hours_json AS jsonb)) oh
+                                                        WHERE CAST(NULLIF(oh->>'dayOfWeek', '') AS integer) = CAST(EXTRACT(ISODOW FROM CURRENT_TIMESTAMP) AS integer)
+                                                          AND COALESCE(CAST(NULLIF(oh->>'isClosed', '') AS boolean), false) = false
+                                                          AND (
+                                                                      COALESCE(CAST(NULLIF(oh->>'is24Hours', '') AS boolean), false) = true
+                                                                      OR (
+                                                                             (oh->>'openTime') IS NOT NULL
+                                                                             AND (oh->>'closeTime') IS NOT NULL
+                                                                             AND (
+                                                                                    (
+                                                                                           CAST(NULLIF(oh->>'openTime', '') AS time) <= CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                                           AND LOCALTIME >= CAST(NULLIF(oh->>'openTime', '') AS time)
+                                                                                           AND LOCALTIME < CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                                    )
+                                                                                    OR (
+                                                                                           CAST(NULLIF(oh->>'openTime', '') AS time) > CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                                           AND (
+                                                                                                  LOCALTIME >= CAST(NULLIF(oh->>'openTime', '') AS time)
+                                                                                                  OR LOCALTIME < CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                                           )
+                                                                                    )
+                                                                             )
+                                                                      )
+                                                          )
+                                                 )
+                                          )
+                                   )
+                       )
+                       AND (:categoryRegex IS NULL OR COALESCE(p.category_ids, '') ~ :categoryRegex)
+                       AND (:minRating IS NULL OR p.rating >= :minRating)
+                       AND (:maxDeliveryTime IS NULL OR p.preparation_time <= :maxDeliveryTime)
+                       AND (:freeDelivery IS NULL OR :freeDelivery = false OR p.delivery_fee = 0)
+                     ORDER BY
+                            CASE
+                                   WHEN :sortBy = 'distance' THEN ST_Distance(
+                                          CAST(p.location AS geography),
+                                          CAST(ST_SetSRID(ST_MakePoint(:lng, :lat), 4326) AS geography)
+                                   ) / 1000.0
+                            END ASC NULLS LAST,
+                            CASE WHEN :sortBy = 'rating' THEN p.rating END DESC NULLS LAST,
+                            CASE WHEN :sortBy = 'deliveryTime' THEN p.preparation_time END ASC NULLS LAST,
+                            CASE WHEN :sortBy = 'popularity' THEN p.total_orders END DESC NULLS LAST,
+                            p.id ASC
+                     LIMIT :size OFFSET :offset
+                     """, nativeQuery = true)
+    List<Object[]> findNearbyWithFilters(@Param("lat") double lat,
+                                         @Param("lng") double lng,
+                                         @Param("radiusMeters") double radiusMeters,
+                                         @Param("isOpen") Boolean isOpen,
+                                         @Param("categoryRegex") String categoryRegex,
+                                         @Param("minRating") BigDecimal minRating,
+                                         @Param("maxDeliveryTime") Integer maxDeliveryTime,
+                                         @Param("freeDelivery") Boolean freeDelivery,
+                                         @Param("sortBy") String sortBy,
+                                         @Param("size") int size,
+                                         @Param("offset") int offset);
 
-    @Query(value = """
-            SELECT COUNT(*) FROM partners
-            WHERE is_active = true
-              AND latitude IS NOT NULL AND longitude IS NOT NULL
-              AND ST_DWithin(CAST(ST_MakePoint(CAST(longitude AS float8), CAST(latitude AS float8)) AS geography),
-                             CAST(ST_MakePoint(:lng, :lat) AS geography), :radiusMeters)
-            """, nativeQuery = true)
-    long countNearbyPartners(
-            @Param("lat") double lat, @Param("lng") double lng,
-            @Param("radiusMeters") double radiusMeters);
+       @Query(value = """
+                     SELECT COUNT(*)
+                     FROM partners p
+                     WHERE p.is_active = true
+                       AND p.location IS NOT NULL
+                       AND ST_DWithin(
+                                   CAST(p.location AS geography),
+                                   CAST(ST_SetSRID(ST_MakePoint(:lng, :lat), 4326) AS geography),
+                                   :radiusMeters
+                       )
+                       AND (
+                                   :isOpen IS NULL
+                                   OR (
+                                          :isOpen = true
+                                          AND COALESCE(p.accepts_orders, false) = true
+                                          AND p.opening_hours_json IS NOT NULL
+                                          AND BTRIM(p.opening_hours_json) <> ''
+                                          AND BTRIM(p.opening_hours_json) <> '[]'
+                                          AND EXISTS (
+                                                 SELECT 1
+                                                 FROM jsonb_array_elements(CAST(p.opening_hours_json AS jsonb)) oh
+                                                 WHERE CAST(NULLIF(oh->>'dayOfWeek', '') AS integer) = CAST(EXTRACT(ISODOW FROM CURRENT_TIMESTAMP) AS integer)
+                                                   AND COALESCE(CAST(NULLIF(oh->>'isClosed', '') AS boolean), false) = false
+                                                   AND (
+                                                               COALESCE(CAST(NULLIF(oh->>'is24Hours', '') AS boolean), false) = true
+                                                               OR (
+                                                                      (oh->>'openTime') IS NOT NULL
+                                                                      AND (oh->>'closeTime') IS NOT NULL
+                                                                      AND (
+                                                                             (
+                                                                                    CAST(NULLIF(oh->>'openTime', '') AS time) <= CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                                    AND LOCALTIME >= CAST(NULLIF(oh->>'openTime', '') AS time)
+                                                                                    AND LOCALTIME < CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                             )
+                                                                             OR (
+                                                                                    CAST(NULLIF(oh->>'openTime', '') AS time) > CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                                    AND (
+                                                                                           LOCALTIME >= CAST(NULLIF(oh->>'openTime', '') AS time)
+                                                                                           OR LOCALTIME < CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                                    )
+                                                                             )
+                                                                      )
+                                                               )
+                                                   )
+                                          )
+                                   )
+                                   OR (
+                                          :isOpen = false
+                                          AND (
+                                                 COALESCE(p.accepts_orders, false) = false
+                                                 OR p.opening_hours_json IS NULL
+                                                 OR BTRIM(p.opening_hours_json) = ''
+                                                 OR BTRIM(p.opening_hours_json) = '[]'
+                                                 OR NOT EXISTS (
+                                                        SELECT 1
+                                                        FROM jsonb_array_elements(CAST(p.opening_hours_json AS jsonb)) oh
+                                                        WHERE CAST(NULLIF(oh->>'dayOfWeek', '') AS integer) = CAST(EXTRACT(ISODOW FROM CURRENT_TIMESTAMP) AS integer)
+                                                          AND COALESCE(CAST(NULLIF(oh->>'isClosed', '') AS boolean), false) = false
+                                                          AND (
+                                                                      COALESCE(CAST(NULLIF(oh->>'is24Hours', '') AS boolean), false) = true
+                                                                      OR (
+                                                                             (oh->>'openTime') IS NOT NULL
+                                                                             AND (oh->>'closeTime') IS NOT NULL
+                                                                             AND (
+                                                                                    (
+                                                                                           CAST(NULLIF(oh->>'openTime', '') AS time) <= CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                                           AND LOCALTIME >= CAST(NULLIF(oh->>'openTime', '') AS time)
+                                                                                           AND LOCALTIME < CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                                    )
+                                                                                    OR (
+                                                                                           CAST(NULLIF(oh->>'openTime', '') AS time) > CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                                           AND (
+                                                                                                  LOCALTIME >= CAST(NULLIF(oh->>'openTime', '') AS time)
+                                                                                                  OR LOCALTIME < CAST(NULLIF(oh->>'closeTime', '') AS time)
+                                                                                           )
+                                                                                    )
+                                                                             )
+                                                                      )
+                                                          )
+                                                 )
+                                          )
+                                   )
+                       )
+                       AND (:categoryRegex IS NULL OR COALESCE(p.category_ids, '') ~ :categoryRegex)
+                       AND (:minRating IS NULL OR p.rating >= :minRating)
+                       AND (:maxDeliveryTime IS NULL OR p.preparation_time <= :maxDeliveryTime)
+                       AND (:freeDelivery IS NULL OR :freeDelivery = false OR p.delivery_fee = 0)
+                     """, nativeQuery = true)
+    long countNearbyWithFilters(@Param("lat") double lat,
+                                @Param("lng") double lng,
+                                @Param("radiusMeters") double radiusMeters,
+                                @Param("isOpen") Boolean isOpen,
+                                @Param("categoryRegex") String categoryRegex,
+                                @Param("minRating") BigDecimal minRating,
+                                @Param("maxDeliveryTime") Integer maxDeliveryTime,
+                                @Param("freeDelivery") Boolean freeDelivery);
 
     Page<Partner> findByCityAndIsActiveTrue(String city, Pageable pageable);
 
@@ -123,7 +309,9 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
 
     @Modifying
     @Query("UPDATE Partner p SET p.rating = :rating, p.totalRatings = :totalRatings WHERE p.id = :partnerId")
-    int updateRating(@Param("partnerId") Long partnerId, @Param("rating") BigDecimal rating, @Param("totalRatings") Integer totalRatings);
+    int updateRating(@Param("partnerId") Long partnerId,
+                     @Param("rating") BigDecimal rating,
+                     @Param("totalRatings") Integer totalRatings);
 
     @Modifying
     @Query("UPDATE Partner p SET p.totalOrders = p.totalOrders + 1, p.totalRevenue = p.totalRevenue + :amount WHERE p.id = :partnerId")
@@ -132,10 +320,9 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
     // ==================== STATISTIQUES ====================
 
     long countByStatus(PartnerStatus status);
-    
+
     long countByIsActiveTrue();
 
-    /** Nombre de partenaires liés à une catégorie créés entre deux dates (pour calcul de tendance). */
     @Query("SELECT COUNT(p) FROM Partner p WHERE p.categoryIds LIKE %:categoryId% " +
            "AND p.createdAt BETWEEN :start AND :end")
     long countByCategoryIdAndCreatedAtBetween(@Param("categoryId") String categoryId,

@@ -1,13 +1,20 @@
 package com.speedline.partner.service.impl;
 
 import com.speedline.partner.domain.*;
+import com.speedline.partner.domain.Partner;
+import com.speedline.partner.domain.PartnerStatus;
+import com.speedline.partner.domain.PartnerType;
+import com.speedline.partner.dto.request.PartnerFilterRequest;
 import com.speedline.partner.dto.AdminPartnerUpdateDTO;
 import com.speedline.partner.dto.CompletePartnerProfileRequest;
 import com.speedline.partner.dto.PartnerDTO;
 import com.speedline.partner.dto.PartnerApprovalDTO;
 import com.speedline.partner.event.PartnerEvent;
 import com.speedline.partner.event.PartnerEventPublisher;
+import com.speedline.partner.domain.StaffMember;
+import com.speedline.partner.domain.StaffRole;
 import com.speedline.partner.dto.StaffMemberDTO;
+import com.speedline.partner.repository.CategoryRepository;
 import com.speedline.partner.exception.PartnerNotFoundException;
 import com.speedline.partner.repository.PartnerRepository;
 import com.speedline.partner.repository.StaffMemberRepository;
@@ -28,14 +35,25 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
+
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -49,6 +67,7 @@ import java.util.stream.Stream;
 public class PartnerServiceImpl implements PartnerService {
 
     private final PartnerRepository partnerRepository;
+    private final CategoryRepository categoryRepository;
     private final StaffMemberRepository staffMemberRepository;
     private final PartnerEventPublisher partnerEventPublisher;
     private final AuditLogService auditLogService;
@@ -479,7 +498,7 @@ public class PartnerServiceImpl implements PartnerService {
         partner.setCategoryIds(categoryIds);
 
         partner = partnerRepository.save(partner);
-        log.info("Partner {} approved successfully with commission type: {}, rate: {}%, categories: {}", 
+        log.info("Partner {} approved successfully with commission type: {}, rate: {}%, categories: {}",
                 partnerId, approvalData.getCommissionType(), approvalData.getCommissionRate(), partner.getCategoryIds());
 
         auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "APPROVE_WITH_COMMISSION", partnerId,
@@ -845,12 +864,41 @@ public class PartnerServiceImpl implements PartnerService {
     @Override
     @Transactional(readOnly = true)
     public List<PartnerDTO> getNearbyPartners(BigDecimal latitude, BigDecimal longitude, double radiusKm) {
-        return getNearbyPartners(latitude, longitude, 0, Integer.MAX_VALUE / 2).getContent();
+        PartnerFilterRequest request = PartnerFilterRequest.builder()
+                .lat(latitude)
+                .lng(longitude)
+                .page(0)
+                .size(Integer.MAX_VALUE / 2)
+                .sortBy("distance")
+                .build();
+
+        return getNearbyPartners(request).getContent();
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<PartnerDTO> getNearbyPartners(BigDecimal latitude, BigDecimal longitude, int page, int size) {
+        PartnerFilterRequest request = PartnerFilterRequest.builder()
+                .lat(latitude)
+                .lng(longitude)
+                .page(page)
+                .size(size)
+                .sortBy("distance")
+                .build();
+
+        return getNearbyPartners(request);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PartnerDTO> getNearbyPartners(PartnerFilterRequest filterRequest) {
+        if (filterRequest.getLat() == null || filterRequest.getLng() == null) {
+            throw new IllegalArgumentException("lat/lng are required for nearby search");
+        }
+
+        int page = filterRequest.getPage() == null ? 0 : Math.max(filterRequest.getPage(), 0);
+        int size = filterRequest.getSize() == null ? 20 : Math.min(Math.max(filterRequest.getSize(), 1), 100);
+
         // 1. Read radius from Redis or use config fallback
         double radiusKm = defaultRadiusKm;
         try {
@@ -861,9 +909,30 @@ public class PartnerServiceImpl implements PartnerService {
         }
         double radiusMeters = radiusKm * 1000.0;
 
-        // 2. Check cache
-        String cacheKey = String.format("partners:nearby:%.4f:%.4f:%d:%d",
-                latitude.doubleValue(), longitude.doubleValue(), page, size);
+        Point userPoint = buildUserPoint(filterRequest.getLat(), filterRequest.getLng());
+        double lat = userPoint.getY();
+        double lng = userPoint.getX();
+
+        String normalizedSort = normalizeSortBy(filterRequest.getSortBy());
+        BigDecimal minRating = filterRequest.getMinRating() == null
+                ? null
+                : BigDecimal.valueOf(filterRequest.getMinRating());
+        String categoryRegex = buildCategoryRegex(filterRequest.getCategoryId());
+
+        // 2. Check cache (clé inclut les filtres + tri)
+        String cacheKey = String.format(
+                "partners:nearby:%1$.4f:%2$.4f:%3$d:%4$d:%5$s:%6$s:%7$s:%8$s:%9$s:%10$s",
+                lat,
+                lng,
+                page,
+                size,
+                String.valueOf(filterRequest.getIsOpen()),
+                String.valueOf(categoryRegex),
+                String.valueOf(minRating),
+                String.valueOf(filterRequest.getMaxDeliveryTime()),
+                String.valueOf(filterRequest.getFreeDelivery()),
+                normalizedSort
+        );
         try {
             String cached = redisTemplate.opsForValue().get(cacheKey);
             if (cached != null) {
@@ -874,12 +943,32 @@ public class PartnerServiceImpl implements PartnerService {
             log.warn("Redis cache read failed: {}", e.getMessage());
         }
 
-        // 3. Query DB with PostGIS ST_DWithin
-        double lat = latitude.doubleValue();
-        double lng = longitude.doubleValue();
-        long total = partnerRepository.countNearbyPartners(lat, lng, radiusMeters);
+        // 3. Query DB with PostGIS ST_DWithin + filtres dynamiques
+        long total = partnerRepository.countNearbyWithFilters(
+            lat,
+            lng,
+            radiusMeters,
+            filterRequest.getIsOpen(),
+            categoryRegex,
+            minRating,
+            filterRequest.getMaxDeliveryTime(),
+            filterRequest.getFreeDelivery()
+        );
+
         List<Object[]> rows = total == 0 ? List.of() :
-                partnerRepository.findNearbyPartnersSorted(lat, lng, radiusMeters, size, page * size);
+            partnerRepository.findNearbyWithFilters(
+                lat,
+                lng,
+                radiusMeters,
+                filterRequest.getIsOpen(),
+                categoryRegex,
+                minRating,
+                filterRequest.getMaxDeliveryTime(),
+                filterRequest.getFreeDelivery(),
+                normalizedSort,
+                size,
+                page * size
+            );
 
         // 4. Bulk load entities and build DTOs
         List<Long> ids = rows.stream().map(r -> ((Number) r[0]).longValue()).toList();
@@ -910,6 +999,66 @@ public class PartnerServiceImpl implements PartnerService {
         }
 
         return result;
+    }
+
+    private Point buildUserPoint(BigDecimal latitude, BigDecimal longitude) {
+        GeometryFactory factory = new GeometryFactory(new PrecisionModel(), 4326);
+        return factory.createPoint(new Coordinate(longitude.doubleValue(), latitude.doubleValue()));
+    }
+
+    private String normalizeSortBy(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) {
+            return "distance";
+        }
+        return switch (sortBy.trim()) {
+            case "distance", "rating", "deliveryTime", "popularity" -> sortBy.trim();
+            default -> "distance";
+        };
+    }
+
+    /**
+     * Construit un regex PostgreSQL tokenisé pour matcher category_ids CSV.
+     * Si la catégorie est parente, inclut ses descendants (parent + enfants).
+     */
+    private String buildCategoryRegex(String categoryId) {
+        if (categoryId == null || categoryId.isBlank()) {
+            return null;
+        }
+
+        Long rootId;
+        try {
+            rootId = Long.parseLong(categoryId.trim());
+        } catch (NumberFormatException ex) {
+            return "(^|,)" + Pattern.quote(categoryId.trim()) + "(,|$)";
+        }
+
+        List<com.speedline.partner.domain.Category> allCategories = categoryRepository.findAll();
+        if (allCategories.isEmpty()) {
+            return "(^|,)" + rootId + "(,|$)";
+        }
+
+        Set<Long> targetIds = new HashSet<>();
+        targetIds.add(rootId);
+        ArrayDeque<Long> queue = new ArrayDeque<>();
+        queue.add(rootId);
+
+        while (!queue.isEmpty()) {
+            Long current = queue.poll();
+            for (com.speedline.partner.domain.Category category : allCategories) {
+                if (Objects.equals(category.getParentId(), current) && targetIds.add(category.getId())) {
+                    queue.add(category.getId());
+                }
+            }
+        }
+
+        List<Long> sortedIds = new ArrayList<>(targetIds);
+        sortedIds.sort(Comparator.naturalOrder());
+
+        String alternatives = sortedIds.stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining("|"));
+
+        return "(^|,)(" + alternatives + ")(,|$)";
     }
 
     private record CachedPage(List<PartnerDTO> content, int pageNumber, int pageSize, long totalElements) {}
