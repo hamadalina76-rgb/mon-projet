@@ -13,6 +13,8 @@ import { MatDividerModule } from '@angular/material/divider';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { CategoriesService } from '@features/categories/services/categories.service';
 import { Category } from '@core/models/category.model';
+import { Zone } from '@core/models/zone.model';
+import { PartnersService } from '../services/partners.service';
 
 export interface CommissionSetupData {
   partnerId: string;
@@ -24,6 +26,7 @@ export interface CommissionSetupResult {
   commissionRate: number;
   categoryId: number;
   subcategoryIds: number[];
+  zoneIds: number[];
 }
 
 @Component({
@@ -50,6 +53,7 @@ export class CommissionSetupDialogComponent implements OnInit {
   private fb = inject(FormBuilder);
   private translate = inject(TranslateService);
   private categoriesService = inject(CategoriesService);
+  private partnersService = inject(PartnersService);
   private dialogRef = inject(MatDialogRef<CommissionSetupDialogComponent>);
   
   data: CommissionSetupData = inject(MAT_DIALOG_DATA);
@@ -57,7 +61,9 @@ export class CommissionSetupDialogComponent implements OnInit {
   commissionForm: FormGroup;
   
   allCategories = signal<Category[]>([]);
+  allZones = signal<Zone[]>([]);
   selectedSubcategoryIds = signal<number[]>([]);
+  selectedZoneIds = signal<number[]>([]);
   selectedCategoryId = signal<number | null>(null);
   selectedCommissionTypeValue = signal<string>('PERCENTAGE');
   formIsValid = signal<boolean>(false);
@@ -103,6 +109,7 @@ export class CommissionSetupDialogComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadCategories();
+    this.loadZones();
   }
 
   private loadCategories(): void {
@@ -111,10 +118,28 @@ export class CommissionSetupDialogComponent implements OnInit {
         const activeCategories = categories.filter(cat => cat.isActive);
         this.allCategories.set(activeCategories);
       },
-      error: (err) => {
-        console.error('Erreur lors du chargement des catégories:', err);
-      }
+      error: (err) => console.error('Erreur lors du chargement des catégories:', err)
     });
+  }
+
+  private loadZones(): void {
+    this.partnersService.getAllZones().subscribe({
+      next: (zones) => this.allZones.set(zones),
+      error: (err) => console.error('Erreur lors du chargement des zones:', err)
+    });
+  }
+
+  isZoneSelected(zoneId: number): boolean {
+    return this.selectedZoneIds().includes(zoneId);
+  }
+
+  toggleZone(zoneId: number): void {
+    const current = this.selectedZoneIds();
+    if (current.includes(zoneId)) {
+      this.selectedZoneIds.set(current.filter(id => id !== zoneId));
+    } else {
+      this.selectedZoneIds.set([...current, zoneId]);
+    }
   }
 
   getCategoryName(category: Category): string {
@@ -161,7 +186,8 @@ export class CommissionSetupDialogComponent implements OnInit {
       commissionType: formValue.commissionType,
       commissionRate: formValue.commissionRate,
       categoryId: formValue.categoryId,
-      subcategoryIds: this.selectedSubcategoryIds()
+      subcategoryIds: this.selectedSubcategoryIds(),
+      zoneIds: this.selectedZoneIds()
     };
 
     this.dialogRef.close(result);

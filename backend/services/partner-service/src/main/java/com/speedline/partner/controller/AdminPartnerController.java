@@ -1,7 +1,10 @@
 package com.speedline.partner.controller;
 
 import com.speedline.partner.domain.PartnerStatus;
+import com.speedline.partner.domain.PartnerZone;
 import com.speedline.partner.dto.*;
+import com.speedline.partner.repository.PartnerZoneRepository;
+import com.speedline.partner.client.LocationServiceClient;
 import com.speedline.partner.service.AuditLogService;
 import com.speedline.partner.service.PartnerService;
 import lombok.RequiredArgsConstructor;
@@ -10,12 +13,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import jakarta.transaction.Transactional;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * REST Controller for Admin Partner Management
@@ -37,6 +46,8 @@ public class AdminPartnerController {
 
     private final PartnerService partnerService;
     private final AuditLogService auditLogService;
+    private final PartnerZoneRepository partnerZoneRepository;
+    private final LocationServiceClient locationServiceClient;
 
     /**
      * List all partners with optional status and search (by name, brand, city).
@@ -347,24 +358,99 @@ public class AdminPartnerController {
      * Historique des modifications filtré (filtres via POST body)
      * POST /admin/partners/{id}/change-logs/filter
      */
-    @PostMapping("/{id}/change-logs/filter")
-    public ResponseEntity<?> getPartnerChangeLogsFiltered(
-            @PathVariable Long id,
-            @RequestBody PartnerChangeLogFilterDTO filters) {
-        log.info("Admin: Filtering change logs for partner id={}, filters={}", id, filters);
+    // ==================== ZONES ====================
+
+    /**
+     * GET /admin/partners/{id}/zones
+     * Retourne les zones assignées au partenaire, enrichies avec les données du location-service
+     */
+    @GetMapping("/{id}/zones")
+    public ResponseEntity<?> getPartnerZones(@PathVariable Long id) {
         try {
-            Pageable pageable = PageRequest.of(
-                    filters.getPage(),
-                    filters.getSize(),
-                    Sort.by(Sort.Direction.DESC, "changedAt")
-            );
-            return ResponseEntity.ok(
-                    auditLogService.getPartnerChangeLogsFiltered(id, filters, pageable)
-            );
+            List<PartnerZone> assignments = partnerZoneRepository.findByPartnerId(id);
+            if (assignments.isEmpty()) return ResponseEntity.ok(List.of());
+
+            Map<Long, LocalDateTime> assignedAtMap = assignments.stream()
+                    .collect(Collectors.toMap(PartnerZone::getZoneId, PartnerZone::getAssignedAt));
+
+            try {
+                // Fetch chaque zone par ID → retourne toutes les zones assignées
+                // même si elles sont inactives (pas de filtrage par statut)
+                List<ZoneInfoDTO> result = assignments.stream()
+                        .map(a -> {
+                            try {
+                                ZoneInfoDTO z = locationServiceClient.getZoneById(a.getZoneId());
+                                z.setAssignedAt(a.getAssignedAt());
+                                return z;
+                            } catch (Exception ex) {
+                                log.warn("Zone {} not found in location-service: {}", a.getZoneId(), ex.getMessage());
+                                return null;
+                            }
+                        })
+                        .filter(java.util.Objects::nonNull)
+                        .collect(Collectors.toList());
+                return ResponseEntity.ok(result);
+            } catch (Exception e) {
+                log.warn("Location-service unavailable, returning zone IDs only: {}", e.getMessage());
+                List<Map<String, Object>> fallback = assignments.stream()
+                        .map(a -> Map.<String, Object>of("id", a.getZoneId(), "assignedAt", a.getAssignedAt()))
+                        .collect(Collectors.toList());
+                return ResponseEntity.ok(fallback);
+            }
         } catch (Exception e) {
-            log.error("Failed to filter change logs for partner {}: {}", id, e.getMessage());
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("error", e.getMessage()));
+            log.error("Failed to get zones for partner {}: {}", id, e.getMessage());
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * POST /admin/partners/{id}/zones/assign
+     * Body: { "zoneIds": [1, 2, 3] }
+     * Remplace toutes les zones assignées par la nouvelle liste
+     */
+    @Transactional
+    @PostMapping("/{id}/zones/assign")
+    public ResponseEntity<?> assignZones(
+            @PathVariable Long id,
+            @RequestBody Map<String, List<Number>> body) {
+        try {
+            List<Long> zoneIds = body.getOrDefault("zoneIds", List.of()).stream()
+                    .map(Number::longValue)
+                    .collect(Collectors.toList());
+            partnerZoneRepository.deleteAllByPartnerId(id);
+            List<PartnerZone> newAssignments = zoneIds.stream()
+                    .map(zoneId -> PartnerZone.builder()
+                            .partnerId(id)
+                            .zoneId(zoneId)
+                            .assignedAt(LocalDateTime.now())
+                            .build())
+                    .collect(Collectors.toList());
+            partnerZoneRepository.saveAll(newAssignments);
+            log.info("Admin: Assigned {} zones to partner {}", zoneIds.size(), id);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Zones assigned successfully",
+                    "assignedZoneIds", zoneIds
+            ));
+        } catch (Exception e) {
+            log.error("Failed to assign zones to partner {}: {}", id, e.getMessage());
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * DELETE /admin/partners/{id}/zones/{zoneId}
+     * Retire une zone spécifique d'un partenaire
+     */
+    @Transactional
+    @DeleteMapping("/{id}/zones/{zoneId}")
+    public ResponseEntity<?> removeZone(@PathVariable Long id, @PathVariable Long zoneId) {
+        try {
+            partnerZoneRepository.deleteByPartnerIdAndZoneId(id, zoneId);
+            log.info("Admin: Removed zone {} from partner {}", zoneId, id);
+            return ResponseEntity.ok(Map.of("message", "Zone removed successfully"));
+        } catch (Exception e) {
+            log.error("Failed to remove zone {} from partner {}: {}", zoneId, id, e.getMessage());
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
 }

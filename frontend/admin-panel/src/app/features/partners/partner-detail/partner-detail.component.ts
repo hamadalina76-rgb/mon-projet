@@ -20,8 +20,10 @@ import { FormsModule } from '@angular/forms';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { PartnersService } from '../services/partners.service';
 import { PartnerEditDialogComponent, PartnerEditDialogData } from '../partner-edit-dialog/partner-edit-dialog.component';
+import { CommissionSetupDialogComponent, CommissionSetupData, CommissionSetupResult } from '../partner-approval/commission-setup-dialog.component';
 import { CategoriesService } from '@features/categories/services/categories.service';
 import { Category } from '@core/models/category.model';
+import { Zone } from '@core/models/zone.model';
 import { ToastrService } from 'ngx-toastr';
 import { environment } from '@environments/environment';
 
@@ -63,12 +65,26 @@ export class PartnerDetailComponent implements OnInit, AfterViewInit, OnDestroy 
   private dialog            = inject(MatDialog);
 
   @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
+  @ViewChild('zonesMapContainer', { static: false }) zonesMapContainer!: ElementRef;
 
   partner       = signal<any>(null);
   allCategories = signal<Category[]>([]);
   loading       = signal(false);
   error         = signal<string | null>(null);
   internalNotes = '';
+
+  // ── Zones ────────────────────────────────────────────────────────────────
+  allZones               = signal<Zone[]>([]);
+  assignedZonesData      = signal<Zone[]>([]);  // objets complets retournés par l'API
+  assignedZoneIds        = signal<number[]>([]);
+  initialAssignedZoneIds = signal<number[]>([]);
+  zonesLoading           = signal(false);
+  zonesEditMode          = signal(false);
+  private zonesMap: any  = null;
+
+  // Mode vue : on affiche directement les données API, sans dépendre de allZones
+  assignedZones = computed<Zone[]>(() => this.assignedZonesData());
+
 
   // ── Catégories computed ───────────────────────────────────────────────────
 
@@ -271,6 +287,7 @@ export class PartnerDetailComponent implements OnInit, AfterViewInit, OnDestroy 
     if (id) {
       this.loadPartner(id);
       this.loadChangeLogs(id, 0, this.logsPageSize());
+      this.loadZonesData(id);
     }
     this.categoriesService.getCategories().subscribe({
       next: (cats) => this.allCategories.set(cats),
@@ -282,6 +299,7 @@ export class PartnerDetailComponent implements OnInit, AfterViewInit, OnDestroy 
 
   ngOnDestroy(): void {
     if (this.map) { this.map.remove(); this.map = null; }
+    if (this.zonesMap) { this.zonesMap.remove(); this.zonesMap = null; }
   }
 
   // ── Partenaire ────────────────────────────────────────────────────────────
@@ -333,15 +351,170 @@ export class PartnerDetailComponent implements OnInit, AfterViewInit, OnDestroy 
     } catch (e) { console.error('Error initializing map:', e); }
   }
 
+  // ── Zones ─────────────────────────────────────────────────────────────────
+
+  loadZonesData(partnerId: string): void {
+    this.zonesLoading.set(true);
+    this.partnersService.getAllZones().subscribe({
+      next: (zones) => {
+        this.allZones.set(zones);
+        this.partnersService.getPartnerZones(partnerId).subscribe({
+          next: (assigned) => {
+            // Normaliser : l'API peut retourner un tableau ou { content: [] }
+            const list: Zone[] = Array.isArray(assigned)
+              ? assigned
+              : (assigned as any)?.content ?? [];
+            const ids = list.map((z: any) => Number(z.id));
+            this.assignedZonesData.set(list);
+            this.assignedZoneIds.set(ids);
+            this.initialAssignedZoneIds.set([...ids]);
+            this.zonesLoading.set(false);
+            setTimeout(() => this.initZonesMap(), 300);
+          },
+          error: () => this.zonesLoading.set(false)
+        });
+      },
+      error: () => this.zonesLoading.set(false)
+    });
+  }
+
+  isZoneAssigned(zoneId: number): boolean {
+    return this.assignedZoneIds().includes(Number(zoneId));
+  }
+
+  toggleZoneAssignment(zoneId: number): void {
+    const current = this.assignedZoneIds();
+    if (current.includes(zoneId)) {
+      this.assignedZoneIds.set(current.filter(id => id !== zoneId));
+    } else {
+      this.assignedZoneIds.set([...current, zoneId]);
+    }
+    setTimeout(() => this.initZonesMap(), 100);
+  }
+
+  enterZonesEditMode(): void {
+    this.zonesEditMode.set(true);
+  }
+
+  cancelZonesEdit(): void {
+    // Restaurer l’état initial
+    this.assignedZoneIds.set([...this.initialAssignedZoneIds()]);
+    // Restaurer aussi les objets zones assignées depuis allZones
+    const initial = this.initialAssignedZoneIds();
+    const fromAll = this.allZones().filter(z => initial.includes(Number(z.id)));
+    // Privilégier les données existantes si allZones ne couvre pas tout
+    const existing = this.assignedZonesData().filter(z => initial.includes(Number(z.id)));
+    this.assignedZonesData.set(existing.length === initial.length ? existing : fromAll);
+    this.zonesEditMode.set(false);
+    setTimeout(() => this.initZonesMap(), 150);
+  }
+
+  saveZones(): void {
+    const partner = this.partner();
+    if (!partner) return;
+
+    // TC-53 : ne pas appeler l'API si aucune modification
+    const current = this.assignedZoneIds();
+    const initial = this.initialAssignedZoneIds();
+    const hasChanges =
+      current.length !== initial.length ||
+      current.some(id => !initial.includes(id)) ||
+      initial.some(id => !current.includes(id));
+    if (!hasChanges) {
+      this.toastr.info(this.translate.instant('partners.detail.zones.noChanges'));
+      this.zonesEditMode.set(false);
+      return;
+    }
+
+    this.zonesLoading.set(true);
+    this.partnersService.assignZones(partner.id.toString(), current).subscribe({
+      next: () => {
+        this.zonesEditMode.set(false);
+        this.toastr.success(this.translate.instant('partners.detail.zones.saveSuccess'));
+        // Reload complet : getAllZones() + getPartnerZones() → tout est frais
+        this.loadZonesData(partner.id.toString());
+      },
+      error: () => {
+        this.zonesLoading.set(false);
+        this.toastr.error(this.translate.instant('partners.detail.zones.saveError'));
+      }
+    });
+  }
+
+  private initZonesMap(): void {
+    const assignedIds = this.assignedZoneIds();
+    if (assignedIds.length === 0 || !this.zonesMapContainer?.nativeElement) return;
+
+    const token = (environment as any).mapboxToken;
+    if (typeof mapboxgl === 'undefined' || !token) return;
+
+    try {
+      if (this.zonesMap) { this.zonesMap.remove(); this.zonesMap = null; }
+      mapboxgl.accessToken = token;
+      const assignedZones = this.allZones().filter(z => assignedIds.includes(z.id));
+      const center = this.partner()
+        ? [Number(this.partner().longitude || 10.1815), Number(this.partner().latitude || 36.8065)]
+        : [10.1815, 36.8065];
+
+      this.zonesMap = new mapboxgl.Map({
+        container: this.zonesMapContainer.nativeElement,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center,
+        zoom: 11,
+      });
+
+      this.zonesMap.on('load', () => {
+        assignedZones.forEach((zone, i) => {
+          if (!zone.boundaryJson) return;
+          try {
+            const geojson = JSON.parse(zone.boundaryJson);
+            const sourceId = `zone-${zone.id}`;
+            this.zonesMap.addSource(sourceId, { type: 'geojson', data: { type: 'Feature', geometry: geojson, properties: {} } });
+            this.zonesMap.addLayer({ id: `${sourceId}-fill`, type: 'fill', source: sourceId, paint: { 'fill-color': '#3b82f6', 'fill-opacity': 0.2 } });
+            this.zonesMap.addLayer({ id: `${sourceId}-line`, type: 'line', source: sourceId, paint: { 'line-color': '#2563eb', 'line-width': 2 } });
+          } catch {}
+        });
+        this.zonesMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        setTimeout(() => this.zonesMap?.resize(), 100);
+      });
+    } catch (e) { console.warn('Zones map init error:', e); }
+  }
+
   approvePartner(): void {
     const partner = this.partner();
     if (!partner) return;
-    if (confirm(this.translate.instant('partners.detail.approveConfirm', { name: partner.businessName }))) {
-      this.partnersService.approvePartner(partner.id.toString()).subscribe({
-        next: () => { this.toastr.success(this.translate.instant('partners.detail.approveSuccess'), this.translate.instant('partners.detail.success')); this.loadPartner(partner.id.toString()); },
-        error: () => this.toastr.error(this.translate.instant('partners.detail.approveError'), this.translate.instant('common.error')),
+    const dialogRef = this.dialog.open(CommissionSetupDialogComponent, {
+      width: '95vw',
+      maxWidth: '640px',
+      panelClass: 'commission-dialog-panel',
+      disableClose: true,
+      data: {
+        partnerId: partner.id.toString(),
+        partnerName: partner.businessName || partner.brandName || 'Partenaire'
+      } as CommissionSetupData,
+    });
+    dialogRef.afterClosed().subscribe((result: CommissionSetupResult | undefined) => {
+      if (!result) return;
+      this.partnersService.approvePartnerWithCommission(partner.id.toString(), {
+        commissionType: result.commissionType,
+        commissionRate: result.commissionRate,
+        categoryId: result.categoryId,
+        subcategoryIds: result.subcategoryIds,
+      }).subscribe({
+        next: () => {
+          this.toastr.success(
+            this.translate.instant('partners.detail.approveSuccess'),
+            this.translate.instant('partners.detail.success')
+          );
+          this.loadPartner(partner.id.toString());
+          this.loadChangeLogs(partner.id.toString(), 0, this.logsPageSize());
+        },
+        error: () => this.toastr.error(
+          this.translate.instant('partners.detail.approveError'),
+          this.translate.instant('common.error')
+        ),
       });
-    }
+    });
   }
 
   rejectPartner(): void {

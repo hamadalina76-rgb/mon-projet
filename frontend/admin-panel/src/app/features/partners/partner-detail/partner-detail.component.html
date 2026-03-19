@@ -776,6 +776,141 @@
   }
 
 </mat-tab>
+
+      <!-- ── ZONES TAB ── -->
+      <mat-tab [label]="'partners.detail.tabs.zones' | translate">
+        <div class="tab-content zones-tab">
+
+          <!-- HEADER -->
+          <div class="zones-header">
+            <div class="zones-title-block">
+              <mat-icon class="zones-title-icon">map</mat-icon>
+              <h3 class="zones-title">{{ 'partners.detail.zones.title' | translate }}</h3>
+              <span class="zones-count-badge" *ngIf="assignedZoneIds().length > 0">
+                {{ assignedZoneIds().length }}
+              </span>
+            </div>
+            <!-- Boutons mode vue -->
+            <div class="zones-header-actions" *ngIf="!zonesEditMode()">
+              <button mat-stroked-button class="btn-zones-edit"
+                      [disabled]="zonesLoading()"
+                      (click)="enterZonesEditMode()">
+                <mat-icon>edit</mat-icon> {{ 'partners.detail.zones.editBtn' | translate }}
+              </button>
+            </div>
+            <!-- Boutons mode édition -->
+            <div class="zones-header-actions" *ngIf="zonesEditMode()">
+              <button mat-button class="btn-zones-cancel"
+                      [disabled]="zonesLoading()"
+                      (click)="cancelZonesEdit()">
+                <mat-icon>close</mat-icon> {{ 'partners.detail.zones.cancelBtn' | translate }}
+              </button>
+              <button mat-flat-button class="btn-zones-save"
+                      [disabled]="zonesLoading()"
+                      (click)="saveZones()">
+                <mat-icon>save</mat-icon> {{ 'partners.detail.zones.saveBtn' | translate }}
+              </button>
+            </div>
+          </div>
+
+          <!-- MODE ÉDITION : bandeau indicateur -->
+          <div class="zones-edit-banner" *ngIf="zonesEditMode()">
+            <mat-icon>info_outline</mat-icon>
+            {{ 'partners.detail.zones.editBanner' | translate }}
+          </div>
+
+          <div *ngIf="zonesLoading()" class="zones-loading">
+            <mat-spinner diameter="32"></mat-spinner>
+          </div>
+
+          <div *ngIf="!zonesLoading()" class="zones-body">
+
+            <!-- ========================= -->
+            <!-- MODE VUE : zones assignées -->
+            <!-- ========================= -->
+            <ng-container *ngIf="!zonesEditMode()">
+              <div class="zones-list">
+                <!-- Aucune zone assignée -->
+                <div *ngIf="assignedZones().length === 0" class="empty-zones">
+                  <mat-icon>info_outline</mat-icon>
+                  <span>{{ 'partners.detail.zones.noZones' | translate }}</span>
+                </div>
+                <!-- Carte des zones assignées (view mode) -->
+                <div *ngFor="let zone of assignedZones()" class="zone-row assigned zone-row-view">
+                  <mat-icon class="zone-view-icon">check_circle</mat-icon>
+                  <div class="zone-info">
+                    <span class="zone-name">{{ zone.name }}</span>
+                    <span class="zone-meta">
+                      <span *ngIf="zone.city" class="zone-city">{{ zone.city }}</span>
+                      <span *ngIf="zone.type" class="zone-type-badge zone-type-{{ zone.type | lowercase }}">{{ zone.type }}</span>
+                      <span *ngIf="zone.deliveryFee != null" class="zone-fee">
+                        <mat-icon class="meta-icon">local_shipping</mat-icon>{{ zone.deliveryFee }} TND
+                      </span>
+                      <span *ngIf="zone.minDeliveryTime != null" class="zone-time">
+                        <mat-icon class="meta-icon">schedule</mat-icon>
+                        {{ zone.minDeliveryTime }}{{ zone.maxDeliveryTime != null ? '–' + zone.maxDeliveryTime : '' }} min
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Carte Mapbox en mode vue -->
+              <div class="zones-map-wrap" *ngIf="assignedZoneIds().length > 0">
+                <p class="map-label"><mat-icon>location_on</mat-icon> {{ 'partners.detail.zones.mapLabel' | translate }}</p>
+                <div #zonesMapContainer class="zones-map"></div>
+              </div>
+              <div class="empty-zones-map" *ngIf="assignedZoneIds().length === 0">
+                <mat-icon>map</mat-icon>
+                <span>{{ 'partners.detail.zones.mapEmpty' | translate }}</span>
+              </div>
+            </ng-container>
+
+            <!-- ========================== -->
+            <!-- MODE ÉDITION : toutes zones -->
+            <!-- ========================== -->
+            <ng-container *ngIf="zonesEditMode()">
+              <div class="zones-list">
+                <div *ngIf="allZones().length === 0" class="empty-zones">
+                  <mat-icon>info_outline</mat-icon>
+                  <span>{{ 'partners.detail.zones.noAvailable' | translate }}</span>
+                </div>
+                <div *ngFor="let zone of allZones()" class="zone-row"
+                     [class.assigned]="isZoneAssigned(zone.id)"
+                     (click)="toggleZoneAssignment(zone.id)">
+                  <mat-icon class="zone-check">{{ isZoneAssigned(zone.id) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+                  <div class="zone-info">
+                    <span class="zone-name">{{ zone.name }}</span>
+                    <span class="zone-meta">
+                      <span *ngIf="zone.city" class="zone-city">{{ zone.city }}</span>
+                      <span *ngIf="zone.type" class="zone-type-badge zone-type-{{ zone.type | lowercase }}">{{ zone.type }}</span>
+                      <span *ngIf="zone.deliveryFee != null" class="zone-fee">
+                        <mat-icon class="meta-icon">local_shipping</mat-icon>{{ zone.deliveryFee }} TND
+                      </span>
+                      <span *ngIf="zone.minDeliveryTime != null" class="zone-time">
+                        <mat-icon class="meta-icon">schedule</mat-icon>
+                        {{ zone.minDeliveryTime }}{{ zone.maxDeliveryTime != null ? '–' + zone.maxDeliveryTime : '' }} min
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Aperçu carte en temps réel (mode édition) -->
+              <div class="zones-map-wrap" *ngIf="assignedZoneIds().length > 0">
+                <p class="map-label"><mat-icon>preview</mat-icon> {{ 'partners.detail.zones.mapPreview' | translate }}</p>
+                <div #zonesMapContainer class="zones-map"></div>
+              </div>
+              <div class="empty-zones-map" *ngIf="assignedZoneIds().length === 0">
+                <mat-icon>map</mat-icon>
+                <span>{{ 'partners.detail.zones.mapEditEmpty' | translate }}</span>
+              </div>
+            </ng-container>
+
+          </div>
+        </div>
+      </mat-tab>
+
     </mat-tab-group>
   </div>
 </div>

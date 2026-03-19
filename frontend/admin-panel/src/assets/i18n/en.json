@@ -579,7 +579,26 @@
       "tabs": {
         "general": "General Info",
         "menu": "Menu / Products",
-        "orders": "Orders"
+        "orders": "Orders",
+        "zones": "Delivery Zones",
+        "documents": "Documents",
+        "logs": "History"
+      },
+      "zones": {
+        "title": "Delivery Zones",
+        "editBtn": "Edit Zones",
+        "saveBtn": "Save",
+        "cancelBtn": "Cancel",
+        "editBanner": "Check / uncheck zones then click Save.",
+        "noZones": "No zone assigned — click Edit Zones to add one.",
+        "mapLabel": "Assigned zones on map",
+        "mapPreview": "Real-time preview",
+        "mapEmpty": "Assign at least one zone to display the map",
+        "mapEditEmpty": "Select at least one zone to preview the map",
+        "noAvailable": "No zones available",
+        "saveSuccess": "Zones saved successfully",
+        "saveError": "Error saving zones",
+        "noChanges": "No changes to save"
       },
       "approveConfirm": "Do you want to approve partner \"{{name}}\"?",
       "approveSuccess": "Partner approved successfully",

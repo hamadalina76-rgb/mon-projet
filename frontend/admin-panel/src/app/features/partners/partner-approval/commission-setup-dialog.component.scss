@@ -4,8 +4,8 @@
 // ─── Dialog Shell ───────────────────────────────────────────────────────────
 
 .commission-dialog {
-  width: 560px;
-  max-width: 95vw;
+  width: 100%;
+  max-width: 640px;
   display: flex;
   flex-direction: column;
   background: v.$white;
@@ -79,23 +79,25 @@
 .steps-bar {
   display: flex;
   align-items: center;
-  padding: 12px 22px;
+  padding: 10px 16px;
   background: v.$gray-50;
   border-bottom: 1px solid v.$gray-200;
   gap: 0;
+  overflow-x: auto;
 
   .step {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     opacity: 0.45;
     transition: opacity v.$transition-fast;
+    flex-shrink: 0;
 
     &.active, &.done { opacity: 1; }
 
     .step-dot {
-      width: 32px;
-      height: 32px;
+      width: 30px;
+      height: 30px;
       border-radius: v.$border-radius-full;
       border: 2px solid v.$gray-300;
       background: v.$white;
@@ -106,9 +108,9 @@
       flex-shrink: 0;
 
       mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
+        font-size: 15px;
+        width: 15px;
+        height: 15px;
         color: v.$gray-400;
         transition: color v.$transition-fast;
       }
@@ -117,30 +119,33 @@
     &.active .step-dot {
       border-color: v.$primary-color;
       background: rgba(v.$primary-color, 0.08);
-
       mat-icon { color: v.$primary-color; }
     }
 
     &.done .step-dot {
       border-color: v.$primary-color;
       background: rgba(v.$primary-color, 0.1);
-
       mat-icon { color: v.$primary-color; }
     }
 
     span:not(.step-dot) {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 500;
       color: v.$text-secondary;
       white-space: nowrap;
+
+      @media (max-width: 480px) {
+        display: none;
+      }
     }
   }
 
   .step-line {
     flex: 1;
+    min-width: 12px;
     height: 2px;
     background: v.$gray-200;
-    margin: 0 8px;
+    margin: 0 4px;
     border-radius: 2px;
     transition: background v.$transition-fast;
 
@@ -151,15 +156,20 @@
 // ─── Body ────────────────────────────────────────────────────────────────────
 
 .dialog-body {
-  padding: 18px 22px;
-  max-height: 58vh;
+  padding: 16px 20px;
+  max-height: 62dvh;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   box-sizing: border-box;
   width: 100%;
+
+  @media (max-width: 480px) {
+    padding: 12px 14px;
+    max-height: 65dvh;
+  }
 
   &::-webkit-scrollbar { width: 6px; }
   &::-webkit-scrollbar-track { background: v.$gray-100; }
@@ -231,6 +241,10 @@ mat-divider {
   width: 100%;
 
   ::ng-deep .mdc-form-field { display: none; }
+
+  @media (max-width: 420px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .type-card {
@@ -324,12 +338,17 @@ mat-divider {
 .rate-row {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   flex-wrap: wrap;
 
   .rate-field {
     width: 180px;
-    min-width: 0;
+    min-width: 140px;
+    flex-shrink: 1;
+
+    @media (max-width: 480px) {
+      width: 100%;
+    }
   }
 
   .rate-preview {
@@ -779,7 +798,12 @@ mat-divider {
 // Large screens (> 680px)
 @media (min-width: 681px) {
   .commission-dialog {
-    width: 580px;
-    max-width: 95vw;
+    width: 100%;
+    max-width: 640px;
   }
+}
+
+.zone-city {
+  color: #6b7280;
+  font-size: 0.8rem;
 }

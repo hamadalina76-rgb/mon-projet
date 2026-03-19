@@ -229,7 +229,9 @@ export class PartnerApprovalComponent implements OnInit, AfterViewInit, OnDestro
     if (!partner) return;
 
     const dialogRef = this.dialog.open(CommissionSetupDialogComponent, {
-      width: '620px',
+      width: '95vw',
+      maxWidth: '640px',
+      panelClass: 'commission-dialog-panel',
       disableClose: true,
       data: {
         partnerId: partner.id.toString(),
@@ -251,6 +253,12 @@ export class PartnerApprovalComponent implements OnInit, AfterViewInit, OnDestro
 
         this.partnersService.approvePartnerWithCommission(partner.id.toString(), approvalData).subscribe({
           next: () => {
+            // Assign zones if selected
+            if (result.zoneIds && result.zoneIds.length > 0) {
+              this.partnersService.assignZones(partner.id.toString(), result.zoneIds).subscribe({
+                error: (e) => console.error('Zone assignment failed:', e)
+              });
+            }
             this.actionLoading.set(false);
             this.router.navigate(['/partners']);
           },
