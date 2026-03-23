@@ -191,8 +191,7 @@ export class CommissionSetupDialogComponent implements OnInit {
       commissionRate: formValue.commissionRate,
       categoryId: formValue.categoryId,
       subcategoryIds: this.selectedSubcategoryIds(),
-      zoneIds: this.selectedZoneIds()
-      subcategoryIds: this.selectedSubcategoryIds(),
+      zoneIds: this.selectedZoneIds(),
       allowProductUpdatesWithoutApproval: !!formValue.allowProductUpdatesWithoutApproval
     };
 

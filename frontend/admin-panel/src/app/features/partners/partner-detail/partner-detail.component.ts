@@ -21,7 +21,6 @@ import { FormsModule } from '@angular/forms';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { PartnersService } from '../services/partners.service';
 import { PartnerEditDialogComponent, PartnerEditDialogData } from '../partner-edit-dialog/partner-edit-dialog.component';
-import { CommissionSetupDialogComponent, CommissionSetupResult } from '../partner-approval/commission-setup-dialog.component';
 import { CommissionSetupDialogComponent, CommissionSetupData, CommissionSetupResult } from '../partner-approval/commission-setup-dialog.component';
 import { CategoriesService } from '@features/categories/services/categories.service';
 import { Category } from '@core/models/category.model';
@@ -1220,10 +1219,16 @@ export class PartnerDetailComponent implements OnInit, AfterViewInit, OnDestroy 
             this.zonesLoading.set(false);
             setTimeout(() => this.initZonesMap(), 300);
           },
-          error: () => this.zonesLoading.set(false)
+          error: () => {
+            this.zonesLoading.set(false);
+            this.toastr.error('Impossible de charger les zones assignées du partenaire.');
+          }
         });
       },
-      error: () => this.zonesLoading.set(false)
+      error: () => {
+        this.zonesLoading.set(false);
+        this.toastr.error('Location-service indisponible: impossible de charger la liste des zones.');
+      }
     });
   }
 
@@ -1333,14 +1338,13 @@ export class PartnerDetailComponent implements OnInit, AfterViewInit, OnDestroy 
     const partner = this.partner();
     if (!partner) return;
 
-    // During approval we also configure commission/categories (and the auto-approval permission for product updates).
     const dialogRef = this.dialog.open(CommissionSetupDialogComponent, {
       width: '620px',
       disableClose: true,
       data: {
         partnerId: partner.id.toString(),
         partnerName: partner.businessName || partner.brandName || 'Partenaire',
-      },
+      } as CommissionSetupData,
     });
 
     dialogRef.afterClosed().subscribe((result: CommissionSetupResult | undefined) => {
@@ -1354,46 +1358,23 @@ export class PartnerDetailComponent implements OnInit, AfterViewInit, OnDestroy 
         allowProductUpdatesWithoutApproval: result.allowProductUpdatesWithoutApproval,
       };
 
-      this.partnersService.approvePartnerWithCommission(partner.id.toString(), approvalData).subscribe({
-        next: () => {
-          this.toastr.success(
-            this.translate.instant('partners.detail.approveSuccess'),
-            this.translate.instant('partners.detail.success')
-          );
-          this.loadPartner(partner.id.toString());
-        },
-        error: () => this.toastr.error(this.translate.instant('partners.detail.approveError'), this.translate.instant('common.error')),
-    const dialogRef = this.dialog.open(CommissionSetupDialogComponent, {
-      width: '95vw',
-      maxWidth: '640px',
-      panelClass: 'commission-dialog-panel',
-      disableClose: true,
-      data: {
-        partnerId: partner.id.toString(),
-        partnerName: partner.businessName || partner.brandName || 'Partenaire'
-      } as CommissionSetupData,
-    });
-    dialogRef.afterClosed().subscribe((result: CommissionSetupResult | undefined) => {
-      if (!result) return;
-      this.partnersService.approvePartnerWithCommission(partner.id.toString(), {
-        commissionType: result.commissionType,
-        commissionRate: result.commissionRate,
-        categoryId: result.categoryId,
-        subcategoryIds: result.subcategoryIds,
-      }).subscribe({
-        next: () => {
-          this.toastr.success(
-            this.translate.instant('partners.detail.approveSuccess'),
-            this.translate.instant('partners.detail.success')
-          );
-          this.loadPartner(partner.id.toString());
-          this.loadChangeLogs(partner.id.toString(), 0, this.logsPageSize());
-        },
-        error: () => this.toastr.error(
-          this.translate.instant('partners.detail.approveError'),
-          this.translate.instant('common.error')
-        ),
-      });
+      this.partnersService
+        .approvePartnerWithCommission(partner.id.toString(), approvalData)
+        .subscribe({
+          next: () => {
+            this.toastr.success(
+              this.translate.instant('partners.detail.approveSuccess'),
+              this.translate.instant('partners.detail.success')
+            );
+            this.loadPartner(partner.id.toString());
+            this.loadChangeLogs(partner.id.toString(), 0, this.logsPageSize());
+          },
+          error: () =>
+            this.toastr.error(
+              this.translate.instant('partners.detail.approveError'),
+              this.translate.instant('common.error')
+            ),
+        });
     });
   }
 
