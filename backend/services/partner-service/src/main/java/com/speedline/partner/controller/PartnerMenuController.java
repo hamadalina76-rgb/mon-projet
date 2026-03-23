@@ -289,11 +289,12 @@ public class PartnerMenuController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false, defaultValue = "all") String status,
+            @RequestParam(required = false, defaultValue = "ALL") String moderationStatus,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
             Page<ProductResponse> result = menuProductService.getProductsPage(
-                    partnerId, search, categoryId, status,
+                    partnerId, search, categoryId, status, moderationStatus,
                     org.springframework.data.domain.PageRequest.of(page, size));
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("content", result.getContent());

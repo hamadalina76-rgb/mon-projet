@@ -33,6 +33,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   private wsService = inject(WebSocketService);
   private notificationService = inject(NotificationService);
   private wsSub: Subscription | null = null;
+  private audioContext: AudioContext | null = null;
 
   currentUser = this.authService.currentUser;
   notifications = signal<WebSocketNotification[]>([]);
@@ -63,6 +64,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.wsSub = this.wsService.onAdminNotification.subscribe((notif) => {
       this.notifications.update((list) => [notif, ...list].slice(0, 20));
       this.unreadCount.update((c) => c + 1);
+      this.playNotificationSound();
     });
 
     // Load existing notifications and unread count (admin-specific endpoints)
@@ -153,6 +155,37 @@ export class HeaderComponent implements OnInit, OnDestroy {
       if (partnerId) {
         this.router.navigate(['/partners', partnerId, 'approval']);
       }
+    } else if (action === 'REVIEW_PRODUCT') {
+      const partnerId = notif.data?.['partnerId'];
+      const productId = notif.data?.['productId'];
+      if (partnerId) {
+        this.router.navigate(['/partners', partnerId], {
+          queryParams: {
+            tab: 'menu',
+            view: 'products',
+            moderation: 'PENDING',
+            productId: productId ?? null,
+          },
+        });
+      } else {
+        this.router.navigate(['/partners']);
+      }
+    } else if (action === 'PRODUCT_REQUEST_SUBMITTED') {
+      // Fallback: some payloads might use the moderation event name directly.
+      const partnerId = notif.data?.['partnerId'];
+      const productId = notif.data?.['productId'];
+      if (partnerId) {
+        this.router.navigate(['/partners', partnerId], {
+          queryParams: {
+            tab: 'menu',
+            view: 'products',
+            moderation: 'PENDING',
+            productId: productId ?? null,
+          },
+        });
+      } else {
+        this.router.navigate(['/partners']);
+      }
     }
     this.showNotifMenu.set(false);
   }
@@ -220,6 +253,32 @@ export class HeaderComponent implements OnInit, OnDestroy {
       case 'settings':
         this.router.navigate(['/settings/change-password']);
         break;
+    }
+  }
+
+  private playNotificationSound(): void {
+    try {
+      const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AC) return;
+      if (!this.audioContext) this.audioContext = new AC();
+      const ctx = this.audioContext;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.06, ctx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+    } catch {
+      // ignore browser autoplay/audio restrictions silently
     }
   }
 }

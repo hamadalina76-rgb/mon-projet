@@ -36,6 +36,9 @@ export class ListPageComponent {
   /** Icône pour l'état vide */
   @Input() emptyIcon = 'inbox';
 
+  /** Etat d'erreur (affiché avant loading/empty) */
+  @Input() error: string | null = null;
+
   /** Pagination : total d'éléments */
   @Input() totalItems = 0;
 

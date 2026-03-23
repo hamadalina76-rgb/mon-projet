@@ -8,7 +8,6 @@ import lombok.AllArgsConstructor;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.NotEmpty;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,4 +44,10 @@ public class PartnerApprovalDTO {
      * IDs des sous-catégories sélectionnées
      */
     private List<Long> subcategoryIds;
+
+    /**
+     * Si true : le partenaire peut modifier/créer ses produits sans validation admin.
+     * (Auto-approval des modifs sur menu produits)
+     */
+    private Boolean allowProductUpdatesWithoutApproval;
 }

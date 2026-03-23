@@ -5,6 +5,7 @@ import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRadioModule } from '@angular/material/radio';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -26,6 +27,7 @@ export interface CommissionSetupResult {
   commissionRate: number;
   categoryId: number;
   subcategoryIds: number[];
+  allowProductUpdatesWithoutApproval: boolean;
   zoneIds: number[];
 }
 
@@ -39,6 +41,7 @@ export interface CommissionSetupResult {
     MatButtonModule,
     MatIconModule,
     MatRadioModule,
+    MatSlideToggleModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -95,7 +98,8 @@ export class CommissionSetupDialogComponent implements OnInit {
     this.commissionForm = this.fb.group({
       commissionType: ['PERCENTAGE', Validators.required],
       commissionRate: [null, [Validators.required, Validators.min(0.1), Validators.max(100)]],
-      categoryId: [null, Validators.required]
+      categoryId: [null, Validators.required],
+      allowProductUpdatesWithoutApproval: [false]
     });
 
     this.commissionForm.valueChanges.subscribe(() => {
@@ -188,6 +192,8 @@ export class CommissionSetupDialogComponent implements OnInit {
       categoryId: formValue.categoryId,
       subcategoryIds: this.selectedSubcategoryIds(),
       zoneIds: this.selectedZoneIds()
+      subcategoryIds: this.selectedSubcategoryIds(),
+      allowProductUpdatesWithoutApproval: !!formValue.allowProductUpdatesWithoutApproval
     };
 
     this.dialogRef.close(result);

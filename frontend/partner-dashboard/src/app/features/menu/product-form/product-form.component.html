@@ -25,6 +25,23 @@
     </div>
   } @else {
     <form [formGroup]="productForm" (ngSubmit)="onSubmit()">
+      @if (moderationStatus() === 'PENDING') {
+        <div class="moderation-banner pending">
+          <mat-icon>hourglass_empty</mat-icon>
+          <div class="moderation-banner-content">
+            <h3>Produit en attente</h3>
+            <p>Votre produit est en attente de validation par l'admin.</p>
+          </div>
+        </div>
+      } @else if (moderationStatus() === 'REJECTED') {
+        <div class="moderation-banner rejected">
+          <mat-icon>cancel</mat-icon>
+          <div class="moderation-banner-content">
+            <h3>Produit rejeté</h3>
+            <p class="moderation-reason">{{ moderationReason() }}</p>
+          </div>
+        </div>
+      }
       <div class="form-layout">
 
         <!-- Left column — main fields -->

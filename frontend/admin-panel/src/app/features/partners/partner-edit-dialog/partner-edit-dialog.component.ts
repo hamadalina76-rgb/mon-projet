@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -29,6 +30,7 @@ export interface PartnerEditDialogData {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatSlideToggleModule,
     MatDividerModule,
     MatTooltipModule,
     TranslateModule,
@@ -56,6 +58,7 @@ export class PartnerEditDialogComponent implements OnInit {
   form = {
     commissionType: 'PERCENTAGE' as 'PERCENTAGE' | 'MARKUP',
     commissionRate: 15,
+    allowProductUpdatesWithoutApproval: false,
   };
 
   // Signal dédié pour categoryId (réactif dans les computed)
@@ -82,6 +85,7 @@ export class PartnerEditDialogComponent implements OnInit {
     this.form = {
       commissionType: (p.commissionType as 'PERCENTAGE' | 'MARKUP') || 'PERCENTAGE',
       commissionRate: p.commissionRate ?? 15,
+      allowProductUpdatesWithoutApproval: !!p.allowProductUpdatesWithoutApproval,
     };
 
     // Charger les catégories D'ABORD, puis définir la sélection initiale

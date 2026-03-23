@@ -10,7 +10,7 @@ $primary: #E31E24;
   border-bottom: 1px solid #e2e8f0;
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: 1200;
 }
 
 // Mobile hamburger
@@ -130,7 +130,7 @@ $primary: #E31E24;
 }
 
 .notif-list {
-  max-height: 320px;
+  max-height: min(420px, calc(100vh - 13rem));
   overflow-y: auto;
 }
 
@@ -181,6 +181,7 @@ $primary: #E31E24;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
+    line-clamp: 2;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
   }
@@ -301,10 +302,15 @@ $primary: #E31E24;
   border: 1px solid #e2e8f0;
   border-radius: 0.75rem;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0, 0, 0, 0.05);
-  z-index: 100;
+  z-index: 1300;
   min-width: 12rem;
+  max-width: calc(100vw - 1rem);
   overflow: hidden;
   animation: dropdownFade 0.15s ease;
+}
+
+.notif-wrapper {
+  z-index: 1301;
 }
 
 @keyframes dropdownFade {
@@ -321,6 +327,10 @@ $primary: #E31E24;
 .dropdown-header {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .dropdown-title {
@@ -457,7 +467,16 @@ $primary: #E31E24;
 
 // Notification dropdown
 .notif-dropdown {
+  width: min(26rem, calc(100vw - 1rem));
   min-width: 16rem;
+  max-height: calc(100vh - 5.5rem);
+  display: flex;
+  flex-direction: column;
+
+  .notif-list {
+    flex: 1;
+    min-height: 0;
+  }
 }
 
 // Language dropdown
@@ -520,6 +539,14 @@ $primary: #E31E24;
 }
 
 @media (max-width: 639px) {
+  .header-right {
+    gap: 0.25rem;
+  }
+
+  .icon-btn {
+    padding: 0.4rem;
+  }
+
   .search-bar {
     display: none;
   }
@@ -540,6 +567,29 @@ $primary: #E31E24;
 
   .lang-flag {
     font-size: 1.125rem;
+  }
+
+  .dropdown-menu {
+    top: calc(100% + 0.4rem);
+    right: 0.4rem;
+    max-width: calc(100vw - 0.8rem);
+  }
+
+  .notif-dropdown {
+    position: fixed;
+    top: 4.2rem;
+    right: 0.4rem;
+    left: 0.4rem;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    max-height: calc(100vh - 4.8rem);
+    border-radius: 0.9rem;
+  }
+
+  :host-context([dir='rtl']) .notif-dropdown {
+    left: 0.4rem;
+    right: 0.4rem;
   }
 }
 // ─── Dark Mode ──────────────────────────────────────

@@ -3,6 +3,7 @@ package com.speedline.partner.client;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.Map;
 
@@ -25,4 +26,18 @@ public interface UserServiceClient {
      */
     @GetMapping("/v1/admins/by-user/{userId}")
     Map<String, Object> getAdminByUserId(@PathVariable("userId") Long userId);
+
+    /**
+     * Fallback: récupère un admin par son ID primaire (table admins).
+     * Utile quand une source historique stocke adminId au lieu de userId.
+     */
+    @GetMapping("/v1/admins/{id}")
+    Map<String, Object> getAdminById(@PathVariable("id") Long id);
+
+    @GetMapping("/v1/admins")
+    Map<String, Object> searchAdmins(
+            @RequestParam("search") String search,
+            @RequestParam("page") int page,
+            @RequestParam("size") int size
+    );
 }

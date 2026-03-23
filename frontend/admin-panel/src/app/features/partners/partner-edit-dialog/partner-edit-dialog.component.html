@@ -138,6 +138,23 @@
       </p>
     </ng-container>
 
+    <mat-divider class="section-divider"></mat-divider>
+    <!-- Product edit permission -->
+    <div class="section-label">
+      <span class="material-icons-round sl-icon">edit</span>
+      <span>{{ 'partners.edit.productEditPermissionTitle' | translate }}</span>
+    </div>
+    <mat-slide-toggle
+      [(ngModel)]="form.allowProductUpdatesWithoutApproval"
+      name="allowProductUpdatesWithoutApproval"
+      class="product-edit-toggle"
+    >
+      {{ 'partners.edit.productEditPermissionLabel' | translate }}
+    </mat-slide-toggle>
+    <p class="toggle-hint">
+      {{ 'partners.edit.productEditPermissionHint' | translate }}
+    </p>
+
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">

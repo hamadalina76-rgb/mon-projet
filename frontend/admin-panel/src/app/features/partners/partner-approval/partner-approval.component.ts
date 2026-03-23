@@ -248,7 +248,8 @@ export class PartnerApprovalComponent implements OnInit, AfterViewInit, OnDestro
           commissionType: result.commissionType,
           commissionRate: result.commissionRate,
           categoryId: result.categoryId,
-          subcategoryIds: result.subcategoryIds
+          subcategoryIds: result.subcategoryIds,
+          allowProductUpdatesWithoutApproval: result.allowProductUpdatesWithoutApproval
         };
 
         this.partnersService.approvePartnerWithCommission(partner.id.toString(), approvalData).subscribe({

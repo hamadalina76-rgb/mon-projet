@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -20,9 +20,11 @@ import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { Subscription } from 'rxjs';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { LoadingSpinnerComponent } from '@shared/components/loading-spinner/loading-spinner.component';
 import { ConfirmationDialogComponent } from '@shared/components/confirmation-dialog/confirmation-dialog.component';
+import { WebSocketService, PartnerNotification } from '@core/services/websocket.service';
 import { MenuService } from '../services/menu.service';
 import { ProductService, PromotionLogEntry } from '../services/product.service';
 import { OptionService } from '../services/option.service';
@@ -69,7 +71,7 @@ import {
   templateUrl: './menu-list.component.html',
   styleUrls: ['./menu-list.component.scss'],
 })
-export class MenuListComponent implements OnInit {
+export class MenuListComponent implements OnInit, OnDestroy {
   private menuService = inject(MenuService);
   private productService = inject(ProductService);
   private optionService = inject(OptionService);
@@ -78,6 +80,9 @@ export class MenuListComponent implements OnInit {
   private fb = inject(FormBuilder);
   private snackBar = inject(MatSnackBar);
   private translate = inject(TranslateService);
+  private wsService = inject(WebSocketService);
+
+  private wsSub?: Subscription;
 
   // ─── Global state ─────────────────────────────────────────────────────────
   activeTab = signal(0);
@@ -121,6 +126,8 @@ export class MenuListComponent implements OnInit {
   filterCategoryId = signal<number | null>(null);
   searchQuery = signal('');
   statusFilter = signal<string>('all');
+  /** Filtre workflow de modération : ALL | PENDING | APPROVED | REJECTED */
+  moderationStatusFilter = signal<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   currentPage = signal(0);
   /** Taille de page (pas de valeur fixe 200). */
   pageSize = signal(12);
@@ -234,12 +241,55 @@ export class MenuListComponent implements OnInit {
     this.activeTab.set(tabIndex);
     this.loadCategories();
     this.loadProductsPage();
+
+    // Realtime moderation updates (PRODUCT_APPROVED / PRODUCT_REJECTED).
+    this.wsSub = this.wsService.onPartnerNotification.subscribe((notif: PartnerNotification) => {
+      this.applyProductModerationRealtimeUpdate(notif);
+    });
+
     // Charger les données de l'onglet actif au cas où on arrive avec ?tab= (ex. après refresh)
     if (tabIndex === 2) this.loadProductsForOptionsTab();
     if (tabIndex === 3) {
       this.loadPromotionLogsProductsForAutocomplete();
       this.loadPromotionLogs();
     }
+  }
+
+  ngOnDestroy(): void {
+    this.wsSub?.unsubscribe();
+  }
+
+  private applyProductModerationRealtimeUpdate(notif: PartnerNotification): void {
+    const action = notif?.data?.['action'];
+    if (action !== 'PRODUCT_APPROVED' && action !== 'PRODUCT_REJECTED') return;
+
+    const rawProductId = notif?.data?.['productId'];
+    const productId = typeof rawProductId === 'number' ? rawProductId : Number(rawProductId);
+    if (!productId || Number.isNaN(productId)) return;
+
+    const newStatus = action === 'PRODUCT_APPROVED' ? 'APPROVED' : 'REJECTED';
+    const newReason =
+      action === 'PRODUCT_REJECTED'
+        ? (notif?.data?.['reason'] != null ? String(notif.data['reason']) : '')
+        : undefined;
+
+    let found = false;
+    this.products.update((list) => {
+      found = list.some((p) => p.id === productId);
+      return list.map((p) =>
+        p.id === productId
+          ? {
+              ...p,
+              moderationStatus: newStatus as any,
+              moderationReason:
+                action === 'PRODUCT_REJECTED' && newReason && newReason.trim() !== '' ? newReason : undefined,
+            }
+          : p
+      );
+    });
+
+    // Si le produit n'est pas sur la page courante (filtre/pagination), recharger pour cohérence.
+    if (!found) this.loadProductsPage();
   }
 
   onTabChange(index: number): void {
@@ -771,6 +821,7 @@ export class MenuListComponent implements OnInit {
       search: this.searchQuery() || undefined,
       categoryId: this.filterCategoryId(),
       status: this.statusFilter(),
+      moderationStatus: this.moderationStatusFilter(),
       page: this.currentPage(),
       size: this.pageSize(),
     }).subscribe({
@@ -808,6 +859,14 @@ export class MenuListComponent implements OnInit {
     this.loadProductsPage();
   }
 
+  onModerationStatusFilterChange(moderationStatus: string): void {
+    const value = String(moderationStatus).trim().toUpperCase();
+    const allowed = new Set(['ALL', 'PENDING', 'APPROVED', 'REJECTED']);
+    this.moderationStatusFilter.set((allowed.has(value) ? value : 'ALL') as any);
+    this.currentPage.set(0);
+    this.loadProductsPage();
+  }
+
   goToPage(page: number): void {
     this.currentPage.set(page);
     this.loadProductsPage();
@@ -829,6 +888,7 @@ export class MenuListComponent implements OnInit {
       search: '',
       categoryId: null,
       status: 'all',
+      moderationStatus: 'ALL',
       page: 0,
       size: 500,
     }).subscribe({

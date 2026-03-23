@@ -22,7 +22,8 @@ import java.util.List;
     @Index(name = "idx_product_partner", columnList = "partnerId"),
     @Index(name = "idx_product_category", columnList = "categoryId"),
     @Index(name = "idx_product_status", columnList = "status"),
-    @Index(name = "idx_product_price", columnList = "price")
+    @Index(name = "idx_product_price", columnList = "price"),
+    @Index(name = "idx_product_moderation_status", columnList = "moderation_status")
 })
 @Data
 @Builder
@@ -117,6 +118,20 @@ public class Product {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private ProductStatus status = ProductStatus.ACTIVE;
+
+    /**
+     * Moderation status (workflow: PENDING -> APPROVED / REJECTED).
+     * Existing products default to APPROVED.
+     */
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private ProductModerationStatus moderationStatus = ProductModerationStatus.APPROVED;
+
+    /**
+     * Reason provided by admin when rejecting the product.
+     */
+    @Column(columnDefinition = "TEXT")
+    private String moderationReason;
 
     /**
      * Temps de préparation spécifique (en minutes, null = utiliser celui du partenaire)
@@ -282,8 +297,10 @@ public class Product {
      * Vérifier si le produit est commandable
      */
     public boolean isOrderable() {
-        return isAvailable && status == ProductStatus.ACTIVE && 
-               (stockQuantity == null || stockQuantity > 0);
+        return isAvailable
+               && status == ProductStatus.ACTIVE
+               && moderationStatus == ProductModerationStatus.APPROVED
+               && (stockQuantity == null || stockQuantity > 0);
     }
 
     /**

@@ -3,6 +3,7 @@ package com.speedline.partner.service.impl;
 import com.speedline.partner.domain.MenuCategory;
 import com.speedline.partner.domain.Product;
 import com.speedline.partner.domain.ProductOption;
+import com.speedline.partner.domain.ProductModerationStatus;
 import com.speedline.partner.domain.ProductStatus;
 import com.speedline.partner.dto.request.CreateMenuCategoryRequest;
 import com.speedline.partner.dto.request.ReorderRequest;
@@ -190,6 +191,7 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
                                     partnerId, cat.getId(), ProductStatus.DELETED)
                             .stream()
                             .filter(p -> Boolean.TRUE.equals(p.getIsAvailable()))
+                            .filter(p -> p.getModerationStatus() == ProductModerationStatus.APPROVED)
                             .collect(Collectors.toList());
 
                     List<ProductResponse> productResponses = activeProducts.stream()
@@ -274,6 +276,8 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
                 .optionGroups(optionGroups)
                 .createdAt(p.getCreatedAt())
                 .updatedAt(p.getUpdatedAt())
+                .moderationStatus(p.getModerationStatus())
+                .moderationReason(p.getModerationReason())
                 .build();
     }
 

@@ -324,7 +324,9 @@ public class AdminPartnerController {
             @RequestParam(defaultValue = "10") int size) {
         log.info("Admin: Getting change logs for partner id: {}, page={}, size={}", id, page, size);
         try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "changedAt"));
+            // La méthode du repository contient déjà un ordre "OrderByChangedAtDesc",
+            // donc on évite d'ajouter un second tri potentiellement problématique.
+            Pageable pageable = PageRequest.of(page, size);
             return ResponseEntity.ok(auditLogService.getPartnerChangeLogs(id, pageable));
         } catch (Exception e) {
             log.error("Failed to get change logs for partner {}: {}", id, e.getMessage());
@@ -431,6 +433,13 @@ public class AdminPartnerController {
                     "message", "Zones assigned successfully",
                     "assignedZoneIds", zoneIds
             ));
+            // La requête native du repository possède déjà son ORDER BY l.changed_at DESC.
+            // Supprimer le tri du Pageable évite que Spring ajoute un ORDER BY supplémentaire
+            // qui peut référencer une colonne inexistante (ex: l.changedAt).
+            Pageable pageable = PageRequest.of(filters.getPage(), filters.getSize());
+            return ResponseEntity.ok(
+                    auditLogService.getPartnerChangeLogsFiltered(id, filters, pageable)
+            );
         } catch (Exception e) {
             log.error("Failed to assign zones to partner {}: {}", id, e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
@@ -450,6 +459,50 @@ public class AdminPartnerController {
             return ResponseEntity.ok(Map.of("message", "Zone removed successfully"));
         } catch (Exception e) {
             log.error("Failed to remove zone {} from partner {}: {}", zoneId, id, e.getMessage());
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Historique produit (audit_logs sur entityType=PRODUCT pour ce partenaire)
+     * GET /admin/partners/{id}/product-audit-logs?page=0&size=20
+     */
+    @GetMapping("/{id}/product-audit-logs")
+    public ResponseEntity<?> getPartnerProductAuditLogs(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"));
+            return ResponseEntity.ok(auditLogService.getPartnerProductAuditLogs(id, pageable));
+        } catch (Exception e) {
+            log.error("Failed to get product audit logs for partner {}: {}", id, e.getMessage());
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Nouveau backup historique produit dédié
+     * GET /admin/partners/{id}/product-history-backups?page=0&size=20
+     */
+    @GetMapping("/{id}/product-history-backups")
+    public ResponseEntity<?> getPartnerProductHistoryBackups(
+            @PathVariable Long id,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) String actorType,
+            @RequestParam(required = false) Long actorId,
+            @RequestParam(required = false) String adminFullName,
+            @RequestParam(required = false) Long productId,
+            @RequestParam(required = false) String dateFrom,
+            @RequestParam(required = false) String dateTo,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+            return ResponseEntity.ok(auditLogService.getPartnerProductHistoryBackups(
+                    id, action, actorType, actorId, adminFullName, productId, dateFrom, dateTo, pageable));
+        } catch (Exception e) {
+            log.error("Failed to get product history backups for partner {}: {}", id, e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }

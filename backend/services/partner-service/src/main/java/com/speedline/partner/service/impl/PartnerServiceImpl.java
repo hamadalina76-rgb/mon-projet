@@ -445,7 +445,8 @@ public class PartnerServiceImpl implements PartnerService {
         auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "APPROVE", partnerId,
                 "PENDING", "ACTIVE",
                 null, null, null, null,
-                null, null, null);
+                null, null, null,
+                null, null);
 
         // Publish Pub/Sub event to notify partner
         publishPartnerEvent(PartnerEvent.builder()
@@ -469,6 +470,8 @@ public class PartnerServiceImpl implements PartnerService {
         log.info("Approving partner id: {} with commission configuration: {}", partnerId, approvalData);
         Partner partner = partnerRepository.findById(partnerId)
                 .orElseThrow(() -> new PartnerNotFoundException(partnerId));
+
+        Boolean allowProductEditsBefore = partner.getAllowProductUpdatesWithoutApproval();
 
         // Allow approval from PENDING or DOCUMENTS_MISSING status
         if (!EnumSet.of(PartnerStatus.PENDING, PartnerStatus.DOCUMENTS_MISSING)
@@ -497,6 +500,12 @@ public class PartnerServiceImpl implements PartnerService {
                 .collect(Collectors.joining(","));
         partner.setCategoryIds(categoryIds);
 
+        // Configure product update permission (menu products)
+        Boolean allowProductEditsAfter = approvalData.getAllowProductUpdatesWithoutApproval();
+        if (allowProductEditsAfter != null) {
+            partner.setAllowProductUpdatesWithoutApproval(allowProductEditsAfter);
+        }
+
         partner = partnerRepository.save(partner);
         log.info("Partner {} approved successfully with commission type: {}, rate: {}%, categories: {}",
                 partnerId, approvalData.getCommissionType(), approvalData.getCommissionRate(), partner.getCategoryIds());
@@ -509,7 +518,9 @@ public class PartnerServiceImpl implements PartnerService {
                 approvalData.getCommissionRate(),
                 null,
                 partner.getCategoryIds(),
-                null);
+                null,
+                allowProductEditsBefore != null && allowProductEditsAfter != null ? allowProductEditsBefore : null,
+                allowProductEditsAfter);
 
         // Publish Pub/Sub event to notify partner
         publishPartnerEvent(PartnerEvent.builder()
@@ -544,7 +555,8 @@ public class PartnerServiceImpl implements PartnerService {
         auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "REJECT", partnerId,
                 "PENDING", "REJECTED",
                 null, null, null, null,
-                null, null, reason);
+                null, null, reason,
+                null, null);
 
         // Publish Pub/Sub event to notify partner
         publishPartnerEvent(PartnerEvent.builder()
@@ -609,7 +621,8 @@ public class PartnerServiceImpl implements PartnerService {
         auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "SUSPEND", partnerId,
                 "ACTIVE", "SUSPENDED",
                 null, null, null, null,
-                null, null, reason);
+                null, null, reason,
+                null, null);
 
         // Publish Pub/Sub event
         publishPartnerEvent(PartnerEvent.builder()
@@ -644,7 +657,8 @@ public class PartnerServiceImpl implements PartnerService {
         auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "ACTIVATE", partnerId,
                 "INACTIVE", "ACTIVE",
                 null, null, null, null,
-                null, null, null);
+                null, null, null,
+                null, null);
 
         // Publish Pub/Sub event to notify partner (use PARTNER_ACTIVATED, not PARTNER_APPROVED)
         publishPartnerEvent(PartnerEvent.builder()
@@ -679,7 +693,8 @@ public class PartnerServiceImpl implements PartnerService {
         auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "DEACTIVATE", partnerId,
                 "ACTIVE", "INACTIVE",
                 null, null, null, null,
-                null, null, reason);
+                null, null, reason,
+                null, null);
 
         // Publish Pub/Sub event to notify partner
         publishPartnerEvent(PartnerEvent.builder()
@@ -1224,6 +1239,7 @@ public class PartnerServiceImpl implements PartnerService {
                 .status(partner.getStatus())
                 .isActive(partner.getIsActive())
                 .acceptsOrders(partner.getAcceptsOrders())
+                .allowProductUpdatesWithoutApproval(partner.getAllowProductUpdatesWithoutApproval())
                 .isVerified(partner.getIsVerified())
                 .isPremium(partner.getIsPremium())
                 .isFeatured(partner.getIsFeatured())
@@ -1286,21 +1302,30 @@ public class PartnerServiceImpl implements PartnerService {
         String commissionTypeBefore = partner.getCommissionType() != null ? partner.getCommissionType().name() : null;
         BigDecimal commissionRateBefore = partner.getCommissionRate();
         String categoryIdsBefore = partner.getCategoryIds();
+        Boolean allowProductEditsBefore = partner.getAllowProductUpdatesWithoutApproval();
 
         updateBasicInfo(partner, dto);
         updateCommission(partner, dto);
         updateCategories(partner, dto);
 
+        if (dto.getAllowProductUpdatesWithoutApproval() != null) {
+            partner.setAllowProductUpdatesWithoutApproval(dto.getAllowProductUpdatesWithoutApproval());
+        }
+
         Partner saved = partnerRepository.save(partner);
         log.info("Partner {} updated by admin (commission/categories included)", partnerId);
 
         String commissionTypeAfter = saved.getCommissionType() != null ? saved.getCommissionType().name() : null;
+        Boolean allowProductEditsAfter = saved.getAllowProductUpdatesWithoutApproval();
+        Boolean allowProductEditsBeforeLog = dto.getAllowProductUpdatesWithoutApproval() != null ? allowProductEditsBefore : null;
+        Boolean allowProductEditsAfterLog  = dto.getAllowProductUpdatesWithoutApproval() != null ? allowProductEditsAfter : null;
 
         auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "UPDATE_INFO", partnerId,
                 null, null,
                 commissionTypeBefore, commissionTypeAfter,
                 commissionRateBefore, saved.getCommissionRate(),
-                categoryIdsBefore, saved.getCategoryIds(), null);
+                categoryIdsBefore, saved.getCategoryIds(), null,
+                allowProductEditsBeforeLog, allowProductEditsAfterLog);
 
         return convertToDTO(saved);
     }

@@ -486,6 +486,10 @@
       "zonesDesc": "حدد المناطق التي يمكن لهذا الشريك التوصيل فيها.",
       "zonesNone": "لا توجد مناطق متاحة",
       "zonesAssigned": "منطقة مُعيَّنة"
+      "approve": "الموافقة مع العمولة",
+      "productEditPermissionTitle": "صلاحية تعديل المنتجات",
+      "productEditPermissionLabel": "السماح للشريك بتعديل المنتجات بدون موافقة",
+      "productEditPermissionHint": "إذا كان مفعّلًا، سيتم اعتماد تعديلات المنتجات تلقائياً. وإلا ستتم عبر مسار الموافقة العادي."
     },
     "types": {
       "restaurant": "مطعم",
@@ -542,7 +546,10 @@
       "cancel": "إلغاء",
       "successTitle": "تم تعديل الشريك",
       "successMessage": "تم تحديث معلومات {{name}}.",
-      "errorMessage": "حدث خطأ أثناء التعديل."
+      "errorMessage": "حدث خطأ أثناء التعديل.",
+      "productEditPermissionTitle": "صلاحية تعديل المنتجات",
+      "productEditPermissionLabel": "السماح للشريك بتعديل المنتجات بدون موافقة",
+      "productEditPermissionHint": "إذا كان مفعّلًا، سيتم اعتماد تعديلات المنتجات تلقائياً. وإلا ستتم عبر مسار الموافقة العادي."
     },
     "detail": {
       "title": "تفاصيل الشريك",
@@ -562,6 +569,7 @@
       "freeDeliveryThreshold": "عتبة التوصيل المجاني",
       "accountActive": "الحساب نشط",
       "acceptsOrders": "يقبل الطلبات",
+      "allowProductUpdatesWithoutApproval": "السماح للشريك بتعديل المنتجات بدون موافقة",
       "closed": "مغلق",
       "categoriesTags": "الفئات والعلامات",
       "categories": "الفئات",
@@ -646,6 +654,7 @@
         "colDate": "التاريخ",
         "colAction": "الإجراء",
         "colAdmin": "المسؤول",
+        "colAdminFullName": "الاسم الكامل",
         "colChanges": "التعديلات",
         "labelStatus": "الحالة",
         "labelCommission": "العمولة",
@@ -666,6 +675,10 @@
           "DEACTIVATE": "معطل",
           "SUSPEND": "موقوف",
           "UPDATE_INFO": "محدّث"
+        },
+        "productEditPermission": {
+          "autoApproved": "تعديلات المنتجات تلقائياً",
+          "requiresApproval": "تعديل المنتجات يتطلب موافقة"
         }
       }
     },

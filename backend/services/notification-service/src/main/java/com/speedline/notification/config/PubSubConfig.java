@@ -33,7 +33,10 @@ public class PubSubConfig {
     @Value("${spring.cloud.gcp.project-id:speedline-local}")
     private String projectId;
 
-    @Value("${PUBSUB_EMULATOR_HOST:${SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST:}}")
+    // Source of truth: Spring Cloud GCP pubsub emulator-host.
+    // application.yml already sets this property (often from env var PUBSUB_EMULATOR_HOST),
+    // so we must read it from spring.cloud.gcp.* to reliably bootstrap local resources.
+    @Value("${spring.cloud.gcp.pubsub.emulator-host:${PUBSUB_EMULATOR_HOST:${SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST:}}}")
     private String emulatorHost;
 
     @PostConstruct

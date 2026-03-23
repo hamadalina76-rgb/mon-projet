@@ -1,5 +1,6 @@
 // src/app/features/partners/services/partners.service.ts
 import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
@@ -12,6 +13,8 @@ import { environment } from '@environments/environment';
 })
 export class PartnersService {
   private api = inject(ApiService);
+  private http = inject(HttpClient);
+  private apiBaseUrl = environment.apiBaseUrl; // /api
   private http = inject(HttpClient);
 
   getPartners(page: number = 0, pageSize: number = 20, status?: string, search?: string): Observable<any> {
@@ -27,6 +30,28 @@ export class PartnersService {
 
   getPartner(id: string): Observable<any> {
     return this.api.get(`admin/partners/${id}`);
+  }
+
+  getPartnerMenuCategories(partnerId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiBaseUrl}/partners/${partnerId}/menu/categories`);
+  }
+
+  getPartnerMenuProducts(
+    partnerId: string,
+    page: number = 0,
+    size: number = 20,
+    categoryId?: number | null,
+    search?: string,
+    moderationStatus: string = 'ALL'
+  ): Observable<any> {
+    let url = `${this.apiBaseUrl}/partners/${partnerId}/menu/products?status=all&page=${page}&size=${size}&moderationStatus=${encodeURIComponent(moderationStatus)}`;
+    if (categoryId != null) {
+      url += `&categoryId=${categoryId}`;
+    }
+    if (search && search.trim().length > 0) {
+      url += `&search=${encodeURIComponent(search.trim())}`;
+    }
+    return this.http.get<any>(url);
   }
 
   getPendingPartners(page: number = 0, pageSize: number = 20): Observable<any> {
@@ -46,6 +71,7 @@ export class PartnersService {
     commissionRate: number;
     categoryId: number;
     subcategoryIds: number[];
+    allowProductUpdatesWithoutApproval?: boolean;
   }): Observable<any> {
     return this.api.post(`admin/partners/${id}/approve`, commissionData);
   }
@@ -56,6 +82,7 @@ getPartnerChangeLogsFiltered(
   filters: {
     action?: string;
     adminId?: number;
+    adminFullName?: string;
     dateFrom?: string;
     dateTo?: string;
     changedField?: string;
@@ -64,6 +91,7 @@ getPartnerChangeLogsFiltered(
   const body: any = { page, size };
   if (filters.action)       body['action']       = filters.action;
   if (filters.adminId)      body['adminId']       = filters.adminId;
+  if (filters.adminFullName) body['adminFullName'] = filters.adminFullName;
   if (filters.dateFrom)     body['dateFrom']      = filters.dateFrom;
   if (filters.dateTo)       body['dateTo']        = filters.dateTo;
   if (filters.changedField) body['changedField']  = filters.changedField;
@@ -71,6 +99,18 @@ getPartnerChangeLogsFiltered(
 }
   rejectPartner(id: string, reason: string): Observable<any> {
     return this.api.post(`admin/partners/${id}/reject`, { reason });
+  }
+
+  getPendingProducts(page: number = 0, size: number = 20): Observable<any> {
+    return this.api.get(`admin/products/pending?page=${page}&size=${size}`);
+  }
+
+  approveProduct(productId: number): Observable<any> {
+    return this.api.post(`admin/products/${productId}/approve`, {});
+  }
+
+  rejectProduct(productId: number, reason: string): Observable<any> {
+    return this.api.post(`admin/products/${productId}/reject`, { reason });
   }
 
   suspendPartner(id: string, reason: string): Observable<any> {
@@ -101,6 +141,35 @@ getPartnerChangeLogsFiltered(
     return this.api.get(`admin/partners/${id}/change-logs?page=${page}&size=${size}`);
   }
 
+  getPartnerProductAuditLogs(id: string, page: number = 0, size: number = 20): Observable<any> {
+    return this.api.get(`admin/partners/${id}/product-audit-logs?page=${page}&size=${size}`);
+  }
+
+  getPartnerProductHistoryBackups(
+    id: string,
+    page: number = 0,
+    size: number = 50,
+    filters?: {
+      action?: string;
+      actorType?: string;
+      actorId?: number | null;
+      adminFullName?: string;
+      productId?: number | null;
+      dateFrom?: string;
+      dateTo?: string;
+    }
+  ): Observable<any> {
+    let url = `admin/partners/${id}/product-history-backups?page=${page}&size=${size}`;
+    if (filters?.action) url += `&action=${encodeURIComponent(filters.action)}`;
+    if (filters?.actorType) url += `&actorType=${encodeURIComponent(filters.actorType)}`;
+    if (filters?.actorId != null) url += `&actorId=${filters.actorId}`;
+    if (filters?.adminFullName) url += `&adminFullName=${encodeURIComponent(filters.adminFullName)}`;
+    if (filters?.productId != null) url += `&productId=${filters.productId}`;
+    if (filters?.dateFrom) url += `&dateFrom=${encodeURIComponent(filters.dateFrom)}`;
+    if (filters?.dateTo) url += `&dateTo=${encodeURIComponent(filters.dateTo)}`;
+    return this.api.get(url);
+  }
+
   updatePartner(id: string, data: {
     businessName?: string;
     brandName?: string;
@@ -114,6 +183,7 @@ getPartnerChangeLogsFiltered(
     commissionRate?: number;
     categoryId?: number | null;
     subcategoryIds?: number[];
+    allowProductUpdatesWithoutApproval?: boolean;
   }): Observable<any> {
     return this.api.put(`admin/partners/${id}`, data);
   }

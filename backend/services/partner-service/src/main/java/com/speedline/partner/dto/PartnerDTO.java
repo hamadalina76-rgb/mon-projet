@@ -70,6 +70,7 @@ public class PartnerDTO {
     private PartnerStatus status;
     private Boolean isActive;
     private Boolean acceptsOrders;
+    private Boolean allowProductUpdatesWithoutApproval;
     private Boolean isVerified;
     private Boolean isPremium;
     private Boolean isFeatured;

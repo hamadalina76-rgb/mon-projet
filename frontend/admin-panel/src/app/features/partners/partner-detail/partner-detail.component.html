@@ -85,7 +85,7 @@
     </div>
 
     <!-- Tabs -->
-    <mat-tab-group class="detail-tabs" animationDuration="0ms">
+    <mat-tab-group class="detail-tabs" animationDuration="0ms" [selectedIndex]="selectedTabIndex()">
       <mat-tab [label]="'partners.detail.tabs.general' | translate">
         <div class="tab-content two-cols">
           <div class="col-left">
@@ -250,6 +250,16 @@
                 <div class="info-row">
                   <span class="label">{{ 'partners.detail.acceptsOrders' | translate }}</span>
                   <span class="value">{{ partner().acceptsOrders != null ? (partner().acceptsOrders ? ('partners.approval.yes' | translate) : ('partners.approval.no' | translate)) : '—' }}</span>
+                </div>
+
+                <div class="info-row full-width">
+                  <span class="label">{{ 'partners.detail.allowProductUpdatesWithoutApproval' | translate }}</span>
+                  <span class="value">
+                    {{ partner().allowProductUpdatesWithoutApproval != null
+                      ? (partner().allowProductUpdatesWithoutApproval ? ('partners.approval.yes' | translate) : ('partners.approval.no' | translate))
+                      : '—'
+                    }}
+                  </span>
                 </div>
               </div>
             </mat-card>
@@ -486,8 +496,313 @@
       </mat-tab>
 
       <mat-tab [label]="'partners.detail.tabs.menu' | translate">
-        <div class="tab-content">
-          <p class="coming-soon">{{ 'partners.detail.comingSoon' | translate }}</p>
+        <div class="tab-content partner-menu-tab">
+          <app-list-page
+            title="partners.detail.tabs.menu"
+            [showBackButton]="false"
+            [loading]="menuLoading()"
+            [error]="menuError()"
+            [empty]="menuEmpty()"
+            [emptyIcon]="partnerMenuTableView() === 'PRODUCTS' ? 'inventory_2' : 'history'"
+            [emptyMessage]="partnerMenuTableView() === 'PRODUCTS' ? 'Aucun produit trouvé pour ce partenaire.' : 'Aucun historique trouvé.'"
+            [showPagination]="true"
+            [totalItems]="partnerMenuTableView() === 'PRODUCTS' ? partnerMenuTotalElements() : productAuditTotalElements()"
+            [currentPage]="partnerMenuTableView() === 'PRODUCTS' ? (partnerMenuPage() + 1) : (productAuditPage() + 1)"
+            [itemsPerPage]="partnerMenuTableView() === 'PRODUCTS' ? partnerMenuPageSize() : productAuditPageSize()"
+            [itemsPerPageOptions]="partnerMenuTableView() === 'PRODUCTS' ? [10,20,50,100] : [5,10,20,50]"
+            [itemsPerPageLabel]="'partners.itemsPerPage'"
+            [ofLabel]="'partners.of'"
+            (pageChange)="onMenuProductsListPageChange($event)"
+          >
+            <div filters class="partner-menu-filters-bar">
+              <div class="partner-menu-toolbar-head">
+                <h3 class="partner-menu-title">Menu du partenaire</h3>
+                <div class="partner-menu-top-controls">
+                  <div class="partner-menu-view-switch">
+                    <button
+                      type="button"
+                      class="view-switch-btn"
+                      [class.active]="partnerMenuTableView() === 'PRODUCTS'"
+                      (click)="onPartnerMenuTableViewChange('PRODUCTS')"
+                    >
+                      Tableau Produits
+                    </button>
+                    <button
+                      type="button"
+                      class="view-switch-btn"
+                      [class.active]="partnerMenuTableView() === 'HISTORY'"
+                      (click)="onPartnerMenuTableViewChange('HISTORY')"
+                    >
+                      Historique Modifications
+                    </button>
+                  </div>
+                </div>
+                <div class="partner-menu-summary" *ngIf="partnerMenuTableView() === 'PRODUCTS'">
+                  {{ partnerMenuTotalElements() }} produits • {{ partnerMenuCategories().length }} catégories • {{ getPendingCountInTable() }} en attente
+                </div>
+                <div class="partner-menu-summary" *ngIf="partnerMenuTableView() === 'HISTORY'">
+                  {{ productAuditLogs().length }} entrées historiques
+                </div>
+              </div>
+
+              <div class="partner-menu-filters" *ngIf="partnerMenuTableView() === 'PRODUCTS'">
+                <mat-form-field appearance="outline" class="partner-menu-filter-field">
+                  <mat-label>Catégorie</mat-label>
+                  <mat-select [ngModel]="partnerMenuCategoryFilter()" (ngModelChange)="onProductCategoryFilterChange($event)">
+                    <mat-option [value]="null">Toutes</mat-option>
+                    <mat-option *ngFor="let c of partnerMenuCategories()" [value]="c.id">{{ c.name }}</mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="partner-menu-filter-field partner-menu-filter-search">
+                  <mat-label>Recherche produit</mat-label>
+                  <input matInput [ngModel]="partnerMenuSearchValue" (ngModelChange)="onProductSearchInputChange($event)" placeholder="Nom du produit..." />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="partner-menu-filter-field">
+                  <mat-label>Modération</mat-label>
+                  <mat-select [ngModel]="partnerMenuModerationFilter()" (ngModelChange)="onProductModerationFilterChange($event)">
+                    <mat-option value="ALL">Tous</mat-option>
+                    <mat-option value="PENDING">En attente</mat-option>
+                    <mat-option value="APPROVED">Validé</mat-option>
+                    <mat-option value="REJECTED">Rejeté</mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <button mat-flat-button class="partner-menu-btn-apply" (click)="applyMenuProductsFilters()">
+                  <mat-icon>search</mat-icon>
+                  Filtrer
+                </button>
+                <button mat-stroked-button class="partner-menu-btn-reset" (click)="resetMenuProductsFilters()">
+                  <mat-icon>restart_alt</mat-icon>
+                  Réinitialiser
+                </button>
+              </div>
+
+              <div class="partner-menu-filters" *ngIf="partnerMenuTableView() === 'HISTORY'">
+                <mat-form-field appearance="outline" class="partner-menu-filter-field">
+                  <mat-label>Action</mat-label>
+                  <mat-select [ngModel]="historyFilterAction()" (ngModelChange)="onHistoryFilterActionChange($event)">
+                    <mat-option value="">Toutes</mat-option>
+                    <mat-option value="PRODUCT_SUBMITTED">PRODUCT_SUBMITTED</mat-option>
+                    <mat-option value="PRODUCT_RESUBMITTED">PRODUCT_RESUBMITTED</mat-option>
+                    <mat-option value="APPROVE">APPROVE</mat-option>
+                    <mat-option value="REJECT">REJECT</mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="partner-menu-filter-field">
+                  <mat-label>Acteur</mat-label>
+                  <mat-select [ngModel]="historyFilterActorType()" (ngModelChange)="onHistoryFilterActorTypeChange($event)">
+                    <mat-option value="">Tous</mat-option>
+                    <mat-option value="PARTNER">Partenaire</mat-option>
+                    <mat-option value="ADMIN">Admin</mat-option>
+                    <mat-option value="SYSTEM">Système</mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="partner-menu-filter-field">
+                  <mat-label>Nom admin complet</mat-label>
+                  <mat-select
+                    [ngModel]="historyFilterAdminFullNameValue"
+                    (ngModelChange)="onHistoryFilterAdminFullNameChange($event)"
+                  >
+                    <mat-option value="">Tous</mat-option>
+                    @for (admin of getHistoryAdminOptions(); track admin.id) {
+                      <mat-option [value]="admin.name">{{ admin.name }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="partner-menu-filter-field">
+                  <mat-label>Produit ID</mat-label>
+                  <input matInput [ngModel]="historyFilterProductIdValue" (ngModelChange)="onHistoryFilterProductIdInput($event)" placeholder="Ex: 123" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="partner-menu-filter-field">
+                  <mat-label>Du</mat-label>
+                  <input matInput type="date" [ngModel]="historyFilterDateFrom()" (ngModelChange)="onHistoryFilterDateFromChange($event)" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="partner-menu-filter-field">
+                  <mat-label>Au</mat-label>
+                  <input matInput type="date" [ngModel]="historyFilterDateTo()" (ngModelChange)="onHistoryFilterDateToChange($event)" />
+                </mat-form-field>
+
+                <button mat-flat-button class="partner-menu-btn-apply" (click)="applyHistoryFilters()">
+                  <mat-icon>search</mat-icon>
+                  Filtrer
+                </button>
+                <button mat-stroked-button class="partner-menu-btn-reset" (click)="resetHistoryFilters()">
+                  <mat-icon>restart_alt</mat-icon>
+                  Réinitialiser
+                </button>
+              </div>
+            </div>
+
+            <div table class="partner-menu-table-wrap" *ngIf="partnerMenuTableView() === 'PRODUCTS'">
+              <table class="partner-menu-table">
+                <thead>
+                  <tr>
+                    <th>Produit</th>
+                    <th>Catégorie</th>
+                    <th>Caractéristiques</th>
+                    <th>Détails modération</th>
+                    <th>Modération</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let p of getOrderedPartnerMenuProducts()">
+                    <td>
+                      <div class="product-cell">
+                        <div class="product-thumb" *ngIf="getProductImage(p); else noProductImg">
+                          <img [src]="getProductImage(p)" [alt]="p.name" />
+                        </div>
+                        <ng-template #noProductImg>
+                          <div class="product-thumb placeholder"><mat-icon>image</mat-icon></div>
+                        </ng-template>
+                        <div class="product-info">
+                          <div class="product-name">{{ p.name }}</div>
+                          <div class="product-sub">Prix : {{ p.price }} • Disponible : {{ p.isAvailable ? 'Oui' : 'Non' }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="category-cell">
+                        <div class="category-name">{{ getMenuCategoryName(p.categoryId) }}</div>
+                        <div class="category-image" *ngIf="getCategoryImage(p.categoryId)">
+                          <img [src]="getCategoryImage(p.categoryId)" alt="category" />
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="features-cell">
+                        <span *ngIf="p.isPopular" class="feature-pill">Populaire</span>
+                        <span *ngIf="p.preparationTimeMin" class="feature-pill">Prep {{ p.preparationTimeMin }} min</span>
+                        <span *ngIf="p.stockStatus" class="feature-pill">{{ p.stockStatus }}</span>
+                        <span *ngIf="hasPromotion(p)" class="feature-pill promo-pill">
+                          {{ p.promotionLabel || ('-' + p.discountPercentage + '%') }}
+                        </span>
+                        <span *ngFor="let tag of getProductTags(p)" class="feature-pill">{{ tag }}</span>
+                        <span *ngIf="!p.isPopular && !p.preparationTimeMin && !p.stockStatus && !hasPromotion(p) && getProductTags(p).length === 0" class="feature-empty">—</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="moderation-details">
+                        <div class="product-sub" *ngIf="p.updatedAt">Dernière modif : {{ p.updatedAt | date:'dd/MM/yyyy HH:mm' }}</div>
+                        <div class="product-sub" *ngIf="p.createdAt">Créé : {{ p.createdAt | date:'dd/MM/yyyy HH:mm' }}</div>
+                        <div class="product-sub" *ngIf="p.description">{{ p.description }}</div>
+                        <div class="product-sub" *ngIf="p.lastAuditAt">
+                          Audit : {{ p.lastAuditAction || 'UPDATE' }} • {{ p.lastAuditAt | date:'dd/MM/yyyy HH:mm' }}
+                        </div>
+                        <div class="product-diff" *ngIf="hasProductChanges(p)">
+                          <div class="product-diff-title">Modifications du partenaire</div>
+                          <div class="product-diff-item" *ngFor="let change of getProductDiffEntries(p)">
+                            <span class="diff-field">{{ change.field }}</span>
+                            <span class="diff-values">
+                              <ng-container *ngIf="isImageDiff(change.field, change.before); else productBeforeText">
+                                <img class="diff-thumb" [src]="change.before" alt="before-image" />
+                              </ng-container>
+                              <ng-template #productBeforeText>
+                                <span class="diff-before">{{ getDiffDisplayValue(change.field, change.before) }}</span>
+                              </ng-template>
+                              <mat-icon>arrow_right_alt</mat-icon>
+                              <ng-container *ngIf="isImageDiff(change.field, change.after); else productAfterText">
+                                <img class="diff-thumb" [src]="change.after" alt="after-image" />
+                              </ng-container>
+                              <ng-template #productAfterText>
+                                <span class="diff-after">{{ getDiffDisplayValue(change.field, change.after) }}</span>
+                              </ng-template>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="moderation-cell">
+                        <span class="status-chip chip-pending" *ngIf="p.moderationStatus === 'PENDING'">En attente</span>
+                        <span class="status-chip chip-approved" *ngIf="p.moderationStatus === 'APPROVED' || !p.moderationStatus">Validé</span>
+                        <span class="status-chip chip-rejected" *ngIf="p.moderationStatus === 'REJECTED'">Rejeté</span>
+                        <div class="reject-reason" *ngIf="p.moderationStatus === 'REJECTED' && p.moderationReason">
+                          {{ p.moderationReason }}
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="partner-menu-moderation-buttons" *ngIf="p.moderationStatus === 'PENDING'">
+                        <button mat-icon-button class="btn-product-approve icon-action-btn" matTooltip="Valider le produit" (click)="approveProductFromMenu(p.id)">
+                          <mat-icon>check</mat-icon>
+                        </button>
+                        <button mat-icon-button class="btn-product-reject icon-action-btn" matTooltip="Rejeter le produit" (click)="rejectProductFromMenu(p.id)">
+                          <mat-icon>close</mat-icon>
+                        </button>
+                      </div>
+                      <span *ngIf="p.moderationStatus !== 'PENDING'" class="feature-empty">—</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div table class="partner-menu-table-wrap" *ngIf="partnerMenuTableView() === 'HISTORY'">
+              <table class="partner-menu-table">
+                <thead>
+                  <tr>
+                    <th>Partenaire</th>
+                    <th>Produit ID</th>
+                    <th>Action</th>
+                    <th>Acteur</th>
+                    <th>Nom admin</th>
+                    <th>Date</th>
+                    <th>Détails</th>
+                    <th>Motif</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let row of filteredProductAuditLogs()">
+                    <td>{{ getPartnerDisplayNameWithId() }}</td>
+                    <td>#{{ row.productId }}</td>
+                    <td>{{ getActionLabel(row.action) }}</td>
+                    <td>{{ getHistoryActorLabel(row) }}</td>
+                    <td>
+                      {{ row.actorType === 'ADMIN' ? getHistoryActorFullName(row) : '—' }}
+                    </td>
+                    <td>{{ row.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td>
+                      <div class="history-product-changes">
+                        <ng-container *ngIf="getParsedHistoryDiffs(row) as diffs">
+                          <div class="history-product-change" *ngFor="let diff of diffs">
+                            <span class="history-field">{{ diff.field }}</span>
+                            <span class="history-values">
+                              <ng-container *ngIf="isImageDiff(diff.field, diff.before); else historyBeforeText">
+                                <img class="diff-thumb" [src]="diff.before" alt="before-image" />
+                              </ng-container>
+                              <ng-template #historyBeforeText>
+                                <span class="history-before">{{ getDiffDisplayValue(diff.field, diff.before) }}</span>
+                              </ng-template>
+                              <mat-icon>arrow_right_alt</mat-icon>
+                              <ng-container *ngIf="isImageDiff(diff.field, diff.after); else historyAfterText">
+                                <img class="diff-thumb" [src]="diff.after" alt="after-image" />
+                              </ng-container>
+                              <ng-template #historyAfterText>
+                                <span class="history-after">{{ getDiffDisplayValue(diff.field, diff.after) }}</span>
+                              </ng-template>
+                            </span>
+                          </div>
+                          <span class="no-permissions" *ngIf="diffs.length === 0">
+                            <ng-container *ngIf="!isHistoryDiffsCached(row)">...</ng-container>
+                            <ng-container *ngIf="isHistoryDiffsCached(row)">—</ng-container>
+                          </span>
+                        </ng-container>
+                      </div>
+                    </td>
+                    <td>{{ row.reason || '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </app-list-page>
         </div>
       </mat-tab>
 
@@ -503,7 +818,8 @@
     title=""
     [showBackButton]="false"
     [loading]="changeLogsLoading()"
-    [empty]="!changeLogsLoading() && logsTotalElements() === 0"
+    [error]="changeLogsError()"
+    [empty]="logsEmpty()"
     emptyIcon="history"
     [emptyMessage]="'partners.detail.logs.empty'"
     [showPagination]="false"
@@ -541,7 +857,7 @@
         <mat-label>{{ 'partners.detail.logs.filterAction' | translate }}</mat-label>
         <mat-select
           [(ngModel)]="logsFilterActionValue"
-          (ngModelChange)="logsFilterAction.set($event)"
+          (ngModelChange)="logsFilterAction.set($event); applyLogsFilters()"
         >
           <mat-option value="">{{ 'common.all' | translate }}</mat-option>
           <mat-option value="APPROVE">{{ 'partners.detail.logs.actions.APPROVE' | translate }}</mat-option>
@@ -554,16 +870,15 @@
         </mat-select>
       </mat-form-field>
 
-      <!-- ADMIN -->
       <mat-form-field appearance="outline" class="filter-field">
-        <mat-label>{{ 'partners.detail.logs.filterAdmin' | translate }}</mat-label>
+        <mat-label>Nom admin complet</mat-label>
         <mat-select
-          [(ngModel)]="logsFilterAdminIdValue"
-          (ngModelChange)="logsFilterAdminId.set($event || null)"
+          [(ngModel)]="logsFilterAdminFullNameValue"
+          (ngModelChange)="logsFilterAdminFullName.set($event || ''); applyLogsFilters()"
         >
-          <mat-option [value]="null">{{ 'common.all' | translate }}</mat-option>
+          <mat-option value="">{{ 'common.all' | translate }}</mat-option>
           @for (admin of uniqueAdmins(); track admin.id) {
-            <mat-option [value]="admin.id">{{ admin.name }}</mat-option>
+            <mat-option [value]="admin.name">{{ admin.name }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
@@ -629,6 +944,10 @@
             {{ 'partners.detail.logs.colAdmin' | translate | uppercase }}
           </th>
 
+          <th class="col-admin-full">
+            {{ 'partners.detail.logs.colAdminFullName' | translate | uppercase }}
+          </th>
+
           <th class="col-permissions">
             {{ 'partners.detail.logs.colChanges' | translate | uppercase }}
           </th>
@@ -675,15 +994,20 @@
 
           </td>
 
+          <!-- ADMIN FULL NAME -->
+          <td class="col-admin-full">
+            {{ log.adminName || '—' }}
+          </td>
+
           <!-- CHANGES -->
           <td class="col-permissions">
 
             <div class="permissions-cell">
 
-              <div class="permissions-chips">
+              <div class="permissions-chips" *ngIf="log.entityType !== 'PRODUCT'">
 
                 <span class="permission-chip"
-                      *ngIf="log.statusBefore || log.statusAfter">
+                      *ngIf="hasStatusChanged(log)">
 
                   <span
                     *ngIf="log.statusBefore"
@@ -703,7 +1027,7 @@
                 </span>
 
                 <span class="permission-chip"
-                      *ngIf="log.commissionTypeAfter || log.commissionRateAfter">
+                      *ngIf="hasCommissionChanged(log)">
 
                   <span *ngIf="log.commissionTypeAfter">
                     {{ log.commissionTypeAfter }}
@@ -719,17 +1043,39 @@
 
                 </span>
 
-                <span class="permission-chip" *ngIf="log.categoryIdsAfter">
+                <span class="permission-chip" *ngIf="hasCategoryChanged(log)">
                   {{ log.categoryIdsAfter }}
                 </span>
 
+                <span class="permission-chip" *ngIf="hasProductEditPermissionChanged(log)">
+                  {{
+                    log.productEditPermissionAfter
+                      ? ('partners.detail.logs.productEditPermission.autoApproved' | translate)
+                      : ('partners.detail.logs.productEditPermission.requiresApproval' | translate)
+                  }}
+                </span>
+
                 <span class="no-permissions"
-                      *ngIf="!log.statusBefore && !log.statusAfter &&
-                             !log.commissionTypeAfter && !log.commissionRateAfter &&
-                             !log.categoryIdsAfter">
+                      *ngIf="!hasStatusChanged(log) && !hasCommissionChanged(log) && !hasCategoryChanged(log) && !hasProductEditPermissionChanged(log)">
                   —
                 </span>
 
+              </div>
+
+              <div class="history-product-changes" *ngIf="log.entityType === 'PRODUCT'">
+                <div class="history-product-change" *ngFor="let diff of getHistoryProductDiffs(log)">
+                  <span class="history-field">{{ diff.field }}</span>
+                  <span class="history-values">
+                    <span class="history-before">{{ diff.before }}</span>
+                    <mat-icon>arrow_right_alt</mat-icon>
+                    <span class="history-after">{{ diff.after }}</span>
+                  </span>
+                </div>
+                <span class="no-permissions" *ngIf="getHistoryProductDiffs(log).length === 0">—</span>
+              </div>
+
+              <div class="history-reason" *ngIf="log.reason">
+                Motif: {{ log.reason }}
               </div>
 
             </div>
@@ -763,11 +1109,11 @@
 
   </app-list-page>
 
-  @if (filteredChangeLogs().length > LOGS_PAGE_SIZE) {
+  @if (logsTotalElements() > LOGS_PAGE_SIZE) {
     <mat-paginator
       class="logs-paginator"
-      [length]="filteredChangeLogs().length"
-      [pageSize]="LOGS_PAGE_SIZE"
+      [length]="logsTotalElements()"
+      [pageSize]="logsPageSize()"
       [pageIndex]="logsCurrentPage()"
       [pageSizeOptions]="[10, 25, 50]"
       [hidePageSize]="false"

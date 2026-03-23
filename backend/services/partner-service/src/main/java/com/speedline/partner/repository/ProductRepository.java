@@ -1,6 +1,7 @@
 package com.speedline.partner.repository;
 
 import com.speedline.partner.domain.Product;
+import com.speedline.partner.domain.ProductModerationStatus;
 import com.speedline.partner.domain.ProductStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -64,6 +65,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE p.partnerId = :partnerId AND p.originalPrice IS NOT NULL AND p.originalPrice > p.price")
     List<Product> findPromotionalProducts(@Param("partnerId") Long partnerId);
 
+    // ==================== MODERATION (admin) ====================
+
+    Page<Product> findByModerationStatusAndStatusNot(
+            ProductModerationStatus moderationStatus,
+            ProductStatus status,
+            Pageable pageable);
+
+    java.util.List<Product> findByModerationStatusAndStatusNot(
+            ProductModerationStatus moderationStatus,
+            ProductStatus status);
+
     /**
      * Produits dont la promotion se termine à la date donnée (ex. dans 3 jours).
      */
@@ -107,6 +119,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "AND (:categoryId IS NULL OR p.categoryId = :categoryId) " +
            "AND (:search IS NULL OR :search = '' OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))) " +
            "AND (:isAvailable IS NULL OR p.isAvailable = :isAvailable) " +
+           "AND (:moderationStatus IS NULL OR p.moderationStatus = :moderationStatus) " +
            "AND (:lowStockIds IS NULL OR p.id IN :lowStockIds) " +
            "ORDER BY p.displayOrder ASC")
     Page<Product> findProductsPage(
@@ -114,6 +127,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("categoryId") Long categoryId,
             @Param("search") String search,
             @Param("isAvailable") Boolean isAvailable,
+            @Param("moderationStatus") ProductModerationStatus moderationStatus,
             @Param("lowStockIds") List<Long> lowStockIds,
             Pageable pageable);
 

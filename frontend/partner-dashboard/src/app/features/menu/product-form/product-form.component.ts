@@ -1,5 +1,5 @@
 // src/app/features/menu/product-form/product-form.component.ts - Angular 19
-import { Component, OnInit, inject, signal, computed, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -16,6 +16,8 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ProductService } from '../services/product.service';
 import { MenuService } from '../services/menu.service';
 import { MenuCategory, Product, CreateProductRequest, UpdateProductRequest } from '../models/menu.models';
+import { WebSocketService, PartnerNotification } from '@core/services/websocket.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-product-form',
@@ -38,7 +40,7 @@ import { MenuCategory, Product, CreateProductRequest, UpdateProductRequest } fro
   templateUrl: './product-form.component.html',
   styleUrls: ['./product-form.component.scss'],
 })
-export class ProductFormComponent implements OnInit {
+export class ProductFormComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -46,6 +48,9 @@ export class ProductFormComponent implements OnInit {
   private menuService = inject(MenuService);
   private snackBar = inject(MatSnackBar);
   private translate = inject(TranslateService);
+  private wsService = inject(WebSocketService);
+
+  private wsSub?: Subscription;
 
   @ViewChild('productImageInput') productImageInputRef?: ElementRef<HTMLInputElement>;
 
@@ -59,6 +64,10 @@ export class ProductFormComponent implements OnInit {
   productImagePreviewUrl = signal<string | null>(null);
   uploadingProductImage = signal(false);
   isDragging = signal(false);
+
+  // Moderation state (admin approvals/rejections)
+  moderationStatus = signal<'PENDING' | 'APPROVED' | 'REJECTED' | null>(null);
+  moderationReason = signal<string | null>(null);
 
   // Computed
   isEdit = computed(() => this.editId() !== null);
@@ -82,6 +91,27 @@ export class ProductFormComponent implements OnInit {
       this.loadProduct(+idParam);
     }
     this.loadCategories();
+
+    // Realtime updates (bandeau modération) sur la page d'édition courante.
+    this.wsSub = this.wsService.onPartnerNotification.subscribe((notif: PartnerNotification) => {
+      const action = notif?.data?.['action'];
+      if (action !== 'PRODUCT_APPROVED' && action !== 'PRODUCT_REJECTED') return;
+
+      const rawProductId = notif?.data?.['productId'];
+      const productId = typeof rawProductId === 'number' ? rawProductId : Number(rawProductId);
+      if (!productId || Number.isNaN(productId)) return;
+
+      if (this.editId() == null || productId !== this.editId()) return;
+
+      this.moderationStatus.set(action === 'PRODUCT_APPROVED' ? 'APPROVED' : 'REJECTED' as any);
+      this.moderationReason.set(
+        action === 'PRODUCT_REJECTED' && notif?.data?.['reason'] != null ? String(notif.data['reason']) : null
+      );
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.wsSub?.unsubscribe();
   }
 
   loadCategories(): void {
@@ -110,6 +140,8 @@ export class ProductFormComponent implements OnInit {
           isPopular: product.isPopular ?? false,
         });
         this.imagePreview.set(product.imageUrl ?? null);
+        this.moderationStatus.set(product.moderationStatus ?? null);
+        this.moderationReason.set(product.moderationReason ?? null);
         this.loading.set(false);
       },
       error: (err) => {

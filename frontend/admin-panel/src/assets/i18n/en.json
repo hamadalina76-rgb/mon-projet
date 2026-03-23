@@ -480,7 +480,10 @@
       "category": "Category",
       "subcategories": "Subcategories",
       "cancel": "Cancel",
-      "approve": "Approve with Commission"
+      "approve": "Approve with Commission",
+      "productEditPermissionTitle": "Product Edit Permission",
+      "productEditPermissionLabel": "Allow partner to edit products without approval",
+      "productEditPermissionHint": "If enabled, product changes are auto-approved. Otherwise, they go through the normal approval flow."
     },
     "status": {
       "closed": "Closed"
@@ -540,7 +543,10 @@
       "cancel": "Cancel",
       "successTitle": "Partner updated",
       "successMessage": "{{name}}'s information has been updated.",
-      "errorMessage": "An error occurred while updating the partner."
+      "errorMessage": "An error occurred while updating the partner.",
+      "productEditPermissionTitle": "Product Edit Permission",
+      "productEditPermissionLabel": "Allow partner to edit products without approval",
+      "productEditPermissionHint": "If enabled, product changes are auto-approved. Otherwise, they go through the normal approval flow."
     },
     "detail": {
       "title": "Partner Details",
@@ -560,6 +566,7 @@
       "freeDeliveryThreshold": "Free Delivery Threshold",
       "accountActive": "Account Active",
       "acceptsOrders": "Accepts Orders",
+      "allowProductUpdatesWithoutApproval": "Allow partner to edit products without approval",
       "closed": "Closed",
       "categoriesTags": "Categories and Tags",
       "categories": "Categories",
@@ -644,6 +651,7 @@
         "colDate": "Date",
         "colAction": "Action",
         "colAdmin": "Admin",
+        "colAdminFullName": "Admin full name",
         "colChanges": "Changes",
         "labelStatus": "Status",
         "labelCommission": "Commission",
@@ -664,6 +672,10 @@
           "DEACTIVATE": "Deactivated",
           "SUSPEND": "Suspended",
           "UPDATE_INFO": "Updated"
+        },
+        "productEditPermission": {
+          "autoApproved": "Products auto-approved",
+          "requiresApproval": "Approval required before editing"
         }
       }
     },

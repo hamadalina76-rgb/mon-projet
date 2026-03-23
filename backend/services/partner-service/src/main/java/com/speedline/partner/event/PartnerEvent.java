@@ -23,7 +23,19 @@ public class PartnerEvent {
         PARTNER_SUSPENDED,
         PARTNER_ACTIVATED,
         PARTNER_DEACTIVATED,
-        PARTNER_INFO_REQUESTED
+        PARTNER_INFO_REQUESTED,
+
+        // ==================== PRODUCT MODERATION ====================
+        /**
+         * A partner created/updated a product and it must be reviewed by an admin.
+         */
+        PRODUCT_REQUEST_SUBMITTED,
+
+        /** Admin validated a product (partner should be notified). */
+        PRODUCT_APPROVED,
+
+        /** Admin rejected a product (partner should be notified with a reason). */
+        PRODUCT_REJECTED
     }
 
     private EventType eventType;
@@ -35,4 +47,13 @@ public class PartnerEvent {
     private String status;
     private String reason;
     private LocalDateTime timestamp;
+
+    // Product moderation payload
+    private Long productId;
+    private String productName;
+    /**
+     * New moderation status after admin action (or PENDING for submitted requests).
+     * Serialized as string (PENDING/APPROVED/REJECTED).
+     */
+    private String newModerationStatus;
 }

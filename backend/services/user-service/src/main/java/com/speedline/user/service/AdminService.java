@@ -70,9 +70,18 @@ public class AdminService {
     @Transactional(readOnly = true)
     public AdminResponse getAdminByUserId(Long userId) {
         log.debug("Récupération de l'admin avec le userId: {}", userId);
-        Admin admin = adminRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Admin non trouvé avec le userId: " + userId));
-        return adminMapper.toResponse(admin);
+        return adminRepository.findByUserId(userId)
+                .map(adminMapper::toResponse)
+                .orElseGet(() -> {
+                    // Some callers historically sent admin.id instead of userId.
+                    // Try by primary key before returning a generic placeholder.
+                    return adminRepository.findById(userId)
+                            .map(adminMapper::toResponse)
+                            .orElseGet(() -> AdminResponse.builder()
+                                    .userId(userId)
+                                    .fullName("Admin")
+                                    .build());
+                });
     }
     
     /**

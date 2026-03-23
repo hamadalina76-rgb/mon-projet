@@ -246,6 +246,13 @@ public class Partner {
     private Boolean acceptsOrders = false;
 
     /**
+     * Autorise le partenaire à modifier/créer des produits sans validation admin.
+     * Si true: les produits passent directement en moderationStatus APPROVED.
+     */
+    @Builder.Default
+    private Boolean allowProductUpdatesWithoutApproval = false;
+
+    /**
      * Partenaire vérifié (badge de confiance)
      */
     @Builder.Default
