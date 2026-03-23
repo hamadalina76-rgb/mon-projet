@@ -488,7 +488,12 @@
       "category": "Catégorie",
       "subcategories": "Sous-catégories",
       "cancel": "Annuler",
-      "approve": "Approuver avec commission"
+      "approve": "Approuver avec commission",
+      "zonesStep": "Zones",
+      "zonesTitle": "Zones de livraison",
+      "zonesDesc": "Sélectionnez les zones où ce partenaire peut livrer.",
+      "zonesNone": "Aucune zone disponible",
+      "zonesAssigned": "zone(s) assignée(s)"
     },
     "types": {
       "restaurant": "Restaurant",
@@ -584,7 +589,26 @@
       "tabs": {
         "general": "Infos générales",
         "menu": "Menu / Produits",
-        "orders": "Commandes"
+        "orders": "Commandes",
+        "zones": "Zones de livraison",
+        "documents": "Documents",
+        "logs": "Historique"
+      },
+      "zones": {
+        "title": "Zones de livraison",
+        "editBtn": "Modifier les zones",
+        "saveBtn": "Sauvegarder",
+        "cancelBtn": "Annuler",
+        "editBanner": "Cochez / décochez les zones puis cliquez sur Sauvegarder.",
+        "noZones": "Aucune zone assignée — cliquez sur Modifier les zones pour en ajouter.",
+        "mapLabel": "Zones assignées sur la carte",
+        "mapPreview": "Aperçu en temps réel",
+        "mapEmpty": "Assignez au moins une zone pour afficher la carte",
+        "mapEditEmpty": "Sélectionnez au moins une zone pour prévisualiser la carte",
+        "noAvailable": "Aucune zone disponible",
+        "saveSuccess": "Zones sauvegardées avec succès",
+        "saveError": "Erreur lors de la sauvegarde des zones",
+        "noChanges": "Aucune modification à sauvegarder"
       },
       "approveConfirm": "Voulez-vous approuver le partenaire \"{{name}}\" ?",
       "approveSuccess": "Partenaire approuvé avec succès",

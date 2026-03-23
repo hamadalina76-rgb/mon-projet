@@ -32,6 +32,11 @@
       <div class="step-dot"><mat-icon>folder_open</mat-icon></div>
       <span>{{ 'partners.commission.subcategoriesTitle' | translate }}</span>
     </div>
+    <div class="step-line" [class.done]="selectedZoneIds().length > 0"></div>
+    <div class="step" [class.active]="true" [class.done]="selectedZoneIds().length > 0">
+      <div class="step-dot"><mat-icon>map</mat-icon></div>
+      <span>{{ 'partners.commission.zonesStep' | translate }}</span>
+    </div>
   </div>
 
   <div class="dialog-body" [formGroup]="commissionForm">
@@ -155,6 +160,32 @@
       </div>
     </div>
 
+    <!-- STEP 4: Zones -->
+    <mat-divider></mat-divider>
+    <div class="section">
+      <div class="section-label">
+        <span class="step-number">4</span>
+        <span>{{ 'partners.commission.zonesTitle' | translate }}</span>
+      </div>
+      <p class="section-desc">{{ 'partners.commission.zonesDesc' | translate }}</p>
+
+      <div *ngIf="allZones().length === 0" class="empty-sub">
+        <mat-icon>info_outline</mat-icon>
+        <span>{{ 'partners.commission.zonesNone' | translate }}</span>
+      </div>
+
+      <div class="subcategories-grid" *ngIf="allZones().length > 0">
+        <div *ngFor="let zone of allZones()"
+             class="sub-chip"
+             [class.selected]="isZoneSelected(zone.id)"
+             (click)="toggleZone(zone.id)">
+          <mat-icon>{{ isZoneSelected(zone.id) ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+          <span>{{ zone.name }}</span>
+          <span class="zone-city" *ngIf="zone.city">&nbsp;— {{ zone.city }}</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Summary -->
     <div class="summary-card" *ngIf="isFormValid()">
       <div class="summary-header">
@@ -180,6 +211,10 @@
         <div class="summary-row" *ngIf="selectedSubcategoryIds().length > 0">
           <span class="s-label">{{ 'partners.commission.subcategories' | translate }}</span>
           <span class="s-value">{{ selectedSubcategoryIds().length }} {{ 'partners.commission.subcategoriesCount' | translate }}</span>
+        </div>
+        <div class="summary-row" *ngIf="selectedZoneIds().length > 0">
+          <span class="s-label">{{ 'partners.commission.zonesStep' | translate }}</span>
+          <span class="s-badge">{{ selectedZoneIds().length }} {{ 'partners.commission.zonesAssigned' | translate }}</span>
         </div>
       </div>
     </div>

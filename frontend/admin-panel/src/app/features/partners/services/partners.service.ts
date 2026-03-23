@@ -1,13 +1,18 @@
 // src/app/features/partners/services/partners.service.ts
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { HttpClient } from '@angular/common/http';
 import { ApiService } from '@core/services/api.service';
+import { Zone } from '@core/models/zone.model';
+import { environment } from '@environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class PartnersService {
   private api = inject(ApiService);
+  private http = inject(HttpClient);
 
   getPartners(page: number = 0, pageSize: number = 20, status?: string, search?: string): Observable<any> {
     let url = `admin/partners?page=${page}&size=${pageSize}`;
@@ -111,5 +116,27 @@ getPartnerChangeLogsFiltered(
     subcategoryIds?: number[];
   }): Observable<any> {
     return this.api.put(`admin/partners/${id}`, data);
+  }
+
+  // ── Zones ──────────────────────────────────────────────────────────────────
+
+  getAllZones(): Observable<Zone[]> {
+    // Appel /zones (toutes les zones, actives et inactives) avec size=200
+    const baseUrl = environment.apiUrl.replace('/v1', '');
+    return this.http.get<any>(`${baseUrl}/zones?size=200`).pipe(
+      map((res: any) => Array.isArray(res) ? res : (res?.content ?? []))
+    );
+  }
+
+  getPartnerZones(id: string): Observable<Zone[]> {
+    return this.api.get<Zone[]>(`admin/partners/${id}/zones`);
+  }
+
+  assignZones(id: string, zoneIds: number[]): Observable<any> {
+    return this.api.post(`admin/partners/${id}/zones/assign`, { zoneIds });
+  }
+
+  removeZone(id: string, zoneId: number): Observable<any> {
+    return this.api.delete(`admin/partners/${id}/zones/${zoneId}`);
   }
 }
