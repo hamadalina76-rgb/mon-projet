@@ -13,7 +13,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,7 +22,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -360,6 +358,24 @@ public class AdminPartnerController {
      * Historique des modifications filtré (filtres via POST body)
      * POST /admin/partners/{id}/change-logs/filter
      */
+    @PostMapping("/{id}/change-logs/filter")
+    public ResponseEntity<?> getPartnerChangeLogsFiltered(
+            @PathVariable Long id,
+            @RequestBody PartnerChangeLogFilterDTO filters) {
+        log.info("Admin: Filtering change logs for partner id={}, filters={}", id, filters);
+        try {
+            // La requête native du repository possède déjà son ORDER BY l.changed_at DESC.
+            Pageable pageable = PageRequest.of(filters.getPage(), filters.getSize());
+            return ResponseEntity.ok(
+                    auditLogService.getPartnerChangeLogsFiltered(id, filters, pageable)
+            );
+        } catch (Exception e) {
+            log.error("Failed to filter change logs for partner {}: {}", id, e.getMessage());
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // ==================== ZONES ====================
 
     /**
@@ -371,9 +387,6 @@ public class AdminPartnerController {
         try {
             List<PartnerZone> assignments = partnerZoneRepository.findByPartnerId(id);
             if (assignments.isEmpty()) return ResponseEntity.ok(List.of());
-
-            Map<Long, LocalDateTime> assignedAtMap = assignments.stream()
-                    .collect(Collectors.toMap(PartnerZone::getZoneId, PartnerZone::getAssignedAt));
 
             try {
                 // Fetch chaque zone par ID → retourne toutes les zones assignées
@@ -433,13 +446,6 @@ public class AdminPartnerController {
                     "message", "Zones assigned successfully",
                     "assignedZoneIds", zoneIds
             ));
-            // La requête native du repository possède déjà son ORDER BY l.changed_at DESC.
-            // Supprimer le tri du Pageable évite que Spring ajoute un ORDER BY supplémentaire
-            // qui peut référencer une colonne inexistante (ex: l.changedAt).
-            Pageable pageable = PageRequest.of(filters.getPage(), filters.getSize());
-            return ResponseEntity.ok(
-                    auditLogService.getPartnerChangeLogsFiltered(id, filters, pageable)
-            );
         } catch (Exception e) {
             log.error("Failed to assign zones to partner {}: {}", id, e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));

@@ -16,7 +16,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.data.domain.Page;
 
 import com.speedline.partner.domain.Partner;
@@ -56,7 +55,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Partners", description = "Gestion des établissements partenaires")
-public class PartnerController {
+public class PartnerController implements PartnerApi {
     
     private final PartnerService partnerService;
     private final FileStorageService fileStorageService;

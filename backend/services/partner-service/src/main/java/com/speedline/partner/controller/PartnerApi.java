@@ -3,7 +3,6 @@ package com.speedline.partner.controller;
 import com.speedline.partner.dto.CompletePartnerProfileRequest;
 import com.speedline.partner.dto.CreatePartnerRequest;
 import com.speedline.partner.dto.PartnerDTO;
-import com.speedline.partner.dto.StaffMemberDTO;
 import com.speedline.partner.dto.UpdatePartnerStatusRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -256,7 +255,25 @@ public interface PartnerApi {
             @RequestParam(defaultValue = "0") @Min(0) int page,
 
             @Parameter(description = "Nombre de résultats par page, entre 1 et 100 (défaut 20)", example = "20")
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+
+            @Parameter(description = "Filtrer uniquement partenaires ouverts", example = "true")
+            @RequestParam(required = false) Boolean isOpen,
+
+            @Parameter(description = "Filtrer par catégorie (id)")
+            @RequestParam(required = false) String categoryId,
+
+            @Parameter(description = "Note minimale", example = "4.0")
+            @RequestParam(required = false) Double minRating,
+
+            @Parameter(description = "Temps de livraison maximum (minutes)", example = "30")
+            @RequestParam(required = false) Integer maxDeliveryTime,
+
+            @Parameter(description = "Livraison gratuite uniquement", example = "true")
+            @RequestParam(required = false) Boolean freeDelivery,
+
+            @Parameter(description = "Tri des résultats (distance, rating, deliveryTime)", example = "distance")
+            @RequestParam(defaultValue = "distance") String sortBy
     );
 
     // ===================== SANTÉ =====================

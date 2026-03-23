@@ -3,7 +3,6 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { HttpClient } from '@angular/common/http';
 import { ApiService } from '@core/services/api.service';
 import { Zone } from '@core/models/zone.model';
 import { environment } from '@environments/environment';
@@ -15,7 +14,6 @@ export class PartnersService {
   private api = inject(ApiService);
   private http = inject(HttpClient);
   private apiBaseUrl = environment.apiBaseUrl; // /api
-  private http = inject(HttpClient);
 
   getPartners(page: number = 0, pageSize: number = 20, status?: string, search?: string): Observable<any> {
     let url = `admin/partners?page=${page}&size=${pageSize}`;
