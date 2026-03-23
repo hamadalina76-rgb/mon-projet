@@ -632,6 +632,18 @@ mat-divider {
   }
 }
 
+// Product edit permission toggle
+.product-edit-toggle {
+  margin-top: 6px;
+}
+
+.toggle-hint {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: v.$text-muted;
+  line-height: 1.4;
+}
+
 // ─── Footer ──────────────────────────────────────────────────────────────────
 
 .dialog-footer {

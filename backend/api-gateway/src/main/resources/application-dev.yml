@@ -196,9 +196,9 @@ spring:
         - id: partner-service-admin
           uri: https://partner-service-392205979525.europe-west1.run.app
           predicates:
-            - Path=/api/v1/admin/partners/**
+            - Path=/api/v1/admin/partners/**, /api/v1/admin/products/**
           filters:
-            # /api/v1/admin/partners/** => /admin/partners/**
+            # /api/v1/admin/{partners|products}/** => /admin/{partners|products}/**
             - StripPrefix=2
             - AuthenticationFilter
             - RoleAuthorizationFilter

@@ -214,7 +214,8 @@ $primary: v.$primary-color;
 
 // States
 .loading-state,
-.empty-state {
+.empty-state,
+.error-state {
   display: flex;
   flex-direction: column;
   align-items: center;

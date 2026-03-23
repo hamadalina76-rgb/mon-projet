@@ -70,7 +70,10 @@ public class PartnerEventSubscriber {
                 log.info("========== RECEIVED PARTNER EVENT FROM PUB/SUB ==========");
                 log.info("Payload: {}", payload);
 
-                Map<String, Object> event = objectMapper.readValue(payload, Map.class);
+                Map<String, Object> event = objectMapper.readValue(
+                        payload,
+                        new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}
+                );
                 log.info("Parsed event: {}", event);
                 
                 handlePartnerEvent(event);
@@ -104,9 +107,13 @@ public class PartnerEventSubscriber {
         String brandName = (String) event.get("brandName");
         String reason = (String) event.get("reason");
         String email = (String) event.get("email");
+        Number productIdNum = (Number) event.get("productId");
+        String productName = (String) event.get("productName");
+        String newModerationStatus = (String) event.get("newModerationStatus");
 
         Long partnerId = partnerIdNum != null ? partnerIdNum.longValue() : null;
         Long userId = userIdNum != null ? userIdNum.longValue() : null;
+        Long productId = productIdNum != null ? productIdNum.longValue() : null;
 
         String displayName = brandName != null && !brandName.isEmpty() ? brandName : businessName;
 
@@ -134,6 +141,17 @@ public class PartnerEventSubscriber {
                 break;
             case "PARTNER_INFO_REQUESTED":
                 handlePartnerInfoRequested(partnerId, userId, displayName, reason);
+                break;
+
+            // ==================== PRODUCT MODERATION ====================
+            case "PRODUCT_REQUEST_SUBMITTED":
+                handleProductRequestSubmitted(partnerId, userId, displayName, productId, productName);
+                break;
+            case "PRODUCT_APPROVED":
+                handleProductApproved(partnerId, userId, productId, productName, newModerationStatus);
+                break;
+            case "PRODUCT_REJECTED":
+                handleProductRejected(partnerId, userId, productId, productName, newModerationStatus, reason);
                 break;
             default:
                 log.warn("Unknown partner event type: {}", eventType);
@@ -352,5 +370,119 @@ public class PartnerEventSubscriber {
         partnerNotif = notificationRepository.save(partnerNotif);
         notificationService.pushToPartnerTopic(partnerId, partnerNotif);
         log.info("Info request notification sent to partner {}", partnerId);
+    }
+
+    // ==================== PRODUCT MODERATION ====================
+
+    private void handleProductRequestSubmitted(Long partnerId,
+                                                 Long userId,
+                                                 String displayName,
+                                                 Long productId,
+                                                 String productName) {
+        log.info("Product request submitted: partnerId={}, userId={}, productId={}, productName={}",
+                partnerId, userId, productId, productName);
+
+        String safeProductName = productName != null ? productName : "";
+
+        Notification adminNotif = Notification.builder()
+                .userId(0L)
+                .type(NotificationType.PARTNER)
+                .title("Nouveau produit en attente")
+                .message("Le partenaire \"" + displayName + "\" a soumis le produit \"" + safeProductName + "\" pour validation.")
+                .data(Map.of(
+                        "partnerId", partnerId,
+                        "action", "REVIEW_PRODUCT",
+                        "productId", productId,
+                        "productName", safeProductName
+                ))
+                .channel(NotificationChannel.IN_APP)
+                .isRead(false)
+                .isSent(true)
+                .sentAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        adminNotif = notificationRepository.save(adminNotif);
+        notificationService.pushToAdminTopic(adminNotif);
+
+        // Also notify the partner that their product was submitted for moderation.
+        // (Front: partner-dashboard mainly reacts to APPROVED/REJECTED, but header
+        // notification list should still update on submission.)
+        if (userId != null) {
+            notificationService.sendNotification(
+                    userId,
+                    NotificationType.PARTNER,
+                    "Produit en attente",
+                    "Le produit \"" + safeProductName + "\" a été soumis pour validation. Vous serez informé après la décision de l'admin.",
+                    Map.of(
+                            "partnerId", partnerId,
+                            "action", "PRODUCT_REQUEST_SUBMITTED",
+                            "productId", productId,
+                            "newModerationStatus", "PENDING"
+                    ),
+                    NotificationChannel.IN_APP
+            );
+        } else {
+            log.warn("Product request submitted notification skipped: missing userId for partnerId={} productId={}", partnerId, productId);
+        }
+    }
+
+    private void handleProductApproved(Long partnerId,
+                                         Long userId,
+                                         Long productId,
+                                         String productName,
+                                         String newModerationStatus) {
+        log.info("Product approved: partnerId={}, userId={}, productId={}, newStatus={}",
+                partnerId, userId, productId, newModerationStatus);
+
+        String safeProductName = productName != null ? productName : "";
+        String finalStatus = (newModerationStatus != null && !newModerationStatus.isBlank())
+                ? newModerationStatus
+                : "APPROVED";
+
+        notificationService.sendNotification(
+                userId,
+                NotificationType.PARTNER,
+                "Produit validé",
+                "Le produit \"" + safeProductName + "\" a été validé.",
+                Map.of(
+                        "partnerId", partnerId,
+                        "action", "PRODUCT_APPROVED",
+                        "productId", productId,
+                        "newModerationStatus", finalStatus
+                ),
+                NotificationChannel.IN_APP
+        );
+    }
+
+    private void handleProductRejected(Long partnerId,
+                                         Long userId,
+                                         Long productId,
+                                         String productName,
+                                         String newModerationStatus,
+                                         String reason) {
+        log.info("Product rejected: partnerId={}, userId={}, productId={}, newStatus={}, reason={}",
+                partnerId, userId, productId, newModerationStatus, reason);
+
+        String safeProductName = productName != null ? productName : "";
+        String safeReason = reason != null ? reason : "";
+        String finalStatus = (newModerationStatus != null && !newModerationStatus.isBlank())
+                ? newModerationStatus
+                : "REJECTED";
+
+        notificationService.sendNotification(
+                userId,
+                NotificationType.PARTNER,
+                "Produit rejeté",
+                "Le produit \"" + safeProductName + "\" a été rejeté." + (safeReason.isBlank() ? "" : " Motif: " + safeReason),
+                Map.of(
+                        "partnerId", partnerId,
+                        "action", "PRODUCT_REJECTED",
+                        "productId", productId,
+                        "newModerationStatus", finalStatus,
+                        "reason", safeReason
+                ),
+                NotificationChannel.IN_APP
+        );
     }
 }

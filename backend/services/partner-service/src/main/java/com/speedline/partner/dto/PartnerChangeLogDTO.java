@@ -30,6 +30,10 @@ public class PartnerChangeLogDTO {
     private String        categoryIdsBefore;
     private String        categoryIdsAfter;
 
+    // Product edit permission
+    private Boolean productEditPermissionBefore;
+    private Boolean productEditPermissionAfter;
+
     // General
     private String        reason;
     private LocalDateTime changedAt;

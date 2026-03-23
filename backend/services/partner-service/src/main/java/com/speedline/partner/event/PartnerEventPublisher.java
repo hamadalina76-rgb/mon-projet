@@ -39,6 +39,9 @@ public class PartnerEventPublisher {
             payload.put("email", event.getEmail() != null ? event.getEmail() : "");
             payload.put("status", event.getStatus() != null ? event.getStatus() : "");
             payload.put("reason", event.getReason() != null ? event.getReason() : "");
+            payload.put("productId", event.getProductId() != null ? event.getProductId() : 0L);
+            payload.put("productName", event.getProductName() != null ? event.getProductName() : "");
+            payload.put("newModerationStatus", event.getNewModerationStatus() != null ? event.getNewModerationStatus() : "");
             payload.put("timestamp", event.getTimestamp() != null ? event.getTimestamp().toString() : "");
 
             String jsonPayload = objectMapper.writeValueAsString(payload);

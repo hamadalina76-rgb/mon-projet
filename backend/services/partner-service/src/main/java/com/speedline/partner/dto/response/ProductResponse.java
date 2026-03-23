@@ -1,5 +1,6 @@
 package com.speedline.partner.dto.response;
 
+import com.speedline.partner.domain.ProductModerationStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -71,4 +72,16 @@ public class ProductResponse {
 
     /** Date de fin de la promotion. */
     private LocalDate promotionEndDate;
+
+    /** Workflow modération : PENDING / APPROVED / REJECTED. */
+    private ProductModerationStatus moderationStatus;
+
+    /** Motif de rejet fourni par l'admin (nullable). */
+    private String moderationReason;
+
+    /** Dernier log audit produit (avant/après) pour aider l'admin à vérifier les modifications. */
+    private String lastChangesBefore;
+    private String lastChangesAfter;
+    private String lastAuditAction;
+    private LocalDateTime lastAuditAt;
 }

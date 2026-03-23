@@ -44,7 +44,13 @@ public interface MenuProductService {
      * @param status "all" | "available" | "unavailable" | "low_stock"
      */
     @Transactional(readOnly = true)
-    Page<ProductResponse> getProductsPage(Long partnerId, String search, Long categoryId, String status, Pageable pageable);
+    Page<ProductResponse> getProductsPage(
+            Long partnerId,
+            String search,
+            Long categoryId,
+            String status,
+            String moderationStatus,
+            Pageable pageable);
 
     /**
      * Produits d'une catégorie, triés par position.
@@ -93,6 +99,27 @@ public interface MenuProductService {
      */
     @Transactional
     void deleteProduct(Long partnerId, Long productId);
+
+    // ===================== MODERATION (admin) =====================
+
+    /**
+     * Retourne les produits en attente (PENDING) de modération.
+     * Utilisé par le back-office admin.
+     */
+    @Transactional(readOnly = true)
+    Page<ProductResponse> getPendingProducts(Pageable pageable);
+
+    /**
+     * Admin: approuve un produit (PENDING -> APPROVED).
+     */
+    @Transactional
+    ProductResponse approveProduct(Long productId, Long adminId);
+
+    /**
+     * Admin: rejette un produit (PENDING -> REJECTED) avec un motif.
+     */
+    @Transactional
+    ProductResponse rejectProduct(Long productId, Long adminId, String reason);
 
     /**
      * Toggle disponibilité d'un produit.

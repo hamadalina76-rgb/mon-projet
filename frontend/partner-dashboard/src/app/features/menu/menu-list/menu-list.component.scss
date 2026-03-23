@@ -552,6 +552,11 @@
     width: 140px;
     min-width: 120px;
   }
+  .moderation-field {
+    flex: 0 0 auto;
+    width: 140px;
+    min-width: 120px;
+  }
   .view-toggle {
     flex-shrink: 0;
     display: flex;
@@ -564,6 +569,7 @@
   @media (max-width: 480px) {
     .search-field { max-width: none; }
     .status-field { width: 100%; }
+    .moderation-field { width: 100%; }
   }
 }
 
@@ -695,6 +701,27 @@
   }
   .badge-low { background: rgba(#f59e0b, 0.15); color: #b45309; }
   .badge-out { background: rgba($error-color, 0.12); color: $error-color; }
+
+  .badge-moderation {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .badge-moderation.pending {
+    background: rgba($info-color, 0.14);
+    color: $info-color;
+  }
+  .badge-moderation.approved {
+    background: rgba($success-color, 0.14);
+    color: $success-color;
+  }
+  .badge-moderation.rejected {
+    background: rgba($error-color, 0.12);
+    color: $error-color;
+  }
 }
 
 // ─── Tab 3: Options ───────────────────────────────────────────────────────────

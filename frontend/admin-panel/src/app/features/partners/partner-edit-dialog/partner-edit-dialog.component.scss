@@ -107,6 +107,19 @@ mat-dialog-content {
   margin: 1.25rem 0 !important;
 }
 
+// Product edit permission toggle
+.product-edit-toggle {
+  display: block;
+  margin-top: v.$spacing-sm;
+}
+
+.toggle-hint {
+  margin: .375rem 0 0;
+  font-size: .75rem;
+  color: v.$text-muted;
+  line-height: 1.4;
+}
+
 // ── Form grid ─────────────────────────────────────────────────────
 .form-grid {
   display: flex;

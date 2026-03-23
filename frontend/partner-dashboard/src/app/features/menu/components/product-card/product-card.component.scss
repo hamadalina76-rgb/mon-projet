@@ -105,6 +105,7 @@
   padding: 0.75rem;
   opacity: 0;
   transition: opacity 0.3s ease;
+  z-index: 3; /* Evite que le badge de statut bloque les boutons edit/duplicate/delete */
 }
 
 .overlay-btn {
@@ -166,6 +167,7 @@
   border-radius: 20px;
   backdrop-filter: blur(6px);
   text-transform: uppercase;
+  z-index: 2;
 
   mat-icon {
     font-size: 14px;
@@ -204,6 +206,33 @@
     background: rgba(#F59E0B, 0.95);
     color: $white;
     box-shadow: 0 2px 8px rgba(#F59E0B, 0.35);
+  }
+
+  &.pending-moderation-badge {
+    bottom: 0.75rem;
+    right: 0.75rem;
+    left: auto;
+    background: rgba($info-color, 0.95);
+    color: $white;
+    box-shadow: 0 2px 8px rgba($info-color, 0.35);
+  }
+
+  &.rejected-moderation-badge {
+    bottom: 0.75rem;
+    right: 0.75rem;
+    left: auto;
+    background: rgba($error-color, 0.95);
+    color: $white;
+    box-shadow: 0 2px 8px rgba($error-color, 0.35);
+  }
+
+  &.approved-moderation-badge {
+    bottom: 0.75rem;
+    right: 0.75rem;
+    left: auto;
+    background: rgba($success-color, 0.95);
+    color: $white;
+    box-shadow: 0 2px 8px rgba($success-color, 0.35);
   }
 }
 

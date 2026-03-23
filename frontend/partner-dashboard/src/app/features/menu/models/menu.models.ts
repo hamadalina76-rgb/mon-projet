@@ -68,6 +68,10 @@ export interface Product {
   promotionLabel?: string;
   promotionStartDate?: string;  // ISO date
   promotionEndDate?: string;  // ISO date
+  /** Moderation workflow for admin approvals. */
+  moderationStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  /** Motif de rejet en cas de REJECTED. */
+  moderationReason?: string;
   createdAt?: string;
   updatedAt?: string;
 }

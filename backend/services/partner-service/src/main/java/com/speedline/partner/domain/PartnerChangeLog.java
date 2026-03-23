@@ -59,6 +59,14 @@ public class PartnerChangeLog {
     @Column(name = "category_ids_after", length = 500)
     private String categoryIdsAfter;
 
+    // ── Product edit permission (menu products) ───────────────────────────────
+
+    @Column(name = "product_edit_permission_before")
+    private Boolean productEditPermissionBefore;
+
+    @Column(name = "product_edit_permission_after")
+    private Boolean productEditPermissionAfter;
+
     // ── Reason ───────────────────────────────────────────────────────────────
 
     @Column(name = "reason", columnDefinition = "TEXT")

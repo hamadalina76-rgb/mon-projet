@@ -4,9 +4,14 @@ import com.speedline.partner.domain.MenuCategory;
 import com.speedline.partner.domain.OptionValue;
 import com.speedline.partner.domain.Product;
 import com.speedline.partner.domain.ProductOption;
+import com.speedline.partner.domain.ProductModerationStatus;
 import com.speedline.partner.domain.ProductStatus;
 import com.speedline.partner.domain.ProductStock;
 import com.speedline.partner.domain.PromotionLog;
+import com.speedline.partner.domain.ProductHistoryBackup;
+import com.speedline.partner.domain.Partner;
+import com.speedline.partner.event.PartnerEvent;
+import com.speedline.partner.event.PartnerEventPublisher;
 import com.speedline.partner.dto.request.*;
 import com.speedline.partner.dto.response.ImportConfirmResult;
 import com.speedline.partner.dto.response.ImportPreviewResponse;
@@ -16,6 +21,7 @@ import com.speedline.partner.dto.response.ProductResponse;
 import com.speedline.partner.dto.response.PromotionLogResponse;
 import com.speedline.partner.exception.ResourceNotFoundException;
 import com.speedline.partner.repository.*;
+import com.speedline.partner.service.AuditLogService;
 import com.speedline.partner.service.MenuProductService;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +34,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.web.multipart.MultipartFile;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.BufferedReader;
 import java.time.LocalDate;
@@ -36,6 +44,7 @@ import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -60,6 +69,11 @@ public class MenuProductServiceImpl implements MenuProductService {
     private final OptionValueRepository optionValueRepository;
     private final MenuCategoryRepository menuCategoryRepository;
     private final PromotionLogRepository promotionLogRepository;
+    private final ProductHistoryBackupRepository productHistoryBackupRepository;
+    private final PartnerRepository partnerRepository;
+    private final PartnerEventPublisher partnerEventPublisher;
+    private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ========================= PRODUCTS — READ ==============
 
@@ -84,10 +98,26 @@ public class MenuProductServiceImpl implements MenuProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ProductResponse> getProductsPage(Long partnerId, String search, Long categoryId, String status, Pageable pageable) {
-        log.debug("getProductsPage partnerId={} search={} categoryId={} status={}", partnerId, search, categoryId, status);
+    public Page<ProductResponse> getProductsPage(
+            Long partnerId,
+            String search,
+            Long categoryId,
+            String status,
+            String moderationStatus,
+            Pageable pageable) {
+        log.debug("getProductsPage partnerId={} search={} categoryId={} status={} moderationStatus={}",
+                partnerId, search, categoryId, status, moderationStatus);
         Boolean isAvailable = null;
         List<Long> lowStockIds = null;
+        ProductModerationStatus moderationFilter = null;
+
+        if (moderationStatus != null && !moderationStatus.isBlank() && !"ALL".equalsIgnoreCase(moderationStatus)) {
+            try {
+                moderationFilter = ProductModerationStatus.valueOf(moderationStatus.trim().toUpperCase());
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException("Invalid moderationStatus: " + moderationStatus);
+            }
+        }
         if (status != null) {
             switch (status) {
                 case "available" -> isAvailable = true;
@@ -106,7 +136,14 @@ public class MenuProductServiceImpl implements MenuProductService {
             }
         }
         Page<Product> page = productRepository
-                .findProductsPage(partnerId, categoryId, search != null ? search.trim() : null, isAvailable, lowStockIds, pageable);
+                .findProductsPage(
+                        partnerId,
+                        categoryId,
+                        search != null ? search.trim() : null,
+                        isAvailable,
+                        moderationFilter,
+                        lowStockIds,
+                        pageable);
         List<Long> productIds = page.getContent().stream().map(Product::getId).toList();
         Map<Long, String> stockStatusMap = buildStockStatusMap(productIds);
         return page.map(p -> toProductResponse(p, stockStatusMap.get(p.getId())));
@@ -158,6 +195,11 @@ public class MenuProductServiceImpl implements MenuProductService {
     public ProductResponse createProduct(Long partnerId, CreateProductRequest req) {
         log.info("createProduct partnerId={} name={}", partnerId, req.getName());
 
+        boolean allowDirectEdits = isProductAutoApprovalEnabled(partnerId);
+        ProductModerationStatus initialModerationStatus = allowDirectEdits
+                ? ProductModerationStatus.APPROVED
+                : ProductModerationStatus.PENDING;
+
         int nextPos = resolveNextProductPosition(partnerId, req.getPosition());
 
         Product product = Product.builder()
@@ -173,10 +215,53 @@ public class MenuProductServiceImpl implements MenuProductService {
                 .displayOrder(nextPos)
                 .tags(req.getTags())
                 .status(ProductStatus.ACTIVE)
+                .moderationStatus(initialModerationStatus)
                 .build();
 
         Product saved = productRepository.save(product);
         log.info("Product created id={}", saved.getId());
+
+        auditLogService.logWithChanges(
+                null,
+                "PRODUCT_SUBMITTED",
+                "PRODUCT",
+                saved.getId(),
+                null,
+                buildProductSnapshot(saved),
+                allowDirectEdits ? "Created by partner, auto-approved" : "Created by partner, pending moderation"
+        );
+        saveProductHistoryBackup(
+                saved.getPartnerId(),
+                saved.getId(),
+                "PRODUCT_SUBMITTED",
+                "PARTNER",
+                null,
+                null,
+                buildProductSnapshot(saved),
+                null
+        );
+
+        if (allowDirectEdits) {
+            // Record an APPROVE entry so UI knows there is no pending diff to review.
+            saveProductHistoryBackup(
+                    saved.getPartnerId(),
+                    saved.getId(),
+                    "APPROVE",
+                    "SYSTEM",
+                    null,
+                    "{\"moderationStatus\":\"PENDING\"}",
+                    "{\"moderationStatus\":\"APPROVED\"}",
+                    null
+            );
+            publishProductDecisionEvent(
+                    saved,
+                    ProductModerationStatus.APPROVED,
+                    null,
+                    PartnerEvent.EventType.PRODUCT_APPROVED
+            );
+        } else {
+            publishProductModerationRequest(partnerId, saved);
+        }
         return toProductResponse(saved);
     }
 
@@ -186,6 +271,8 @@ public class MenuProductServiceImpl implements MenuProductService {
         log.info("updateProduct partnerId={} productId={}", partnerId, productId);
 
         Product product = findProductOrThrow(partnerId, productId);
+        String beforeSnapshot = buildProductSnapshot(product);
+        boolean allowDirectEdits = isProductAutoApprovalEnabled(partnerId);
 
         if (req.getName() != null)             product.setName(req.getName());
         if (req.getPrice() != null)            product.setPrice(req.getPrice());
@@ -198,7 +285,53 @@ public class MenuProductServiceImpl implements MenuProductService {
         if (req.getPosition() != null)         product.setDisplayOrder(req.getPosition());
         if (req.getTags() != null)             product.setTags(req.getTags());
 
-        return toProductResponse(productRepository.save(product));
+        // Re-moderation for any product change unless partner is allowed to auto-approve.
+        product.setModerationStatus(allowDirectEdits ? ProductModerationStatus.APPROVED : ProductModerationStatus.PENDING);
+        product.setModerationReason(null);
+
+        Product saved = productRepository.save(product);
+
+        auditLogService.logWithChanges(
+                null,
+                "PRODUCT_RESUBMITTED",
+                "PRODUCT",
+                saved.getId(),
+                beforeSnapshot,
+                buildProductSnapshot(saved),
+                allowDirectEdits ? "Updated by partner, auto-approved" : "Updated by partner, pending moderation"
+        );
+        saveProductHistoryBackup(
+                saved.getPartnerId(),
+                saved.getId(),
+                "PRODUCT_RESUBMITTED",
+                "PARTNER",
+                null,
+                beforeSnapshot,
+                buildProductSnapshot(saved),
+                null
+        );
+
+        if (allowDirectEdits) {
+            saveProductHistoryBackup(
+                    saved.getPartnerId(),
+                    saved.getId(),
+                    "APPROVE",
+                    "SYSTEM",
+                    null,
+                    "{\"moderationStatus\":\"PENDING\"}",
+                    "{\"moderationStatus\":\"APPROVED\"}",
+                    null
+            );
+            publishProductDecisionEvent(
+                    saved,
+                    ProductModerationStatus.APPROVED,
+                    null,
+                    PartnerEvent.EventType.PRODUCT_APPROVED
+            );
+        } else {
+            publishProductModerationRequest(partnerId, saved);
+        }
+        return toProductResponse(saved);
     }
 
     @Override
@@ -266,6 +399,122 @@ public class MenuProductServiceImpl implements MenuProductService {
         productRepository.save(product);
     }
 
+    // ========================= MODERATION (admin) =========================
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> getPendingProducts(Pageable pageable) {
+        return productRepository
+                .findByModerationStatusAndStatusNot(
+                        ProductModerationStatus.PENDING,
+                        ProductStatus.DELETED,
+                        pageable
+                )
+                .map(this::toProductResponse);
+    }
+
+    @Override
+    @CacheEvict(value = "menus:full", allEntries = true)
+    public ProductResponse approveProduct(Long productId, Long adminId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", productId));
+
+        if (product.getStatus() == ProductStatus.DELETED) {
+            throw new IllegalStateException("Cannot approve a deleted product");
+        }
+
+        if (product.getModerationStatus() != ProductModerationStatus.PENDING) {
+            throw new IllegalStateException("Product is not pending moderation");
+        }
+
+        product.setModerationStatus(ProductModerationStatus.APPROVED);
+        product.setModerationReason(null);
+
+        Product saved = productRepository.save(product);
+
+        // Audit history
+        auditLogService.logWithChanges(
+                adminId,
+                "APPROVE",
+                "PRODUCT",
+                productId,
+                "{\"moderationStatus\":\"PENDING\"}",
+                "{\"moderationStatus\":\"APPROVED\"}",
+                null
+        );
+        saveProductHistoryBackup(
+                saved.getPartnerId(),
+                saved.getId(),
+                "APPROVE",
+                "ADMIN",
+                adminId,
+                "{\"moderationStatus\":\"PENDING\"}",
+                "{\"moderationStatus\":\"APPROVED\"}",
+                null
+        );
+
+        // Notify partner via Pub/Sub -> notification-service
+        publishProductDecisionEvent(
+                saved,
+                ProductModerationStatus.APPROVED,
+                null,
+                PartnerEvent.EventType.PRODUCT_APPROVED
+        );
+
+        return toProductResponse(saved);
+    }
+
+    @Override
+    @CacheEvict(value = "menus:full", allEntries = true)
+    public ProductResponse rejectProduct(Long productId, Long adminId, String reason) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", productId));
+
+        if (product.getStatus() == ProductStatus.DELETED) {
+            throw new IllegalStateException("Cannot reject a deleted product");
+        }
+
+        if (product.getModerationStatus() != ProductModerationStatus.PENDING) {
+            throw new IllegalStateException("Product is not pending moderation");
+        }
+
+        product.setModerationStatus(ProductModerationStatus.REJECTED);
+        product.setModerationReason(reason);
+
+        Product saved = productRepository.save(product);
+
+        // Audit history
+        auditLogService.logWithChanges(
+                adminId,
+                "REJECT",
+                "PRODUCT",
+                productId,
+                "{\"moderationStatus\":\"PENDING\"}",
+                "{\"moderationStatus\":\"REJECTED\"}",
+                reason
+        );
+        saveProductHistoryBackup(
+                saved.getPartnerId(),
+                saved.getId(),
+                "REJECT",
+                "ADMIN",
+                adminId,
+                "{\"moderationStatus\":\"PENDING\"}",
+                "{\"moderationStatus\":\"REJECTED\"}",
+                reason
+        );
+
+        // Notify partner via Pub/Sub -> notification-service
+        publishProductDecisionEvent(
+                saved,
+                ProductModerationStatus.REJECTED,
+                reason,
+                PartnerEvent.EventType.PRODUCT_REJECTED
+        );
+
+        return toProductResponse(saved);
+    }
+
     @Override
     @CacheEvict(value = "menus:full", key = "#partnerId")
     public ProductResponse updateAvailability(Long partnerId, Long productId,
@@ -311,6 +560,7 @@ public class MenuProductServiceImpl implements MenuProductService {
                 .toList();
         java.time.LocalDateTime appliedAt = java.time.LocalDateTime.now();
         for (Product p : products) {
+            String beforeSnapshot = buildProductSnapshot(p);
             p.setPromotionLabel(promotionLabel != null && !promotionLabel.isBlank() ? promotionLabel.trim() : null);
             p.setPromotionStartDate(promotionStartDate);
             p.setPromotionEndDate(promotionEndDate);
@@ -331,6 +581,16 @@ public class MenuProductServiceImpl implements MenuProductService {
                 }
             }
             productRepository.save(p);
+            saveProductHistoryBackup(
+                    p.getPartnerId(),
+                    p.getId(),
+                    "PRODUCT_PROMOTION_UPDATED",
+                    "PARTNER",
+                    null,
+                    beforeSnapshot,
+                    buildProductSnapshot(p),
+                    null
+            );
             // Historique : log pour chaque produit (même en cas de suppression de promo)
             promotionLogRepository.save(PromotionLog.builder()
                     .partnerId(partnerId)
@@ -790,12 +1050,6 @@ public class MenuProductServiceImpl implements MenuProductService {
     // ========================= MAPPING ======================
 
     ProductResponse toProductResponse(Product p) {
-        List<OptionGroupResponse> optionGroups = productOptionRepository
-                .findByProductIdAndIsActiveTrueOrderByDisplayOrderAsc(p.getId())
-                .stream()
-                .map(og -> toGroupResponse(og, p.getId()))
-                .collect(Collectors.toList());
-
         return toProductResponse(p, null);
     }
 
@@ -806,7 +1060,7 @@ public class MenuProductServiceImpl implements MenuProductService {
                 .map(og -> toGroupResponse(og, p.getId()))
                 .collect(Collectors.toList());
 
-        return ProductResponse.builder()
+        ProductResponse response = ProductResponse.builder()
                 .id(p.getId())
                 .categoryId(p.getCategoryId())
                 .partnerId(p.getPartnerId())
@@ -828,7 +1082,94 @@ public class MenuProductServiceImpl implements MenuProductService {
                 .promotionEndDate(p.getPromotionEndDate())
                 .originalPrice(p.getOriginalPrice())
                 .discountPercentage(p.getDiscountPercentage())
+                .moderationStatus(p.getModerationStatus())
+                .moderationReason(p.getModerationReason())
                 .build();
+
+        attachPendingPartnerChangesDetails(response, p.getId());
+        return response;
+    }
+
+    private void attachPendingPartnerChangesDetails(ProductResponse response, Long productId) {
+        List<ProductHistoryBackup> history = productHistoryBackupRepository.findByProductIdOrderByCreatedAtAsc(productId);
+        if (history == null || history.isEmpty()) return;
+
+        int startIdx = 0;
+        for (int i = history.size() - 1; i >= 0; i--) {
+            String action = history.get(i).getAction();
+            if ("APPROVE".equals(action) || "REJECT".equals(action)) {
+                startIdx = i + 1;
+                break;
+            }
+        }
+
+        List<ProductHistoryBackup> pendingPartnerActions = history.subList(startIdx, history.size()).stream()
+                .filter(this::isPendingPartnerChangeEntry)
+                .toList();
+
+        if (pendingPartnerActions.isEmpty()) {
+            return;
+        }
+
+        Map<String, Object> firstBefore = new LinkedHashMap<>();
+        Map<String, Object> latestAfter = new LinkedHashMap<>();
+        ProductHistoryBackup latestEntry = pendingPartnerActions.get(pendingPartnerActions.size() - 1);
+
+        for (ProductHistoryBackup entry : pendingPartnerActions) {
+            Map<String, Object> beforeMap = parseJsonMap(entry.getChangesBefore());
+            Map<String, Object> afterMap = parseJsonMap(entry.getChangesAfter());
+            for (Map.Entry<String, Object> e : beforeMap.entrySet()) {
+                if (!firstBefore.containsKey(e.getKey())) {
+                    firstBefore.put(e.getKey(), e.getValue());
+                }
+            }
+            latestAfter.putAll(afterMap);
+        }
+
+        Map<String, Object> mergedBefore = new LinkedHashMap<>();
+        Map<String, Object> mergedAfter = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> e : latestAfter.entrySet()) {
+            String key = e.getKey();
+            Object before = firstBefore.containsKey(key) ? firstBefore.get(key) : null;
+            Object after = e.getValue();
+            if (!areEquivalentSnapshotValues(before, after)) {
+                mergedBefore.put(key, before);
+                mergedAfter.put(key, after);
+            }
+        }
+
+        if (mergedAfter.isEmpty()) return;
+
+        response.setLastChangesBefore(writeJsonMap(mergedBefore));
+        response.setLastChangesAfter(writeJsonMap(mergedAfter));
+        response.setLastAuditAction(latestEntry.getAction());
+        response.setLastAuditAt(latestEntry.getCreatedAt());
+    }
+
+    private boolean isPendingPartnerChangeEntry(ProductHistoryBackup entry) {
+        if (entry == null) return false;
+        String actorType = entry.getActorType();
+        if (actorType != null && "PARTNER".equalsIgnoreCase(actorType.trim())) return true;
+
+        String action = entry.getAction() == null ? "" : entry.getAction().trim();
+        return "PRODUCT_SUBMITTED".equals(action)
+                || "PRODUCT_RESUBMITTED".equals(action)
+                || "PRODUCT_PROMOTION_UPDATED".equals(action);
+    }
+
+    private boolean areEquivalentSnapshotValues(Object before, Object after) {
+        if (Objects.equals(before, after)) return true;
+        if (before == null || after == null) return false;
+
+        String b = String.valueOf(before).trim();
+        String a = String.valueOf(after).trim();
+        if (b.equals(a)) return true;
+
+        try {
+            return new BigDecimal(b).compareTo(new BigDecimal(a)) == 0;
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     private OptionGroupResponse toGroupResponse(ProductOption og, Long productId) {
@@ -902,5 +1243,162 @@ public class MenuProductServiceImpl implements MenuProductService {
                 .findTopByOptionIdOrderByDisplayOrderDesc(groupId)
                 .map(v -> (v.getDisplayOrder() == null ? 0 : v.getDisplayOrder()) + 1)
                 .orElse(1);
+    }
+
+    private void publishProductModerationRequest(Long partnerId, Product product) {
+        try {
+            var partnerOpt = partnerRepository.findById(partnerId);
+            if (partnerOpt.isEmpty()) {
+                log.warn("publishProductModerationRequest: partner not found id={}", partnerId);
+                return;
+            }
+            var partner = partnerOpt.get();
+
+            partnerEventPublisher.publish(PartnerEvent.builder()
+                    .eventType(PartnerEvent.EventType.PRODUCT_REQUEST_SUBMITTED)
+                    .partnerId(partnerId)
+                    .userId(partner.getUserId())
+                    .businessName(partner.getBusinessName())
+                    .brandName(partner.getBrandName())
+                    .email(partner.getEmail())
+                    .status(ProductModerationStatus.PENDING.name())
+                    .newModerationStatus(ProductModerationStatus.PENDING.name())
+                    .reason(null)
+                    .productId(product.getId())
+                    .productName(product.getName())
+                    .timestamp(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            log.error("publishProductModerationRequest failed: partnerId={}, productId={}: {}", partnerId, product.getId(), e.getMessage(), e);
+        }
+    }
+
+    private boolean isProductAutoApprovalEnabled(Long partnerId) {
+        try {
+            return partnerRepository.findById(partnerId)
+                    .map(Partner::getAllowProductUpdatesWithoutApproval)
+                    .map(Boolean.TRUE::equals)
+                    .orElse(false);
+        } catch (Exception e) {
+            log.warn("Could not load partner auto-approval flag for partnerId={}: {}", partnerId, e.getMessage());
+            return false;
+        }
+    }
+
+    private String buildProductSnapshot(Product p) {
+        return String.format(
+                "{\"name\":\"%s\",\"description\":\"%s\",\"price\":\"%s\",\"originalPrice\":\"%s\",\"discountPercentage\":\"%s\",\"categoryId\":%s,\"imageUrl\":\"%s\",\"tags\":\"%s\",\"isAvailable\":%s,\"isPopular\":%s,\"preparationTimeMin\":%s,\"stockQuantity\":%s,\"promotionLabel\":\"%s\",\"promotionStartDate\":\"%s\",\"promotionEndDate\":\"%s\",\"isVegetarian\":%s,\"isVegan\":%s,\"isHalal\":%s,\"isGlutenFree\":%s,\"spicyLevel\":%s,\"isNew\":%s,\"isFeatured\":%s,\"status\":\"%s\",\"moderationStatus\":\"%s\"}",
+                safe(p.getName()),
+                safe(p.getDescription()),
+                p.getPrice() != null ? p.getPrice().toPlainString() : "",
+                p.getOriginalPrice() != null ? p.getOriginalPrice().toPlainString() : "",
+                p.getDiscountPercentage() != null ? p.getDiscountPercentage().toPlainString() : "",
+                p.getCategoryId(),
+                safe(p.getImage()),
+                safe(p.getTags()),
+                p.getIsAvailable(),
+                p.getIsPopular(),
+                p.getPreparationTime(),
+                p.getStockQuantity(),
+                safe(p.getPromotionLabel()),
+                p.getPromotionStartDate() != null ? p.getPromotionStartDate().toString() : "",
+                p.getPromotionEndDate() != null ? p.getPromotionEndDate().toString() : "",
+                p.getIsVegetarian(),
+                p.getIsVegan(),
+                p.getIsHalal(),
+                p.getIsGlutenFree(),
+                p.getSpicyLevel(),
+                p.getIsNew(),
+                p.getIsFeatured(),
+                p.getStatus() != null ? p.getStatus().name() : "",
+                p.getModerationStatus() != null ? p.getModerationStatus().name() : ""
+        );
+    }
+
+    private String safe(String value) {
+        if (value == null) return "";
+        return value.replace("\"", "\\\"");
+    }
+
+    private Map<String, Object> parseJsonMap(String raw) {
+        if (raw == null || raw.isBlank()) return new LinkedHashMap<>();
+        try {
+            return objectMapper.readValue(raw, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception ignored) {
+            return new LinkedHashMap<>();
+        }
+    }
+
+    private String writeJsonMap(Map<String, Object> map) {
+        try {
+            return objectMapper.writeValueAsString(map);
+        } catch (Exception ignored) {
+            return "{}";
+        }
+    }
+
+    private void saveProductHistoryBackup(
+            Long partnerId,
+            Long productId,
+            String action,
+            String actorType,
+            Long actorId,
+            String changesBefore,
+            String changesAfter,
+            String reason) {
+        try {
+            productHistoryBackupRepository.save(ProductHistoryBackup.builder()
+                    .partnerId(partnerId)
+                    .productId(productId)
+                    .action(action)
+                    .actorType(actorType)
+                    .actorId(actorId)
+                    .changesBefore(changesBefore)
+                    .changesAfter(changesAfter)
+                    .reason(reason)
+                    .build());
+        } catch (Exception ex) {
+            log.warn("Failed to save product history backup productId={} action={} error={}", productId, action, ex.getMessage());
+        }
+    }
+
+    private void publishProductDecisionEvent(
+            Product product,
+            ProductModerationStatus newStatus,
+            String reason,
+            PartnerEvent.EventType eventType) {
+        Long partnerId = product.getPartnerId();
+        try {
+            var partnerOpt = partnerRepository.findById(partnerId);
+            if (partnerOpt.isEmpty()) {
+                log.warn("publishProductDecisionEvent: partner not found id={}", partnerId);
+                return;
+            }
+            var partner = partnerOpt.get();
+
+            partnerEventPublisher.publish(PartnerEvent.builder()
+                    .eventType(eventType)
+                    .partnerId(partnerId)
+                    .userId(partner.getUserId())
+                    .businessName(partner.getBusinessName())
+                    .brandName(partner.getBrandName())
+                    .email(partner.getEmail())
+                    .status(newStatus.name())
+                    .newModerationStatus(newStatus.name())
+                    .reason(reason)
+                    .productId(product.getId())
+                    .productName(product.getName())
+                    .timestamp(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            log.error(
+                    "publishProductDecisionEvent failed: partnerId={}, productId={}, newStatus={}: {}",
+                    partnerId,
+                    product.getId(),
+                    newStatus,
+                    e.getMessage(),
+                    e
+            );
+        }
     }
 }

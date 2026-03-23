@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
@@ -22,5 +23,16 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
             Pageable pageable
     );
 
+    Page<AuditLog> findByEntityTypeAndEntityIdInOrderByTimestampDesc(
+            String entityType,
+            List<Long> entityIds,
+            Pageable pageable
+    );
+
     List<AuditLog> findByAdminIdOrderByTimestampDesc(Long adminId);
+
+    Optional<AuditLog> findTopByEntityTypeAndEntityIdOrderByTimestampDesc(
+            String entityType,
+            Long entityId
+    );
 }

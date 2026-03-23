@@ -42,4 +42,29 @@ public interface PartnerChangeLogRepository extends JpaRepository<PartnerChangeL
             @Param("dateTo")    LocalDateTime dateTo,
             Pageable pageable
     );
+
+    @Query(
+        value = "SELECT * FROM partner_change_logs l" +
+                " WHERE l.partner_id = :partnerId" +
+                " AND (CAST(:action AS VARCHAR) IS NULL OR l.action = :action)" +
+                " AND l.admin_id IN (:adminIds)" +
+                " AND (CAST(:dateFrom AS TIMESTAMP) IS NULL OR l.changed_at >= CAST(:dateFrom AS TIMESTAMP))" +
+                " AND (CAST(:dateTo AS TIMESTAMP) IS NULL OR l.changed_at <= CAST(:dateTo AS TIMESTAMP))" +
+                " ORDER BY l.changed_at DESC",
+        countQuery = "SELECT COUNT(*) FROM partner_change_logs l" +
+                " WHERE l.partner_id = :partnerId" +
+                " AND (CAST(:action AS VARCHAR) IS NULL OR l.action = :action)" +
+                " AND l.admin_id IN (:adminIds)" +
+                " AND (CAST(:dateFrom AS TIMESTAMP) IS NULL OR l.changed_at >= CAST(:dateFrom AS TIMESTAMP))" +
+                " AND (CAST(:dateTo AS TIMESTAMP) IS NULL OR l.changed_at <= CAST(:dateTo AS TIMESTAMP))",
+        nativeQuery = true
+    )
+    Page<PartnerChangeLog> searchLogsByAdminIds(
+            @Param("partnerId") Long partnerId,
+            @Param("action") String action,
+            @Param("adminIds") List<Long> adminIds,
+            @Param("dateFrom") LocalDateTime dateFrom,
+            @Param("dateTo") LocalDateTime dateTo,
+            Pageable pageable
+    );
 }

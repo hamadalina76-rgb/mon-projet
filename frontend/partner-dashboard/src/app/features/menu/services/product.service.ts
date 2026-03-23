@@ -29,6 +29,7 @@ export class ProductService {
     search?: string;
     categoryId?: number | null;
     status?: string;
+    moderationStatus?: string;
     page: number;
     size: number;
   }): Observable<{ content: Product[]; totalElements: number; totalPages: number; size: number; number: number }> {
@@ -39,6 +40,11 @@ export class ProductService {
     };
     if (params.search != null && params.search !== '') q['search'] = params.search;
     if (params.categoryId != null) q['categoryId'] = params.categoryId;
+    if (params.moderationStatus != null && String(params.moderationStatus).trim() !== '' && String(params.moderationStatus).toUpperCase() !== 'ALL') {
+      q['moderationStatus'] = String(params.moderationStatus).trim().toUpperCase();
+    } else {
+      // Let backend defaultValue="ALL" handle it (omitting param keeps requests smaller).
+    }
     return this.api.get<{ content: Product[]; totalElements: number; totalPages: number; size: number; number: number }>(
       this.base(),
       q

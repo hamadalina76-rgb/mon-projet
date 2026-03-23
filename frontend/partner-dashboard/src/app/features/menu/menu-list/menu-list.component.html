@@ -209,6 +209,14 @@
               <mat-option value="low_stock">{{ 'MENU.LIST.STATUS_LOW_STOCK' | translate }}</mat-option>
             </mat-select>
           </mat-form-field>
+          <mat-form-field appearance="outline" class="moderation-field">
+            <mat-label>Modération</mat-label>
+            <mat-select [value]="moderationStatusFilter()" (selectionChange)="onModerationStatusFilterChange($event.value)">
+              <mat-option value="ALL">Tous</mat-option>
+              <mat-option value="PENDING">En attente</mat-option>
+              <mat-option value="APPROVED">Validés</mat-option>
+            </mat-select>
+          </mat-form-field>
           <div class="view-toggle">
             <button mat-icon-button [class.active]="viewMode() === 'grid'" (click)="viewMode.set('grid')" [matTooltip]="'MENU.LIST.VIEW_GRID' | translate">
               <mat-icon>grid_view</mat-icon>
@@ -292,6 +300,20 @@
                     } @else { — }
                   </td>
                 </ng-container>
+                <ng-container matColumnDef="moderation">
+                  <th mat-header-cell *matHeaderCellDef>Statut</th>
+                  <td mat-cell *matCellDef="let p">
+                    @if (p.moderationStatus === 'PENDING') {
+                      <span class="badge-moderation pending">En attente</span>
+                    } @else if (p.moderationStatus === 'REJECTED') {
+                      <span class="badge-moderation rejected" [matTooltip]="p.moderationReason || ''">Rejeté</span>
+                    } @else if (p.moderationStatus === 'APPROVED') {
+                      <span class="badge-moderation approved">Validé</span>
+                    } @else {
+                      — 
+                    }
+                  </td>
+                </ng-container>
                 <ng-container matColumnDef="available">
                   <th mat-header-cell *matHeaderCellDef>{{ 'MENU.LIST.TABLE_AVAILABLE' | translate }}</th>
                   <td mat-cell *matCellDef="let p">
@@ -306,8 +328,8 @@
                     <button mat-icon-button (click)="deleteProduct(p.id)" [matTooltip]="'MENU.PRODUCT_CARD.TOOLTIP_DELETE' | translate"><mat-icon>delete_outline</mat-icon></button>
                   </td>
                 </ng-container>
-                <tr mat-header-row *matHeaderRowDef="['image','name','category','price','promo','stock','available','actions']"></tr>
-                <tr mat-row *matRowDef="let row; columns: ['image','name','category','price','promo','stock','available','actions']"></tr>
+                <tr mat-header-row *matHeaderRowDef="['image','name','category','price','promo','stock','moderation','available','actions']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['image','name','category','price','promo','stock','moderation','available','actions']"></tr>
               </table>
             }
           </div>

@@ -55,6 +55,7 @@
     "refunds": "Remboursements",
     "promotions": "Promotions",
     "reviews": "Avis",
+    "products": "Produits",
     "support": "Support",
     "zones": "Zones",
     "analytics": "Analytiques",
@@ -489,6 +490,10 @@
       "subcategories": "Sous-catégories",
       "cancel": "Annuler",
       "approve": "Approuver avec commission",
+      "productEditPermissionTitle": "Modification des produits",
+      "productEditPermissionLabel": "Autoriser le partenaire à modifier ses produits sans validation",
+      "productEditPermissionHint": "Si activé, les produits passent automatiquement en validés. Sinon, ils suivent le flux normal d'approbation."
+      "approve": "Approuver avec commission",
       "zonesStep": "Zones",
       "zonesTitle": "Zones de livraison",
       "zonesDesc": "Sélectionnez les zones où ce partenaire peut livrer.",
@@ -550,7 +555,10 @@
       "cancel": "Annuler",
       "successTitle": "Partenaire modifié",
       "successMessage": "Les informations de {{name}} ont été mises à jour.",
-      "errorMessage": "Une erreur est survenue lors de la modification."
+      "errorMessage": "Une erreur est survenue lors de la modification.",
+      "productEditPermissionTitle": "Modification des produits",
+      "productEditPermissionLabel": "Autoriser le partenaire à modifier ses produits sans validation",
+      "productEditPermissionHint": "Si activé, les produits passent automatiquement en validés. Sinon, ils suivent le flux normal d'approbation."
     },
     "detail": {
       "title": "Détails du partenaire",
@@ -570,6 +578,7 @@
       "freeDeliveryThreshold": "Livraison gratuite à partir de",
       "accountActive": "Compte actif",
       "acceptsOrders": "Accepte commandes",
+      "allowProductUpdatesWithoutApproval": "Autoriser le partenaire à modifier ses produits sans approbation",
       "closed": "Fermé",
       "categoriesTags": "Catégories et tags",
       "categories": "Catégories",
@@ -654,6 +663,7 @@
         "colDate": "Date",
         "colAction": "Action",
         "colAdmin": "Administrateur",
+        "colAdminFullName": "Nom complet",
         "colChanges": "Modifications",
         "labelStatus": "Statut",
         "labelCommission": "Commission",
@@ -674,6 +684,10 @@
           "DEACTIVATE": "Désactivé",
           "SUSPEND": "Suspendu",
           "UPDATE_INFO": "Mis à jour"
+        },
+        "productEditPermission": {
+          "autoApproved": "Produits validés automatiquement",
+          "requiresApproval": "Approbation requise avant modification"
         }
       }
     },

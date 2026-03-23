@@ -186,6 +186,21 @@
       </div>
     </div>
 
+    <!-- Product moderation permission -->
+    <mat-divider></mat-divider>
+    <div class="section">
+      <div class="section-label">
+        <span class="material-icons-round sl-icon">edit</span>
+        <span>{{ 'partners.commission.productEditPermissionTitle' | translate }}</span>
+      </div>
+      <mat-slide-toggle formControlName="allowProductUpdatesWithoutApproval" class="product-edit-toggle">
+        {{ 'partners.commission.productEditPermissionLabel' | translate }}
+      </mat-slide-toggle>
+      <p class="toggle-hint">
+        {{ 'partners.commission.productEditPermissionHint' | translate }}
+      </p>
+    </div>
+
     <!-- Summary -->
     <div class="summary-card" *ngIf="isFormValid()">
       <div class="summary-header">

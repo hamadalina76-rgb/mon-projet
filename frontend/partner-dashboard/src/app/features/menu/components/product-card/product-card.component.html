@@ -39,6 +39,25 @@
         {{ product().promotionLabel }}
       </div>
     }
+    @if (product().moderationStatus === 'PENDING') {
+      <div class="status-badge pending-moderation-badge">
+        <mat-icon>hourglass_empty</mat-icon>
+        En attente
+      </div>
+    } @else if (product().moderationStatus === 'REJECTED') {
+      <div
+        class="status-badge rejected-moderation-badge"
+        [matTooltip]="product().moderationReason || ''"
+      >
+        <mat-icon>cancel</mat-icon>
+        Rejeté
+      </div>
+    } @else if (product().moderationStatus === 'APPROVED') {
+      <div class="status-badge approved-moderation-badge">
+        <mat-icon>check_circle</mat-icon>
+        Validé
+      </div>
+    }
   </div>
 
   <!-- Content section -->

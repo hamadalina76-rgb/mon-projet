@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import java.util.Objects;
 
 /**
  * Initialise automatiquement le profil admin pour le SUPER_ADMIN
@@ -45,18 +46,22 @@ public class SuperAdminProfileInitializer implements CommandLineRunner {
                 return;
             }
 
-            // Récupérer l'utilisateur depuis auth-service (pour obtenir le userId)
             try {
-                // Note: On suppose que le SUPER_ADMIN a été créé par auth-service
-                // Le userId sera probablement 1 car c'est le premier utilisateur créé
-                
                 log.info("╔════════════════════════════════════════════════════════╗");
                 log.info("║  Création du profil SUPER_ADMIN dans user-service     ║");
                 log.info("╚════════════════════════════════════════════════════════╝");
 
-                // Créer le profil admin
-                // userId = 1 car c'est le premier utilisateur créé par auth-service
-                Long userId = 1L;
+                // Resolve actual userId from auth-service instead of assuming 1.
+                Long userId = resolveSuperAdminUserId();
+                if (userId == null) {
+                    log.warn("⚠️  Impossible de résoudre le userId du SUPER_ADMIN depuis auth-service.");
+                    return;
+                }
+
+                if (adminRepository.existsByUserId(userId)) {
+                    log.info("✓ Profil SUPER_ADMIN déjà existant pour userId={}", userId);
+                    return;
+                }
                 
                 Admin superAdminProfile = Admin.builder()
                         .userId(userId)
@@ -67,7 +72,7 @@ public class SuperAdminProfileInitializer implements CommandLineRunner {
                         .notes("Compte SUPER_ADMIN créé automatiquement au démarrage")
                         .build();
 
-                adminRepository.save(superAdminProfile);
+                adminRepository.save(Objects.requireNonNull(superAdminProfile));
 
                 log.info("╔════════════════════════════════════════════════════════╗");
                 log.info("║  ✓ PROFIL SUPER_ADMIN CRÉÉ AVEC SUCCÈS                ║");
@@ -87,6 +92,17 @@ public class SuperAdminProfileInitializer implements CommandLineRunner {
 
         } catch (Exception e) {
             log.error("❌ Erreur lors de l'initialisation du profil SUPER_ADMIN: {}", e.getMessage(), e);
+        }
+    }
+
+    private Long resolveSuperAdminUserId() {
+        try {
+            var ids = authServiceClient.searchUserIds(SUPER_ADMIN_EMAIL, "SUPER_ADMIN");
+            if (ids == null || ids.isEmpty()) return null;
+            return ids.get(0);
+        } catch (Exception e) {
+            log.warn("⚠️  searchUserIds(SUPER_ADMIN) a échoué: {}", e.getMessage());
+            return null;
         }
     }
 }

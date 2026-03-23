@@ -21,7 +21,12 @@
 
     <!-- Table Container -->
     <div class="table-container">
-      @if (loading) {
+      @if (error) {
+        <div class="error-state">
+          <span class="material-icons-round">error</span>
+          <p>{{ error | translate }}</p>
+        </div>
+      } @else if (loading) {
         <div class="loading-state">
           <span class="material-icons-round spin">refresh</span>
           <p>{{ 'common.loading' | translate }}</p>
