@@ -94,6 +94,9 @@ public class CourierDTO {
     @Schema(description = "Raison de la suspension (si suspendu)")
     private String suspensionReason;
 
+    @Schema(description = "Type de livreur : INTERNAL ou EXTERNAL", example = "INTERNAL")
+    private com.speedline.user.domain.CourierType courierType;
+
     @Schema(description = "Livreur disponible pour des livraisons", example = "true")
     private Boolean isAvailable;
 

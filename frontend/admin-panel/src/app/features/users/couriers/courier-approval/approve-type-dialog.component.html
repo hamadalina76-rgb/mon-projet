@@ -1,0 +1,185 @@
+<div class="atd-root">
+
+  <!-- ═══ HEADER ══════════════════════════════════════════════════════════ -->
+  <div class="atd-header">
+    <div class="atd-header__badge">
+      <mat-icon>how_to_reg</mat-icon>
+    </div>
+    <div class="atd-header__text">
+      <h2>{{ 'users.couriers.approveTypeTitle' | translate }}</h2>
+      <p>{{ 'users.couriers.approveTypeMessage' | translate }}</p>
+    </div>
+    <button class="atd-close" (click)="onCancel()" type="button" aria-label="Fermer">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- ═══ CARDS ════════════════════════════════════════════════════════════ -->
+  <div class="atd-body">
+    <div class="atd-grid">
+
+      <!-- INTERNE -->
+      <button
+        class="atd-card atd-card--internal"
+        [class.atd-card--active]="selected() === 'INTERNAL'"
+        (click)="select('INTERNAL')"
+        type="button"
+        matRipple
+        matRippleColor="rgba(227,30,36,0.08)">
+        <div class="atd-card__shine"></div>
+
+        <div class="atd-card__check" [class.atd-card__check--on]="selected() === 'INTERNAL'">
+          @if (selected() === 'INTERNAL') {
+            <mat-icon>check</mat-icon>
+          }
+        </div>
+
+        <div class="atd-card__icon">
+          <mat-icon>badge</mat-icon>
+        </div>
+
+        <div class="atd-card__content">
+          <span class="atd-card__label">{{ 'users.couriers.internal' | translate }}</span>
+          <p class="atd-card__desc">{{ 'users.couriers.internalDesc' | translate }}</p>
+        </div>
+      </button>
+
+      <!-- EXTERNE -->
+      <button
+        class="atd-card atd-card--external"
+        [class.atd-card--active]="selected() === 'EXTERNAL'"
+        (click)="select('EXTERNAL')"
+        type="button"
+        matRipple
+        matRippleColor="rgba(16,185,129,0.08)">
+        <div class="atd-card__shine"></div>
+
+        <div class="atd-card__check" [class.atd-card__check--on]="selected() === 'EXTERNAL'">
+          @if (selected() === 'EXTERNAL') {
+            <mat-icon>check</mat-icon>
+          }
+        </div>
+
+        <div class="atd-card__icon">
+          <mat-icon>handshake</mat-icon>
+        </div>
+
+        <div class="atd-card__content">
+          <span class="atd-card__label">{{ 'users.couriers.external' | translate }}</span>
+          <p class="atd-card__desc">{{ 'users.couriers.externalDesc' | translate }}</p>
+        </div>
+      </button>
+
+    </div>
+
+    <!-- ═══ TEMPLATE PICKER (INTERNAL only) ═══════════════════════════════ -->
+    @if (selected() === 'INTERNAL') {
+      <div class="atd-tpl-section">
+        <div class="atd-tpl-section__header">
+          <span class="material-icons-round atd-tpl-section__icon">calendar_month</span>
+          <div>
+            <span class="atd-tpl-section__title">{{ 'schedule.assignOnApprove' | translate }}</span>
+            <span class="atd-tpl-section__hint">{{ 'schedule.assignOptional' | translate }}</span>
+          </div>
+        </div>
+
+        @if (templatesLoading()) {
+          <div class="atd-tpl-loading">
+            <mat-spinner diameter="28"></mat-spinner>
+          </div>
+        } @else if (templates().length === 0) {
+          <p class="atd-tpl-empty">{{ 'schedule.noTemplates' | translate }}</p>
+        } @else {
+          <div class="atd-tpl-list">
+            @for (tpl of templates(); track tpl.id) {
+              <div
+                class="atd-tpl-item"
+                [class.atd-tpl-item--selected]="selectedTemplateId() === tpl.id">
+
+                <!-- Row: select + name + preview toggle -->
+                <div class="atd-tpl-item__row" (click)="selectTemplate(tpl.id)">
+                  <div class="atd-tpl-item__radio"
+                       [class.atd-tpl-item__radio--on]="selectedTemplateId() === tpl.id">
+                    @if (selectedTemplateId() === tpl.id) {
+                      <mat-icon>check</mat-icon>
+                    }
+                  </div>
+                  <div class="atd-tpl-item__info">
+                    <span class="atd-tpl-item__name">{{ tpl.name }}</span>
+                    @if (tpl.description) {
+                      <span class="atd-tpl-item__desc">{{ tpl.description }}</span>
+                    }
+                    <div class="atd-tpl-item__meta">
+                      <span class="atd-tpl-item__days-count">
+                        <mat-icon class="atd-meta-icon">wb_sunny</mat-icon>
+                        {{ getActiveDays(tpl).length }} {{ 'schedule.activeDays' | translate }}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    class="atd-tpl-preview-btn"
+                    [class.atd-tpl-preview-btn--open]="previewTemplateId() === tpl.id"
+                    type="button"
+                    [matTooltip]="'schedule.previewTemplate' | translate"
+                    (click)="togglePreview(tpl.id, $event)">
+                    <mat-icon>{{ previewTemplateId() === tpl.id ? 'expand_less' : 'visibility' }}</mat-icon>
+                  </button>
+                </div>
+
+                <!-- Preview: days grid -->
+                @if (previewTemplateId() === tpl.id) {
+                  <div class="atd-tpl-preview">
+                    @for (day of DAYS; track day) {
+                      @if ((tpl.days[day]?.length ?? 0) > 0) {
+                        <div class="atd-tpl-day">
+                          <span class="atd-tpl-day__label">{{ 'schedule.short.' + day | translate }}</span>
+                          <div class="atd-tpl-day__shifts">
+                            @for (shift of tpl.days[day]; track $index) {
+                              <span class="atd-tpl-day__shift">
+                                {{ shift.startTime }}–{{ shift.endTime }}
+                                @if (shift.breakStart) {
+                                  <span class="atd-tpl-day__break">
+                                    <mat-icon class="atd-break-icon">coffee</mat-icon>
+                                    {{ shift.breakStart }}–{{ shift.breakEnd }}
+                                  </span>
+                                }
+                              </span>
+                            }
+                          </div>
+                        </div>
+                      } @else {
+                        <div class="atd-tpl-day atd-tpl-day--rest">
+                          <span class="atd-tpl-day__label">{{ 'schedule.short.' + day | translate }}</span>
+                          <span class="atd-tpl-day__rest-label">{{ 'schedule.restDay' | translate }}</span>
+                        </div>
+                      }
+                    }
+                  </div>
+                }
+
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+  </div>
+
+  <!-- ═══ FOOTER ══════════════════════════════════════════════════════════ -->
+  <div class="atd-footer">
+    <button class="atd-btn atd-btn--ghost" (click)="onCancel()" type="button">
+      {{ 'common.cancel' | translate }}
+    </button>
+    <button
+      class="atd-btn atd-btn--primary"
+      [class.atd-btn--disabled]="!selected()"
+      [disabled]="!selected()"
+      (click)="onConfirm()"
+      type="button">
+      <mat-icon>check_circle</mat-icon>
+      <span>{{ 'users.couriers.approve' | translate }}</span>
+    </button>
+  </div>
+
+</div>

@@ -1,0 +1,377 @@
+<div class="cs-page">
+
+  <!-- ══════════════════════════ HEADER ══════════════════════════════════ -->
+  <div class="cs-header">
+
+    <div class="cs-header__left">
+      <button mat-icon-button routerLink="/users/couriers" class="cs-back-btn">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="cs-header__icon">
+        <mat-icon>calendar_month</mat-icon>
+      </div>
+      <div>
+        <h2 class="cs-header__title">{{ 'schedule.scheduleTitle' | translate }}</h2>
+        <p class="cs-header__sub" *ngIf="schedule()">
+          {{ 'schedule.templateLabel' | translate }}:
+          <strong>{{ schedule()?.templateName ?? ('schedule.custom' | translate) }}</strong>
+        </p>
+      </div>
+    </div>
+
+    <div class="cs-header__actions">
+      <!-- Template picker + Apply -->
+      <ng-container *ngIf="!editMode() && !copyDaySource()">
+        <mat-form-field appearance="outline" class="cs-template-select">
+          <mat-label>{{ 'schedule.selectTemplate' | translate }}</mat-label>
+          <mat-select [value]="selectedTemplateId()"
+                      (selectionChange)="selectedTemplateId.set($event.value)">
+            <mat-option *ngFor="let t of templates()" [value]="t.id">{{ t.name }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <button mat-flat-button color="primary"
+                (click)="applyTemplate(selectedTemplateId()!)"
+                [disabled]="saving() || !selectedTemplateId()">
+          <mat-icon>auto_fix_high</mat-icon>
+          {{ 'schedule.applyBtn' | translate }}
+        </button>
+        <mat-divider [vertical]="true" class="cs-divider"></mat-divider>
+        <button mat-stroked-button color="accent" (click)="editMode.set(true)">
+          <mat-icon>edit_calendar</mat-icon>
+          {{ 'schedule.editManual' | translate }}
+        </button>
+      </ng-container>
+
+      <!-- Save / Cancel edit -->
+      <ng-container *ngIf="editMode()">
+        <button mat-flat-button color="primary" (click)="save()" [disabled]="saving()">
+          <mat-icon>save</mat-icon>
+          {{ 'common.save' | translate }}
+        </button>
+        <button mat-stroked-button color="warn" (click)="cancelEdit()" [disabled]="saving()">
+          <mat-icon>close</mat-icon>
+          {{ 'common.cancel' | translate }}
+        </button>
+      </ng-container>
+
+      <!-- Confirm / Cancel copy -->
+      <ng-container *ngIf="copyDaySource()">
+        <button mat-flat-button color="primary"
+                (click)="confirmCopyDay()"
+                [disabled]="saving() || copyTargets().size === 0">
+          <mat-icon>done_all</mat-icon>
+          {{ 'schedule.confirmCopy' | translate }}
+        </button>
+        <button mat-stroked-button color="warn" (click)="cancelCopy()">
+          <mat-icon>close</mat-icon>
+          {{ 'common.cancel' | translate }}
+        </button>
+      </ng-container>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ TABS ═════════════════════════════════ -->
+  <mat-tab-group class="cs-tabs" animationDuration="0ms">
+
+    <!-- ─── TAB 1 : Planning ─────────────────────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="cs-tab-icon">calendar_month</mat-icon>
+        {{ 'schedule.tabPlanning' | translate }}
+      </ng-template>
+
+      <!-- LOADING -->
+      <div class="cs-loading" *ngIf="loading()">
+        <mat-spinner diameter="52"></mat-spinner>
+      </div>
+
+      <ng-container *ngIf="!loading()">
+
+        <!-- STATS BAR -->
+        <div class="cs-stats" *ngIf="schedule()">
+          <div class="cs-stat">
+            <span class="cs-stat__num">{{ activeDayCount() }}</span>
+            <span class="cs-stat__lbl">{{ 'schedule.activeDays' | translate }}</span>
+          </div>
+          <div class="cs-stat">
+            <span class="cs-stat__num">{{ totalShifts() }}</span>
+            <span class="cs-stat__lbl">{{ 'schedule.totalShifts' | translate }}</span>
+          </div>
+          <div class="cs-stat">
+            <span class="cs-stat__pill"
+                  [class.cs-stat__pill--perm]="schedule()?.isPermanent">
+              {{ schedule()?.isPermanent ? ('schedule.permanent' | translate) : ('schedule.weekly' | translate) }}
+            </span>
+            <span class="cs-stat__lbl">{{ 'schedule.scheduleType' | translate }}</span>
+          </div>
+        </div>
+
+        <!-- COPY-DAY BANNER -->
+        <div class="cs-copy-banner" *ngIf="copyDaySource()">
+          <mat-icon class="cs-copy-banner__icon">content_copy</mat-icon>
+          <span>
+            {{ 'schedule.copyFrom' | translate }}
+            <strong>{{ dayLabel(copyDaySource()!) }}</strong>
+            {{ 'schedule.copyTo' | translate }}:
+          </span>
+          <div class="cs-copy-targets">
+            <label *ngFor="let d of days" class="cs-copy-chip"
+                   [class.cs-copy-chip--source]="d === copyDaySource()"
+                   [class.cs-copy-chip--selected]="isCopyTarget(d)"
+                   (click)="d !== copyDaySource() && toggleCopyTarget(d)">
+              <span class="cs-day-dot" [style.background]="dayColor(d)"></span>
+              {{ dayShort(d) }}
+            </label>
+          </div>
+        </div>
+
+        <!-- FULLCALENDAR VIEW -->
+        <mat-card class="cs-cal-card" *ngIf="schedule() && !editMode() && !copyDaySource()">
+          <div class="cs-week-nav">
+            <button class="cs-week-nav__btn" (click)="goToday()">{{ 'schedule.today' | translate }}</button>
+            <div class="cs-week-nav__arrows">
+              <button class="cs-week-nav__arrow" (click)="prevWeek()">
+                <span class="material-icons-round">chevron_left</span>
+              </button>
+              <button class="cs-week-nav__arrow" (click)="nextWeek()">
+                <span class="material-icons-round">chevron_right</span>
+              </button>
+            </div>
+            <span class="cs-week-nav__label">{{ weekLabel() }}</span>
+          </div>
+          <full-calendar #calendarRef [options]="calendarOptions"></full-calendar>
+        </mat-card>
+
+        <!-- EMPTY STATE -->
+        <div class="cs-empty" *ngIf="!schedule() && !editMode() && !copyDaySource()">
+          <mat-icon>event_busy</mat-icon>
+          <p>{{ 'schedule.noSchedule' | translate }}</p>
+          <button mat-flat-button color="primary" (click)="editMode.set(true)">
+            <mat-icon>add_circle</mat-icon>
+            {{ 'schedule.createManual' | translate }}
+          </button>
+        </div>
+
+        <!-- EDIT GRID -->
+        <form [formGroup]="form" class="cs-edit-grid" *ngIf="editMode()">
+
+          <div class="cs-perm-row">
+            <mat-icon>repeat</mat-icon>
+            <span>{{ 'schedule.permanent' | translate }}</span>
+            <mat-select formControlName="isPermanent" class="cs-perm-select">
+              <mat-option [value]="true">{{ 'schedule.permanent' | translate }}</mat-option>
+              <mat-option [value]="false">{{ 'schedule.weekly' | translate }}</mat-option>
+            </mat-select>
+          </div>
+
+          <div class="cs-day-card" *ngFor="let day of days">
+            <div class="cs-day-card__header" [style.border-left-color]="dayColor(day)">
+              <span class="cs-day-label">
+                <span class="cs-day-dot" [style.background]="dayColor(day)"></span>
+                {{ dayLabel(day) }}
+              </span>
+              <span class="cs-day-count" *ngIf="shiftsFor(day).length > 0">
+                {{ shiftsFor(day).length }} {{ 'schedule.shifts' | translate }}
+              </span>
+              <button mat-icon-button type="button" class="cs-copy-btn"
+                      [matTooltip]="'schedule.copyDayTip' | translate"
+                      (click)="copyDaySource.set(day); editMode.set(false)">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </div>
+
+            <div class="cs-day-card__body" [formArrayName]="day">
+
+              <div class="cs-shift-row"
+                   *ngFor="let ctrl of shiftsFor(day).controls; let i = index"
+                   [formGroupName]="i">
+                <mat-form-field appearance="outline" class="cs-tf">
+                  <mat-label>{{ 'schedule.startTime' | translate }}</mat-label>
+                  <input matInput type="time" formControlName="startTime" />
+                </mat-form-field>
+
+                <span class="cs-shift-sep">→</span>
+
+                <mat-form-field appearance="outline" class="cs-tf">
+                  <mat-label>{{ 'schedule.endTime' | translate }}</mat-label>
+                  <input matInput type="time" formControlName="endTime" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="cs-tf cs-tf--break">
+                  <mat-label>{{ 'schedule.breakStart' | translate }}</mat-label>
+                  <input matInput type="time" formControlName="breakStart" />
+                  <mat-icon matPrefix class="cs-break-icon">coffee</mat-icon>
+                </mat-form-field>
+
+                <span class="cs-shift-sep cs-shift-sep--sm">→</span>
+
+                <mat-form-field appearance="outline" class="cs-tf cs-tf--break">
+                  <mat-label>{{ 'schedule.breakEnd' | translate }}</mat-label>
+                  <input matInput type="time" formControlName="breakEnd" />
+                </mat-form-field>
+
+                <button mat-icon-button type="button" color="warn"
+                        [matTooltip]="'common.delete' | translate"
+                        (click)="removeShift(day, i)">
+                  <mat-icon>remove_circle_outline</mat-icon>
+                </button>
+              </div>
+
+              <button mat-stroked-button type="button" class="cs-add-btn" (click)="addShift(day)">
+                <mat-icon>add</mat-icon>
+                {{ 'schedule.addShift' | translate }}
+              </button>
+
+              <p class="cs-rest" *ngIf="shiftsFor(day).length === 0">
+                <mat-icon>hotel</mat-icon>{{ 'schedule.restDay' | translate }}
+              </p>
+
+            </div>
+          </div>
+
+        </form>
+
+      </ng-container>
+    </mat-tab>
+
+    <!-- ─── TAB 2 : Historique d'affectation ─────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="cs-tab-icon">history</mat-icon>
+        {{ 'schedule.tabHistory' | translate }}
+      </ng-template>
+
+      <div class="cs-history-tab">
+
+        <!-- ── FILTER BAR ──────────────────────────────────────────── -->
+        <div class="cs-audit-filters">
+
+          <!-- Action dropdown — applies immediately on change -->
+          <mat-form-field appearance="outline" class="cs-audit-filter__select">
+            <mat-label>
+              <mat-icon class="cs-audit-filter__icon">filter_list</mat-icon>
+              {{ 'schedule.audit.filterAction' | translate }}
+            </mat-label>
+            <mat-select [value]="auditFilterAction()"
+                        (selectionChange)="auditFilterAction.set($event.value); onAuditFilterChange()">
+              <mat-option value="">{{ 'schedule.audit.allActions' | translate }}</mat-option>
+              <mat-option value="CREATED">
+                <mat-icon class="cs-audit-opt-icon cs-audit-opt-icon--created">add_circle</mat-icon>
+                {{ 'schedule.audit.CREATED' | translate }}
+              </mat-option>
+              <mat-option value="UPDATED">
+                <mat-icon class="cs-audit-opt-icon cs-audit-opt-icon--updated">edit</mat-icon>
+                {{ 'schedule.audit.UPDATED' | translate }}
+              </mat-option>
+              <mat-option value="TEMPLATE_APPLIED">
+                <mat-icon class="cs-audit-opt-icon cs-audit-opt-icon--template">auto_fix_high</mat-icon>
+                {{ 'schedule.audit.TEMPLATE_APPLIED' | translate }}
+              </mat-option>
+              <mat-option value="DAY_COPIED">
+                <mat-icon class="cs-audit-opt-icon cs-audit-opt-icon--copied">content_copy</mat-icon>
+                {{ 'schedule.audit.DAY_COPIED' | translate }}
+              </mat-option>
+              <mat-option value="DELETED">
+                <mat-icon class="cs-audit-opt-icon cs-audit-opt-icon--deleted">delete</mat-icon>
+                {{ 'schedule.audit.DELETED' | translate }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <!-- Single date picker — applies immediately on change -->
+          <mat-form-field appearance="outline" class="cs-audit-filter__date">
+            <mat-label>
+              <mat-icon class="cs-audit-filter__icon">event</mat-icon>
+              {{ 'schedule.audit.filterDate' | translate }}
+            </mat-label>
+            <input matInput type="date"
+                   [value]="auditFilterDate()"
+                   (change)="auditFilterDate.set($any($event.target).value); onAuditFilterChange()" />
+            <button *ngIf="auditFilterDate()" matSuffix mat-icon-button
+                    (click)="auditFilterDate.set(''); onAuditFilterChange()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </mat-form-field>
+
+          <!-- Active filters info + reset -->
+          <div class="cs-audit-filters__meta">
+            <span class="cs-audit-filters__count" *ngIf="auditTotalItems() > 0">
+              {{ auditTotalItems() }} {{ 'schedule.audit.results' | translate }}
+            </span>
+            <button mat-stroked-button class="cs-audit-reset"
+                    (click)="resetAuditFilters()"
+                    [disabled]="!auditFilterAction() && !auditFilterDate()">
+              <mat-icon>restart_alt</mat-icon>
+              {{ 'schedule.audit.reset' | translate }}
+            </button>
+          </div>
+        </div>
+
+        <!-- ── TABLE ───────────────────────────────────────────────── -->
+        <app-list-page
+          title=""
+          [showBackButton]="false"
+          [loading]="auditLoading()"
+          [empty]="!auditLoading() && auditTotalItems() === 0"
+          emptyIcon="manage_search"
+          [emptyMessage]="'schedule.historyEmpty'"
+          [showPagination]="auditTotalItems() > 0"
+          [totalItems]="auditTotalItems()"
+          [currentPage]="auditPage()"
+          [itemsPerPage]="auditPageSize()"
+          [itemsPerPageOptions]="[10, 20, 50]"
+          (pageChange)="onAuditPageChange($event)"
+        >
+          <table table class="data-table">
+            <thead>
+              <tr>
+                <th>{{ 'schedule.histColAction' | translate | uppercase }}</th>
+                <th>{{ 'schedule.histColDetails' | translate | uppercase }}</th>
+                <th>{{ 'schedule.histColTemplate' | translate | uppercase }}</th>
+                <th>{{ 'schedule.histColAdmin' | translate | uppercase }}</th>
+                <th>{{ 'schedule.histColDate' | translate | uppercase }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (entry of auditEntries(); track entry.id) {
+                <tr class="table-row">
+                  <!-- Action -->
+                  <td>
+                    <span class="cs-audit-action"
+                          [ngClass]="auditActionConfig[entry.action]?.cssClass">
+                      <mat-icon class="cs-audit-action__icon">
+                        {{ auditActionConfig[entry.action]?.icon ?? 'info' }}
+                      </mat-icon>
+                      {{ auditActionConfig[entry.action]?.labelKey | translate }}
+                    </span>
+                  </td>
+                  <!-- Details -->
+                  <td class="cs-audit-details">{{ entry.details ?? '—' }}</td>
+                  <!-- Template -->
+                  <td>
+                    <span *ngIf="entry.templateName" class="cs-audit-template">
+                      <mat-icon class="cs-audit-template__icon">event_note</mat-icon>
+                      {{ entry.templateName }}
+                    </span>
+                    <span *ngIf="!entry.templateName" class="cs-audit-na">—</span>
+                  </td>
+                  <!-- Admin -->
+                  <td>
+                    <div class="cs-audit-admin">
+                      <mat-icon class="cs-audit-admin__icon">person</mat-icon>
+                      {{ entry.adminName ?? ('schedule.audit.system' | translate) }}
+                    </div>
+                  </td>
+                  <!-- Date -->
+                  <td class="cs-audit-date">{{ entry.createdAt ?? '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </app-list-page>
+      </div>
+    </mat-tab>
+
+  </mat-tab-group>
+
+</div>

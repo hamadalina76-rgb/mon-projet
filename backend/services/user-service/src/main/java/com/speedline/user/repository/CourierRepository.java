@@ -2,6 +2,7 @@ package com.speedline.user.repository;
 
 import com.speedline.user.domain.Courier;
 import com.speedline.user.domain.CourierStatus;
+import com.speedline.user.domain.CourierType;
 import com.speedline.user.domain.VehicleType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -265,8 +266,9 @@ public interface CourierRepository extends JpaRepository<Courier, Long> {
      */
     @Query("SELECT c FROM Courier c WHERE " +
            "(:status IS NULL OR c.status = :status) AND " +
+           "(:courierType IS NULL OR c.courierType = :courierType) AND " +
            "(:search IS NULL OR :search = '' OR LOWER(COALESCE(c.vehicleNumber, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(COALESCE(c.identityNumber, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(COALESCE(c.drivingLicenseNumber, '')) LIKE LOWER(CONCAT('%', :search, '%')))")
-    Page<Courier> searchCouriers(@Param("status") CourierStatus status, @Param("search") String search, Pageable pageable);
+    Page<Courier> searchCouriers(@Param("status") CourierStatus status, @Param("courierType") CourierType courierType, @Param("search") String search, Pageable pageable);
 }

@@ -1,5 +1,6 @@
 package com.speedline.user.dto;
 
+import com.speedline.user.domain.CourierType;
 import com.speedline.user.domain.VehicleType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
@@ -23,6 +24,9 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Schema(description = "Requête de mise à jour du profil livreur. Seuls les champs fournis sont mis à jour.")
 public class CourierUpdateRequest {
+
+    @Schema(description = "Type de livreur", example = "INTERNAL", allowableValues = {"INTERNAL", "EXTERNAL"})
+    private CourierType courierType;
 
     @Schema(description = "Type de véhicule", example = "MOTORCYCLE")
     private VehicleType vehicleType;

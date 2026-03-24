@@ -18,6 +18,7 @@ import { ToastrService } from 'ngx-toastr';
 import { CouriersService } from '../services/couriers.service';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '@shared/components/confirmation-dialog/confirmation-dialog.component';
 import { RejectDialogComponent } from '../../../partners/partner-approval/reject-dialog.component';
+import { ChangeTypeDialogComponent } from '../courier-detail/change-type-dialog.component';
 import { ListPageComponent } from '@shared/components/list-page/list-page.component';
 
 @Component({
@@ -53,6 +54,7 @@ export class CouriersListComponent implements OnInit, OnDestroy {
 
   searchText = '';
   selectedStatus = 'all';
+  selectedCourierType = 'all';
   itemsPerPage = 20;
   currentPage = 1;
   totalItems = 0;
@@ -74,8 +76,9 @@ export class CouriersListComponent implements OnInit, OnDestroy {
   loadCouriers(): void {
     this.loading.set(true);
     const status = this.selectedStatus !== 'all' ? this.selectedStatus : undefined;
+    const courierType = this.selectedCourierType !== 'all' ? this.selectedCourierType : undefined;
     this.couriersService
-      .getCouriers(this.currentPage - 1, this.itemsPerPage, status, this.searchText || undefined)
+      .getCouriers(this.currentPage - 1, this.itemsPerPage, status, this.searchText || undefined, courierType)
       .subscribe({
         next: (response: any) => {
           const list = response.content ?? [];
@@ -97,6 +100,10 @@ export class CouriersListComponent implements OnInit, OnDestroy {
   }
 
   onStatusChange(): void {
+    this.applyFilters();
+  }
+
+  onCourierTypeChange(): void {
     this.applyFilters();
   }
 
@@ -234,6 +241,24 @@ export class CouriersListComponent implements OnInit, OnDestroy {
           error: () => this.toastr.error(this.translate.instant('common.error')),
         });
       }
+    });
+  }
+
+  changeCourierType(courier: any): void {
+    const dialogRef = this.dialog.open(ChangeTypeDialogComponent, {
+      width: '460px',
+      maxWidth: '95vw',
+      data: courier.courierType ?? null,
+    });
+    dialogRef.afterClosed().subscribe((newType: 'INTERNAL' | 'EXTERNAL' | null) => {
+      if (!newType) return;
+      this.couriersService.updateCourier(String(courier.id), { courierType: newType }).subscribe({
+        next: () => {
+          this.toastr.success(this.translate.instant('users.couriers.changeTypeSuccess'));
+          this.loadCouriers();
+        },
+        error: () => this.toastr.error(this.translate.instant('common.error')),
+      });
     });
   }
 }

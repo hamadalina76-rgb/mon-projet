@@ -1,0 +1,59 @@
+<div class="ctd-root">
+  <div class="ctd-header">
+    <div class="ctd-header__badge">
+      <mat-icon>swap_horiz</mat-icon>
+    </div>
+    <div class="ctd-header__text">
+      <h2>{{ 'users.couriers.changeType' | translate }}</h2>
+      <p>{{ 'users.couriers.changeTypeMessage' | translate }}</p>
+    </div>
+    <button class="ctd-close" (click)="onCancel()" type="button">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="ctd-body">
+    <div class="ctd-grid">
+      <button class="ctd-card"
+              [class.ctd-card--active]="selected() === 'INTERNAL'"
+              (click)="selected.set('INTERNAL')"
+              type="button" matRipple matRippleColor="rgba(227,30,36,0.08)">
+        <div class="ctd-card__check" [class.ctd-card__check--on]="selected() === 'INTERNAL'">
+          @if (selected() === 'INTERNAL') { <mat-icon>check</mat-icon> }
+        </div>
+        <div class="ctd-card__icon"><mat-icon>badge</mat-icon></div>
+        <div class="ctd-card__content">
+          <span class="ctd-card__label">{{ 'users.couriers.internal' | translate }}</span>
+          <p class="ctd-card__desc">{{ 'users.couriers.internalDesc' | translate }}</p>
+        </div>
+      </button>
+
+      <button class="ctd-card"
+              [class.ctd-card--active]="selected() === 'EXTERNAL'"
+              (click)="selected.set('EXTERNAL')"
+              type="button" matRipple matRippleColor="rgba(16,185,129,0.08)">
+        <div class="ctd-card__check" [class.ctd-card__check--on]="selected() === 'EXTERNAL'">
+          @if (selected() === 'EXTERNAL') { <mat-icon>check</mat-icon> }
+        </div>
+        <div class="ctd-card__icon"><mat-icon>handshake</mat-icon></div>
+        <div class="ctd-card__content">
+          <span class="ctd-card__label">{{ 'users.couriers.external' | translate }}</span>
+          <p class="ctd-card__desc">{{ 'users.couriers.externalDesc' | translate }}</p>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <div class="ctd-footer">
+    <button class="ctd-btn ctd-btn--ghost" (click)="onCancel()" type="button">
+      {{ 'common.cancel' | translate }}
+    </button>
+    <button class="ctd-btn ctd-btn--primary"
+            [class.ctd-btn--disabled]="!selected() || selected() === currentType"
+            [disabled]="!selected() || selected() === currentType"
+            (click)="onConfirm()" type="button">
+      <mat-icon>check_circle</mat-icon>
+      <span>{{ 'common.save' | translate }}</span>
+    </button>
+  </div>
+</div>

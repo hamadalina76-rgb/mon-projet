@@ -13,10 +13,12 @@ export class CouriersService {
     page: number,
     pageSize: number,
     status?: string,
-    search?: string
+    search?: string,
+    courierType?: string
   ): Observable<any> {
     let url = `admin/couriers?page=${page}&size=${pageSize}`;
     if (status) url += `&status=${encodeURIComponent(status)}`;
+    if (courierType) url += `&courierType=${encodeURIComponent(courierType)}`;
     if (search?.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
     return this.api.get(url);
   }
@@ -29,8 +31,8 @@ export class CouriersService {
     return this.api.get(`admin/couriers/pending?page=${page}&size=${pageSize}`);
   }
 
-  approveCourier(id: string): Observable<any> {
-    return this.api.post(`admin/couriers/${id}/approve`, {});
+  approveCourier(id: string, courierType: 'INTERNAL' | 'EXTERNAL'): Observable<any> {
+    return this.api.post(`admin/couriers/${id}/approve?courierType=${courierType}`, {});
   }
 
   rejectCourier(id: string, reason: string): Observable<any> {
@@ -51,5 +53,9 @@ export class CouriersService {
 
   activateCourier(id: string): Observable<any> {
     return this.api.post(`admin/couriers/${id}/activate`, {});
+  }
+
+  updateCourier(id: string, request: any): Observable<any> {
+    return this.api.put(`admin/couriers/${id}`, request);
   }
 }

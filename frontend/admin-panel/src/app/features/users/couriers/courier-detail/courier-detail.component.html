@@ -22,15 +22,15 @@
           <mat-icon>close</mat-icon>
           {{ 'users.couriers.reject' | translate }}
         </button>
-        <button mat-raised-button color="primary" (click)="approve()" [disabled]="actionLoading()">
+        <button mat-raised-button color="primary" (click)="goToApproval()" [disabled]="actionLoading()">
           <mat-icon>check</mat-icon>
           {{ 'users.couriers.approve' | translate }}
         </button>
-        <button mat-stroked-button (click)="goToApproval()">
+        <button mat-stroked-button color="warn" (click)="goToApproval()">
           <mat-icon>fact_check</mat-icon>
           {{ 'users.couriers.review' | translate }}
         </button>
-        <button mat-stroked-button (click)="requestMoreInfo()" [disabled]="actionLoading()">
+        <button mat-stroked-button color="warn" (click)="requestMoreInfo()" [disabled]="actionLoading()">
           <mat-icon>info</mat-icon>
           {{ 'users.couriers.requestMoreInfo' | translate }}
         </button>
@@ -42,7 +42,7 @@
         </button>
       }
       @if (canDeactivate(courier())) {
-        <button mat-stroked-button (click)="deactivate()" [disabled]="actionLoading()">
+        <button mat-stroked-button color="warn" (click)="deactivate()" [disabled]="actionLoading()">
           <mat-icon>block</mat-icon>
           {{ 'users.couriers.deactivate' | translate }}
         </button>
@@ -51,6 +51,12 @@
         <button mat-raised-button color="warn" (click)="suspend()" [disabled]="actionLoading()">
           <mat-icon>gpp_bad</mat-icon>
           {{ 'users.couriers.suspend' | translate }}
+        </button>
+      }
+      @if (courier()?.courierType === 'INTERNAL') {
+        <button mat-stroked-button color="warn" [routerLink]="['/users/couriers', courier().id, 'schedule']">
+          <mat-icon>calendar_month</mat-icon>
+          {{ 'schedule.scheduleTitle' | translate }}
         </button>
       }
     </div>
@@ -127,6 +133,10 @@
                 <div class="info-row">
                   <span class="label">{{ 'users.couriers.documentsVerified' | translate }}</span>
                   <span class="value">{{ courier().documentsVerified ? ('common.yes' | translate) : ('common.no' | translate) }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">{{ 'users.couriers.courierType' | translate }}</span>
+                  <span class="value">{{ getCourierTypeLabel(courier().courierType) }}</span>
                 </div>
               </div>
             </mat-card>

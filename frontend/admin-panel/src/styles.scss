@@ -274,6 +274,101 @@ html.dark {
 }
 
 /* =====================================================================
+   SpeedLine — Angular Material button brand override (global)
+   Force ALL color="primary" / color="accent" buttons to SpeedLine red
+   ===================================================================== */
+.mat-mdc-unelevated-button.mat-primary,
+.mat-mdc-raised-button.mat-primary {
+  --mdc-filled-button-container-color: #E31E24;
+  --mdc-filled-button-label-text-color: #fff;
+  --mdc-protected-button-container-color: #E31E24;
+  --mdc-protected-button-label-text-color: #fff;
+  &:hover {
+    --mdc-filled-button-container-color: #C41A20;
+    --mdc-protected-button-container-color: #C41A20;
+  }
+  &:disabled {
+    --mdc-filled-button-disabled-container-color: rgba(227, 30, 36, .3);
+    --mdc-filled-button-disabled-label-text-color: #fff;
+    --mdc-protected-button-disabled-container-color: rgba(227, 30, 36, .3);
+    --mdc-protected-button-disabled-label-text-color: #fff;
+  }
+}
+.mat-mdc-outlined-button.mat-primary,
+.mat-mdc-outlined-button.mat-accent {
+  --mdc-outlined-button-label-text-color: #E31E24;
+  --mdc-outlined-button-outline-color: #E31E24;
+  &:hover { background: rgba(227, 30, 36, .06); }
+}
+.mat-mdc-button.mat-primary {
+  --mdc-text-button-label-text-color: #E31E24;
+}
+.mat-mdc-icon-button.mat-primary {
+  --mdc-icon-button-icon-color: #E31E24;
+}
+.mat-mdc-fab.mat-primary, .mat-mdc-mini-fab.mat-primary {
+  --mdc-fab-container-color: #E31E24;
+  --mdc-fab-icon-color: #fff;
+}
+.mat-primary .mdc-linear-progress__bar-inner {
+  border-color: #E31E24;
+}
+.mat-mdc-progress-spinner.mat-accent,
+.mat-mdc-progress-spinner.mat-primary {
+  --mdc-circular-progress-active-indicator-color: #E31E24;
+}
+.mat-mdc-form-field.mat-focused .mdc-notched-outline__leading,
+.mat-mdc-form-field.mat-focused .mdc-notched-outline__notch,
+.mat-mdc-form-field.mat-focused .mdc-notched-outline__trailing {
+  border-color: #E31E24 !important;
+}
+.mat-mdc-form-field.mat-focused .mat-mdc-floating-label {
+  color: #E31E24 !important;
+}
+.mat-mdc-checkbox.mat-primary,
+.mat-mdc-checkbox.mat-accent {
+  --mdc-checkbox-selected-checkmark-color: #fff;
+  --mdc-checkbox-selected-focus-icon-color: #E31E24;
+  --mdc-checkbox-selected-hover-icon-color: #C41A20;
+  --mdc-checkbox-selected-icon-color: #E31E24;
+  --mdc-checkbox-selected-pressed-icon-color: #E31E24;
+  --mdc-checkbox-selected-focus-state-layer-color: #E31E24;
+  --mdc-checkbox-selected-hover-state-layer-color: #E31E24;
+  --mdc-checkbox-selected-pressed-state-layer-color: #E31E24;
+}
+.mat-mdc-radio-button.mat-primary,
+.mat-mdc-radio-button.mat-accent {
+  --mdc-radio-selected-icon-color: #E31E24;
+  --mdc-radio-selected-hover-icon-color: #C41A20;
+  --mdc-radio-selected-pressed-icon-color: #E31E24;
+  --mdc-radio-selected-focus-icon-color: #E31E24;
+  --mat-radio-checked-ripple-color: #E31E24;
+}
+/* =====================================================================
+   SpeedLine — Angular Material WARN buttons → brand red
+   (cancel, deactivate, suspend, reject buttons)
+   ===================================================================== */
+.mat-mdc-unelevated-button.mat-warn,
+.mat-mdc-raised-button.mat-warn {
+  --mdc-filled-button-container-color: #E31E24;
+  --mdc-filled-button-label-text-color: #fff;
+  --mdc-protected-button-container-color: #E31E24;
+  --mdc-protected-button-label-text-color: #fff;
+  &:hover {
+    --mdc-filled-button-container-color: #C41A20;
+    --mdc-protected-button-container-color: #C41A20;
+  }
+}
+.mat-mdc-outlined-button.mat-warn {
+  --mdc-outlined-button-label-text-color: #E31E24;
+  --mdc-outlined-button-outline-color: #E31E24;
+  &:hover { background: rgba(227, 30, 36, .06); }
+}
+.mat-mdc-button.mat-warn {
+  --mdc-text-button-label-text-color: #E31E24;
+}
+
+/* =====================================================================
    SpeedLine — Angular Material slide-toggle brand override (global)
    Force ALL mat-slide-toggle to use brand red instead of Material pink
    ===================================================================== */
@@ -290,6 +385,34 @@ html.dark {
   --mdc-switch-selected-focus-state-layer-color:   #EC131E;
   --mdc-switch-selected-hover-state-layer-color:   #EC131E;
   --mdc-switch-selected-pressed-state-layer-color: #EC131E;
+}
+
+/* =====================================================================
+   SpeedLine — Approve-type dialog panel override
+   ===================================================================== */
+.approve-type-panel {
+  .mat-mdc-dialog-container,
+  .mat-mdc-dialog-surface,
+  .mdc-dialog__surface {
+    border-radius: 18px !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18) !important;
+  }
+
+  /* Neutralise le padding que Material injecte dans mat-dialog-content */
+  .mat-mdc-dialog-content,
+  .mdc-dialog__content {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-height: none !important;
+  }
+
+  .mat-mdc-dialog-actions,
+  .mdc-dialog__actions {
+    padding: 0 !important;
+    min-height: unset !important;
+  }
 }
 
 /* =====================================================================

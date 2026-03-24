@@ -1,0 +1,110 @@
+<!-- Schedule Template Form Dialog -->
+<div class="stf-root">
+
+  <div class="stf-header">
+    <div class="stf-header__icon"><mat-icon>schedule</mat-icon></div>
+    <div class="stf-header__text">
+      <h2>{{ (data ? 'schedule.editTemplate' : 'schedule.newTemplate') | translate }}</h2>
+      <p>{{ 'schedule.formSubtitle' | translate }}</p>
+    </div>
+    <button class="stf-close" type="button" (click)="dialogRef.close(null)">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="stf-body" [formGroup]="form">
+
+    <!-- Meta -->
+    <div class="stf-meta">
+      <mat-form-field appearance="outline" class="stf-field stf-field--name">
+        <mat-label>{{ 'schedule.templateName' | translate }}</mat-label>
+        <input matInput formControlName="name" />
+        @if (form.get('name')?.hasError('required')) {
+          <mat-error>{{ 'common.required' | translate }}</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="stf-field stf-field--desc">
+        <mat-label>{{ 'schedule.description' | translate }}</mat-label>
+        <input matInput formControlName="description" />
+      </mat-form-field>
+    </div>
+
+    <!-- Weekly grid -->
+    <div class="stf-grid">
+      @for (day of days; track day) {
+        <div class="stf-day">
+
+          <div class="stf-day__header">
+            <span class="stf-day__name">{{ ('schedule.day.' + day) | translate }}</span>
+            <div class="stf-day__actions">
+              <!-- Copy this day to others -->
+              @for (targetDay of days; track targetDay) {
+                @if (targetDay !== day) {
+                  <button type="button" class="stf-copy-btn"
+                    [matTooltip]="('schedule.copyTo' | translate) + ' ' + (('schedule.short.' + targetDay) | translate)"
+                    (click)="copyDayTo(day, targetDay)">
+                    {{ ('schedule.short.' + targetDay) | translate }}
+                  </button>
+                }
+              }
+              <button type="button" mat-icon-button class="stf-add-btn" (click)="addShift(day)"
+                      [matTooltip]="'schedule.addShift' | translate">
+                <mat-icon>add_circle</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <div class="stf-shifts">
+            @if (shiftsFor(day).length === 0) {
+              <div class="stf-no-shift">{{ 'schedule.restDay' | translate }}</div>
+            }
+            @for (shift of shiftsFor(day).controls; track $index) {
+              <div class="stf-shift" [formGroup]="$any(shift)">
+                <div class="stf-shift-times">
+                  <mat-form-field appearance="outline" class="stf-time">
+                    <mat-label>{{ 'schedule.startTime' | translate }}</mat-label>
+                    <input matInput type="time" formControlName="startTime" />
+                  </mat-form-field>
+                  <span class="stf-arrow">→</span>
+                  <mat-form-field appearance="outline" class="stf-time">
+                    <mat-label>{{ 'schedule.endTime' | translate }}</mat-label>
+                    <input matInput type="time" formControlName="endTime" />
+                  </mat-form-field>
+                </div>
+                <div class="stf-shift-break">
+                  <mat-icon class="stf-break-icon">coffee</mat-icon>
+                  <mat-form-field appearance="outline" class="stf-time stf-time--break">
+                    <mat-label>{{ 'schedule.breakStart' | translate }}</mat-label>
+                    <input matInput type="time" formControlName="breakStart" />
+                  </mat-form-field>
+                  <span class="stf-arrow stf-arrow--sm">→</span>
+                  <mat-form-field appearance="outline" class="stf-time stf-time--break">
+                    <mat-label>{{ 'schedule.breakEnd' | translate }}</mat-label>
+                    <input matInput type="time" formControlName="breakEnd" />
+                  </mat-form-field>
+                </div>
+                <button type="button" mat-icon-button color="warn" (click)="removeShift(day, $index)"
+                        [matTooltip]="'common.delete' | translate">
+                  <mat-icon>remove_circle_outline</mat-icon>
+                </button>
+              </div>
+            }
+          </div>
+
+        </div>
+      }
+    </div>
+
+  </div>
+
+  <div class="stf-footer">
+    <button mat-stroked-button color="warn" type="button" (click)="dialogRef.close(null)">
+      {{ 'common.cancel' | translate }}
+    </button>
+    <button mat-raised-button color="primary" type="button" [disabled]="saving()" (click)="save()">
+      <mat-icon>save</mat-icon>
+      {{ 'common.save' | translate }}
+    </button>
+  </div>
+
+</div>

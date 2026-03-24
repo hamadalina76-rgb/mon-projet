@@ -143,6 +143,11 @@ public class CourierServiceImpl implements CourierService {
 
         Courier courier = findCourierById(courierId);
 
+        // Mettre à jour le type de livreur si fourni
+        if (request.getCourierType() != null) {
+            courier.setCourierType(request.getCourierType());
+        }
+
         // Mettre à jour les champs véhicule si fournis
         if (request.getVehicleType() != null) {
             courier.setVehicleType(request.getVehicleType());
@@ -595,8 +600,8 @@ public class CourierServiceImpl implements CourierService {
 
     @Override
     @Transactional
-    public CourierDTO verifyDocuments(Long courierId) {
-        log.info("Admin: validation des documents pour livreur {}", courierId);
+    public CourierDTO verifyDocuments(Long courierId, com.speedline.user.domain.CourierType courierType) {
+        log.info("Admin: validation des documents pour livreur {} - type: {}", courierId, courierType);
         Courier courier = findCourierById(courierId);
         if (courier.getStatus() != CourierStatus.PENDING_APPROVAL) {
             throw new IllegalStateException("Seul un livreur en attente peut être approuvé. Statut actuel: " + courier.getStatus());
@@ -604,6 +609,7 @@ public class CourierServiceImpl implements CourierService {
         courier.setDocumentsVerified(true);
         courier.setStatus(CourierStatus.ACTIVE);
         courier.setRejectionReason(null);
+        courier.setCourierType(courierType);
         courier = courierRepository.save(courier);
         log.info("Livreur {} approuvé (ACTIVE)", courierId);
         try {
@@ -786,15 +792,9 @@ public class CourierServiceImpl implements CourierService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<CourierDTO> searchCouriers(String search, CourierStatus status, Pageable pageable) {
+    public Page<CourierDTO> searchCouriers(String search, CourierStatus status, com.speedline.user.domain.CourierType courierType, Pageable pageable) {
         String term = (search != null && !search.isBlank()) ? search.trim() : null;
-        if (term == null && status == null) {
-            return courierRepository.findAll(pageable).map(this::mapToDTO);
-        }
-        if (term == null) {
-            return courierRepository.findByStatus(status, pageable).map(this::mapToDTO);
-        }
-        return courierRepository.searchCouriers(status, term, pageable).map(this::mapToDTO);
+        return courierRepository.searchCouriers(status, courierType, term, pageable).map(this::mapToDTO);
     }
 
     @Override
@@ -997,6 +997,8 @@ public class CourierServiceImpl implements CourierService {
                 .rejectionReason(courier.getRejectionReason())
                 .requestMoreInfoMessage(courier.getRequestMoreInfoMessage())
                 .suspensionReason(courier.getSuspensionReason())
+                // Type livreur
+                .courierType(courier.getCourierType())
                 // Timestamps
                 .createdAt(courier.getCreatedAt())
                 .lastLoginAt(courier.getLastLoginAt())

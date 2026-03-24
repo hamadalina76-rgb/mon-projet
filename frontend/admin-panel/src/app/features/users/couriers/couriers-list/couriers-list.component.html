@@ -36,6 +36,17 @@
         <mat-option value="DEACTIVATED">{{ 'users.couriers.status.deactivated' | translate }}</mat-option>
       </mat-select>
     </mat-form-field>
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-select [(ngModel)]="selectedCourierType" (selectionChange)="onCourierTypeChange()">
+        <mat-option value="all">{{ 'users.couriers.allTypes' | translate }}</mat-option>
+        <mat-option value="INTERNAL">{{ 'users.couriers.internal' | translate }}</mat-option>
+        <mat-option value="EXTERNAL">{{ 'users.couriers.external' | translate }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <button class="btn-schedule-templates" routerLink="/users/schedule-templates">
+      <span class="material-icons-round">schedule</span>
+      {{ 'schedule.templatesTitle' | translate }}
+    </button>
   </div>
 
   <table table class="data-table">
@@ -62,7 +73,14 @@
                 </div>
               }
               <div class="courier-details">
-                <div class="courier-name">{{ getFullName(courier) }}</div>
+                <div class="courier-name">
+                  {{ getFullName(courier) }}
+                  @if (courier.courierType === 'INTERNAL') {
+                    <span class="courier-type-badge courier-type-badge--internal">INTERNE</span>
+                  } @else if (courier.courierType === 'EXTERNAL') {
+                    <span class="courier-type-badge courier-type-badge--external">EXTERNE</span>
+                  }
+                </div>
                 @if (courier.email) {
                   <div class="courier-secondary">{{ courier.email }}</div>
                 }
@@ -86,9 +104,25 @@
               >
                 <span class="material-icons-round">visibility</span>
               </button>
+              <button
+                class="action-btn action-btn--edit"
+                (click)="changeCourierType(courier)"
+                [matTooltip]="'users.couriers.changeType' | translate"
+              >
+                <span class="material-icons-round">edit</span>
+              </button>
+              @if (courier.courierType === 'INTERNAL') {
+                <button
+                  class="action-btn action-btn--schedule"
+                  [routerLink]="[courier.id, 'schedule']"
+                  [matTooltip]="'schedule.scheduleTitle' | translate"
+                >
+                  <span class="material-icons-round">calendar_month</span>
+                </button>
+              }
               @if (courier.status === 'PENDING_APPROVAL') {
                 <button
-                  class="action-btn"
+                  class="action-btn action-btn--approval"
                   [routerLink]="[courier.id, 'approval']"
                   [matTooltip]="'users.couriers.review' | translate"
                 >
@@ -111,7 +145,7 @@
                 }
                 @if (canDeactivate(courier)) {
                   <button mat-menu-item (click)="deactivateCourier(courier)">
-                    <span class="material-icons-round" style="color: #94A3B8">block</span>
+                    <span class="material-icons-round" style="color: #E31E24">block</span>
                     <span>{{ 'users.couriers.deactivate' | translate }}</span>
                   </button>
                 }

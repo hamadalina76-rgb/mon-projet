@@ -1,0 +1,615 @@
+// ─── Approve Type Dialog — ViewEncapsulation.None ────────────────────────────
+// Toutes les règles sont préfixées par .atd- pour éviter les collisions.
+
+// ─── Palette ─────────────────────────────────────────────────────────────────
+$red:      #E31E24;
+$red-dark: #C81E1E;
+$green:    #10B981;
+
+// ─── Reset des wrappers Material Dialog ──────────────────────────────────────
+.approve-type-panel {
+  .mat-mdc-dialog-container,
+  .mat-mdc-dialog-surface,
+  .mdc-dialog__surface {
+    padding: 0 !important;
+    border-radius: 18px !important;
+    overflow: hidden !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18) !important;
+  }
+}
+
+// ─── Root ─────────────────────────────────────────────────────────────────────
+.atd-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  font-family: 'Inter', 'Roboto', sans-serif;
+  background: #fff;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
+.atd-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 22px 18px;
+  background: linear-gradient(135deg, #fdf2f2 0%, #fff 100%);
+  border-bottom: 1px solid #f1e8e8;
+  position: relative;
+
+  &__badge {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    border-radius: 14px;
+    background: linear-gradient(135deg, $red 0%, $red-dark 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 16px rgba($red, 0.38);
+
+    mat-icon {
+      color: #fff;
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  &__text {
+    flex: 1;
+    min-width: 0;
+
+    h2 {
+      margin: 0 0 3px;
+      font-size: 1.075rem;
+      font-weight: 700;
+      color: #0F172A;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.8rem;
+      color: #64748B;
+      line-height: 1.4;
+    }
+  }
+}
+
+.atd-close {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #94A3B8;
+  transition: background 0.15s, color 0.15s;
+  margin-right: -4px;
+
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+  &:hover {
+    background: #F1F5F9;
+    color: #334155;
+  }
+}
+
+// ─── Body ─────────────────────────────────────────────────────────────────────
+.atd-body {
+  padding: 20px;
+}
+
+.atd-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+
+  @media (max-width: 440px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ─── Cards ────────────────────────────────────────────────────────────────────
+.atd-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 16px 16px;
+  border-radius: 14px;
+  border: 2px solid #E2E8F0;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  font-family: inherit;
+  transition:
+    border-color 0.2s,
+    box-shadow   0.2s,
+    transform    0.18s;
+
+  &:focus-visible {
+    outline: 2px solid $red;
+    outline-offset: 3px;
+  }
+
+  // Shine overlay
+  &__shine {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    border-radius: inherit;
+    transition: opacity 0.25s;
+    pointer-events: none;
+  }
+
+  // Checkbox corner
+  &__check {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #CBD5E1;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+
+    mat-icon {
+      font-size: 13px;
+      width: 13px;
+      height: 13px;
+      color: #fff;
+    }
+
+    &--on {
+      border-color: transparent;
+    }
+  }
+
+  // Icon
+  &__icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+
+    mat-icon {
+      font-size: 26px;
+      width: 26px;
+      height: 26px;
+    }
+  }
+
+  // Label + desc
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+  }
+
+  &__label {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #0F172A;
+    display: block;
+  }
+
+  &__desc {
+    margin: 0;
+    font-size: 0.78rem;
+    color: #64748B;
+    line-height: 1.4;
+  }
+
+  // ── INTERNE ────────────────────────────────────────────────────────────────
+  &--internal {
+    .atd-card__icon {
+      background: rgba($red, 0.09);
+      mat-icon { color: $red; }
+    }
+    .atd-card__shine {
+      background: radial-gradient(circle at top left, rgba($red, 0.12) 0%, transparent 60%);
+    }
+
+    &:hover:not(.atd-card--active) {
+      border-color: rgba($red, 0.35);
+      box-shadow: 0 4px 18px rgba($red, 0.1);
+      transform: translateY(-2px);
+    }
+
+    &.atd-card--active {
+      border-color: $red;
+      box-shadow: 0 0 0 4px rgba($red, 0.12), 0 8px 24px rgba($red, 0.15);
+      transform: translateY(-3px);
+
+      .atd-card__shine   { opacity: 1; }
+      .atd-card__check--on { background: $red; box-shadow: 0 0 0 3px rgba($red, 0.22); }
+      .atd-card__icon    { transform: scale(1.08); }
+      .atd-card__label   { color: $red; }
+    }
+  }
+
+  // ── EXTERNE ────────────────────────────────────────────────────────────────
+  &--external {
+    .atd-card__icon {
+      background: rgba($green, 0.09);
+      mat-icon { color: $green; }
+    }
+    .atd-card__shine {
+      background: radial-gradient(circle at top left, rgba($green, 0.12) 0%, transparent 60%);
+    }
+
+    &:hover:not(.atd-card--active) {
+      border-color: rgba($green, 0.4);
+      box-shadow: 0 4px 18px rgba($green, 0.1);
+      transform: translateY(-2px);
+    }
+
+    &.atd-card--active {
+      border-color: $green;
+      box-shadow: 0 0 0 4px rgba($green, 0.12), 0 8px 24px rgba($green, 0.15);
+      transform: translateY(-3px);
+
+      .atd-card__shine   { opacity: 1; }
+      .atd-card__check--on { background: $green; box-shadow: 0 0 0 3px rgba($green, 0.22); }
+      .atd-card__icon    { transform: scale(1.08); }
+      .atd-card__label   { color: $green; }
+    }
+  }
+}
+
+// ─── Footer ───────────────────────────────────────────────────────────────────
+.atd-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 20px;
+  border-top: 1px solid #F1F5F9;
+
+  @media (max-width: 440px) {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}
+
+.atd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 22px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.18s;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  // Ghost
+  &--ghost {
+    background: transparent;
+    border: 1.5px solid #E2E8F0;
+    color: #475569;
+
+    &:hover {
+      background: #F8FAFC;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
+  }
+
+  // Primary
+  &--primary {
+    background: linear-gradient(135deg, $red 0%, $red-dark 100%);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba($red, 0.36);
+
+    &:hover:not([disabled]) {
+      box-shadow: 0 6px 20px rgba($red, 0.46);
+      transform: translateY(-1px);
+    }
+
+    &:active:not([disabled]) {
+      transform: translateY(0);
+    }
+  }
+
+  // Disabled
+  &--disabled,
+  &[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+}
+
+// ─── Template Picker Section ───────────────────────────────────────────────────
+.atd-tpl-section {
+  margin-top: 16px;
+  border: 1.5px solid rgba($red, .22);
+  border-radius: 14px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba($red, .025) 0%, #fff 60%);
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid #F1F5F9;
+  }
+
+  &__icon {
+    font-size: 20px;
+    color: $red;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  &__title {
+    display: block;
+    font-weight: 600;
+    font-size: .88rem;
+    color: #0F172A;
+    line-height: 1.3;
+  }
+
+  &__hint {
+    display: block;
+    font-size: .75rem;
+    color: #94A3B8;
+    margin-top: 2px;
+  }
+}
+
+.atd-tpl-loading {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+}
+
+.atd-tpl-empty {
+  text-align: center;
+  color: #94A3B8;
+  font-size: .82rem;
+  padding: 16px;
+  margin: 0;
+}
+
+.atd-tpl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: #F1F5F9;
+  max-height: 280px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+// ─── Individual template item ──────────────────────────────────────────────────
+.atd-tpl-item {
+  background: #fff;
+  transition: background .15s;
+
+  &--selected {
+    background: rgba($red, .03);
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    cursor: pointer;
+    user-select: none;
+
+    &:hover { background: #FAFAFA; }
+  }
+
+  &__radio {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 2px solid #CBD5E1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .18s;
+
+    mat-icon { font-size: 12px; width: 12px; height: 12px; color: #fff; }
+
+    &--on {
+      background: $red;
+      border-color: $red;
+      box-shadow: 0 0 0 3px rgba($red, .2);
+    }
+  }
+
+  &__info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__name {
+    font-weight: 600;
+    font-size: .85rem;
+    color: #0F172A;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__desc {
+    font-size: .75rem;
+    color: #64748B;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__meta {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 2px;
+  }
+
+  &__days-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: .72rem;
+    color: #94A3B8;
+  }
+}
+
+.atd-meta-icon {
+  font-size: 12px !important;
+  width: 12px !important;
+  height: 12px !important;
+}
+
+// ─── Preview toggle button ─────────────────────────────────────────────────────
+.atd-tpl-preview-btn {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  background: rgba(#94A3B8, .1);
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .15s;
+
+  mat-icon { font-size: 16px; width: 16px; height: 16px; }
+
+  &:hover {
+    background: rgba($red, .1);
+    color: $red;
+  }
+
+  &--open {
+    background: rgba($red, .12);
+    color: $red;
+  }
+}
+
+// ─── Preview: days grid ─────────────────────────────────────────────────────────
+.atd-tpl-preview {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-top: 1px solid #F1F5F9;
+  background: #FAFAFA;
+  padding: 10px 12px 12px;
+  gap: 6px;
+
+  @media (max-width: 500px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.atd-tpl-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  min-height: 64px;
+
+  &__label {
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    color: $red;
+    text-transform: uppercase;
+  }
+
+  &__shifts {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+    align-items: center;
+  }
+
+  &__shift {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: .66rem;
+    font-weight: 600;
+    color: #334155;
+    background: rgba($red, .07);
+    border-radius: 5px;
+    padding: 2px 5px;
+    width: 100%;
+    text-align: center;
+  }
+
+  &__break {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: .6rem;
+    color: #F59E0B;
+    font-weight: 500;
+    margin-top: 1px;
+  }
+
+  // Rest day
+  &--rest {
+    background: #F8FAFC;
+    border-color: #E2E8F0;
+    opacity: .65;
+  }
+
+  &__rest-label {
+    font-size: .62rem;
+    color: #94A3B8;
+    text-align: center;
+  }
+}
+
+.atd-break-icon {
+  font-size: 10px !important;
+  width: 10px !important;
+  height: 10px !important;
+}
