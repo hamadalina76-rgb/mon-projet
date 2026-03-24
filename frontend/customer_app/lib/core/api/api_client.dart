@@ -19,6 +19,25 @@ class ApiClient {
   final FlutterSecureStorage _secureStorage;
   final Logger _logger;
 
+  String _normalizeBaseUrl(String baseUrl) {
+    var normalized = baseUrl.trim();
+    if (normalized.endsWith('/')) {
+      normalized = normalized.substring(0, normalized.length - 1);
+    }
+    while (normalized.contains('/api/api')) {
+      normalized = normalized.replaceAll('/api/api', '/api');
+    }
+    return normalized;
+  }
+
+  String _normalizeRequestPath(String path) {
+    var normalized = path;
+    while (normalized.contains('/api/api')) {
+      normalized = normalized.replaceAll('/api/api', '/api');
+    }
+    return normalized;
+  }
+
   // Singleton pattern
   factory ApiClient({
     FlutterSecureStorage? secureStorage,
@@ -38,8 +57,12 @@ class ApiClient {
 
   /// Initialiser Dio avec la configuration
   void _initializeDio() {
-    // Récupérer la configuration runtime
-    final baseUrl = RuntimeConfig.apiBaseUrl;
+    // Prioriser .env pour les overrides locaux, puis fallback runtime.
+    final envBaseUrl = dotenv.env['API_BASE_URL']?.trim();
+    final selectedBaseUrl = (envBaseUrl != null && envBaseUrl.isNotEmpty)
+        ? envBaseUrl
+        : RuntimeConfig.apiBaseUrl;
+    final baseUrl = _normalizeBaseUrl(selectedBaseUrl);
     if (baseUrl.isEmpty) {
       throw StateError('API_BASE_URL must be defined in runtime config');
     }
@@ -75,6 +98,16 @@ class ApiClient {
 
   /// Configurer les intercepteurs
   void _setupInterceptors(bool enableLogging) {
+    // Normaliser les chemins entrants pour éviter /api/api/...
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          options.path = _normalizeRequestPath(options.path);
+          handler.next(options);
+        },
+      ),
+    );
+
     // 1. Auth Interceptor (priorité haute)
     _dio.interceptors.add(
       AuthInterceptor(

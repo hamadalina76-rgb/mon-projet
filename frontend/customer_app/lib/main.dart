@@ -44,6 +44,9 @@ void main() async {
   // Load environment variables
   await dotenv.load(fileName: '.env.development');
 
+  // Load runtime config from assets/config/config.json
+  await RuntimeConfig.load();
+
   // Initialize SharedPreferences before anything else
   final sharedPreferences = await SharedPreferences.getInstance();
   

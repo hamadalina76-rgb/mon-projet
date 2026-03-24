@@ -58,12 +58,16 @@ class SocialLoginButton extends StatelessWidget {
                   _buildProviderIcon(),
                   const SizedBox(width: 12),
                   // Texte
-                  Text(
-                    isGoogle ? 'Google' : 'Facebook',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: isGoogle ? AppColors.textPrimary : Colors.white,
+                  Flexible(
+                    child: Text(
+                      isGoogle ? 'Google' : 'Facebook',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: isGoogle ? AppColors.textPrimary : Colors.white,
+                      ),
                     ),
                   ),
                 ],
