@@ -381,7 +381,10 @@ mat-form-field { flex-shrink: 0; }
   }
 
   &.selected {
-    box-shadow: 0 0 0 2px rgba(0,0,0,.15);
+    border-color: v.$primary-color;
+    background: rgba(v.$primary-color, 0.1);
+    color: v.$primary-color;
+    box-shadow: 0 0 0 2px rgba(v.$primary-color, 0.15);
     opacity: 1;
   }
 }

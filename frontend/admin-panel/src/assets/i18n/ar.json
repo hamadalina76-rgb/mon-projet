@@ -273,7 +273,6 @@
       "email": "البريد الإلكتروني",
       "phone": "الهاتف",
       "documentsVerified": "المستندات موثقة",
-      "view": "عرض",
       "bankIban": "الأيبان",
       "bankAccountHolder": "صاحب الحساب",
       "noDocuments": "لا توجد مستندات",
@@ -485,8 +484,7 @@
       "zonesTitle": "مناطق التوصيل",
       "zonesDesc": "حدد المناطق التي يمكن لهذا الشريك التوصيل فيها.",
       "zonesNone": "لا توجد مناطق متاحة",
-      "zonesAssigned": "منطقة مُعيَّنة"
-      "approve": "الموافقة مع العمولة",
+      "zonesAssigned": "مناطق مُعيَّنة",
       "productEditPermissionTitle": "صلاحية تعديل المنتجات",
       "productEditPermissionLabel": "السماح للشريك بتعديل المنتجات بدون موافقة",
       "productEditPermissionHint": "إذا كان مفعّلًا، سيتم اعتماد تعديلات المنتجات تلقائياً. وإلا ستتم عبر مسار الموافقة العادي."
@@ -675,6 +673,14 @@
           "DEACTIVATE": "معطل",
           "SUSPEND": "موقوف",
           "UPDATE_INFO": "محدّث"
+        },
+        "changeLabels": {
+          "category": "الفئة",
+          "subcategories": "الفئات الفرعية",
+          "categories": "الفئات",
+          "zones": "المناطق",
+          "added": "تمت الإضافة",
+          "removed": "تمت الإزالة"
         },
         "productEditPermission": {
           "autoApproved": "تعديلات المنتجات تلقائياً",

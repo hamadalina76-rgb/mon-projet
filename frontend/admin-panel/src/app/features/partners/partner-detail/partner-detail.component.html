@@ -424,30 +424,6 @@
               <button mat-flat-button class="btn-save-note" (click)="saveNote()">{{ 'partners.detail.saveNote' | translate }}</button>
             </mat-card>
 
-            <!-- Status Timeline -->
-            <mat-card class="info-card">
-              <div class="card-head">
-                <h3>{{ 'partners.detail.statusTimeline' | translate }}</h3>
-              </div>
-              <mat-divider></mat-divider>
-              <div class="status-timeline" *ngIf="statusTimeline().length > 0; else noTimeline">
-                <div class="tl-entry" *ngFor="let entry of statusTimeline()">
-                  <div class="tl-spine">
-                    <span class="tl-dot" [ngClass]="'dot-' + entry.action?.toLowerCase()"></span>
-                  </div>
-                  <div class="tl-content">
-                    <span class="tl-action">{{ entry.action }}</span>
-                    <div class="tl-meta">
-                      <span>{{ entry.changedAt | date:'dd/MM/yyyy HH:mm' }}</span>
-                      <span *ngIf="entry.adminName">— {{ entry.adminName }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <ng-template #noTimeline>
-                <p class="tl-empty">{{ 'partners.detail.noStatusHistory' | translate }}</p>
-              </ng-template>
-            </mat-card>
           </div>
         </div>
       </mat-tab>
@@ -1044,7 +1020,11 @@
                 </span>
 
                 <span class="permission-chip" *ngIf="hasCategoryChanged(log)">
-                  {{ log.categoryIdsAfter }}
+                  {{ formatCategoryAndSubcategoryChange(log) }}
+                </span>
+
+                <span class="permission-chip" *ngIf="hasZonesChanged(log)">
+                  {{ formatZoneIdsChange(log) }}
                 </span>
 
                 <span class="permission-chip" *ngIf="hasProductEditPermissionChanged(log)">
@@ -1056,7 +1036,7 @@
                 </span>
 
                 <span class="no-permissions"
-                      *ngIf="!hasStatusChanged(log) && !hasCommissionChanged(log) && !hasCategoryChanged(log) && !hasProductEditPermissionChanged(log)">
+                      *ngIf="!hasStatusChanged(log) && !hasCommissionChanged(log) && !hasCategoryChanged(log) && !hasZonesChanged(log) && !hasProductEditPermissionChanged(log)">
                   —
                 </span>
 

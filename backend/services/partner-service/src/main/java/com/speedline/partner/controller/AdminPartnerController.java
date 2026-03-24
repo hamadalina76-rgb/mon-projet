@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import jakarta.transaction.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -429,6 +431,12 @@ public class AdminPartnerController {
             @PathVariable Long id,
             @RequestBody Map<String, List<Number>> body) {
         try {
+            String zoneIdsBefore = partnerZoneRepository.findByPartnerId(id).stream()
+                    .map(PartnerZone::getZoneId)
+                    .sorted()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+
             List<Long> zoneIds = body.getOrDefault("zoneIds", List.of()).stream()
                     .map(Number::longValue)
                     .collect(Collectors.toList());
@@ -441,6 +449,25 @@ public class AdminPartnerController {
                             .build())
                     .collect(Collectors.toList());
             partnerZoneRepository.saveAll(newAssignments);
+            String zoneIdsAfter = zoneIds.stream()
+                    .sorted()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+
+            auditLogService.logPartnerModification(
+                    getCurrentAdminId().orElse(null),
+                    "UPDATE_INFO",
+                    id,
+                    null, null,
+                    null, null,
+                    null, null,
+                    null, null,
+                    zoneIdsBefore.isBlank() ? null : zoneIdsBefore,
+                    zoneIdsAfter.isBlank() ? null : zoneIdsAfter,
+                    null,
+                    null, null
+            );
+
             log.info("Admin: Assigned {} zones to partner {}", zoneIds.size(), id);
             return ResponseEntity.ok(Map.of(
                     "message", "Zones assigned successfully",
@@ -450,6 +477,23 @@ public class AdminPartnerController {
             log.error("Failed to assign zones to partner {}: {}", id, e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    private Optional<Long> getCurrentAdminId() {
+        return Optional.ofNullable(RequestContextHolder.getRequestAttributes())
+                .filter(ServletRequestAttributes.class::isInstance)
+                .map(ServletRequestAttributes.class::cast)
+                .map(ServletRequestAttributes::getRequest)
+                .map(req -> req.getHeader("X-User-Id"))
+                .filter(header -> header != null && !header.isBlank())
+                .flatMap(header -> {
+                    try {
+                        return Optional.of(Long.parseLong(header));
+                    } catch (NumberFormatException ex) {
+                        log.warn("X-User-Id header is not a valid long: '{}'", header);
+                        return Optional.empty();
+                    }
+                });
     }
 
     /**

@@ -9,29 +9,34 @@ import { AuthService } from '@core/services/auth.service';
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
-  
+
+  const url = req.url || '';
+  const lowerUrl = url.toLowerCase();
+
+  // Skip static assets and config/i18n files.
+  const isStaticRequest =
+    lowerUrl.includes('/assets/') ||
+    lowerUrl.includes('assets/i18n/') ||
+    lowerUrl.includes('assets/config/') ||
+    lowerUrl.endsWith('favicon.svg') ||
+    lowerUrl.endsWith('.json');
+
   // Skip auth endpoints - they don't need Authorization header
-  const isAuthEndpoint = req.url.includes('/api/v1/auth/');
-  
-  if (isAuthEndpoint) {
-    console.log('[AuthInterceptor] Skipping auth endpoint:', req.url);
+  const isAuthEndpoint = lowerUrl.includes('/api/v1/auth/');
+
+  if (isStaticRequest || isAuthEndpoint) {
     return next(req);
   }
-  
+
   const token = authService.getToken();
 
   if (token) {
-    console.log('[AuthInterceptor] Adding Authorization header to:', req.method, req.url);
-    console.log('[AuthInterceptor] Token (first 20 chars):', token.substring(0, 20) + '...');
-    
     const clonedReq = req.clone({
       setHeaders: {
         Authorization: `Bearer ${token}`,
       },
     });
     return next(clonedReq);
-  } else {
-    console.log('[AuthInterceptor] No token found for:', req.method, req.url);
   }
 
   return next(req);

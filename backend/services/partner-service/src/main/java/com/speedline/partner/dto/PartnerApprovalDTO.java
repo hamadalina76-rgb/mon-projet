@@ -50,4 +50,10 @@ public class PartnerApprovalDTO {
      * (Auto-approval des modifs sur menu produits)
      */
     private Boolean allowProductUpdatesWithoutApproval;
+
+    /**
+     * IDs des zones à assigner lors de l'approbation.
+     * Si null: ne modifie pas les zones.
+     */
+    private List<Long> zoneIds;
 }

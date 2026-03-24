@@ -279,7 +279,6 @@
       "email": "Email",
       "phone": "Téléphone",
       "documentsVerified": "Documents vérifiés",
-      "view": "Voir",
       "bankIban": "IBAN",
       "bankAccountHolder": "Titulaire du compte",
       "noDocuments": "Aucun document",
@@ -290,8 +289,6 @@
       "rejectSuccess": "Livreur rejeté",
       "requestMoreInfoSuccess": "Demande envoyée",
       "id": "ID",
-      "suspendSuccess": "Livreur suspendu",
-      "activateSuccess": "Livreur activé",
       "tabs": {
         "general": "Infos générales",
         "documents": "Documents",
@@ -492,8 +489,7 @@
       "approve": "Approuver avec commission",
       "productEditPermissionTitle": "Modification des produits",
       "productEditPermissionLabel": "Autoriser le partenaire à modifier ses produits sans validation",
-      "productEditPermissionHint": "Si activé, les produits passent automatiquement en validés. Sinon, ils suivent le flux normal d'approbation."
-      "approve": "Approuver avec commission",
+      "productEditPermissionHint": "Si activé, les produits passent automatiquement en validés. Sinon, ils suivent le flux normal d'approbation.",
       "zonesStep": "Zones",
       "zonesTitle": "Zones de livraison",
       "zonesDesc": "Sélectionnez les zones où ce partenaire peut livrer.",
@@ -684,6 +680,14 @@
           "DEACTIVATE": "Désactivé",
           "SUSPEND": "Suspendu",
           "UPDATE_INFO": "Mis à jour"
+        },
+        "changeLabels": {
+          "category": "Catégorie",
+          "subcategories": "Sous-catégories",
+          "categories": "Catégories",
+          "zones": "Zones",
+          "added": "Ajoutées",
+          "removed": "Retirées"
         },
         "productEditPermission": {
           "autoApproved": "Produits validés automatiquement",

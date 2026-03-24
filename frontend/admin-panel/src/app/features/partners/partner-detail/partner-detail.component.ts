@@ -386,6 +386,76 @@ export class PartnerDetailComponent implements OnInit, AfterViewInit, OnDestroy 
     return before !== after;
   }
 
+  formatCategoryAndSubcategoryChange(log: any): string {
+    const raw = (log?.categoryIdsAfter ?? '').toString();
+    const categoryLabel = this.translate.instant('partners.detail.logs.changeLabels.category');
+    const subcategoriesLabel = this.translate.instant('partners.detail.logs.changeLabels.subcategories');
+    const fallbackLabel = this.translate.instant('partners.detail.logs.changeLabels.categories');
+    if (!raw.trim()) return `${fallbackLabel}: —`;
+
+    const main = this.getMainCategoryName(raw);
+    const subs = this.getSubCategoryNames(raw);
+
+    if (main && subs) {
+      return `${categoryLabel}: ${main} | ${subcategoriesLabel}: ${subs}`;
+    }
+    if (main) {
+      return `${categoryLabel}: ${main}`;
+    }
+    if (subs) {
+      return `${subcategoriesLabel}: ${subs}`;
+    }
+    return `${fallbackLabel}: ${this.getCategoryNames(raw)}`;
+  }
+
+  hasZonesChanged(log: any): boolean {
+    const before = log?.zoneIdsBefore ?? null;
+    const after = log?.zoneIdsAfter ?? null;
+    if (before == null && after == null) return false;
+    return before !== after;
+  }
+
+  formatZoneIdsChange(log: any): string {
+    const zonesLabel = this.translate.instant('partners.detail.logs.changeLabels.zones');
+    const addedLabel = this.translate.instant('partners.detail.logs.changeLabels.added');
+    const removedLabel = this.translate.instant('partners.detail.logs.changeLabels.removed');
+    const beforeRaw = String(log?.zoneIdsBefore ?? '').trim();
+    const afterRaw = String(log?.zoneIdsAfter ?? '').trim();
+
+    const namesById = new Map<number, string>(
+      (this.allZones() ?? []).map((z: any) => [Number(z?.id), z?.name ?? `#${z?.id}`])
+    );
+    const mapToNames = (raw: string): string[] => raw
+      .split(',')
+      .map((s: string) => Number(String(s).trim()))
+      .filter((n: number) => !Number.isNaN(n))
+      .map((id: number) => namesById.get(id) ?? `#${id}`);
+    const beforeNames = beforeRaw ? mapToNames(beforeRaw) : [];
+    const afterNames = afterRaw ? mapToNames(afterRaw) : [];
+
+    const beforeSet = new Set(beforeNames);
+    const afterSet = new Set(afterNames);
+    const added = afterNames.filter((name) => !beforeSet.has(name));
+    const removed = beforeNames.filter((name) => !afterSet.has(name));
+
+    const parts: string[] = [];
+    if (added.length > 0) {
+      parts.push(`${addedLabel}: ${added.join(', ')}`);
+    }
+    if (removed.length > 0) {
+      parts.push(`${removedLabel}: ${removed.join(', ')}`);
+    }
+
+    if (parts.length > 0) {
+      return `${zonesLabel}: ${parts.join(' | ')}`;
+    }
+
+    // Fallback (ex: changement d'ordre uniquement)
+    const beforeText = beforeNames.length > 0 ? beforeNames.join(', ') : '—';
+    const afterText = afterNames.length > 0 ? afterNames.join(', ') : '—';
+    return `${zonesLabel}: ${beforeText} -> ${afterText}`;
+  }
+
   hasProductEditPermissionChanged(log: any): boolean {
     const before = log?.productEditPermissionBefore ?? null;
     const after = log?.productEditPermissionAfter ?? null;
@@ -1474,7 +1544,11 @@ export class PartnerDetailComponent implements OnInit, AfterViewInit, OnDestroy 
   openEditDialog(): void {
     const partner = this.partner();
     if (!partner) return;
-    this.dialog.open(PartnerEditDialogComponent, { width: '660px', maxHeight: '90vh', data: { partner } as PartnerEditDialogData })
+    this.dialog.open(PartnerEditDialogComponent, {
+      width: '660px',
+      maxHeight: '90vh',
+      data: { partner, assignedZoneIds: this.assignedZoneIds() } as PartnerEditDialogData
+    })
       .afterClosed().subscribe((result) => {
         if (result) {
           const partnerIdStr = partner.id.toString();

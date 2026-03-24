@@ -58,6 +58,9 @@ public class AdminPartnerUpdateDTO {
     /** IDs des sous-catégories (null = pas de changement, liste vide = retirer toutes) */
     private List<Long> subcategoryIds;
 
+    /** IDs des zones assignées (null = pas de changement, liste vide = retirer toutes) */
+    private List<Long> zoneIds;
+
     /**
      * Si true : le partenaire peut modifier/créer ses produits sans validation admin.
      * Si null : ne modifie pas (comportement "partial update").
