@@ -17,6 +17,7 @@ import com.speedline.partner.dto.StaffMemberDTO;
 import com.speedline.partner.repository.CategoryRepository;
 import com.speedline.partner.exception.PartnerNotFoundException;
 import com.speedline.partner.repository.PartnerRepository;
+import com.speedline.partner.repository.PartnerZoneRepository;
 import com.speedline.partner.repository.StaffMemberRepository;
 import com.speedline.partner.service.AuditLogService;
 import com.speedline.partner.service.PartnerService;
@@ -69,6 +70,7 @@ public class PartnerServiceImpl implements PartnerService {
     private final PartnerRepository partnerRepository;
     private final CategoryRepository categoryRepository;
     private final StaffMemberRepository staffMemberRepository;
+    private final PartnerZoneRepository partnerZoneRepository;
     private final PartnerEventPublisher partnerEventPublisher;
     private final AuditLogService auditLogService;
     private final com.speedline.partner.client.AuthServiceClient authServiceClient;
@@ -445,7 +447,7 @@ public class PartnerServiceImpl implements PartnerService {
         auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "APPROVE", partnerId,
                 "PENDING", "ACTIVE",
                 null, null, null, null,
-                null, null, null,
+                null, null, null, null, null,
                 null, null);
 
         // Publish Pub/Sub event to notify partner
@@ -472,6 +474,11 @@ public class PartnerServiceImpl implements PartnerService {
                 .orElseThrow(() -> new PartnerNotFoundException(partnerId));
 
         Boolean allowProductEditsBefore = partner.getAllowProductUpdatesWithoutApproval();
+        String zoneIdsBefore = partnerZoneRepository.findByPartnerId(partnerId).stream()
+                .map(PartnerZone::getZoneId)
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
 
         // Allow approval from PENDING or DOCUMENTS_MISSING status
         if (!EnumSet.of(PartnerStatus.PENDING, PartnerStatus.DOCUMENTS_MISSING)
@@ -507,6 +514,32 @@ public class PartnerServiceImpl implements PartnerService {
         }
 
         partner = partnerRepository.save(partner);
+
+        String zoneIdsAfter = null;
+        if (approvalData.getZoneIds() != null) {
+            List<Long> requestedZoneIds = approvalData.getZoneIds().stream()
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+
+            partnerZoneRepository.deleteAllByPartnerId(partnerId);
+            if (!requestedZoneIds.isEmpty()) {
+                List<PartnerZone> newAssignments = requestedZoneIds.stream()
+                        .map(zoneId -> PartnerZone.builder()
+                                .partnerId(partnerId)
+                                .zoneId(zoneId)
+                                .assignedAt(LocalDateTime.now())
+                                .build())
+                        .toList();
+                partnerZoneRepository.saveAll(newAssignments);
+            }
+
+            zoneIdsAfter = requestedZoneIds.stream()
+                    .sorted()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+        }
+
         log.info("Partner {} approved successfully with commission type: {}, rate: {}%, categories: {}",
                 partnerId, approvalData.getCommissionType(), approvalData.getCommissionRate(), partner.getCategoryIds());
 
@@ -518,6 +551,8 @@ public class PartnerServiceImpl implements PartnerService {
                 approvalData.getCommissionRate(),
                 null,
                 partner.getCategoryIds(),
+                approvalData.getZoneIds() != null && !zoneIdsBefore.isBlank() ? zoneIdsBefore : null,
+                approvalData.getZoneIds() != null && zoneIdsAfter != null && !zoneIdsAfter.isBlank() ? zoneIdsAfter : null,
                 null,
                 allowProductEditsBefore != null && allowProductEditsAfter != null ? allowProductEditsBefore : null,
                 allowProductEditsAfter);
@@ -555,7 +590,7 @@ public class PartnerServiceImpl implements PartnerService {
         auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "REJECT", partnerId,
                 "PENDING", "REJECTED",
                 null, null, null, null,
-                null, null, reason,
+                null, null, null, null, reason,
                 null, null);
 
         // Publish Pub/Sub event to notify partner
@@ -621,7 +656,7 @@ public class PartnerServiceImpl implements PartnerService {
         auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "SUSPEND", partnerId,
                 "ACTIVE", "SUSPENDED",
                 null, null, null, null,
-                null, null, reason,
+                null, null, null, null, reason,
                 null, null);
 
         // Publish Pub/Sub event
@@ -657,7 +692,7 @@ public class PartnerServiceImpl implements PartnerService {
         auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "ACTIVATE", partnerId,
                 "INACTIVE", "ACTIVE",
                 null, null, null, null,
-                null, null, null,
+                null, null, null, null, null,
                 null, null);
 
         // Publish Pub/Sub event to notify partner (use PARTNER_ACTIVATED, not PARTNER_APPROVED)
@@ -693,7 +728,7 @@ public class PartnerServiceImpl implements PartnerService {
         auditLogService.logPartnerModification(getCurrentAdminId().orElse(null), "DEACTIVATE", partnerId,
                 "ACTIVE", "INACTIVE",
                 null, null, null, null,
-                null, null, reason,
+                null, null, null, null, reason,
                 null, null);
 
         // Publish Pub/Sub event to notify partner
@@ -1302,6 +1337,11 @@ public class PartnerServiceImpl implements PartnerService {
         String commissionTypeBefore = partner.getCommissionType() != null ? partner.getCommissionType().name() : null;
         BigDecimal commissionRateBefore = partner.getCommissionRate();
         String categoryIdsBefore = partner.getCategoryIds();
+        String zoneIdsBefore = partnerZoneRepository.findByPartnerId(partnerId).stream()
+                .map(PartnerZone::getZoneId)
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
         Boolean allowProductEditsBefore = partner.getAllowProductUpdatesWithoutApproval();
 
         updateBasicInfo(partner, dto);
@@ -1313,6 +1353,35 @@ public class PartnerServiceImpl implements PartnerService {
         }
 
         Partner saved = partnerRepository.save(partner);
+        String zoneIdsAfterLog = null;
+        String zoneIdsBeforeLog = null;
+        if (dto.getZoneIds() != null) {
+            List<Long> requestedZoneIds = dto.getZoneIds().stream()
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+
+            partnerZoneRepository.deleteAllByPartnerId(partnerId);
+            if (!requestedZoneIds.isEmpty()) {
+                List<PartnerZone> newAssignments = requestedZoneIds.stream()
+                        .map(zoneId -> PartnerZone.builder()
+                                .partnerId(partnerId)
+                                .zoneId(zoneId)
+                                .assignedAt(LocalDateTime.now())
+                                .build())
+                        .toList();
+                partnerZoneRepository.saveAll(newAssignments);
+            }
+
+            zoneIdsBeforeLog = zoneIdsBefore.isBlank() ? null : zoneIdsBefore;
+            zoneIdsAfterLog = requestedZoneIds.stream()
+                    .sorted()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+            if (zoneIdsAfterLog.isBlank()) {
+                zoneIdsAfterLog = null;
+            }
+        }
         log.info("Partner {} updated by admin (commission/categories included)", partnerId);
 
         String commissionTypeAfter = saved.getCommissionType() != null ? saved.getCommissionType().name() : null;
@@ -1324,7 +1393,8 @@ public class PartnerServiceImpl implements PartnerService {
                 null, null,
                 commissionTypeBefore, commissionTypeAfter,
                 commissionRateBefore, saved.getCommissionRate(),
-                categoryIdsBefore, saved.getCategoryIds(), null,
+                categoryIdsBefore, saved.getCategoryIds(),
+                zoneIdsBeforeLog, zoneIdsAfterLog, null,
                 allowProductEditsBeforeLog, allowProductEditsAfterLog);
 
         return convertToDTO(saved);

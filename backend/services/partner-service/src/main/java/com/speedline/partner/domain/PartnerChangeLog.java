@@ -59,6 +59,14 @@ public class PartnerChangeLog {
     @Column(name = "category_ids_after", length = 500)
     private String categoryIdsAfter;
 
+    // ── Zones ────────────────────────────────────────────────────────────────
+
+    @Column(name = "zone_ids_before", length = 1000)
+    private String zoneIdsBefore;
+
+    @Column(name = "zone_ids_after", length = 1000)
+    private String zoneIdsAfter;
+
     // ── Product edit permission (menu products) ───────────────────────────────
 
     @Column(name = "product_edit_permission_before")

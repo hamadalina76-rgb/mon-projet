@@ -70,6 +70,7 @@ export class PartnersService {
     categoryId: number;
     subcategoryIds: number[];
     allowProductUpdatesWithoutApproval?: boolean;
+    zoneIds?: number[];
   }): Observable<any> {
     return this.api.post(`admin/partners/${id}/approve`, commissionData);
   }
@@ -181,6 +182,7 @@ getPartnerChangeLogsFiltered(
     commissionRate?: number;
     categoryId?: number | null;
     subcategoryIds?: number[];
+    zoneIds?: number[];
     allowProductUpdatesWithoutApproval?: boolean;
   }): Observable<any> {
     return this.api.put(`admin/partners/${id}`, data);

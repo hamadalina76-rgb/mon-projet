@@ -272,7 +272,6 @@
       "email": "Email",
       "phone": "Phone",
       "documentsVerified": "Documents verified",
-      "view": "View",
       "bankIban": "IBAN",
       "bankAccountHolder": "Account holder",
       "noDocuments": "No documents",
@@ -283,8 +282,6 @@
       "rejectSuccess": "Courier rejected",
       "requestMoreInfoSuccess": "Request sent",
       "id": "ID",
-      "suspendSuccess": "Courier suspended",
-      "activateSuccess": "Courier activated",
       "tabs": {
         "general": "General Info",
         "documents": "Documents",
@@ -481,6 +478,11 @@
       "subcategories": "Subcategories",
       "cancel": "Cancel",
       "approve": "Approve with Commission",
+      "zonesStep": "Zones",
+      "zonesTitle": "Delivery Zones",
+      "zonesDesc": "Select the zones where this partner can deliver.",
+      "zonesNone": "No zones available",
+      "zonesAssigned": "assigned zone(s)",
       "productEditPermissionTitle": "Product Edit Permission",
       "productEditPermissionLabel": "Allow partner to edit products without approval",
       "productEditPermissionHint": "If enabled, product changes are auto-approved. Otherwise, they go through the normal approval flow."
@@ -672,6 +674,14 @@
           "DEACTIVATE": "Deactivated",
           "SUSPEND": "Suspended",
           "UPDATE_INFO": "Updated"
+        },
+        "changeLabels": {
+          "category": "Category",
+          "subcategories": "Subcategories",
+          "categories": "Categories",
+          "zones": "Zones",
+          "added": "Added",
+          "removed": "Removed"
         },
         "productEditPermission": {
           "autoApproved": "Products auto-approved",

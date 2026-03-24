@@ -13,9 +13,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { CategoriesService } from '@features/categories/services/categories.service';
 import { Category } from '@core/models/category.model';
+import { Zone } from '@core/models/zone.model';
+import { PartnersService } from '../services/partners.service';
 
 export interface PartnerEditDialogData {
   partner: any;
+  assignedZoneIds?: number[];
 }
 
 @Component({
@@ -41,6 +44,7 @@ export interface PartnerEditDialogData {
 export class PartnerEditDialogComponent implements OnInit {
   public dialogRef = inject(MatDialogRef<PartnerEditDialogComponent>);
   private categoriesService = inject(CategoriesService);
+  private partnersService = inject(PartnersService);
   private translate = inject(TranslateService);
   data: PartnerEditDialogData = inject(MAT_DIALOG_DATA);
 
@@ -64,6 +68,9 @@ export class PartnerEditDialogComponent implements OnInit {
   // Signal dédié pour categoryId (réactif dans les computed)
   selectedCategoryId = signal<number | null>(null);
   selectedSubcategoryIds = signal<number[]>([]);
+  allZones = signal<Zone[]>([]);
+  selectedZoneIds = signal<number[]>([]);
+  zonesLoading = signal(false);
   allCategories = signal<Category[]>([]);
   categoriesLoading = signal(false);
 
@@ -91,6 +98,11 @@ export class PartnerEditDialogComponent implements OnInit {
     // Charger les catégories D'ABORD, puis définir la sélection initiale
     // (le mat-select a besoin des options avant de pouvoir pré-sélectionner)
     this.loadCategories(p.categoryIds);
+    const initialZoneIds = (this.data.assignedZoneIds ?? [])
+      .map((n: any) => Number(n))
+      .filter((n: number) => !isNaN(n) && n > 0);
+    this.selectedZoneIds.set(initialZoneIds);
+    this.loadZones(p?.id?.toString?.() ?? null);
   }
 
   private loadCategories(rawCategoryIds?: any): void {
@@ -151,6 +163,53 @@ export class PartnerEditDialogComponent implements OnInit {
     return this.selectedSubcategoryIds().includes(id);
   }
 
+  private loadZones(partnerId: string | null): void {
+    this.zonesLoading.set(true);
+    this.partnersService.getAllZones().subscribe({
+      next: (zones) => {
+        const normalizedZones = (zones ?? []).map((z: any) => ({
+          ...z,
+          id: Number(z?.id),
+        })).filter((z: any) => !isNaN(z.id));
+        this.allZones.set(normalizedZones as Zone[]);
+
+        // Fallback robuste: si les zones assignées n'ont pas été passées, on les charge depuis l'API.
+        if (this.selectedZoneIds().length === 0 && partnerId) {
+          this.partnersService.getPartnerZones(partnerId).subscribe({
+            next: (assigned) => {
+              const list: any[] = Array.isArray(assigned) ? assigned : ((assigned as any)?.content ?? []);
+              const ids = list
+                .map((z: any) => Number(z?.id))
+                .filter((n: number) => !isNaN(n) && n > 0);
+              this.selectedZoneIds.set(ids);
+              this.zonesLoading.set(false);
+            },
+            error: () => this.zonesLoading.set(false),
+          });
+          return;
+        }
+
+        this.zonesLoading.set(false);
+      },
+      error: () => this.zonesLoading.set(false),
+    });
+  }
+
+  isZoneSelected(id: number): boolean {
+    return this.selectedZoneIds().includes(Number(id));
+  }
+
+  toggleZone(id: number): void {
+    const zoneId = Number(id);
+    if (isNaN(zoneId)) return;
+    const current = this.selectedZoneIds();
+    if (current.includes(zoneId)) {
+      this.selectedZoneIds.set(current.filter(x => x !== zoneId));
+    } else {
+      this.selectedZoneIds.set([...current, zoneId]);
+    }
+  }
+
   get isRtl(): boolean {
     return this.translate.currentLang === 'ar';
   }
@@ -165,6 +224,7 @@ export class PartnerEditDialogComponent implements OnInit {
       ...this.form,
       categoryId: this.selectedCategoryId(),
       subcategoryIds: this.selectedSubcategoryIds(),
+      zoneIds: this.selectedZoneIds(),
     });
   }
 

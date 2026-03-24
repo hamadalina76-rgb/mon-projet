@@ -112,6 +112,8 @@ public class AuditLogService {
             BigDecimal commissionRateAfter,
             String categoryIdsBefore,
             String categoryIdsAfter,
+            String zoneIdsBefore,
+            String zoneIdsAfter,
             String reason,
             Boolean productEditPermissionBefore,
             Boolean productEditPermissionAfter) {
@@ -128,6 +130,8 @@ public class AuditLogService {
                     .commissionRateAfter(commissionRateAfter)
                     .categoryIdsBefore(categoryIdsBefore)
                     .categoryIdsAfter(categoryIdsAfter)
+                    .zoneIdsBefore(zoneIdsBefore)
+                    .zoneIdsAfter(zoneIdsAfter)
                     .productEditPermissionBefore(productEditPermissionBefore)
                     .productEditPermissionAfter(productEditPermissionAfter)
                     .reason(reason)
@@ -341,6 +345,8 @@ public class AuditLogService {
                 .commissionRateAfter(e.getCommissionRateAfter())
                 .categoryIdsBefore(e.getCategoryIdsBefore())
                 .categoryIdsAfter(e.getCategoryIdsAfter())
+                .zoneIdsBefore(e.getZoneIdsBefore())
+                .zoneIdsAfter(e.getZoneIdsAfter())
                 .productEditPermissionBefore(e.getProductEditPermissionBefore())
                 .productEditPermissionAfter(e.getProductEditPermissionAfter())
                 .reason(e.getReason())

@@ -139,6 +139,40 @@
     </ng-container>
 
     <mat-divider class="section-divider"></mat-divider>
+
+    <!-- ─ Section : Zones ─ -->
+    <div class="section-label">
+      <span class="material-icons-round sl-icon">map</span>
+      <span>{{ 'partners.commission.zonesTitle' | translate }}</span>
+    </div>
+    <p class="sub-hint">{{ 'partners.commission.zonesDesc' | translate }}</p>
+
+    <div class="cats-loading" *ngIf="zonesLoading()">
+      <mat-icon class="spin-icon">refresh</mat-icon>
+      <span>{{ 'partners.edit.categoriesLoading' | translate }}</span>
+    </div>
+
+    <ng-container *ngIf="!zonesLoading()">
+      <div class="sub-chips" *ngIf="allZones().length > 0; else noZonesInEdit">
+        @for (zone of allZones(); track zone.id) {
+          <button type="button"
+                  class="sub-chip"
+                  [class.selected]="isZoneSelected(zone.id)"
+                  (click)="toggleZone(zone.id)">
+            <span class="material-icons-round chip-check" *ngIf="isZoneSelected(zone.id)">check</span>
+            {{ zone.name }}<span *ngIf="zone.city">&nbsp;— {{ zone.city }}</span>
+          </button>
+        }
+      </div>
+      <ng-template #noZonesInEdit>
+        <p class="no-sub-msg">
+          <span class="material-icons-round">info</span>
+          {{ 'partners.commission.zonesNone' | translate }}
+        </p>
+      </ng-template>
+    </ng-container>
+
+    <mat-divider class="section-divider"></mat-divider>
     <!-- Product edit permission -->
     <div class="section-label">
       <span class="material-icons-round sl-icon">edit</span>

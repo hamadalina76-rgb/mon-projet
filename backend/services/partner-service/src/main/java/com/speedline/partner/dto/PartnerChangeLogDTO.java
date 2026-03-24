@@ -30,6 +30,10 @@ public class PartnerChangeLogDTO {
     private String        categoryIdsBefore;
     private String        categoryIdsAfter;
 
+    // Zones
+    private String        zoneIdsBefore;
+    private String        zoneIdsAfter;
+
     // Product edit permission
     private Boolean productEditPermissionBefore;
     private Boolean productEditPermissionAfter;

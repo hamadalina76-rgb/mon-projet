@@ -249,17 +249,12 @@ export class PartnerApprovalComponent implements OnInit, AfterViewInit, OnDestro
           commissionRate: result.commissionRate,
           categoryId: result.categoryId,
           subcategoryIds: result.subcategoryIds,
-          allowProductUpdatesWithoutApproval: result.allowProductUpdatesWithoutApproval
+          allowProductUpdatesWithoutApproval: result.allowProductUpdatesWithoutApproval,
+          zoneIds: result.zoneIds
         };
 
         this.partnersService.approvePartnerWithCommission(partner.id.toString(), approvalData).subscribe({
           next: () => {
-            // Assign zones if selected
-            if (result.zoneIds && result.zoneIds.length > 0) {
-              this.partnersService.assignZones(partner.id.toString(), result.zoneIds).subscribe({
-                error: (e) => console.error('Zone assignment failed:', e)
-              });
-            }
             this.actionLoading.set(false);
             this.router.navigate(['/partners']);
           },
