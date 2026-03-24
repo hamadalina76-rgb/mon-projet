@@ -241,13 +241,13 @@ public interface CourierService {
 
     /**
      * Valider les documents d'un livreur (Admin only)
-     * Passe le statut à ACTIVE
-     * 
+     * Passe le statut à ACTIVE.
+     *
      * @param courierId ID du profil livreur
      * @return CourierDTO mis à jour avec status=ACTIVE, documentsVerified=true
      * @throws CourierNotFoundException si le livreur n'existe pas
      */
-    CourierDTO verifyDocuments(Long courierId);
+    CourierDTO verifyDocuments(Long courierId, com.speedline.user.domain.CourierType courierType);
 
     /**
      * Rejeter les documents d'un livreur (Admin only)
@@ -368,7 +368,7 @@ public interface CourierService {
     /**
      * Recherche admin : liste paginée avec filtre statut et recherche (immat, CIN, permis).
      */
-    Page<CourierDTO> searchCouriers(String search, CourierStatus status, Pageable pageable);
+    Page<CourierDTO> searchCouriers(String search, CourierStatus status, com.speedline.user.domain.CourierType courierType, Pageable pageable);
 
     /**
      * Obtenir les livreurs actuellement en ligne

@@ -38,6 +38,21 @@ export const USERS_ROUTES: Routes = [
         (m) => m.CourierApprovalComponent
       ),
   },
+  
+  {
+    path: 'couriers/:id/schedule',
+    loadComponent: () =>
+      import('./couriers/courier-schedule/courier-schedule.component').then(
+        (m) => m.CourierScheduleComponent
+      ),
+  },
+  {
+    path: 'schedule-templates',
+    loadComponent: () =>
+      import('./couriers/schedule-templates/schedule-templates.component').then(
+        (m) => m.ScheduleTemplatesComponent
+      ),
+  },
   {
     path: 'admins',
     canActivate: [permissionGuard],

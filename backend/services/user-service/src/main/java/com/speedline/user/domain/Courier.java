@@ -173,6 +173,14 @@ public class Courier {
     private String suspensionReason;
 
     /**
+     * Type de livreur — défini par l'admin lors de l'approbation.
+     * INTERNAL = salarié SpeedLine, EXTERNAL = indépendant/partenaire.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "courier_type", length = 20)
+    private CourierType courierType;
+
+    /**
      * Disponible pour accepter des livraisons
      */
     @Builder.Default

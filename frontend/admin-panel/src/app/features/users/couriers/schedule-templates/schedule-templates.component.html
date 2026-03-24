@@ -1,0 +1,138 @@
+<div class="st-page">
+
+  <!-- Header -->
+  <div class="st-header">
+    <div class="st-header__left">
+      <mat-icon class="st-header__icon">schedule</mat-icon>
+      <div>
+        <h1>{{ 'schedule.templatesTitle' | translate }}</h1>
+        <p>{{ 'schedule.templatesSubtitle' | translate }}</p>
+      </div>
+    </div>
+    <button class="btn-add-template" (click)="openForm()">
+      <span class="material-icons-round">add</span>
+      {{ 'schedule.newTemplate' | translate }}
+    </button>
+  </div>
+
+  <!-- Filters bar -->
+  <div class="st-filters">
+    <div class="st-search-box">
+      <span class="material-icons-round st-search-icon">search</span>
+      <input
+        type="text"
+        class="st-search-input"
+        [placeholder]="'schedule.searchPlaceholder' | translate"
+        [(ngModel)]="searchText"
+        (ngModelChange)="onSearchChange()"
+      />
+    </div>
+    <mat-form-field appearance="outline" class="st-filter-field">
+      <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusFilterChange()">
+        <mat-option value="all">{{ 'schedule.allStatuses' | translate }}</mat-option>
+        <mat-option value="active">{{ 'common.active' | translate }}</mat-option>
+        <mat-option value="inactive">{{ 'common.inactive' | translate }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="st-loading">
+      <mat-icon class="spinning">sync</mat-icon>
+    </div>
+  } @else if (templates().length === 0) {
+    <div class="st-empty">
+      <mat-icon>calendar_today</mat-icon>
+      <p>{{ 'schedule.noTemplates' | translate }}</p>
+      <button mat-stroked-button color="primary" (click)="openForm()">
+        {{ 'schedule.createFirst' | translate }}
+      </button>
+    </div>
+  } @else {
+    <div class="st-grid">
+      @for (t of templates(); track t.id) {
+        <mat-card class="st-card" [class.st-card--inactive]="!t.isActive">
+          <div class="st-card__header">
+            <div class="st-card__title-row">
+              <span class="st-card__name">{{ t.name }}</span>
+              <span class="st-badge" [class.st-badge--active]="t.isActive" [class.st-badge--inactive]="!t.isActive">
+                {{ t.isActive ? ('common.active' | translate) : ('common.inactive' | translate) }}
+              </span>
+            </div>
+            @if (t.description) {
+              <p class="st-card__desc">{{ t.description }}</p>
+            }
+          </div>
+
+          <div class="st-card__stats">
+            <div class="st-stat">
+              <mat-icon>calendar_view_week</mat-icon>
+              <span>{{ activeDays(t) }} {{ 'schedule.activeDays' | translate }}</span>
+            </div>
+            <div class="st-stat">
+              <mat-icon>access_time</mat-icon>
+              <span>{{ shiftCount(t) }} {{ 'schedule.shifts' | translate }}</span>
+            </div>
+          </div>
+
+          <!-- Weekly preview -->
+          <div class="st-week-preview">
+            @for (day of days; track day) {
+              <div class="st-day-chip"
+                   [class.st-day-chip--active]="(t.days[day] || []).length > 0"
+                   [matTooltip]="(t.days[day] || []).length > 0
+                     ? ((t.days[day])[0].startTime + ' – ' + (t.days[day])[t.days[day].length-1].endTime + ((t.days[day])[0].breakStart ? ' (☕ ' + (t.days[day])[0].breakStart + '-' + (t.days[day])[0].breakEnd + ')' : ''))
+                     : ('schedule.restDay' | translate)">
+                <span class="st-day-chip__abbr">{{ ('schedule.short.' + day) | translate }}</span>
+                @if ((t.days[day] || []).length > 0) {
+                  <span class="st-day-chip__count">{{ t.days[day].length }}</span>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="st-card__actions">
+            <button mat-icon-button class="st-btn st-btn--edit"
+                    (click)="openForm(t)" [matTooltip]="'common.edit' | translate">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button class="st-btn st-btn--toggle"
+                    [class.is-active]="t.isActive"
+                    (click)="toggle(t)"
+                    [matTooltip]="(t.isActive ? 'common.deactivate' : 'common.activate') | translate">
+              <mat-icon>{{ t.isActive ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+            </button>
+            <button mat-icon-button class="st-btn st-btn--delete"
+                    (click)="delete(t)" [matTooltip]="'common.delete' | translate">
+              <mat-icon>delete_outline</mat-icon>
+            </button>
+          </div>
+        </mat-card>
+      }
+    </div>
+
+    <!-- Pagination -->
+    @if (totalPages > 1) {
+      <div class="st-pagination">
+        <button class="st-pagination__btn" [disabled]="currentPage <= 1" (click)="onPageChange(currentPage - 1)">
+          <span class="material-icons-round">chevron_left</span>
+        </button>
+        @for (p of [].constructor(totalPages); track $index) {
+          <button class="st-pagination__btn"
+                  [class.st-pagination__btn--active]="$index + 1 === currentPage"
+                  (click)="onPageChange($index + 1)">
+            {{ $index + 1 }}
+          </button>
+        }
+        <button class="st-pagination__btn" [disabled]="currentPage >= totalPages" (click)="onPageChange(currentPage + 1)">
+          <span class="material-icons-round">chevron_right</span>
+        </button>
+        <span class="st-pagination__info">
+          {{ totalItems }} {{ 'schedule.totalTemplates' | translate }}
+        </span>
+      </div>
+    }
+  }
+
+</div>

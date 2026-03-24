@@ -1,7 +1,9 @@
 package com.speedline.user.controller;
 
 import com.speedline.user.domain.CourierStatus;
+import com.speedline.user.domain.CourierType;
 import com.speedline.user.dto.CourierDTO;
+import com.speedline.user.dto.CourierUpdateRequest;
 import com.speedline.user.service.CourierService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,12 +39,13 @@ public class AdminCourierController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDir,
             @RequestParam(required = false) CourierStatus status,
+            @RequestParam(required = false) CourierType courierType,
             @RequestParam(required = false) String search
     ) {
-        log.info("GET v1/admin/couriers - page: {}, size: {}, status: {}, search: {}", page, size, status, search);
+        log.info("GET v1/admin/couriers - page: {}, size: {}, status: {}, courierType: {}, search: {}", page, size, status, courierType, search);
         Sort.Direction direction = Sort.Direction.fromString(sortDir);
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-        return ResponseEntity.ok(courierService.searchCouriers(search, status, pageable));
+        return ResponseEntity.ok(courierService.searchCouriers(search, status, courierType, pageable));
     }
 
     /**
@@ -71,9 +74,17 @@ public class AdminCourierController {
      * POST v1/admin/couriers/{id}/approve
      */
     @PostMapping("/{id}/approve")
-    public ResponseEntity<CourierDTO> approveCourier(@PathVariable Long id) {
-        log.info("POST v1/admin/couriers/{}/approve", id);
-        return ResponseEntity.ok(courierService.verifyDocuments(id));
+    public ResponseEntity<CourierDTO> approveCourier(@PathVariable Long id,
+                                                     @RequestParam String courierType) {
+        log.info("POST v1/admin/couriers/{}/approve - courierType: {}", id, courierType);
+        com.speedline.user.domain.CourierType type;
+        try {
+            type = com.speedline.user.domain.CourierType.valueOf(courierType.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn("Type de livreur invalide: {}", courierType);
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(courierService.verifyDocuments(id, type));
     }
 
     /**
@@ -122,6 +133,17 @@ public class AdminCourierController {
         String reason = body != null && body.containsKey("reason") ? (body.get("reason") != null ? body.get("reason") : "") : "";
         courierService.suspendCourier(id, reason);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * PUT v1/admin/couriers/{id}
+     * Body: CourierUpdateRequest (all fields optional)
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<CourierDTO> updateCourier(@PathVariable Long id,
+                                                    @RequestBody CourierUpdateRequest request) {
+        log.info("PUT v1/admin/couriers/{}", id);
+        return ResponseEntity.ok(courierService.updateCourier(id, request));
     }
 
     /**

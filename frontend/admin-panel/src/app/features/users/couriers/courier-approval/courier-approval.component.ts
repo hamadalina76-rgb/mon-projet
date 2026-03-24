@@ -11,8 +11,10 @@ import { MatDialog } from '@angular/material/dialog';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ToastrService } from 'ngx-toastr';
 import { CouriersService } from '../services/couriers.service';
+import { CourierScheduleService } from '../services/courier-schedule.service';
 import { RejectDialogComponent } from '../../../partners/partner-approval/reject-dialog.component';
 import { RequestMoreInfoDialogComponent } from '../../../partners/partner-approval/request-more-info-dialog.component';
+import { ApproveTypeDialogComponent, ApproveTypeResult } from './approve-type-dialog.component';
 import { environment } from '@environments/environment';
 
 @Component({
@@ -36,6 +38,7 @@ export class CourierApprovalComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private couriersService = inject(CouriersService);
+  private scheduleSvc = inject(CourierScheduleService);
   private dialog = inject(MatDialog);
   private toastr = inject(ToastrService);
   private translate = inject(TranslateService);
@@ -84,17 +87,28 @@ export class CourierApprovalComponent implements OnInit {
   approveCourier(): void {
     const c = this.courier();
     if (!c) return;
-    this.actionLoading.set(true);
-    this.couriersService.approveCourier(String(c.id)).subscribe({
-      next: () => {
-        this.toastr.success(this.translate.instant('users.couriers.approveSuccess'));
-        this.router.navigate(['/users/couriers', c.id]);
-        this.actionLoading.set(false);
-      },
-      error: () => {
-        this.toastr.error(this.translate.instant('common.error'));
-        this.actionLoading.set(false);
-      },
+    const dialogRef = this.dialog.open(ApproveTypeDialogComponent, {
+      width: '480px',
+      maxWidth: '95vw',
+      panelClass: 'approve-type-panel',
+    });
+    dialogRef.afterClosed().subscribe((result: ApproveTypeResult | null) => {
+      if (!result) return;
+      this.actionLoading.set(true);
+      this.couriersService.approveCourier(String(c.id), result.courierType).subscribe({
+        next: () => {
+          if (result.courierType === 'INTERNAL' && result.templateId) {
+            this.scheduleSvc.applyTemplate(String(c.id), result.templateId).subscribe();
+          }
+          this.toastr.success(this.translate.instant('users.couriers.approveSuccess'));
+          this.router.navigate(['/users/couriers', c.id]);
+          this.actionLoading.set(false);
+        },
+        error: () => {
+          this.toastr.error(this.translate.instant('common.error'));
+          this.actionLoading.set(false);
+        },
+      });
     });
   }
 

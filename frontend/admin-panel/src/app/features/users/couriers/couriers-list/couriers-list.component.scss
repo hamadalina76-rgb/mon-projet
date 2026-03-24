@@ -1,6 +1,142 @@
 @use '../../../../../assets/styles/variables' as v;
 
+$primary:      #E31E24;
+$primary-dark: #B91219;
+$primary-soft: rgba(#E31E24, .08);
+$primary-glow: rgba(#E31E24, .28);
+$blue:         #E31E24;
+$blue-soft:    rgba(#E31E24, .08);
+$blue-glow:    rgba(#E31E24, .28);
+$amber:        #F59E0B;
+$amber-soft:   rgba(#F59E0B, .1);
+$amber-glow:   rgba(#F59E0B, .3);
+$ease:         cubic-bezier(.4, 0, .2, 1);
+
+// ── Red header button – 'Modèles d\'horaires' ──────────────────────
+.btn-schedule-templates {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 10px;
+  font-size: .85rem;
+  font-weight: 700;
+  letter-spacing: .01em;
+  cursor: pointer;
+  background: linear-gradient(135deg, $primary 0%, $primary-dark 100%);
+  color: #fff;
+  box-shadow: 0 3px 12px $primary-glow;
+  transition: all .22s $ease;
+  white-space: nowrap;
+
+  .material-icons-round { font-size: 18px; }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px $primary-glow;
+    background: linear-gradient(135deg, lighten($primary, 4%) 0%, $primary 100%);
+  }
+  &:active { transform: scale(.97); }
+}
+
+// ── All deep-scoped rules ───────────────────────────────────────────
 :host ::ng-deep {
+
+  // Courier type badge
+  .courier-type-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: .6rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    padding: 1px 7px;
+    border-radius: 20px;
+    margin-left: 6px;
+    vertical-align: middle;
+    line-height: 1.6;
+
+    &--internal {
+      background: $primary-soft;
+      color: $primary;
+      border: 1px solid rgba($primary, .25);
+    }
+    &--external {
+      background: rgba(#64748B, .08);
+      color: #64748B;
+      border: 1px solid rgba(#64748B, .2);
+    }
+  }
+
+  // ── Action icon buttons ─────────────────────────────────────────
+  .action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all .18s $ease;
+    background: rgba(#94A3B8, .09);
+    color: #64748B;
+    flex-shrink: 0;
+    text-decoration: none;
+
+    .material-icons-round { font-size: 18px; line-height: 1; }
+
+    &:hover {
+      background: rgba(#94A3B8, .18);
+      color: #334155;
+      transform: scale(1.08);
+    }
+
+    // Edit → red
+    &--edit {
+      background: $blue-soft;
+      color: $blue;
+      &:hover {
+        background: $blue;
+        color: #fff;
+        box-shadow: 0 4px 12px $blue-glow;
+        transform: scale(1.1);
+      }
+    }
+
+    // Schedule → red
+    &--schedule {
+      background: $primary-soft;
+      color: $primary;
+      &:hover {
+        background: $primary;
+        color: #fff;
+        box-shadow: 0 4px 12px $primary-glow;
+        transform: scale(1.1);
+      }
+    }
+
+    // Approval → amber
+    &--approval {
+      background: $amber-soft;
+      color: $amber;
+      &:hover {
+        background: $amber;
+        color: #fff;
+        box-shadow: 0 4px 12px $amber-glow;
+        transform: scale(1.1);
+      }
+    }
+  }
+
+  // ── Courier info cell ────────────────────────────────────────────
   .courier-info {
     display: flex;
     align-items: center;
@@ -45,6 +181,7 @@
     color: #64748b;
   }
 
+  // ── Status badges ────────────────────────────────────────────────
   .col-status .status-badge {
     display: inline-block;
     padding: 0.25rem 0.75rem;
@@ -75,11 +212,13 @@
   }
 }
 
+// ── Dark mode ─────────────────────────────────────────────────────
 :host-context(html.dark) ::ng-deep {
-  .courier-name {
-    color: v.$white;
-  }
-  .courier-secondary {
-    color: v.$gray-400;
+  .courier-name    { color: v.$white; }
+  .courier-secondary { color: v.$gray-400; }
+  .action-btn {
+    background: rgba(#94A3B8, .12);
+    color: #94A3B8;
+    &:hover { background: rgba(#94A3B8, .22); color: #CBD5E1; }
   }
 }

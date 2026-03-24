@@ -1,0 +1,857 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Courier Schedule — Component Styles
+// ─────────────────────────────────────────────────────────────────────────────
+
+$radius-lg: 16px;
+$radius-md: 10px;
+$border:    #E2E8F0;
+$text-main: #0F172A;
+$text-sub:  #64748B;
+$bg-soft:   #F8FAFC;
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+.cs-page {
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1200px;
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+.cs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__icon {
+    width: 44px; height: 44px;
+    border-radius: $radius-md;
+    background: rgba(227, 30, 36, .1);
+    color: #E31E24;
+    display: flex; align-items: center; justify-content: center;
+    mat-icon { font-size: 24px; }
+  }
+
+  &__title { font-size: 1.3rem; font-weight: 700; color: $text-main; margin: 0; }
+  &__sub   { font-size: .82rem; color: $text-sub; margin: 2px 0 0; }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}
+
+.cs-back-btn { color: $text-sub; }
+
+.cs-template-select {
+  min-width: 200px;
+  .mat-mdc-form-field-subscript-wrapper { display: none; }
+}
+
+.cs-divider { height: 32px; margin: 0 4px; }
+
+// ── Loading ────────────────────────────────────────────────────────────────────
+.cs-loading {
+  display: flex;
+  justify-content: center;
+  padding: 60px;
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+.cs-stats {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.cs-stat {
+  background: #fff;
+  border: 1px solid $border;
+  border-radius: $radius-md;
+  padding: 14px 22px;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 4px; min-width: 110px;
+
+  &__num {
+    font-size: 1.75rem; font-weight: 700; color: $text-main; line-height: 1;
+  }
+
+  &__pill {
+    font-size: .75rem; font-weight: 700;
+    padding: 4px 12px; border-radius: 20px;
+    background: #FEE2E2; color: #991B1B;
+    &--perm { background: #D1FAE5; color: #065F46; }
+  }
+
+  &__lbl { font-size: .72rem; color: $text-sub; text-transform: uppercase; letter-spacing: .04em; }
+}
+
+// ── Copy-day banner ────────────────────────────────────────────────────────────
+.cs-copy-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: $radius-md;
+  border: 2px dashed #F87171;
+  background: #FEF2F2;
+  font-size: .9rem;
+  color: $text-main;
+
+  &__icon { color: #E31E24; }
+}
+
+.cs-copy-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cs-copy-chip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid $border;
+  background: #fff;
+  cursor: pointer;
+  font-size: .78rem; font-weight: 600;
+  transition: background .15s, border-color .15s;
+  user-select: none;
+
+  &:hover { border-color: #F87171; background: #FEF2F2; }
+  &--selected { background: #E31E24; border-color: #E31E24; color: #fff; }
+  &--source   { opacity: .4; pointer-events: none; }
+}
+
+.cs-day-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+// ── FullCalendar card ──────────────────────────────────────────────────────────
+.cs-cal-card {
+  border-radius: $radius-lg !important;
+  overflow: hidden;
+  padding: 0 !important;
+  border: 1px solid $border !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,.06) !important;
+
+  // FullCalendar overrides (global selectors must stay here)
+  :host ::ng-deep {
+    .fc { font-family: inherit; }
+    .fc-col-header-cell { background: $bg-soft; padding: 0; }
+    .fc-col-header-cell-cushion { padding: 0; width: 100%; display: block; }
+    .cs-col-hdr               { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0 4px; }
+    .cs-col-hdr__day          { font-size: .63rem; font-weight: 700; letter-spacing: .06em; color: $text-sub; text-transform: uppercase; }
+    .cs-col-hdr__num          { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .88rem; font-weight: 600; color: $text-main; transition: background .15s; }
+    .cs-col-hdr__num.is-today { background: #E31E24; color: #fff; }
+    .fc-timegrid-slot         { height: 32px; }
+    .fc-timegrid-slot-label   { font-size: .75rem; color: $text-sub; }
+    .fc-event                 { border-radius: 6px; font-size: .78rem; font-weight: 600; padding: 2px 6px; }
+    .fc-event.cs-break-event   { border: 1.5px dashed #CBD5E1 !important; background: repeating-linear-gradient(135deg, #F8FAFC, #F8FAFC 4px, #F1F5F9 4px, #F1F5F9 8px) !important; font-style: italic; font-weight: 500; opacity: .85; }
+    .fc-scrollgrid-sync-inner { padding: 6px 0; }
+    .fc-view-harness          { padding: 0 8px 8px; }
+  }
+}
+
+// ── Empty state ────────────────────────────────────────────────────────────────
+.cs-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 72px 24px;
+  color: $text-sub;
+  mat-icon { font-size: 60px; width: 60px; height: 60px; opacity: .3; }
+  p { font-size: 1rem; margin: 0; }
+}
+
+// ── Edit grid ──────────────────────────────────────────────────────────────────
+.cs-edit-grid {
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+.cs-perm-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px;
+  background: $bg-soft;
+  border: 1px solid $border;
+  border-radius: $radius-md;
+  font-size: .9rem; font-weight: 600; color: $text-main;
+
+  mat-icon { color: $text-sub; }
+}
+
+.cs-perm-select {
+  min-width: 160px;
+  .mat-mdc-form-field-subscript-wrapper { display: none; }
+}
+
+// ── Day card ───────────────────────────────────────────────────────────────────
+.cs-day-card {
+  background: #fff;
+  border: 1px solid $border;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  transition: box-shadow .2s;
+  &:focus-within { box-shadow: 0 4px 14px rgba(0,0,0,.07); }
+
+  &__header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+    background: $bg-soft;
+    border-left: 4px solid transparent;
+  }
+
+  &__body {
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+}
+
+.cs-day-label {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 700; font-size: .9rem; flex: 1;
+}
+
+.cs-day-count {
+  font-size: .75rem; color: $text-sub; background: #F1F5F9;
+  padding: 2px 10px; border-radius: 20px;
+}
+
+.cs-copy-btn { color: $text-sub; margin-left: auto; }
+
+// ── Shift row ──────────────────────────────────────────────────────────────────
+.cs-shift-row {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+}
+
+.cs-shift-sep { color: $text-sub; font-size: 1.1rem; flex-shrink: 0; }
+
+.cs-tf {
+  width: 130px;
+  .mat-mdc-form-field-subscript-wrapper { display: none; }
+  &--break { width: 110px; }
+}
+
+.cs-add-btn {
+  align-self: flex-start;
+  font-size: .82rem; height: 34px; line-height: 34px;
+}
+
+.cs-rest {
+  display: flex; align-items: center; gap: 6px;
+  font-size: .82rem; color: $text-sub; font-style: italic; margin: 0;
+  mat-icon { font-size: 16px; width: 16px; height: 16px; }
+}
+
+// ── Override Material primary buttons (azure-blue theme → SpeedLine red) ─────
+:host {
+  .mat-mdc-unelevated-button.mat-primary {
+    --mdc-filled-button-container-color: #E31E24;
+    --mdc-filled-button-label-text-color: #fff;
+    &:hover { --mdc-filled-button-container-color: #C41A20; }
+    &:disabled {
+      --mdc-filled-button-container-color: #F3A0A3;
+      --mdc-filled-button-label-text-color: #fff;
+    }
+  }
+  .mat-mdc-outlined-button.mat-accent {
+    --mdc-outlined-button-label-text-color: #E31E24;
+    --mdc-outlined-button-outline-color: #E31E24;
+    &:hover { background: rgba(227, 30, 36, .06); }
+  }
+}
+
+// ── Dark theme ─────────────────────────────────────────────────────────────────
+:host-context(.dark-theme) {
+  .cs-stat, .cs-day-card { background: #1E293B; border-color: #334155; }
+  .cs-day-card__header, .cs-perm-row { background: #0F172A; }
+  .cs-cal-card { background: #1E293B; border-color: #334155 !important; }
+  .cs-copy-banner { background: #2D1215; border-color: #DC2626; }
+  .cs-copy-chip { background: #1E293B; border-color: #334155; color: #F1F5F9; }
+  .cs-stat__num, .cs-day-label, .cs-perm-row { color: #F1F5F9; }
+}
+
+// ── Week navigation bar ─────────────────────────────────────────────
+.cs-week-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid $border;
+
+  &__btn {
+    height: 30px;
+    padding: 0 14px;
+    border: 1.5px solid $border;
+    border-radius: 8px;
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: #fff;
+    color: $text-main;
+    transition: all .15s;
+    white-space: nowrap;
+    &:hover { border-color: #E31E24; color: #E31E24; }
+  }
+
+  &__arrows {
+    display: flex;
+    gap: 2px;
+  }
+
+  &__arrow {
+    width: 30px;
+    height: 30px;
+    border: 1.5px solid $border;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: #fff;
+    color: $text-sub;
+    transition: all .15s;
+    &:hover { border-color: #334155; color: $text-main; }
+    .material-icons-round { font-size: 18px; }
+  }
+
+  &__label {
+    font-size: .88rem;
+    font-weight: 600;
+    color: $text-main;
+    flex: 1;
+  }
+}
+
+
+
+// ── Header ───────────────────────────────────────────────────────────────────
+.cs-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__icon {
+    font-size: 36px;
+    color: #E31E24;
+    opacity: .85;
+  }
+
+  &__title {
+    font-size: 1.35rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  &__sub {
+    font-size: .85rem;
+    color: #64748b;
+    margin: 2px 0 0;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+}
+
+.cs-template-select {
+  min-width: 200px;
+
+  .mat-mdc-form-field-subscript-wrapper { display: none; }
+}
+
+// ── Loading ───────────────────────────────────────────────────────────────────
+.cs-loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+// ── Stats bar ─────────────────────────────────────────────────────────────────
+.cs-stats {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.cs-stat {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 120px;
+
+  &__value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #1e293b;
+
+    &--pill {
+      font-size: .78rem;
+      font-weight: 600;
+      padding: 3px 12px;
+      border-radius: 20px;
+      background: #fee2e2;
+      color: #991b1b;
+
+      &.permanent { background: #d1fae5; color: #065f46; }
+    }
+  }
+
+  &__label {
+    font-size: .75rem;
+    color: #94a3b8;
+    margin-top: 4px;
+  }
+}
+
+// ── Calendar card ─────────────────────────────────────────────────────────────
+.cs-calendar-card {
+  padding: 16px;
+  border-radius: 16px;
+  overflow: hidden;
+
+  // FullCalendar overrides
+  :host ::ng-deep {
+    .fc-timegrid-slot { height: 30px !important; }
+    .fc-event { border-radius: 6px; font-size: .78rem; }
+    .fc-col-header-cell { background: #f8fafc; font-weight: 600; }
+  }
+}
+
+// ── Empty placeholder ─────────────────────────────────────────────────────────
+.cs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 60px 0;
+  color: #94a3b8;
+
+  mat-icon { font-size: 56px; width: 56px; height: 56px; }
+  p { font-size: 1rem; }
+}
+
+// ── Copy-day panel ────────────────────────────────────────────────────────────
+.cs-copy-card {
+  padding: 20px;
+  border-radius: 14px;
+  border: 2px dashed #F87171;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .95rem;
+    margin-bottom: 16px;
+
+    mat-icon { color: #E31E24; }
+  }
+
+  &__targets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 10px;
+  }
+}
+
+.cs-copy-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+
+  &.disabled { opacity: .4; pointer-events: none; }
+}
+
+// ── Day badge ─────────────────────────────────────────────────────────────────
+.cs-day-badge {
+  display: inline-block;
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+// ── Edit grid ─────────────────────────────────────────────────────────────────
+.cs-edit-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cs-edit-row {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-left: 4px solid;
+    background: #f8fafc;
+  }
+
+  &__name {
+    font-weight: 600;
+    font-size: .9rem;
+    flex: 1;
+  }
+
+  &__shifts {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+.cs-shift-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cs-shift-arrow {
+  font-size: 1rem;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.cs-time-field {
+  width: 130px;
+  .mat-mdc-form-field-subscript-wrapper { display: none; }
+}
+
+.cs-break-field {
+  width: 110px;
+  .mat-mdc-form-field-subscript-wrapper { display: none; }
+}
+
+.cs-add-shift {
+  align-self: flex-start;
+  font-size: .82rem;
+  height: 32px;
+  line-height: 32px;
+  padding: 0 12px;
+}
+
+.cs-rest-day {
+  font-size: .82rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+// ── Dark theme ────────────────────────────────────────────────────────────────
+:host-context(.dark-theme) {
+  .cs-stat, .cs-edit-row { background: #1e293b; border-color: #334155; }
+  .cs-edit-row__header { background: #0f172a; }
+  .cs-calendar-card { background: #1e293b; }
+  .cs-stat__value { color: #f1f5f9; }
+  .cs-copy-card { border-color: #DC2626; background: #1e293b; }
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+.cs-tabs {
+  margin-top: 20px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,.05);
+
+  ::ng-deep {
+    .mat-mdc-tab-header {
+      border-bottom: 1px solid rgba(0,0,0,.06);
+    }
+
+    .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label {
+      color: #E31E24 !important;
+      font-weight: 700;
+    }
+
+    .mat-mdc-tab.mdc-tab--active .mdc-tab__indicator-content {
+      border-color: #E31E24 !important;
+    }
+
+    .mdc-tab__text-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .9rem;
+      font-weight: 600;
+    }
+
+    .mat-mdc-tab-body-content {
+      padding: 20px;
+    }
+  }
+
+  .cs-tab-icon {
+    font-size: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+}
+
+// ── History tab ──────────────────────────────────────────────────────────────
+.cs-history-tab {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .875rem;
+
+  thead tr {
+    background: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
+  }
+
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: .72rem;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: .05em;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #1e293b;
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  tbody tr:hover { background: #fafafa; }
+}
+
+.cs-hist-template {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .cs-hist-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+    color: #64748b;
+  }
+}
+
+.cs-hist-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: .75rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &--perm {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  &--weekly {
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+}
+
+.cs-hist-shifts {
+  font-weight: 600;
+  color: #E31E24;
+}
+
+.cs-hist-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .8rem;
+  font-weight: 600;
+
+  mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &--active {
+    color: #059669;
+    mat-icon { color: #059669; }
+  }
+
+  &--inactive {
+    color: #94a3b8;
+    mat-icon { color: #94a3b8; }
+  }
+}
+
+// ── Audit log ─────────────────────────────────────────────────────────────────
+.cs-audit-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 0 4px;
+  border-bottom: 1px solid $border;
+  margin-bottom: 8px;
+
+  .cs-audit-filter__select { width: 210px; }
+  .cs-audit-filter__date   { width: 180px; }
+
+  .cs-audit-filter__icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+    vertical-align: middle;
+    margin-right: 2px;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+  }
+
+  &__count {
+    font-size: .8rem;
+    color: $text-sub;
+    white-space: nowrap;
+    background: $bg-soft;
+    border: 1px solid $border;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-weight: 600;
+  }
+}
+
+.cs-audit-reset {
+  white-space: nowrap;
+}
+
+// Option icons in action dropdown
+.cs-audit-opt-icon {
+  font-size: .9rem; width: .9rem; height: .9rem;
+  margin-right: 4px; vertical-align: middle;
+  &--created  { color: #065f46; }
+  &--updated  { color: #1d4ed8; }
+  &--template { color: #5b21b6; }
+  &--copied   { color: #c2410c; }
+  &--deleted  { color: #b91c1c; }
+}
+.cs-audit-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: .75rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &__icon {
+    font-size: .9rem;
+    width: .9rem;
+    height: .9rem;
+  }
+
+  &--created  { background: #d1fae5; color: #065f46; }
+  &--updated  { background: #dbeafe; color: #1d4ed8; }
+  &--template { background: #ede9fe; color: #5b21b6; }
+  &--copied   { background: #ffedd5; color: #c2410c; }
+  &--deleted  { background: #fee2e2; color: #b91c1c; }
+}
+
+.cs-audit-details {
+  font-size: .82rem;
+  color: #475569;
+  max-width: 260px;
+}
+
+.cs-audit-template {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .82rem;
+  color: #5b21b6;
+
+  &__icon {
+    font-size: .9rem;
+    width: .9rem;
+    height: .9rem;
+    color: #5b21b6;
+  }
+}
+
+.cs-audit-na {
+  color: #cbd5e1;
+}
+
+.cs-audit-admin {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .82rem;
+  font-weight: 500;
+  color: #374151;
+
+  &__icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+    color: #9ca3af;
+  }
+}
+
+.cs-audit-date {
+  font-size: .8rem;
+  color: #64748b;
+  white-space: nowrap;
+}

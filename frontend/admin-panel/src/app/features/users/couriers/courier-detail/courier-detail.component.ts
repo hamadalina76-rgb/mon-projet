@@ -14,6 +14,8 @@ import { ToastrService } from 'ngx-toastr';
 import { CouriersService } from '../services/couriers.service';
 import { RejectDialogComponent } from '../../../partners/partner-approval/reject-dialog.component';
 import { RequestMoreInfoDialogComponent } from '../../../partners/partner-approval/request-more-info-dialog.component';
+import { ApproveTypeDialogComponent, ApproveTypeResult } from '../courier-approval/approve-type-dialog.component';
+import { CourierScheduleService } from '../services/courier-schedule.service';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '@shared/components/confirmation-dialog/confirmation-dialog.component';
 import { environment } from '@environments/environment';
 
@@ -39,6 +41,7 @@ export class CourierDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private couriersService = inject(CouriersService);
+  private scheduleSvc = inject(CourierScheduleService);
   private dialog = inject(MatDialog);
   private toastr = inject(ToastrService);
   private translate = inject(TranslateService);
@@ -67,6 +70,12 @@ export class CourierDetailComponent implements OnInit {
   getFullName(c: any): string {
     if (!c) return '-';
     return [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email || '-';
+  }
+
+  getCourierTypeLabel(type: string): string {
+    if (type === 'INTERNAL') return this.translate.instant('users.couriers.internal');
+    if (type === 'EXTERNAL') return this.translate.instant('users.couriers.external');
+    return '—';
   }
 
   getStatusLabel(status: string): string {
@@ -125,17 +134,28 @@ export class CourierDetailComponent implements OnInit {
   approve(): void {
     const c = this.courier();
     if (!c) return;
-    this.actionLoading.set(true);
-    this.couriersService.approveCourier(String(c.id)).subscribe({
-      next: () => {
-        this.toastr.success(this.translate.instant('users.couriers.approveSuccess'));
-        this.loadCourier(String(c.id));
-        this.actionLoading.set(false);
-      },
-      error: () => {
-        this.toastr.error(this.translate.instant('common.error'));
-        this.actionLoading.set(false);
-      },
+    const dialogRef = this.dialog.open(ApproveTypeDialogComponent, {
+      width: '480px',
+      maxWidth: '95vw',
+      panelClass: 'approve-type-panel',
+    });
+    dialogRef.afterClosed().subscribe((result: ApproveTypeResult | null) => {
+      if (!result) return;
+      this.actionLoading.set(true);
+      this.couriersService.approveCourier(String(c.id), result.courierType).subscribe({
+        next: () => {
+          if (result.courierType === 'INTERNAL' && result.templateId) {
+            this.scheduleSvc.applyTemplate(String(c.id), result.templateId).subscribe();
+          }
+          this.toastr.success(this.translate.instant('users.couriers.approveSuccess'));
+          this.loadCourier(String(c.id));
+          this.actionLoading.set(false);
+        },
+        error: () => {
+          this.toastr.error(this.translate.instant('common.error'));
+          this.actionLoading.set(false);
+        },
+      });
     });
   }
 
