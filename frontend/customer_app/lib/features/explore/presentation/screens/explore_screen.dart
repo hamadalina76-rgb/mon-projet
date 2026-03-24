@@ -504,6 +504,8 @@ class _CategoriesSection extends ConsumerStatefulWidget {
 }
 
 class _CategoriesSectionState extends ConsumerState<_CategoriesSection> {
+  bool _isNavigatingToNearby = false;
+
   @override
   void initState() {
     super.initState();
@@ -554,6 +556,27 @@ class _CategoriesSectionState extends ConsumerState<_CategoriesSection> {
     ref
         .read(nearbyPartnersNotifierProvider.notifier)
         .load(lat: coords.lat, lng: coords.lng);
+  }
+
+  Future<void> _onCategoryTap(int categoryId) async {
+    if (_isNavigatingToNearby) return;
+
+    setState(() => _isNavigatingToNearby = true);
+    try {
+      ref
+          .read(nearbyPartnersNotifierProvider.notifier)
+          .setCategoryById(categoryId);
+
+      if (!mounted) return;
+      await context.push(RouteNames.nearbyPartners);
+    } catch (e, st) {
+      debugPrint('[CategoriesSection] category tap navigation error: $e');
+      debugPrint('[CategoriesSection] stack: $st');
+    } finally {
+      if (mounted) {
+        setState(() => _isNavigatingToNearby = false);
+      }
+    }
   }
 
   List<int> _buildRowPattern(int count) {
@@ -741,12 +764,7 @@ class _CategoriesSectionState extends ConsumerState<_CategoriesSection> {
                   ),
 
                   child: GestureDetector(
-                    onTap: () {
-                      ref
-                          .read(nearbyPartnersNotifierProvider.notifier)
-                          .setCategoryById(cat.id);
-                      context.push(RouteNames.nearbyPartners);
-                    },
+                    onTap: () => _onCategoryTap(cat.id),
                     child: _FloatingCategoryBubble(
                       seed: cat.id,
                       preset: (rowIndex + item.key).isEven
@@ -1091,7 +1109,6 @@ class _FreeDeliveryBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => context.push(RouteNames.nearbyPartners),
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: ResponsiveUtils.getResponsiveSpacing(context, 12),

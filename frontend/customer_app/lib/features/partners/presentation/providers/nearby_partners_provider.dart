@@ -5,7 +5,7 @@ import '../../data/datasources/partner_api_service.dart';
 import '../../data/models/category_dto.dart';
 import '../../data/models/partner_nearby_dto.dart';
 
-enum PartnerSortOption { recommended, nearMe, bestRated, deliveryFee }
+enum PartnerSortOption { popularity, rating, newest }
 
 enum PartnerCategory { all, restaurant, grocery, courier, pharmacy, other }
 
@@ -19,7 +19,10 @@ class NearbyPartnersState {
   final bool hasReachedEnd;
   final PartnerSortOption sortOption;
   final PartnerCategory selectedCategory;
-  final bool promotionsOnly;
+  final bool openNowOnly;
+  final bool freeDeliveryOnly;
+  final double? minRating;
+  final int? maxDeliveryTime;
   final int? selectedCategoryId;
   final Set<int> selectedSubCategoryIds;
 
@@ -31,9 +34,12 @@ class NearbyPartnersState {
     this.errorMessage,
     this.currentPage = 0,
     this.hasReachedEnd = false,
-    this.sortOption = PartnerSortOption.recommended,
+    this.sortOption = PartnerSortOption.popularity,
     this.selectedCategory = PartnerCategory.all,
-    this.promotionsOnly = false,
+    this.openNowOnly = false,
+    this.freeDeliveryOnly = false,
+    this.minRating,
+    this.maxDeliveryTime,
     this.selectedCategoryId,
     this.selectedSubCategoryIds = const <int>{},
   });
@@ -49,7 +55,12 @@ class NearbyPartnersState {
     bool? hasReachedEnd,
     PartnerSortOption? sortOption,
     PartnerCategory? selectedCategory,
-    bool? promotionsOnly,
+    bool? openNowOnly,
+    bool? freeDeliveryOnly,
+    double? minRating,
+    bool clearMinRating = false,
+    int? maxDeliveryTime,
+    bool clearMaxDeliveryTime = false,
     int? selectedCategoryId,
     bool clearCategoryId = false,
     Set<int>? selectedSubCategoryIds,
@@ -65,7 +76,12 @@ class NearbyPartnersState {
       hasReachedEnd: hasReachedEnd ?? this.hasReachedEnd,
       sortOption: sortOption ?? this.sortOption,
       selectedCategory: selectedCategory ?? this.selectedCategory,
-      promotionsOnly: promotionsOnly ?? this.promotionsOnly,
+        openNowOnly: openNowOnly ?? this.openNowOnly,
+        freeDeliveryOnly: freeDeliveryOnly ?? this.freeDeliveryOnly,
+        minRating: clearMinRating ? null : (minRating ?? this.minRating),
+        maxDeliveryTime: clearMaxDeliveryTime
+          ? null
+          : (maxDeliveryTime ?? this.maxDeliveryTime),
       selectedCategoryId: clearCategoryId
           ? null
           : (selectedCategoryId ?? this.selectedCategoryId),
@@ -76,7 +92,44 @@ class NearbyPartnersState {
   }
 
   List<PartnerNearbyDto> get filteredPartners {
-    var list = allPartners;
+    return _applyFilters(allPartners);
+  }
+
+  int get activeFilterCount {
+    var count = 0;
+    if (openNowOnly) count++;
+    if (freeDeliveryOnly) count++;
+    if (minRating != null) count++;
+    if (maxDeliveryTime != null) count++;
+    return count;
+  }
+
+  List<PartnerNearbyDto> previewFilteredPartners({
+    bool? openNowOnly,
+    bool? freeDeliveryOnly,
+    double? minRating,
+    int? maxDeliveryTime,
+    PartnerSortOption? sortOption,
+  }) {
+    return _applyFilters(
+      allPartners,
+      openNowOnly: openNowOnly,
+      freeDeliveryOnly: freeDeliveryOnly,
+      minRating: minRating,
+      maxDeliveryTime: maxDeliveryTime,
+      sortOption: sortOption,
+    );
+  }
+
+  List<PartnerNearbyDto> _applyFilters(
+    List<PartnerNearbyDto> source, {
+    bool? openNowOnly,
+    bool? freeDeliveryOnly,
+    double? minRating,
+    int? maxDeliveryTime,
+    PartnerSortOption? sortOption,
+  }) {
+    var list = source;
 
     if (selectedSubCategoryIds.isNotEmpty) {
       list = list
@@ -110,46 +163,75 @@ class NearbyPartnersState {
       }).toList();
     }
 
-    if (promotionsOnly) {
+    final effectiveOpenNowOnly = openNowOnly ?? this.openNowOnly;
+    final effectiveFreeDeliveryOnly =
+        freeDeliveryOnly ?? this.freeDeliveryOnly;
+    final effectiveMinRating = minRating ?? this.minRating;
+    final effectiveMaxDeliveryTime = maxDeliveryTime ?? this.maxDeliveryTime;
+
+    if (effectiveOpenNowOnly) {
+      list = list.where((p) => p.isOpen).toList();
+    }
+
+    if (effectiveFreeDeliveryOnly) {
+      list = list.where((p) => (p.deliveryFee ?? 999999) == 0).toList();
+    }
+
+    if (effectiveMinRating != null) {
+      list = list.where((p) => p.rating >= effectiveMinRating).toList();
+    }
+
+    if (effectiveMaxDeliveryTime != null) {
       list = list
-          .where((p) =>
-              p.freeDeliveryThreshold != null ||
-              (p.deliveryFee != null && p.deliveryFee! == 0))
+          .where(
+            (p) =>
+                p.preparationTime != null &&
+                p.preparationTime! <= effectiveMaxDeliveryTime,
+          )
           .toList();
     }
 
-    list = _applySorting(list);
-
-    final open = list.where((p) => p.isOpen).toList();
-    final closed = list.where((p) => !p.isOpen).toList();
-    return [...open, ...closed];
+    return _applySorting(list, sortOption: sortOption ?? this.sortOption);
   }
 
-  List<PartnerNearbyDto> _applySorting(List<PartnerNearbyDto> list) {
+  List<PartnerNearbyDto> _applySorting(
+    List<PartnerNearbyDto> list, {
+    required PartnerSortOption sortOption,
+  }) {
     final sorted = List<PartnerNearbyDto>.from(list);
-    switch (sortOption) {
-      case PartnerSortOption.recommended:
-        sorted.sort((a, b) {
+    sorted.sort((a, b) {
+      if (a.isOpen != b.isOpen) {
+        return a.isOpen ? -1 : 1;
+      }
+
+      final da = a.distanceKm ?? double.infinity;
+      final db = b.distanceKm ?? double.infinity;
+      final byDistance = da.compareTo(db);
+      if (byDistance != 0) return byDistance;
+
+      final byRating = b.rating.compareTo(a.rating);
+      if (byRating != 0) return byRating;
+
+      switch (sortOption) {
+        case PartnerSortOption.popularity:
           if (a.isFeatured != b.isFeatured) {
             return a.isFeatured ? -1 : 1;
           }
-          return b.rating.compareTo(a.rating);
-        });
-      case PartnerSortOption.nearMe:
-        sorted.sort((a, b) {
-          final da = a.distanceKm ?? double.infinity;
-          final db = b.distanceKm ?? double.infinity;
-          return da.compareTo(db);
-        });
-      case PartnerSortOption.bestRated:
-        sorted.sort((a, b) => b.rating.compareTo(a.rating));
-      case PartnerSortOption.deliveryFee:
-        sorted.sort((a, b) {
-          final da = a.deliveryFee ?? double.infinity;
-          final db = b.deliveryFee ?? double.infinity;
-          return da.compareTo(db);
-        });
-    }
+          final ao = a.totalOrders ?? 0;
+          final bo = b.totalOrders ?? 0;
+          return bo.compareTo(ao);
+        case PartnerSortOption.rating:
+          return byRating;
+        case PartnerSortOption.newest:
+          final ad = a.createdAt;
+          final bd = b.createdAt;
+          if (ad == null && bd == null) return 0;
+          if (ad == null) return 1;
+          if (bd == null) return -1;
+          return bd.compareTo(ad);
+      }
+    });
+
     return sorted;
   }
 
@@ -294,8 +376,33 @@ class NearbyPartnersNotifier extends StateNotifier<NearbyPartnersState> {
     );
   }
 
-  void togglePromotions() {
-    state = state.copyWith(promotionsOnly: !state.promotionsOnly);
+  void setOpenNowOnly(bool value) {
+    state = state.copyWith(openNowOnly: value);
+  }
+
+  void setFreeDeliveryOnly(bool value) {
+    state = state.copyWith(freeDeliveryOnly: value);
+  }
+
+  void setMinRating(double? value) {
+    state = state.copyWith(minRating: value, clearMinRating: value == null);
+  }
+
+  void setMaxDeliveryTime(int? value) {
+    state = state.copyWith(
+      maxDeliveryTime: value,
+      clearMaxDeliveryTime: value == null,
+    );
+  }
+
+  void resetFilters() {
+    state = state.copyWith(
+      openNowOnly: false,
+      freeDeliveryOnly: false,
+      clearMinRating: true,
+      clearMaxDeliveryTime: true,
+      sortOption: PartnerSortOption.popularity,
+    );
   }
 
   void clearError() {

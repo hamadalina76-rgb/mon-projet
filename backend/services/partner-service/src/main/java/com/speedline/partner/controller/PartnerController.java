@@ -63,7 +63,6 @@ public class PartnerController {
     private final PartnerRepository partnerRepository;
     private final ObjectMapper objectMapper;
 
-    @Override
     @PostMapping("/internal")
     public ResponseEntity<?> createPartnerInternal(@RequestBody CreatePartnerRequest request) {
         log.info("Internal endpoint called to create partner for userId: {}", request.getUserId());
@@ -91,7 +90,6 @@ public class PartnerController {
      * Récupérer un partner par userId (pour le frontend après login)
      * GET /partners/by-user/{userId}
      */
-    @Override
     @GetMapping("/by-user/{userId}")
     public ResponseEntity<?> getPartnerByUserId(@PathVariable Long userId) {
         log.info("Getting partner by userId: {}", userId);
@@ -106,7 +104,6 @@ public class PartnerController {
         }
     }
 
-    @Override
     /**
      * Récupérer un partner par ID
      * GET /partners/{id}
@@ -126,7 +123,6 @@ public class PartnerController {
         }
     }
 
-    @Override
     @PutMapping("/{id}/complete-profile")
     public ResponseEntity<?> completeProfile(
             @PathVariable Long id,
@@ -147,7 +143,6 @@ public class PartnerController {
         }
     }
 
-    @Override
     @PutMapping("/{id}")
     public ResponseEntity<?> updatePartner(
             @PathVariable Long id,
@@ -164,7 +159,6 @@ public class PartnerController {
         }
     }
 
-    @Override
     @Operation(summary = "Changer statut ouvert/fermé", description = "Met à jour acceptsOrders (visible dans l'app client). OWNER ou ADMIN.")
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(
@@ -184,7 +178,6 @@ public class PartnerController {
         }
     }
 
-    @Override
     @Operation(summary = "Horaires d'ouverture", description = "Retourne la liste des horaires (format JSON stocké)")
     @GetMapping("/{id}/opening-hours")
     public ResponseEntity<?> getOpeningHours(@PathVariable Long id) {
@@ -200,7 +193,6 @@ public class PartnerController {
         }
     }
 
-    @Override
     @Operation(summary = "Modifier horaires", description = "Met à jour les horaires (body = liste day/isClosed/slots)")
     @PutMapping("/{id}/opening-hours")
     public ResponseEntity<?> putOpeningHours(
@@ -224,7 +216,6 @@ public class PartnerController {
         }
     }
 
-    @Override
     @Operation(summary = "Liste du staff", description = "Retourne les membres du staff (OWNER, MANAGER, STAFF)")
     @GetMapping("/{id}/staff")
     public ResponseEntity<?> getStaff(@PathVariable Long id) {
@@ -240,7 +231,6 @@ public class PartnerController {
         }
     }
 
-    @Override
     @PostMapping("/{id}/images")
     public ResponseEntity<?> uploadImages(
             @PathVariable Long id,
@@ -298,7 +288,6 @@ public class PartnerController {
         }
     }
 
-    @Override
     @PostMapping("/{id}/documents")
     public ResponseEntity<?> uploadDocuments(
             @PathVariable Long id,
@@ -384,7 +373,6 @@ public class PartnerController {
      * GET /partners/nearby?lat=..&lng=..&page=..&size=..
      * Récupérer les partenaires à proximité d'une position GPS, avec pagination.
      */
-    @Override
     @GetMapping("/nearby")
     public ResponseEntity<Page<PartnerDTO>> getNearbyPartners(
             @RequestParam @NotNull
@@ -423,7 +411,6 @@ public class PartnerController {
      * GET /partners/health
      */
 
-    @Override
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of("status", "UP", "service", "partner-service"));
