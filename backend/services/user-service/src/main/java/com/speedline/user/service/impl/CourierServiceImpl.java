@@ -600,8 +600,8 @@ public class CourierServiceImpl implements CourierService {
 
     @Override
     @Transactional
-    public CourierDTO verifyDocuments(Long courierId, com.speedline.user.domain.CourierType courierType) {
-        log.info("Admin: validation des documents pour livreur {} - type: {}", courierId, courierType);
+    public CourierDTO verifyDocuments(Long courierId, com.speedline.user.domain.CourierType courierType, java.util.List<Long> zoneIds) {
+        log.info("Admin: validation des documents pour livreur {} - type: {}, zones: {}", courierId, courierType, zoneIds);
         Courier courier = findCourierById(courierId);
         if (courier.getStatus() != CourierStatus.PENDING_APPROVAL) {
             throw new IllegalStateException("Seul un livreur en attente peut être approuvé. Statut actuel: " + courier.getStatus());
@@ -610,6 +610,10 @@ public class CourierServiceImpl implements CourierService {
         courier.setStatus(CourierStatus.ACTIVE);
         courier.setRejectionReason(null);
         courier.setCourierType(courierType);
+        if (zoneIds != null && !zoneIds.isEmpty()) {
+            courier.getAssignedZoneIds().clear();
+            courier.getAssignedZoneIds().addAll(zoneIds);
+        }
         courier = courierRepository.save(courier);
         log.info("Livreur {} approuvé (ACTIVE)", courierId);
         try {
@@ -624,6 +628,19 @@ public class CourierServiceImpl implements CourierService {
         } catch (Exception e) {
             log.warn("Could not notify courier of approval: {}", e.getMessage());
         }
+        return mapToDTO(courier);
+    }
+
+    @Override
+    @Transactional
+    public CourierDTO updateAssignedZones(Long courierId, java.util.List<Long> zoneIds) {
+        log.info("Admin: mise à jour des zones pour livreur {} - zones: {}", courierId, zoneIds);
+        Courier courier = findCourierById(courierId);
+        courier.getAssignedZoneIds().clear();
+        if (zoneIds != null) {
+            courier.getAssignedZoneIds().addAll(zoneIds);
+        }
+        courier = courierRepository.save(courier);
         return mapToDTO(courier);
     }
 
@@ -991,6 +1008,7 @@ public class CourierServiceImpl implements CourierService {
                 // Zone
                 .preferredDeliveryZone(courier.getPreferredDeliveryZone())
                 .maxDeliveryRadius(courier.getMaxDeliveryRadius())
+                .assignedZoneIds(courier.getAssignedZoneIds() != null ? new java.util.ArrayList<>(courier.getAssignedZoneIds()) : java.util.List.of())
                 // Photo
                 .profilePhoto(courier.getProfilePhoto())
                 // Raisons admin

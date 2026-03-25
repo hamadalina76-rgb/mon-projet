@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * DTO pour Courier - Utilisé pour les réponses API
@@ -154,6 +155,9 @@ public class CourierDTO {
 
     @Schema(description = "Rayon maximum de livraison en km", example = "15")
     private Integer maxDeliveryRadius;
+
+    @Schema(description = "IDs des zones assignées par l'admin (référence vers location-service)")
+    private List<Long> assignedZoneIds;
     
     // Timestamps
     @Schema(description = "Date de création du profil")

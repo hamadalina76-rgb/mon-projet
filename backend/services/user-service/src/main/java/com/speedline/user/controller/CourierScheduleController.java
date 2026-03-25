@@ -2,6 +2,7 @@ package com.speedline.user.controller;
 
 import com.speedline.user.dto.CourierScheduleAuditLogDTO;
 import com.speedline.user.dto.CourierScheduleDTO;
+import com.speedline.user.service.CourierChangeLogService;
 import com.speedline.user.service.CourierScheduleAuditLogService;
 import com.speedline.user.service.CourierScheduleService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class CourierScheduleController {
 
     private final CourierScheduleService scheduleService;
     private final CourierScheduleAuditLogService auditLogService;
+    private final CourierChangeLogService changeLogService;
 
     /** Planning permanent actif */
     @GetMapping
@@ -44,7 +46,11 @@ public class CourierScheduleController {
     public ResponseEntity<CourierScheduleDTO.Response> saveSchedule(@PathVariable Long courierId,
                                                                       @RequestBody CourierScheduleDTO.SaveRequest req) {
         log.info("POST schedule for courier {}", courierId);
-        return ResponseEntity.ok(scheduleService.saveSchedule(courierId, req));
+        CourierScheduleDTO.Response result = scheduleService.saveSchedule(courierId, req);
+        changeLogService.log("SCHEDULE_UPDATED", courierId,
+                null, null, null, null, null, null,
+                result.getTemplateName() != null ? result.getTemplateName() : "Planning mis à jour", null);
+        return ResponseEntity.ok(result);
     }
 
     /** Appliquer un template existant */
@@ -52,7 +58,11 @@ public class CourierScheduleController {
     public ResponseEntity<CourierScheduleDTO.Response> applyTemplate(@PathVariable Long courierId,
                                                                        @PathVariable Long templateId) {
         log.info("Apply template {} to courier {}", templateId, courierId);
-        return ResponseEntity.ok(scheduleService.applyTemplate(courierId, templateId));
+        CourierScheduleDTO.Response result = scheduleService.applyTemplate(courierId, templateId);
+        changeLogService.log("SCHEDULE_TEMPLATE_APPLIED", courierId,
+                null, null, null, null, null, null,
+                result.getTemplateName() != null ? result.getTemplateName() : "Template #" + templateId, null);
+        return ResponseEntity.ok(result);
     }
 
     /** Copier les shifts d'un jour vers d'autres jours */
@@ -60,12 +70,19 @@ public class CourierScheduleController {
     public ResponseEntity<CourierScheduleDTO.Response> copyDay(@PathVariable Long courierId,
                                                                 @RequestBody CourierScheduleDTO.CopyDayRequest req) {
         log.info("Copy day {} → {} for courier {}", req.getSourceDay(), req.getTargetDays(), courierId);
-        return ResponseEntity.ok(scheduleService.copyDay(courierId, req));
+        CourierScheduleDTO.Response result = scheduleService.copyDay(courierId, req);
+        changeLogService.log("SCHEDULE_DAY_COPIED", courierId,
+                null, null, null, null, null, null,
+                req.getSourceDay() + " → " + req.getTargetDays(), null);
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{scheduleId}")
     public ResponseEntity<Void> delete(@PathVariable Long courierId, @PathVariable Long scheduleId) {
         scheduleService.deleteSchedule(courierId, scheduleId);
+        changeLogService.log("SCHEDULE_DELETED", courierId,
+                null, null, null, null, null, null,
+                "Planning #" + scheduleId + " supprimé", null);
         return ResponseEntity.noContent().build();
     }
 
