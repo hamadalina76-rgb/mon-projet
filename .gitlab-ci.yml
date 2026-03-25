@@ -602,6 +602,11 @@ terraform_apply_dev:
     - export TF_VAR_atlas_project_id="${ATLAS_PROJECT_ID:-}"
 
     # --------------------------------------------------------------------------
+    # IAM projet (désactivé en CI standard)
+    # --------------------------------------------------------------------------
+    - export TF_VAR_enable_project_iam_bindings="false"
+
+    # --------------------------------------------------------------------------
     # Exécution Terraform
     # --------------------------------------------------------------------------
     - terraform init -input=false

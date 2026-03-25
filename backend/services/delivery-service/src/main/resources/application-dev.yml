@@ -1,4 +1,4 @@
-server:
+﻿server:
   port: ${PORT:8080}
   address: 0.0.0.0
   servlet:
@@ -23,14 +23,18 @@ spring:
 
   cloud:
     gcp:
-      project-id: ${GCP_PROJECT_ID:speedline-dev}
+      project-id: ${GCP_PROJECT_ID:speedline-dev-488413}
+      credentials:
+        enabled: true
       pubsub:
         emulator-host: ${PUBSUB_EMULATOR_HOST:}
         subscriber:
           parallel-pull-count: 1
           max-outstanding-element-count: 100
     pubsub:
-      project-id: ${GCP_PROJECT_ID:speedline-dev}
+      project-id: ${GCP_PROJECT_ID:speedline-dev-488413}
+      credentials:
+        enabled: true
 
 eureka:
   client:

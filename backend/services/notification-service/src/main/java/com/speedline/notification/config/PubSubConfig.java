@@ -13,7 +13,6 @@ import com.google.pubsub.v1.ProjectSubscriptionName;
 import com.google.pubsub.v1.ProjectTopicName;
 import com.google.pubsub.v1.PushConfig;
 import com.google.pubsub.v1.Subscription;
-import com.google.pubsub.v1.Topic;
 import io.grpc.ManagedChannelBuilder;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -39,59 +38,71 @@ public class PubSubConfig {
     @Value("${spring.cloud.gcp.pubsub.emulator-host:${PUBSUB_EMULATOR_HOST:${SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST:}}}")
     private String emulatorHost;
 
+    private static final String[][] TOPIC_SUBSCRIPTIONS = {
+        {"partner-events", "partner-events-notification-sub"},
+        {"partner-product-stock", "partner-product-stock-notification-sub"},
+        {"partner-promotion-ending", "partner-promotion-ending-notification-sub"}
+    };
+
     @PostConstruct
     public void initializePubSub() {
-        try {
-            log.info("Initializing Pub/Sub bootstrap for project: {}", projectId);
+        String normalizedEmulatorHost = emulatorHost == null ? "" : emulatorHost.trim();
 
-            if (!isEmulatorExplicitlyConfigured()) {
-                log.info("PUBSUB_EMULATOR_HOST not set; skipping emulator bootstrap. Using real GCP Pub/Sub managed by Terraform.");
+        try {
+            log.info("[PubSubConfig] Project ID: {}", projectId);
+
+            if (!isEmulatorExplicitlyConfigured(normalizedEmulatorHost)) {
+                log.info("[PubSubConfig] Mode: REAL GCP (DEV/CLOUD RUN)");
+                log.info("[PubSubConfig] Emulator host: NOT SET");
+                log.info("[PubSubConfig] Topic/subscription creation skipped (managed by Terraform)");
                 return;
             }
 
-            log.info("Using Pub/Sub emulator at: {}", emulatorHost);
-            createTopicsAndSubscriptionsForEmulator();
-            log.info("Pub/Sub emulator bootstrap completed successfully");
+            log.info("[PubSubConfig] Mode: LOCAL EMULATOR");
+            log.info("[PubSubConfig] Emulator host: {}", normalizedEmulatorHost);
+            log.info("[PubSubConfig] Bootstrapping topics/subscriptions locally in emulator");
+            createTopicsAndSubscriptionsForEmulator(normalizedEmulatorHost);
+            log.info("[PubSubConfig] Emulator bootstrap completed successfully");
         } catch (Exception e) {
-            log.warn("Failed to initialize Pub/Sub emulator bootstrap: {}", e.getMessage());
+            log.warn("[PubSubConfig] Emulator bootstrap failed: {}", e.getMessage());
         }
     }
 
-    private boolean isEmulatorExplicitlyConfigured() {
-        if (emulatorHost == null || emulatorHost.isBlank()) {
+    private boolean isEmulatorExplicitlyConfigured(String normalizedEmulatorHost) {
+        if (normalizedEmulatorHost.isBlank()) {
             return false;
         }
 
-        if (!emulatorHost.contains(":")) {
-            log.warn("Ignoring invalid PUBSUB_EMULATOR_HOST '{}': expected host:port", emulatorHost);
+        if (!normalizedEmulatorHost.contains(":")) {
+            log.warn("Ignoring invalid PUBSUB_EMULATOR_HOST '{}': expected host:port", normalizedEmulatorHost);
             return false;
         }
 
-        String[] hostPort = emulatorHost.split(":", 2);
+        String[] hostPort = normalizedEmulatorHost.split(":", 2);
         if (hostPort[0].isBlank() || hostPort[1].isBlank()) {
-            log.warn("Ignoring invalid PUBSUB_EMULATOR_HOST '{}': expected host:port", emulatorHost);
+            log.warn("Ignoring invalid PUBSUB_EMULATOR_HOST '{}': expected host:port", normalizedEmulatorHost);
             return false;
         }
 
         try {
             int port = Integer.parseInt(hostPort[1]);
             if (port <= 0 || port > 65535) {
-                log.warn("Ignoring invalid PUBSUB_EMULATOR_HOST '{}': port out of range", emulatorHost);
+                log.warn("Ignoring invalid PUBSUB_EMULATOR_HOST '{}': port out of range", normalizedEmulatorHost);
                 return false;
             }
             return true;
         } catch (NumberFormatException ex) {
-            log.warn("Ignoring invalid PUBSUB_EMULATOR_HOST '{}': non-numeric port", emulatorHost);
+            log.warn("Ignoring invalid PUBSUB_EMULATOR_HOST '{}': non-numeric port", normalizedEmulatorHost);
             return false;
         }
     }
 
-    private void createTopicsAndSubscriptionsForEmulator() throws Exception {
-        String[] hostPort = emulatorHost.split(":", 2);
+    private void createTopicsAndSubscriptionsForEmulator(String normalizedEmulatorHost) throws Exception {
+        String[] hostPort = normalizedEmulatorHost.split(":", 2);
         String host = hostPort[0];
         int port = Integer.parseInt(hostPort[1]);
 
-        ManagedChannelBuilder channelBuilder = ManagedChannelBuilder
+        ManagedChannelBuilder<?> channelBuilder = ManagedChannelBuilder
             .forAddress(host, port)
             .usePlaintext();
 
@@ -114,28 +125,14 @@ public class PubSubConfig {
 
         try (TopicAdminClient topicAdminClient = TopicAdminClient.create(topicAdminSettings);
              SubscriptionAdminClient subscriptionAdminClient = SubscriptionAdminClient.create(subscriptionAdminSettings)) {
-
-            // Create partner-events topic and subscription
-            createTopicAndSubscription(
-                topicAdminClient,
-                subscriptionAdminClient,
-                "partner-events",
-                "partner-events-notification-sub"
-            );
-            // Create partner-product-stock topic and subscription (stock alerts)
-            createTopicAndSubscription(
-                topicAdminClient,
-                subscriptionAdminClient,
-                "partner-product-stock",
-                "partner-product-stock-notification-sub"
-            );
-            // Create partner-promotion-ending topic and subscription (promo ending in 3 days)
-            createTopicAndSubscription(
-                topicAdminClient,
-                subscriptionAdminClient,
-                "partner-promotion-ending",
-                "partner-promotion-ending-notification-sub"
-            );
+            for (String[] entry : TOPIC_SUBSCRIPTIONS) {
+                createTopicAndSubscription(
+                    topicAdminClient,
+                    subscriptionAdminClient,
+                    entry[0],
+                    entry[1]
+                );
+            }
         }
     }
 
@@ -146,28 +143,30 @@ public class PubSubConfig {
             String subscriptionName) {
         try {
             ProjectTopicName projectTopicName = ProjectTopicName.of(projectId, topicName);
+            String topicPath = projectTopicName.toString();
             
             // Create topic if not exists
             try {
-                Topic topic = topicAdminClient.getTopic(projectTopicName);
+                topicAdminClient.getTopic(topicPath);
                 log.info("Topic '{}' already exists", topicName);
             } catch (Exception e) {
-                Topic topic = topicAdminClient.createTopic(projectTopicName);
+                topicAdminClient.createTopic(topicPath);
                 log.info("Created topic: {}", topicName);
             }
 
             // Create subscription if not exists
             ProjectSubscriptionName projectSubscriptionName = 
                 ProjectSubscriptionName.of(projectId, subscriptionName);
+            String subscriptionPath = projectSubscriptionName.toString();
             
             try {
-                Subscription sub = subscriptionAdminClient.getSubscription(projectSubscriptionName);
+                subscriptionAdminClient.getSubscription(subscriptionPath);
                 log.info("Subscription '{}' already exists", subscriptionName);
             } catch (Exception e) {
-                Subscription subscription = subscriptionAdminClient.createSubscription(
+                subscriptionAdminClient.createSubscription(
                     Subscription.newBuilder()
-                        .setName(projectSubscriptionName.toString())
-                        .setTopic(projectTopicName.toString())
+                        .setName(subscriptionPath)
+                        .setTopic(topicPath)
                         .setPushConfig(PushConfig.getDefaultInstance())
                         .setAckDeadlineSeconds(10)
                         .build()

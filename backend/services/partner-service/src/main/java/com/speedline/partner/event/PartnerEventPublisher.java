@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Publishes partner events to GCP Pub/Sub.
@@ -48,9 +49,11 @@ public class PartnerEventPublisher {
             log.info("JSON Payload: {}", jsonPayload);
             log.info("Publishing to topic: {}", TOPIC);
             
-            pubSubTemplate.publish(TOPIC, jsonPayload);
-            
+            // Wait for Pub/Sub ACK to avoid silent publish failures in async path.
+            String messageId = pubSubTemplate.publish(TOPIC, jsonPayload).get(10, TimeUnit.SECONDS);
+
             log.info("========== EVENT PUBLISHED SUCCESSFULLY ==========");
+            log.info("Pub/Sub messageId: {}", messageId);
         } catch (Exception e) {
             log.error("========== ERROR: Failed to publish event to Pub/Sub ==========");
             log.error("Error message: {}", e.getMessage(), e);

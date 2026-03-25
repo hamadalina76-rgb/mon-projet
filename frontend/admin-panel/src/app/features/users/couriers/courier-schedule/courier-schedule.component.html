@@ -338,11 +338,11 @@
                   <!-- Action -->
                   <td>
                     <span class="cs-audit-action"
-                          [ngClass]="auditActionConfig[entry.action]?.cssClass">
+                          [ngClass]="auditActionConfig[entry.action].cssClass">
                       <mat-icon class="cs-audit-action__icon">
-                        {{ auditActionConfig[entry.action]?.icon ?? 'info' }}
+                        {{ auditActionConfig[entry.action].icon }}
                       </mat-icon>
-                      {{ auditActionConfig[entry.action]?.labelKey | translate }}
+                      {{ auditActionConfig[entry.action].labelKey | translate }}
                     </span>
                   </td>
                   <!-- Details -->

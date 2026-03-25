@@ -53,10 +53,39 @@ spring:
       sql:
         enabled: false
         database-name: speedline_partners
-      # Par défaut (sans profil) : Pub/Sub via émulateur local. Lancer docker-compose up pubsub-emulator.
-      # En déploiement (profil dev) : application-dev.yml utilise les credentials GCP.
+      # ═══════════════════════════════════════════════════════════════════════════
+      # Pub/Sub Configuration (Local Developer Environment)
+      # ═══════════════════════════════════════════════════════════════════════════
+      # This is the DEFAULT configuration for local development ONLY.
+      # 
+      # LOCAL MODE (application.yml - no profile):
+      #   - Pub/Sub EMULATOR: localhost:8090
+      #   - Project: speedline-local
+      #   - Topics/subscriptions: Created automatically by PubSubConfig.java
+      #   - Credentials: None required (emulator mode)
+      #   - Startup: Run `docker-compose up -d pubsub-emulator` first
+      #
+      # To run locally:
+      #   1. Start Docker Compose: `docker-compose up -d pubsub-emulator`
+      #   2. Run service with default profile (no -Dspring.profiles.active):
+      #      `mvn spring-boot:run`
+      #   3. Check startup logs for PubSubStartupLogger banner
+      #
+      # DEVELOPMENT MODE (application-dev.yml - profile: dev):
+      #   - Uses REAL GCP Pub/Sub (no emulator)
+      #   - application-dev.yml overrides emulator-host to "" (empty)
+      #   - Project: speedline-dev
+      #   - Credentials: Workload Identity on Cloud Run
+      #   - Topics/subscriptions: Managed by Terraform
+      #   - Bootstrap: Disabled (Terraform manages infrastructure)
+      #
+      # NOTE: application-dev.yml MUST have emulator-host set to "" (blank).
+      #       This ensures ANY presence of PUBSUB_EMULATOR_HOST env var is ignored.
+      # ═══════════════════════════════════════════════════════════════════════════
       pubsub:
         enabled: true
+        # Local developer default: connect to Docker Compose emulator
+        # If PUBSUB_EMULATOR_HOST env var is set, it overrides localhost:8090
         emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8090}
 
 # File storage configuration

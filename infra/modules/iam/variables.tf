@@ -13,3 +13,9 @@ variable "labels" {
   description = "Labels communs (optionnel)"
   default     = {}
 }
+
+variable "enable_project_iam_bindings" {
+  type        = bool
+  description = "Active la création des google_project_iam_member. À laisser false en CI standard pour éviter les erreurs 403 setIamPolicy."
+  default     = false
+}
