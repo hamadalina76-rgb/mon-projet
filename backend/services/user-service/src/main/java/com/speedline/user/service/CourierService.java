@@ -247,7 +247,12 @@ public interface CourierService {
      * @return CourierDTO mis à jour avec status=ACTIVE, documentsVerified=true
      * @throws CourierNotFoundException si le livreur n'existe pas
      */
-    CourierDTO verifyDocuments(Long courierId, com.speedline.user.domain.CourierType courierType);
+    CourierDTO verifyDocuments(Long courierId, com.speedline.user.domain.CourierType courierType, java.util.List<Long> zoneIds);
+
+    /**
+     * Mettre à jour les zones assignées d'un livreur.
+     */
+    CourierDTO updateAssignedZones(Long courierId, java.util.List<Long> zoneIds);
 
     /**
      * Rejeter les documents d'un livreur (Admin only)

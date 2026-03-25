@@ -10,6 +10,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Entité Courier (Livreur)
@@ -138,6 +140,15 @@ public class Courier {
      */
     @Column(length = 100)
     private String preferredDeliveryZone;
+
+    /**
+     * IDs des zones assignées par l'admin lors de l'approbation (référence vers location-service)
+     */
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "courier_assigned_zones", joinColumns = @JoinColumn(name = "courier_id"))
+    @Column(name = "zone_id")
+    @Builder.Default
+    private List<Long> assignedZoneIds = new ArrayList<>();
 
     /**
      * Rayon maximum de livraison (en mètres)
