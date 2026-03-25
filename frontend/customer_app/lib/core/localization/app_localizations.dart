@@ -220,6 +220,11 @@ class AppLocalizations {
       // Search Screen
       'search': 'Search',
       'coming_soon': 'Coming soon...',
+      'search_partners_hint': 'Search for a partner or cuisine',
+      'search_recent': 'Recent searches',
+      'search_trending': 'Trending searches',
+      'no_search_results_for': 'No results for',
+      'partner': 'Partner',
       
       // Orders Screen
       'my_orders': 'My Orders',
@@ -610,6 +615,11 @@ class AppLocalizations {
       // Search Screen
       'search': 'Rechercher',
       'coming_soon': 'Bientôt disponible...',
+      'search_partners_hint': 'Rechercher un partenaire ou une cuisine',
+      'search_recent': 'Recherches récentes',
+      'search_trending': 'Recherches tendance',
+      'no_search_results_for': 'Aucun résultat pour',
+      'partner': 'Partenaire',
       
       // Orders Screen
       'my_orders': 'Mes Commandes',
@@ -1000,6 +1010,11 @@ class AppLocalizations {
       // Search Screen
       'search': 'بحث',
       'coming_soon': 'قريباً...',
+      'search_partners_hint': 'ابحث عن محل أو نوع مطبخ',
+      'search_recent': 'عمليات البحث الأخيرة',
+      'search_trending': 'البحث الأكثر رواجاً',
+      'no_search_results_for': 'لا توجد نتائج لـ',
+      'partner': 'شريك',
       
       // Orders Screen
       'my_orders': 'طلباتي',

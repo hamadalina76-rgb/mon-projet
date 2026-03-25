@@ -17,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import com.speedline.partner.domain.Partner;
 import com.speedline.partner.repository.PartnerRepository;
@@ -31,9 +33,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * REST Controller pour Partner
@@ -403,6 +408,118 @@ public class PartnerController implements PartnerApi {
                 .build();
 
         return ResponseEntity.ok(partnerService.getNearbyPartners(filterRequest));
+    }
+
+    /**
+     * GET /partners/search?query=...&lat=...&lng=...&page=...&size=...
+     * Recherche textuelle des partenaires dans la zone à proximité du client.
+     */
+    @GetMapping("/search")
+    public ResponseEntity<Page<PartnerDTO>> searchPartners(
+            @RequestParam @NotNull String query,
+            @RequestParam @NotNull
+            @DecimalMin(value = "-90.0", message = "Latitude invalide : doit être entre -90 et 90")
+            @DecimalMax(value = "90.0", message = "Latitude invalide : doit être entre -90 et 90") BigDecimal lat,
+            @RequestParam @NotNull
+            @DecimalMin(value = "-180.0", message = "Longitude invalide : doit être entre -180 et 180")
+            @DecimalMax(value = "180.0", message = "Longitude invalide : doit être entre -180 et 180") BigDecimal lng,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+
+        final String normalizedQuery = query.trim();
+        if (normalizedQuery.length() < 2) {
+            return ResponseEntity.ok(new PageImpl<>(List.of(), PageRequest.of(page, size), 0));
+        }
+
+        // Pull a wider nearby window, then rank/filter by query.
+        final int candidateSize = Math.min(Math.max(size * 4, 60), 200);
+        PartnerFilterRequest filterRequest = PartnerFilterRequest.builder()
+                .lat(lat)
+                .lng(lng)
+                .page(0)
+                .size(candidateSize)
+                .sortBy("distance")
+                .build();
+
+        final List<PartnerDTO> candidates = partnerService.getNearbyPartners(filterRequest).getContent();
+
+        final List<PartnerDTO> matched = candidates.stream()
+                .filter(p -> matchesQuery(p, normalizedQuery))
+                .sorted(Comparator
+                        .comparingInt((PartnerDTO p) -> relevanceScore(p, normalizedQuery))
+                        .thenComparing(p -> p.getDistanceKm() != null ? p.getDistanceKm() : Double.MAX_VALUE)
+                        .thenComparing(p -> p.getRating() != null ? p.getRating() : BigDecimal.ZERO, Comparator.reverseOrder()))
+                .collect(Collectors.toList());
+
+        final int fromIndex = Math.min(page * size, matched.size());
+        final int toIndex = Math.min(fromIndex + size, matched.size());
+        final List<PartnerDTO> slice = matched.subList(fromIndex, toIndex);
+
+        return ResponseEntity.ok(new PageImpl<>(slice, PageRequest.of(page, size), matched.size()));
+    }
+
+    /**
+     * GET /partners/search/trending?lat=...&lng=...&limit=5
+     * Renvoie des termes tendances (noms de partenaires) selon la zone utilisateur.
+     */
+    @GetMapping("/search/trending")
+    public ResponseEntity<List<String>> getTrendingSearches(
+            @RequestParam @NotNull
+            @DecimalMin(value = "-90.0", message = "Latitude invalide : doit être entre -90 et 90")
+            @DecimalMax(value = "90.0", message = "Latitude invalide : doit être entre -90 et 90") BigDecimal lat,
+            @RequestParam @NotNull
+            @DecimalMin(value = "-180.0", message = "Longitude invalide : doit être entre -180 et 180")
+            @DecimalMax(value = "180.0", message = "Longitude invalide : doit être entre -180 et 180") BigDecimal lng,
+            @RequestParam(defaultValue = "5") @Min(1) @Max(20) int limit) {
+
+        PartnerFilterRequest filterRequest = PartnerFilterRequest.builder()
+                .lat(lat)
+                .lng(lng)
+                .page(0)
+                .size(Math.max(limit * 5, 25))
+                .sortBy("popularity")
+                .build();
+
+        final List<String> trending = partnerService.getNearbyPartners(filterRequest).getContent().stream()
+                .map(this::displayName)
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .limit(limit)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(trending);
+    }
+
+    private boolean matchesQuery(PartnerDTO partner, String query) {
+        final String q = query.toLowerCase(Locale.ROOT);
+        final String business = safeLower(partner.getBusinessName());
+        final String brand = safeLower(partner.getBrandName());
+        final String type = partner.getType() != null ? partner.getType().name().toLowerCase(Locale.ROOT) : "";
+        final String description = safeLower(partner.getDescription());
+
+        return business.contains(q) || brand.contains(q) || type.contains(q) || description.contains(q);
+    }
+
+    private int relevanceScore(PartnerDTO partner, String query) {
+        final String q = query.toLowerCase(Locale.ROOT);
+        final String brand = safeLower(partner.getBrandName());
+        final String business = safeLower(partner.getBusinessName());
+
+        if (brand.startsWith(q) || business.startsWith(q)) return 0;
+        if (brand.contains(q) || business.contains(q)) return 1;
+        if (safeLower(partner.getDescription()).contains(q)) return 2;
+        return 3;
+    }
+
+    private String displayName(PartnerDTO partner) {
+        if (partner.getBrandName() != null && !partner.getBrandName().isBlank()) {
+            return partner.getBrandName();
+        }
+        return partner.getBusinessName() != null ? partner.getBusinessName() : "";
+    }
+
+    private String safeLower(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT);
     }
 
 /**

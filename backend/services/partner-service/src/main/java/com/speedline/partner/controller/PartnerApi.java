@@ -223,6 +223,36 @@ public interface PartnerApi {
             @Parameter(description = "RIB (PDF/JPG)") @RequestParam(value = "rib", required = false) MultipartFile rib
     );
 
+    @PostMapping(path = "/{id}/upload/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "Upload logo partenaire",
+            description = "Upload du logo du partenaire (multipart/form-data, champ `file`)."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Logo uploadé, URL retournée"),
+            @ApiResponse(responseCode = "500", description = "Erreur lors de l'upload")
+    })
+    ResponseEntity<?> uploadLogo(
+            @Parameter(description = "ID du partenaire", required = true) @PathVariable Long id,
+            @Parameter(description = "Fichier image logo (JPG/PNG/WEBP)", required = true)
+            @RequestParam("file") MultipartFile file
+    );
+
+    @PostMapping(path = "/{id}/upload/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "Upload cover partenaire",
+            description = "Upload de la photo de couverture (multipart/form-data, champ `file`)."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Cover uploadée, URL retournée"),
+            @ApiResponse(responseCode = "500", description = "Erreur lors de l'upload")
+    })
+    ResponseEntity<?> uploadCover(
+            @Parameter(description = "ID du partenaire", required = true) @PathVariable Long id,
+            @Parameter(description = "Fichier image cover (JPG/PNG/WEBP)", required = true)
+            @RequestParam("file") MultipartFile file
+    );
+
     // ===================== GÉOLOCALISATION =====================
 
     @GetMapping("/nearby")
@@ -274,6 +304,68 @@ public interface PartnerApi {
 
             @Parameter(description = "Tri des résultats (distance, rating, deliveryTime)", example = "distance")
             @RequestParam(defaultValue = "distance") String sortBy
+    );
+
+    @GetMapping("/search")
+    @Operation(
+            summary = "Recherche partenaires",
+            description = "Recherche textuelle des partenaires dans la zone à proximité du client."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Page de résultats de recherche"),
+            @ApiResponse(responseCode = "400", description = "Paramètres invalides")
+    })
+    ResponseEntity<Page<PartnerDTO>> searchPartners(
+            @Parameter(description = "Texte recherché", required = true, example = "pizza")
+            @RequestParam @NotNull String query,
+
+            @Parameter(description = "Latitude du client (−90 à 90)", required = true, example = "36.8065")
+            @RequestParam
+            @NotNull
+            @DecimalMin(value = "-90.0", message = "Latitude invalide : doit être entre -90 et 90")
+            @DecimalMax(value = "90.0", message = "Latitude invalide : doit être entre -90 et 90")
+            BigDecimal lat,
+
+            @Parameter(description = "Longitude du client (−180 à 180)", required = true, example = "10.1815")
+            @RequestParam
+            @NotNull
+            @DecimalMin(value = "-180.0", message = "Longitude invalide : doit être entre -180 et 180")
+            @DecimalMax(value = "180.0", message = "Longitude invalide : doit être entre -180 et 180")
+            BigDecimal lng,
+
+            @Parameter(description = "Numéro de page, 0-indexé", example = "0")
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+
+            @Parameter(description = "Nombre de résultats par page", example = "20")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+    );
+
+    @GetMapping("/search/trending")
+    @Operation(
+            summary = "Recherches tendances",
+            description = "Retourne les termes de recherche tendances basés sur les partenaires proches."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Liste des termes tendances"),
+            @ApiResponse(responseCode = "400", description = "Coordonnées invalides")
+    })
+    ResponseEntity<List<String>> getTrendingSearches(
+            @Parameter(description = "Latitude du client (−90 à 90)", required = true, example = "36.8065")
+            @RequestParam
+            @NotNull
+            @DecimalMin(value = "-90.0", message = "Latitude invalide : doit être entre -90 et 90")
+            @DecimalMax(value = "90.0", message = "Latitude invalide : doit être entre -90 et 90")
+            BigDecimal lat,
+
+            @Parameter(description = "Longitude du client (−180 à 180)", required = true, example = "10.1815")
+            @RequestParam
+            @NotNull
+            @DecimalMin(value = "-180.0", message = "Longitude invalide : doit être entre -180 et 180")
+            @DecimalMax(value = "180.0", message = "Longitude invalide : doit être entre -180 et 180")
+            BigDecimal lng,
+
+            @Parameter(description = "Nombre maximum de termes", example = "5")
+            @RequestParam(defaultValue = "5") @Min(1) @Max(20) int limit
     );
 
     // ===================== SANTÉ =====================

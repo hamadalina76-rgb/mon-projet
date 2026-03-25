@@ -3,16 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../config/routes/route_names.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/utils/responsive_utils.dart';
+import '../../../home/presentation/screens/filter_screen.dart';
 import '../../../location/presentation/providers/location_provider.dart';
 import '../../../main/presentation/screens/main_scaffold.dart';
 import '../../../profile/data/models/address_model.dart';
 import '../../../profile/presentation/providers/address_provider.dart';
+import '../../../search/presentation/screens/search_screen.dart';
 import '../providers/nearby_partners_provider.dart';
 import '../../data/models/category_dto.dart';
 import '../../data/models/partner_nearby_dto.dart';
@@ -26,12 +29,14 @@ class NearbyPartnersScreen extends ConsumerStatefulWidget {
 }
 
 class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
+  static const _searchHeroTag = 'nearby-search-hero';
+
   final ScrollController _scrollController = ScrollController();
-  final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   DateTime? _lastLoadMoreAt;
   ProviderSubscription<NearbyPartnersState>? _nearbyErrorSubscription;
   bool _showScrollToTop = false;
+  bool _isOpeningSearch = false;
   String? _lastAllClosedSnackKey;
 
   /// Resolve coordinates: prefer selected/default address, fall back to GPS.
@@ -117,7 +122,6 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
     _nearbyErrorSubscription?.close();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-    _searchController.dispose();
     super.dispose();
   }
 
@@ -228,6 +232,21 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
     return '$h:$m';
   }
 
+  String _nextOpeningLabel(DateTime nearest, AppLocalizations l10n) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(nearest.year, nearest.month, nearest.day);
+    final dayDiff = target.difference(today).inDays;
+
+    if (dayDiff <= 0) {
+      return '${l10n.translate('opens_at')} ${_formatTime(nearest)}';
+    }
+    if (dayDiff == 1) {
+      return '${l10n.translate('opens_tomorrow_at')} ${_formatTime(nearest)}';
+    }
+    return '${l10n.translate('opens_at')} ${_formatTime(nearest)}';
+  }
+
   void _maybeShowAllClosedNotice(
     List<PartnerNearbyDto> visiblePartners,
     AppLocalizations l10n,
@@ -257,15 +276,26 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
     }
 
     final message = nearest == null
-        ? l10n.translate('all_closed_now_notice')
-        : '${l10n.translate('all_closed_now_notice')} ${_formatTime(nearest)}';
+      ? l10n.translate('all_closed_now_notice')
+      : '${l10n.translate('all_closed_now_notice')} ${_nextOpeningLabel(nearest, l10n)}';
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
-          backgroundColor: AppColors.textPrimary,
+          content: Text(
+            message,
+            style: const TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          backgroundColor: Colors.white,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: AppColors.border),
+          ),
         ),
       );
     });
@@ -277,9 +307,32 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return _FiltersBottomSheet(l10n: l10n, searchQuery: _searchQuery);
+        return PartnerFiltersBottomSheet(
+          l10n: l10n,
+          searchQuery: _searchQuery,
+        );
       },
     );
+  }
+
+  Future<void> _openDedicatedSearch() async {
+    if (_isOpeningSearch || !mounted) return;
+    _isOpeningSearch = true;
+
+    final coords = _resolveCoordinates();
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => SearchScreen(
+            heroTag: _searchHeroTag,
+            initialLat: coords.lat,
+            initialLng: coords.lng,
+          ),
+        ),
+      );
+    } finally {
+      _isOpeningSearch = false;
+    }
   }
 
   Future<void> _onRefresh() async {
@@ -377,10 +430,9 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
                 child: _CategoryHeaderAndSearch(
                   categoryLabel: selectedCategoryLabel,
                   l10n: l10n,
-                  controller: _searchController,
                   activeFilterCount: state.activeFilterCount,
                   onFilterTap: () => _openFiltersBottomSheet(l10n),
-                  onChanged: (value) => setState(() => _searchQuery = value),
+                  onSearchTap: _openDedicatedSearch,
                 ),
               ),
 
@@ -522,8 +574,8 @@ class _NearbyAppBar extends SliverPersistentHeaderDelegate {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            AppColors.black,
-            Color.lerp(AppColors.black, AppColors.darkGrey, 1 - progress)!,
+            AppColors.secondary3,
+            Color.lerp(AppColors.secondary3, AppColors.primary, 1 - progress)!,
           ],
         ),
         borderRadius: BorderRadius.only(
@@ -558,41 +610,30 @@ class _NearbyAppBar extends SliverPersistentHeaderDelegate {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    l10n.translate('nearby_partners'),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                  ),
-                  if (progress < 0.7)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.location_on,
-                          color: Colors.white70,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 3),
-                        Flexible(
-                          child: Text(
-                            addressLabel,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.location_on,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          addressLabel,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -607,16 +648,14 @@ class _NearbyAppBar extends SliverPersistentHeaderDelegate {
 class _CategoryHeaderAndSearch extends StatelessWidget {
   final String categoryLabel;
   final AppLocalizations l10n;
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
+  final VoidCallback onSearchTap;
   final int activeFilterCount;
   final VoidCallback onFilterTap;
 
   const _CategoryHeaderAndSearch({
     required this.categoryLabel,
     required this.l10n,
-    required this.controller,
-    required this.onChanged,
+    required this.onSearchTap,
     required this.activeFilterCount,
     required this.onFilterTap,
   });
@@ -641,18 +680,39 @@ class _CategoryHeaderAndSearch extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: controller,
-                  onChanged: onChanged,
-                  decoration: InputDecoration(
-                    hintText: l10n.translate('search'),
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    isDense: true,
-                    filled: true,
-                    fillColor: AppColors.background,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onSearchTap,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.search_rounded,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              l10n.translate('search_partners_hint'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -886,321 +946,6 @@ class _SubCategoriesRow extends ConsumerWidget {
               );
             }),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FiltersBottomSheet extends ConsumerWidget {
-  final AppLocalizations l10n;
-  final String searchQuery;
-
-  const _FiltersBottomSheet({required this.l10n, required this.searchQuery});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(nearbyPartnersNotifierProvider);
-    final notifier = ref.read(nearbyPartnersNotifierProvider.notifier);
-    final q = searchQuery.trim().toLowerCase();
-    final resultCount = state.filteredPartners.where((p) {
-      if (q.isEmpty) return true;
-      final name = p.displayName.toLowerCase();
-      final type = (p.type ?? '').toLowerCase();
-      return name.contains(q) || type.contains(q);
-    }).length;
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 10,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 10),
-              Container(
-                width: 46,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD2D2D8),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        l10n.translate('filters_and_sort'),
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    OutlinedButton(
-                      onPressed: notifier.resetFilters,
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.primary),
-                        foregroundColor: AppColors.primary,
-                      ),
-                      child: Text(l10n.translate('reset')),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              _SwitchRow(
-                icon: Icons.watch_later_outlined,
-                label: l10n.translate('open_now'),
-                value: state.openNowOnly,
-                onChanged: notifier.setOpenNowOnly,
-              ),
-              _SwitchRow(
-                icon: Icons.local_shipping_outlined,
-                label: l10n.translate('free_delivery_title'),
-                value: state.freeDeliveryOnly,
-                onChanged: notifier.setFreeDeliveryOnly,
-              ),
-              _SectionLabel(label: l10n.translate('minimum_rating')),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _SheetChoiceChip(
-                      label: '3.0+ ★',
-                      selected: state.minRating == 3.0,
-                      onTap: () => notifier.setMinRating(
-                        state.minRating == 3.0 ? null : 3.0,
-                      ),
-                    ),
-                    _SheetChoiceChip(
-                      label: '4.0+ ★',
-                      selected: state.minRating == 4.0,
-                      onTap: () => notifier.setMinRating(
-                        state.minRating == 4.0 ? null : 4.0,
-                      ),
-                    ),
-                    _SheetChoiceChip(
-                      label: '4.5+ ★',
-                      selected: state.minRating == 4.5,
-                      onTap: () => notifier.setMinRating(
-                        state.minRating == 4.5 ? null : 4.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              _SectionLabel(label: l10n.translate('delivery_time')),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _SheetChoiceChip(
-                      label: '15 min',
-                      selected: state.maxDeliveryTime == 15,
-                      onTap: () => notifier.setMaxDeliveryTime(
-                        state.maxDeliveryTime == 15 ? null : 15,
-                      ),
-                    ),
-                    _SheetChoiceChip(
-                      label: '30 min',
-                      selected: state.maxDeliveryTime == 30,
-                      onTap: () => notifier.setMaxDeliveryTime(
-                        state.maxDeliveryTime == 30 ? null : 30,
-                      ),
-                    ),
-                    _SheetChoiceChip(
-                      label: '45 min',
-                      selected: state.maxDeliveryTime == 45,
-                      onTap: () => notifier.setMaxDeliveryTime(
-                        state.maxDeliveryTime == 45 ? null : 45,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              _SectionLabel(label: l10n.translate('sort_by')),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _SheetChoiceChip(
-                      label: l10n.translate('sort_popularity'),
-                      selected: state.sortOption == PartnerSortOption.popularity,
-                      onTap: () =>
-                          notifier.setSortOption(PartnerSortOption.popularity),
-                    ),
-                    _SheetChoiceChip(
-                      label: l10n.translate('sort_rating'),
-                      selected: state.sortOption == PartnerSortOption.rating,
-                      onTap: () =>
-                          notifier.setSortOption(PartnerSortOption.rating),
-                    ),
-                    _SheetChoiceChip(
-                      label: l10n.translate('sort_newest'),
-                      selected: state.sortOption == PartnerSortOption.newest,
-                      onTap: () =>
-                          notifier.setSortOption(PartnerSortOption.newest),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.black,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                    child: Text(
-                      '${l10n.translate('see_partners_count')} $resultCount ${l10n.translate('partners')}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  final String label;
-
-  const _SectionLabel({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            letterSpacing: 0.8,
-            color: AppColors.textHint,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SwitchRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _SwitchRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.textHint),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          Switch(value: value, onChanged: onChanged),
-        ],
-      ),
-    );
-  }
-}
-
-class _SheetChoiceChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _SheetChoiceChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.border,
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.2),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : AppColors.textPrimary,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
         ),
       ),
     );
