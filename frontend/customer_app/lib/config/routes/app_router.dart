@@ -171,9 +171,27 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: RouteNames.search,
-          pageBuilder: (context, state) => NoTransitionPage(
-            child: const SearchScreen(),
-          ),
+          builder: (context, state) {
+            final extra = state.extra;
+            String heroTag = 'nearby-search-hero';
+            double? lat;
+            double? lng;
+            String? initialQuery;
+
+            if (extra is Map<String, dynamic>) {
+              heroTag = extra['heroTag'] as String? ?? heroTag;
+              lat = (extra['lat'] as num?)?.toDouble();
+              lng = (extra['lng'] as num?)?.toDouble();
+              initialQuery = extra['query'] as String?;
+            }
+
+            return SearchScreen(
+              heroTag: heroTag,
+              initialLat: lat,
+              initialLng: lng,
+              initialQuery: initialQuery,
+            );
+          },
         ),
         GoRoute(
           path: RouteNames.orders,
