@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use '../../../../../assets/styles/variables' as v;
 
 $primary:      #E31E24;
@@ -36,7 +37,7 @@ $ease:         cubic-bezier(.4, 0, .2, 1);
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 18px $primary-glow;
-    background: linear-gradient(135deg, lighten($primary, 4%) 0%, $primary 100%);
+    background: linear-gradient(135deg, color.adjust($primary, $lightness: 4%) 0%, $primary 100%);
   }
   &:active { transform: scale(.97); }
 }

@@ -1,29 +1,29 @@
-# ============================================================================
+﻿# ============================================================================
 # CONFIGURATION DEV - NOTIFICATION SERVICE
 # ============================================================================
 # Objectif :
 # - compatible Cloud Run
-# - compatible exécution locale
-# - compatible MongoDB Atlas / URI injectée par variables d'environnement
-# - sans dépendance obligatoire à Eureka en dev
+# - compatible exÃ©cution locale
+# - compatible MongoDB Atlas / URI injectÃ©e par variables d'environnement
+# - sans dÃ©pendance obligatoire Ã  Eureka en dev
 # ============================================================================
 
 server:
   # --------------------------------------------------------------------------
   # Cloud Run impose l'utilisation du port fourni dans la variable PORT.
-  # Si PORT n'est pas défini (exécution locale), on utilise 8080 par défaut.
+  # Si PORT n'est pas dÃ©fini (exÃ©cution locale), on utilise 8080 par dÃ©faut.
   # --------------------------------------------------------------------------
   port: ${PORT:8080}
 
   # --------------------------------------------------------------------------
-  # Très important pour Cloud Run :
-  # l'application doit écouter sur 0.0.0.0 et non pas seulement localhost.
+  # TrÃ¨s important pour Cloud Run :
+  # l'application doit Ã©couter sur 0.0.0.0 et non pas seulement localhost.
   # --------------------------------------------------------------------------
   address: 0.0.0.0
 
 spring:
   application:
-    # Nom du microservice dans l'écosystème Spring / logs / observabilité
+    # Nom du microservice dans l'Ã©cosystÃ¨me Spring / logs / observabilitÃ©
     name: notification-service
 
   main:
@@ -33,32 +33,32 @@ spring:
     mongodb:
       # ----------------------------------------------------------------------
       # URI MongoDB :
-      # - En priorité on lit MONGODB_URI (nom injecté actuellement par Terraform)
+      # - En prioritÃ© on lit MONGODB_URI (nom injectÃ© actuellement par Terraform)
       # - Sinon on retombe sur MONGO_URI (ancien nom possible dans GitLab CI/CD)
       #
-      # Cela évite les crashes au démarrage dus à une incohérence de nom
+      # Cela Ã©vite les crashes au dÃ©marrage dus Ã  une incohÃ©rence de nom
       # entre les variables Cloud Run / Terraform / GitLab.
       # ----------------------------------------------------------------------
       uri: ${MONGODB_URI:${MONGO_URI}}
 
       # ----------------------------------------------------------------------
-      # Création automatique des index Mongo définis dans les entités/documents.
-      # Utile en DEV pour éviter certaines initialisations manuelles.
+      # CrÃ©ation automatique des index Mongo dÃ©finis dans les entitÃ©s/documents.
+      # Utile en DEV pour Ã©viter certaines initialisations manuelles.
       # ----------------------------------------------------------------------
       auto-index-creation: true
 
   cloud:
     config:
       # ----------------------------------------------------------------------
-      # Désactivation explicite du Config Client en DEV.
+      # DÃ©sactivation explicite du Config Client en DEV.
       # Le service ne va pas essayer d'aller chercher sa config depuis
-      # un Config Server au démarrage.
+      # un Config Server au dÃ©marrage.
       # ----------------------------------------------------------------------
       enabled: false
 
     bootstrap:
       # ----------------------------------------------------------------------
-      # Désactivation du bootstrap context pour éviter le chargement précoce
+      # DÃ©sactivation du bootstrap context pour Ã©viter le chargement prÃ©coce
       # de configurations distantes ou de comportements Spring Cloud inutiles
       # en environnement DEV / Cloud Run.
       # ----------------------------------------------------------------------
@@ -67,41 +67,40 @@ spring:
     gcp:
       # ----------------------------------------------------------------------
       # ID du projet GCP :
-      # - si GCP_PROJECT_ID est injecté, il sera utilisé
+      # - si GCP_PROJECT_ID est injectÃ©, il sera utilisÃ©
       # - sinon fallback sur "speedline-dev"
       # ----------------------------------------------------------------------
-      project-id: ${GCP_PROJECT_ID:speedline-dev}
+      project-id: ${GCP_PROJECT_ID:speedline-dev-488413}
+      credentials:
+        enabled: true
 
       core:
         # ----------------------------------------------------------------------
-        # Laisser activé si le service utilise réellement des composants GCP
+        # Laisser activÃ© si le service utilise rÃ©ellement des composants GCP
         # standards dans ce microservice.
         # ----------------------------------------------------------------------
         enabled: true
 
       pubsub:
-        # ----------------------------------------------------------------------
-        # Override explicite en profile dev pour neutraliser tout héritage depuis
-        # application.yml (qui garde localhost:8090 pour le workflow local).
-        # Valeur vide par défaut en DEV Cloud Run => pas d'emulator, vrai Pub/Sub.
-        # ----------------------------------------------------------------------
+        # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # Pub/Sub Configuration - CLOUD RUN DEV ENVIRONMENT
+        # 
+        # Override application.yml completely for cloud deployment:
+        # 1. emulator-host MUST be "" (empty) to force real GCP Pub/Sub
+        # 2. Uses Workload Identity for credentials (no explicit config needed)
+        # 3. Topics/subscriptions managed by Terraform (not bootstrapped here)
+        # 4. PubSubConfig.java detects empty emulator-host and skips bootstrap
+        # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # CRITICAL: Empty string prevents any local emulator fallback
         emulator-host: ${PUBSUB_EMULATOR_HOST:}
 
-        # ----------------------------------------------------------------------
-        # En DEV Cloud Run on force l'usage du vrai Pub/Sub + ADC du service
-        # account. Le mode emulator reste réservé au local via application.yml
-        # (ou variables env locales explicites).
-        # ----------------------------------------------------------------------
+        # Subscriber parameters for dev
         subscriber:
-          # --------------------------------------------------------------------
-          # Paramètres de consommation Pub/Sub en DEV.
-          # Valeurs modestes pour limiter la charge.
-          # --------------------------------------------------------------------
           parallel-pull-count: 1
           max-ack-extension-period: 600
 
   # Email Configuration (OTP, bienvenue partenaire)
-  # Port 465 (SSL) : souvent autorisé quand le port 587 est bloqué. Pour 587/STARTTLS : MAIL_PORT=587, MAIL_USE_465=false
+  # Port 465 (SSL) : souvent autorisÃ© quand le port 587 est bloquÃ©. Pour 587/STARTTLS : MAIL_PORT=587, MAIL_USE_465=false
   mail:
     host: ${SPRING_MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:465}
@@ -127,49 +126,49 @@ spring:
 eureka:
   client:
     # --------------------------------------------------------------------------
-    # Eureka désactivé par défaut en DEV.
+    # Eureka dÃ©sactivÃ© par dÃ©faut en DEV.
     # Si besoin, activer via EUREKA_ENABLED=true.
     # --------------------------------------------------------------------------
     enabled: ${EUREKA_ENABLED:false}
 
     service-url:
       # ------------------------------------------------------------------------
-      # URL par défaut de Eureka pour compatibilité locale.
-      # En Cloud Run DEV, si Eureka n'est pas utilisé, ce bloc reste inoffensif
+      # URL par dÃ©faut de Eureka pour compatibilitÃ© locale.
+      # En Cloud Run DEV, si Eureka n'est pas utilisÃ©, ce bloc reste inoffensif
       # tant que enabled=false.
       # ------------------------------------------------------------------------
       defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
 
   instance:
-    # Préférer l'IP pour l'enregistrement si Eureka est activé
+    # PrÃ©fÃ©rer l'IP pour l'enregistrement si Eureka est activÃ©
     prefer-ip-address: true
 
 management:
   endpoints:
     web:
       # ------------------------------------------------------------------------
-      # Point d'entrée actuator.
-      # Très utile pour health checks, debug et supervision.
+      # Point d'entrÃ©e actuator.
+      # TrÃ¨s utile pour health checks, debug et supervision.
       # ------------------------------------------------------------------------
       base-path: /actuator
 
       exposure:
         # ----------------------------------------------------------------------
-        # Endpoints exposés en DEV.
+        # Endpoints exposÃ©s en DEV.
         # ----------------------------------------------------------------------
         include: health,info,metrics
 
   endpoint:
     health:
       # ------------------------------------------------------------------------
-      # Affiche les détails du health endpoint pour faciliter le diagnostic en DEV
+      # Affiche les dÃ©tails du health endpoint pour faciliter le diagnostic en DEV
       # ------------------------------------------------------------------------
       show-details: always
 
       probes:
         # ----------------------------------------------------------------------
-        # Active les probes readiness/liveness utilisées souvent par Cloud Run
-        # / Kubernetes / systèmes de supervision.
+        # Active les probes readiness/liveness utilisÃ©es souvent par Cloud Run
+        # / Kubernetes / systÃ¨mes de supervision.
         # ----------------------------------------------------------------------
         enabled: true
 

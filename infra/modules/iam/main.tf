@@ -34,6 +34,7 @@ resource "google_service_account" "cloudrun_runtime" {
 
 # Autorise GitLab CI à pousser les images dans Artifact Registry
 resource "google_project_iam_member" "gitlab_artifact_writer" {
+  count   = var.enable_project_iam_bindings ? 1 : 0
   project = var.project_id
   role    = "roles/artifactregistry.writer"
   member  = "serviceAccount:${google_service_account.gitlab_ci.email}"
@@ -41,6 +42,7 @@ resource "google_project_iam_member" "gitlab_artifact_writer" {
 
 # Autorise GitLab CI à déployer/mettre à jour les services Cloud Run
 resource "google_project_iam_member" "gitlab_run_admin" {
+  count   = var.enable_project_iam_bindings ? 1 : 0
   project = var.project_id
   role    = "roles/run.admin"
   member  = "serviceAccount:${google_service_account.gitlab_ci.email}"
@@ -49,6 +51,7 @@ resource "google_project_iam_member" "gitlab_run_admin" {
 # Autorise GitLab CI à "utiliser" le runtime SA lors du déploiement
 # (nécessaire pour --service-account lors du déploiement Cloud Run)
 resource "google_project_iam_member" "gitlab_sa_user" {
+  count   = var.enable_project_iam_bindings ? 1 : 0
   project = var.project_id
   role    = "roles/iam.serviceAccountUser"
   member  = "serviceAccount:${google_service_account.gitlab_ci.email}"
@@ -63,6 +66,7 @@ resource "google_project_iam_member" "gitlab_sa_user" {
 
 # Permet au runtime Cloud Run de pull l'image depuis Artifact Registry
 resource "google_project_iam_member" "runtime_artifact_reader" {
+  count   = var.enable_project_iam_bindings ? 1 : 0
   project = var.project_id
   role    = "roles/artifactregistry.reader"
   member  = "serviceAccount:${google_service_account.cloudrun_runtime.email}"

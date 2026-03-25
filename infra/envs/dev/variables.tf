@@ -35,6 +35,12 @@ variable "labels" {
   default     = {}
 }
 
+variable "enable_project_iam_bindings" {
+  description = "Active les bindings IAM de niveau projet dans le module IAM. Laisser false en CI pour éviter les erreurs 403 setIamPolicy."
+  type        = bool
+  default     = false
+}
+
 # ------------------------------------------------------------------------------
 # Cloud SQL (instance partagée + 3 bases)
 # ------------------------------------------------------------------------------

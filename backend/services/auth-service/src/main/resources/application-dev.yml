@@ -1,12 +1,12 @@
-# ============================================================================
+﻿# ============================================================================
 # AUTH-SERVICE - application-dev.yml (Cloud Run DEV)
 # Surcharge application.yml pour l environnement DEV.
-# Sur Cloud Run, la config est injectée via variables d'environnement Terraform.
-# spring-cloud-starter-bootstrap et spring-cloud-starter-config sont SUPPRIMÉS
+# Sur Cloud Run, la config est injectÃ©e via variables d'environnement Terraform.
+# spring-cloud-starter-bootstrap et spring-cloud-starter-config sont SUPPRIMÃ‰S
 # du classpath pom.xml => pas de Bootstrap Context => pas de crash JPA.
 #
-# Envoi d'emails (OTP) : définir MAIL_USERNAME et MAIL_PASSWORD (env ou
-# application-dev.local.yml à la racine du module, fichier non committé).
+# Envoi d'emails (OTP) : dÃ©finir MAIL_USERNAME et MAIL_PASSWORD (env ou
+# application-dev.local.yml Ã  la racine du module, fichier non committÃ©).
 # Voir env.example.
 # ============================================================================
 spring:
@@ -26,13 +26,13 @@ spring:
     name: auth-service
 
   main:
-    lazy-initialization: true  # ✅ Réduit le cold start
+    lazy-initialization: true  # âœ… RÃ©duit le cold start
 
   # Datasource Cloud SQL via postgres-socket-factory (connecteur JDBC GCP pur)
   # URL format: jdbc:postgresql:///DB_NAME?cloudSqlInstance=PROJECT:REGION:INSTANCE&socketFactory=com.google.cloud.sql.postgres.SocketFactory
   # Credentials: authentification ADC automatique via Service Account Cloud Run.
   # IMPORTANT: spring-cloud-gcp-autoconfigure est EXCLU du fat JAR (scope provided).
-  # => CloudSqlEnvironmentPostProcessor ne s'exécute JAMAIS => pas de crash "database name".
+  # => CloudSqlEnvironmentPostProcessor ne s'exÃ©cute JAMAIS => pas de crash "database name".
   # => La connexion passe par socketFactory explicite dans l'URL JDBC.
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:5432/speedline_auth}
@@ -65,7 +65,7 @@ spring:
       connect-timeout: 2000
       timeout: 2000
 
-  # Désactiver Config Client et Bootstrap (sécurité - déjà supprimés du classpath)
+  # DÃ©sactiver Config Client et Bootstrap (sÃ©curitÃ© - dÃ©jÃ  supprimÃ©s du classpath)
   cloud:
     config:
       enabled: false
@@ -80,7 +80,7 @@ spring:
             url: ${PARTNER_SERVICE_URL:https://partner-service-392205979525.europe-west1.run.app}
 
   # Email Configuration (OTP, bienvenue partenaire)
-  # Port 465 (SSL) : souvent autorisé quand le port 587 est bloqué. Pour 587/STARTTLS : MAIL_PORT=587, MAIL_USE_465=false
+  # Port 465 (SSL) : souvent autorisÃ© quand le port 587 est bloquÃ©. Pour 587/STARTTLS : MAIL_PORT=587, MAIL_USE_465=false
   mail:
     host: ${SPRING_MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:465}
@@ -133,7 +133,7 @@ otp:
   expiration:
     minutes: ${OTP_EXPIRATION_MINUTES:3}
 
-# Désactive le health check mail en dev si MAIL_USERNAME/MAIL_PASSWORD non configurés (évite "no password specified").
+# DÃ©sactive le health check mail en dev si MAIL_USERNAME/MAIL_PASSWORD non configurÃ©s (Ã©vite "no password specified").
 management:
   endpoints:
     web:

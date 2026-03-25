@@ -1,3 +1,5 @@
+@use 'sass:color';
+
 // ── Design tokens ────────────────────────────────────────────────────────
 $primary:       #E31E24;
 $primary-dark:  #B91219;
@@ -49,7 +51,7 @@ $ease:          cubic-bezier(.4, 0, .2, 1);
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 22px rgba($primary, .38);
-    background: linear-gradient(135deg, lighten($primary, 4%) 0%, $primary 100%);
+    background: linear-gradient(135deg, color.adjust($primary, $lightness: 4%) 0%, $primary 100%);
   }
 
   &:active { transform: scale(.97); }
@@ -341,7 +343,7 @@ $ease:          cubic-bezier(.4, 0, .2, 1);
     }
     &.is-active {
       background: $green-soft !important;
-      color: darken($green, 8%) !important;
+      color: color.adjust($green, $lightness: -8%) !important;
       &:hover {
         background: $green !important;
         color: #fff !important;
@@ -372,7 +374,7 @@ $ease:          cubic-bezier(.4, 0, .2, 1);
   letter-spacing: .04em;
   text-transform: uppercase;
 
-  &--active   { background: rgba($green, .12); color: darken($green, 8%); }
+  &--active   { background: rgba($green, .12); color: color.adjust($green, $lightness: -8%); }
   &--inactive { background: $gray-100; color: $gray-500; }
 }
 

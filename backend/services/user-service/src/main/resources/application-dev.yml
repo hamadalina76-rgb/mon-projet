@@ -1,6 +1,6 @@
-# ============================================================================
+﻿# ============================================================================
 # USER-SERVICE - application-dev.yml (Cloud Run DEV)
-# Aligné sur le pattern auth-service pour un déploiement Terraform + Cloud Run.
+# AlignÃ© sur le pattern auth-service pour un dÃ©ploiement Terraform + Cloud Run.
 # ============================================================================
 server:
   port: ${PORT:8080}
@@ -14,9 +14,9 @@ spring:
     name: user-service
 
   main:
-    lazy-initialization: true  # ✅ Réduit le cold start
+    lazy-initialization: true  # âœ… RÃ©duit le cold start
 
-  # Cloud SQL via postgres-socket-factory (env injectées par Terraform)
+  # Cloud SQL via postgres-socket-factory (env injectÃ©es par Terraform)
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:5432/speedline_users}
     username: ${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:postgres}}

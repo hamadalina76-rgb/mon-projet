@@ -1,6 +1,6 @@
-# ============================================================================
+﻿# ============================================================================
 # PARTNER-SERVICE - application-dev.yml (Cloud Run DEV)
-# Aligné sur le pattern auth-service tout en conservant Pub/Sub.
+# AlignÃ© sur le pattern auth-service tout en conservant Pub/Sub.
 # ============================================================================
 server:
   port: ${PORT:8080}
@@ -14,7 +14,7 @@ spring:
     name: partner-service
 
   main:
-    lazy-initialization: true  # ✅ Réduit le cold start
+    lazy-initialization: true  # âœ… RÃ©duit le cold start
 
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:5432/speedline_partners}
@@ -50,21 +50,37 @@ spring:
     openfeign:
       client:
         config:
-          # Feign direct Cloud Run URL — Eureka est désactivé en DEV.
+          # Feign direct Cloud Run URL â€” Eureka est dÃ©sactivÃ© en DEV.
           # Sans cette URL, createPartnerFromAuth ne peut pas appeler auth-service
-          # pour mettre à jour user.partnerId (PUT /internal/users/{id}/partner-id).
+          # pour mettre Ã  jour user.partnerId (PUT /internal/users/{id}/partner-id).
           auth-service:
             url: ${AUTH_SERVICE_URL:https://auth-service-392205979525.europe-west1.run.app}
     gcp:
-      project-id: ${GCP_PROJECT_ID:speedline-dev}
+      project-id: ${GCP_PROJECT_ID:speedline-dev-488413}
+      credentials:
+        enabled: true
       sql:
         enabled: false
       core:
         enabled: true
-      # Pub/Sub activé en dev déployé : pas d'émulateur, credentials GCP
+      # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      # Pub/Sub Configuration - CLOUD RUN DEV ENVIRONMENT
+      # 
+      # Override application.yml completely for cloud deployment:
+      # 1. emulator-host MUST be "" (empty) to force real GCP Pub/Sub
+      # 2. Uses Workload Identity for credentials (no explicit config needed)
+      # 3. Topics/subscriptions managed by Terraform (not bootstrapped here)
+      # 4. PubSubConfig.java detects empty emulator-host and skips bootstrap
+      # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       pubsub:
         enabled: true
-        emulator-host: ""  # vide = pas d'émulateur, utilise le vrai Pub/Sub GCP
+        # CRITICAL FIX: Must explicitly override the base application.yml which defaults to
+        # emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8090}
+        # Without this override, Cloud Run DEV resolves emulator-host to "localhost:8090"
+        # (because PUBSUB_EMULATOR_HOST is not set on Cloud Run) and ALL publishes silently
+        # fail trying to connect to a non-existent local emulator.
+        # Empty string = real GCP Pub/Sub via Workload Identity / ADC.
+        emulator-host: ${PUBSUB_EMULATOR_HOST:}
 
 eureka:
   client:

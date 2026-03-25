@@ -68,9 +68,10 @@ module "artifact_registry" {
 # IAM
 # ==============================================================================
 module "iam" {
-  source      = "../../modules/iam"
-  project_id  = var.project_id
-  environment = var.environment
+  source                      = "../../modules/iam"
+  project_id                  = var.project_id
+  environment                 = var.environment
+  enable_project_iam_bindings = var.enable_project_iam_bindings
 
   labels = {
     env        = var.environment
