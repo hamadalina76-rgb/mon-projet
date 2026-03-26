@@ -117,7 +117,7 @@ class WebSocketService {
         headers: headers,
         compression: CompressionOptions.compressionOff,
       );
-      socket.pingInterval = const Duration(seconds: AppConstants.webSocketHeartbeatIntervalSeconds);
+      // Removed pingInterval. Spring Cloud Gateway or Backend may close with 1002 if the explicit ping is mishandled.
       _channel = IOWebSocketChannel(socket);
       _setConnected(true);
       AppLogger.info('WebSocket connected');
@@ -357,3 +357,4 @@ class WebSocketService {
     }
   }
 }
+

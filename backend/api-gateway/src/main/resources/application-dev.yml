@@ -271,6 +271,30 @@ spring:
         #     - StripPrefix=1
         #     - AuthenticationFilter
 
+        # ====================================================================
+        # DELIVERY SERVICE (LOCAL DEV)
+        # ====================================================================
+        - id: delivery-service
+          uri: ${DELIVERY_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/deliveries/**
+          filters:
+            - StripPrefix=1
+            - AuthenticationFilter
+
+        - id: delivery-service-tracking
+          uri: ${DELIVERY_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/v1/tracking/**,/api/v1/docs/tracking-websocket
+          filters:
+            - AuthenticationFilter
+
+        # WebSocket tracking courier via gateway
+        - id: delivery-service-ws
+          uri: ${DELIVERY_SERVICE_WS_URL:ws://localhost:8085}
+          predicates:
+            - Path=/ws/location,/ws/tracking/**
+
         # - id: payment-service
         #   uri: https://payment-service-392205979525.europe-west1.run.app
         #   predicates:
@@ -285,18 +309,6 @@ spring:
       default-filters:
         # Évite les doublons de headers CORS
         - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
-
-        # Retry pour erreurs transitoires / cold starts Cloud Run
-        - name: Retry
-          args:
-            retries: 3
-            statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-            methods: GET,POST,PUT,DELETE,PATCH
-            backoff:
-              firstBackoff: 50ms
-              maxBackoff: 500ms
-              factor: 2
-              basedOnPreviousValue: false
 
 # ----------------------------------------------------------------------------
 # EUREKA

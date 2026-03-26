@@ -45,22 +45,12 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
         registry.addHandler(locationWebSocketHandler(), "/ws/location")
                 .addInterceptors(authInterceptor)
-                .setAllowedOrigins(
-                        "http://localhost:4300",
-                        "http://localhost:4200",
-                        "http://localhost:4201",
-                        "http://localhost:4202"
-                );
+                .setAllowedOrigins("*");
 
-        // Endpoint de tracking client : handler minimal pour l’instant.
-        registry.addHandler(trackingWebSocketHandler(), "/ws/tracking/{orderId}")
+        // Endpoint de tracking client : handler minimal pour lâ€™instant.      
+        registry.addHandler(trackingWebSocketHandler(), "/ws/tracking/{orderId}")                                                                                               
                 .addInterceptors(authInterceptor)
-                .setAllowedOrigins(
-                        "http://localhost:4300",
-                        "http://localhost:4200",
-                        "http://localhost:4201",
-                        "http://localhost:4202"
-                );
+                .setAllowedOrigins("*");
     }
 
     @Bean

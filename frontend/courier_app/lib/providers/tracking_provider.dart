@@ -19,6 +19,8 @@ class TrackingState {
   final String? blockingMessage;
   final int queuedCount;
   final bool permissionBlocked;
+  final DateTime? shiftStartedAt;
+  final int? batteryLevel;
 
   const TrackingState({
     required this.isOnline,
@@ -26,6 +28,8 @@ class TrackingState {
     this.blockingMessage,
     required this.queuedCount,
     required this.permissionBlocked,
+    this.shiftStartedAt,
+    this.batteryLevel,
   });
 
   TrackingState copyWith({
@@ -35,6 +39,10 @@ class TrackingState {
     bool clearBlockingMessage = false,
     int? queuedCount,
     bool? permissionBlocked,
+    DateTime? shiftStartedAt,
+    bool clearShiftStartedAt = false,
+    int? batteryLevel,
+    bool clearBatteryLevel = false,
   }) {
     return TrackingState(
       isOnline: isOnline ?? this.isOnline,
@@ -42,6 +50,9 @@ class TrackingState {
       blockingMessage: clearBlockingMessage ? null : (blockingMessage ?? this.blockingMessage),
       queuedCount: queuedCount ?? this.queuedCount,
       permissionBlocked: permissionBlocked ?? this.permissionBlocked,
+      shiftStartedAt:
+          clearShiftStartedAt ? null : (shiftStartedAt ?? this.shiftStartedAt),
+      batteryLevel: clearBatteryLevel ? null : (batteryLevel ?? this.batteryLevel),
     );
   }
 
@@ -51,6 +62,8 @@ class TrackingState {
     blockingMessage: null,
     queuedCount: 0,
     permissionBlocked: false,
+    shiftStartedAt: null,
+    batteryLevel: null,
   );
 }
 
@@ -83,59 +96,79 @@ class TrackingController extends Notifier<TrackingState> {
     bool online, {
     required bool inDelivery,
   }) async {
-    if (state.isBusy) {
-      return;
-    }
-
-    if (!online) {
-      state = state.copyWith(isBusy: true, clearBlockingMessage: true);
-      await _orchestrator.stop();
-      ref.read(locationWebSocketProvider.notifier).setQueuedCount(0);
-      state = state.copyWith(isBusy: false, isOnline: false);
+    if (state.isBusy && online) {
       return;
     }
 
     state = state.copyWith(isBusy: true, clearBlockingMessage: true);
 
-    final permissionResult = await PermissionUtils.requestTrackingPermissionWithDialog(context);
-    if (!permissionResult.granted) {
-      state = state.copyWith(
-        isBusy: false,
-        isOnline: false,
-        blockingMessage: permissionResult.message,
-        permissionBlocked: true,
+    try {
+      if (!online) {
+        await _orchestrator.stop();
+        ref.read(locationWebSocketProvider.notifier).setQueuedCount(0);
+        state = state.copyWith(
+          isOnline: false,
+          clearShiftStartedAt: true,
+          clearBatteryLevel: true,
+        );
+        return;
+      }
+
+      final permissionResult = await PermissionUtils.requestTrackingPermissionWithDialog(context);
+      if (!permissionResult.granted) {
+        state = state.copyWith(
+          isOnline: false,
+          blockingMessage: permissionResult.message,
+          permissionBlocked: true,
+        );
+        return;
+      }
+
+      final jwt = await SecureStorage.read('access_token');
+      if (jwt == null || jwt.isEmpty) {
+        state = state.copyWith(
+          isOnline: false,
+          blockingMessage: 'Session invalide. Veuillez vous reconnecter.',
+          permissionBlocked: false,
+        );
+        return;
+      }
+
+      await _orchestrator.start(
+        jwt: jwt,
+        highAccuracy: inDelivery,
+        onQueueChanged: (queueSize) {
+          ref.read(locationWebSocketProvider.notifier).setQueuedCount(queueSize);
+          state = state.copyWith(queuedCount: queueSize);
+        },
+        onPositionCollected: (payload) {
+          ref.read(locationWebSocketProvider.notifier).publishPosition(payload);
+          final body = payload['payload'];
+          if (body is Map) {
+            final rawBattery = body['batteryLevel'];
+            final battery = rawBattery is num
+                ? rawBattery.round()
+                : int.tryParse(rawBattery?.toString() ?? '');
+            if (battery != null) {
+              state = state.copyWith(batteryLevel: battery);
+            }
+          }
+        },
       );
-      return;
-    }
 
-    final jwt = await SecureStorage.read('access_token');
-    if (jwt == null || jwt.isEmpty) {
       state = state.copyWith(
-        isBusy: false,
-        isOnline: false,
-        blockingMessage: 'Session invalide. Veuillez vous reconnecter.',
-        permissionBlocked: true,
+        isOnline: true,
+        permissionBlocked: false,
+        shiftStartedAt: DateTime.now(),
       );
-      return;
+    } catch (e) {
+      state = state.copyWith(
+        isOnline: false,
+        blockingMessage: 'Impossible de changer le statut: $e',
+      );
+    } finally {
+      state = state.copyWith(isBusy: false);
     }
-
-    await _orchestrator.start(
-      jwt: jwt,
-      highAccuracy: inDelivery,
-      onQueueChanged: (queueSize) {
-        ref.read(locationWebSocketProvider.notifier).setQueuedCount(queueSize);
-        state = state.copyWith(queuedCount: queueSize);
-      },
-      onPositionCollected: (payload) {
-        ref.read(locationWebSocketProvider.notifier).publishPosition(payload);
-      },
-    );
-
-    state = state.copyWith(
-      isBusy: false,
-      isOnline: true,
-      permissionBlocked: false,
-    );
   }
 
   Future<void> updateDeliveryMode(bool inDelivery) async {

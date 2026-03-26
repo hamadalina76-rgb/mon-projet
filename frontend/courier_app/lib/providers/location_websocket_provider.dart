@@ -58,6 +58,7 @@ class LocationWebSocketController extends Notifier<LocationWebSocketState> {
   StreamSubscription<WebSocketConnectionState>? _wsStateSub;
   final StreamController<Map<String, dynamic>> _positionStreamController =
       StreamController<Map<String, dynamic>>.broadcast();
+  Map<String, dynamic>? _lastPublishedPosition;
 
   @override
   LocationWebSocketState build() {
@@ -99,12 +100,15 @@ class LocationWebSocketController extends Notifier<LocationWebSocketState> {
   }
 
   void publishPosition(Map<String, dynamic> payload) {
+    _lastPublishedPosition = payload;
     if (!_positionStreamController.isClosed) {
       _positionStreamController.add(payload);
     }
   }
 
   Stream<Map<String, dynamic>> get positionStream => _positionStreamController.stream;
+
+  Map<String, dynamic>? get lastPublishedPosition => _lastPublishedPosition;
 }
 
 final locationWebSocketProvider =

@@ -19,5 +19,14 @@ class RuntimeConfig {
       (_config['apiBaseUrl'] as String?) ?? 'http://localhost:8080';
   static String get wsUrl =>
       (_config['wsUrl'] as String?) ?? 'ws://localhost:8080';
+    static String get wsFallbackUrl =>
+      (_config['wsFallbackUrl'] as String?) ?? '';
   static int get apiTimeoutMs => (_config['apiTimeoutMs'] as int?) ?? 30000;
+  static String get mapboxAccessToken =>
+      (_config['mapboxAccessToken'] as String?) ??
+      (_config['mapboxToken'] as String?) ??
+      '';
+  static String get mapboxStyleUri =>
+      (_config['mapboxStyleUri'] as String?) ??
+      'mapbox://styles/mapbox/navigation-day-v1';
 }
