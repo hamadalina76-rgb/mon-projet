@@ -138,6 +138,12 @@
             <groupId>com.google.cloud</groupId>
             <artifactId>spring-cloud-gcp-starter-pubsub</artifactId>
         </dependency>
+
+        <!-- Google Cloud Storage (explicit client, used only in Cloud Run dev/prod-like envs) -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-storage</artifactId>
+        </dependency>
         
         <!-- MapStruct -->
         <dependency>

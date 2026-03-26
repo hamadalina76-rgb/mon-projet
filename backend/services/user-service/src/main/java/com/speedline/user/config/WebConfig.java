@@ -15,8 +15,14 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${file.upload.dir:uploads/profile-pictures}")
     private String uploadDir;
 
+    @Value("${file.storage.type:local}")
+    private String storageType;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        if ("gcs".equalsIgnoreCase(storageType)) {
+            return;
+        }
         // Convert to absolute path and normalize
         java.io.File uploadDirFile = new java.io.File(uploadDir);
         String absolutePath = uploadDirFile.getAbsolutePath();

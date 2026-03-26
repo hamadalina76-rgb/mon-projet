@@ -56,4 +56,6 @@ images = {
   user-service     = "placeholder"
   partner-service  = "placeholder"
   location-service = "placeholder"
+  delivery-service = "placeholder"
+  notification-service = "placeholder"
 }

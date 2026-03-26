@@ -54,6 +54,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     java.util.Optional<Product> findTopByPartnerIdAndStatusNotOrderByDisplayOrderDesc(
             Long partnerId, ProductStatus status);
 
+    boolean existsByPartnerIdAndNameIgnoreCaseAndStatusNot(Long partnerId, String name, ProductStatus status);
+
+    boolean existsByPartnerIdAndNameIgnoreCaseAndStatusNotAndIdNot(Long partnerId, String name, ProductStatus status, Long id);
+
     // ==================== RECHERCHE PAR CARACTÉRISTIQUES ====================
 
     List<Product> findByPartnerIdAndIsPopularTrue(Long partnerId);

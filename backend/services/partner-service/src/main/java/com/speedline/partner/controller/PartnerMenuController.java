@@ -1,5 +1,6 @@
 package com.speedline.partner.controller;
 
+import com.speedline.partner.exception.BusinessRuleException;
 import com.speedline.partner.dto.request.*;
 import com.speedline.partner.dto.response.*;
 import com.speedline.partner.scheduler.PromotionEndingScheduler;
@@ -184,7 +185,10 @@ public class PartnerMenuController {
             @Valid @RequestBody CreateMenuCategoryRequest request) {
         try {
             MenuCategoryResponse created = menuCategoryService.createCategory(partnerId, request);
+            log.info("createCategory success partnerId={} categoryId={}", partnerId, created.getId());
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (BusinessRuleException ex) {
+            return unprocessable(ex.getMessage());
         } catch (Exception ex) {
             log.error("createCategory error: {}", ex.getMessage(), ex);
             return serverError(ex.getMessage());
@@ -495,7 +499,10 @@ public class PartnerMenuController {
             @Valid @RequestBody CreateProductRequest request) {
         try {
             ProductResponse created = menuProductService.createProduct(partnerId, request);
+            log.info("createProduct success partnerId={} productId={}", partnerId, created.getId());
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (BusinessRuleException ex) {
+            return unprocessable(ex.getMessage());
         } catch (Exception ex) {
             log.error("createProduct error: {}", ex.getMessage(), ex);
             return serverError(ex.getMessage());

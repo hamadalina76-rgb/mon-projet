@@ -27,4 +27,8 @@ public interface MenuCategoryRepository extends JpaRepository<MenuCategory, Long
 
     /** Nombre de catégories visibles pour un partenaire. */
     long countByPartnerIdAndIsVisibleTrue(Long partnerId);
+
+    boolean existsByPartnerIdAndNameIgnoreCase(Long partnerId, String name);
+
+    boolean existsByPartnerIdAndNameIgnoreCaseAndIdNot(Long partnerId, String name, Long id);
 }

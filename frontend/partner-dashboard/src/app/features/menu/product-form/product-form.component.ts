@@ -178,6 +178,9 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   }
 
   onSubmit(): void {
+    if (this.saving()) {
+      return;
+    }
     if (this.productForm.invalid) {
       this.productForm.markAllAsTouched();
       return;

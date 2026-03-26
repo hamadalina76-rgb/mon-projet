@@ -10,9 +10,9 @@ import com.speedline.user.dto.CourierDocumentUploadRequest.DocumentType;
 import com.speedline.user.exception.*;
 import com.speedline.user.repository.CourierRepository;
 import com.speedline.user.service.CourierService;
+import com.speedline.user.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -37,37 +37,14 @@ import java.util.stream.Collectors;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 @Transactional
 public class CourierServiceImpl implements CourierService {
 
     private final CourierRepository courierRepository;
     private final AuthServiceClient authServiceClient;
     private final NotificationServiceClient notificationServiceClient;
-    private final String uploadBaseDir;
-
-    public CourierServiceImpl(CourierRepository courierRepository,
-                             AuthServiceClient authServiceClient,
-                             NotificationServiceClient notificationServiceClient,
-                             @Value("${file.upload.dir}") String uploadBaseDir) {
-        this.courierRepository = courierRepository;
-        this.authServiceClient = authServiceClient;
-        this.notificationServiceClient = notificationServiceClient;
-
-        // Convert relative path to absolute path
-        java.io.File uploadDir = new java.io.File(uploadBaseDir);
-        this.uploadBaseDir = uploadDir.getAbsolutePath();
-        log.info("📂 Upload directory configured: {}", this.uploadBaseDir);
-
-        // Create base directory if it doesn't exist
-        if (!uploadDir.exists()) {
-            boolean created = uploadDir.mkdirs();
-            if (created) {
-                log.info("✅ Base upload directory created: {}", this.uploadBaseDir);
-            } else {
-                log.warn("⚠️ Could not create base upload directory: {}", this.uploadBaseDir);
-            }
-        }
-    }
+    private final FileStorageService fileStorageService;
 
     // Constantes de validation
     private static final BigDecimal MIN_LATITUDE = new BigDecimal("-90");
@@ -336,22 +313,22 @@ public class CourierServiceImpl implements CourierService {
         String uploadDir = "couriers/" + userId + "/";
 
         if (idCardFront != null && !idCardFront.isEmpty()) {
-            String savedPath = saveUploadedFile(idCardFront, uploadDir, "id_front_");
+            String savedPath = fileStorageService.storeCourierDocument(idCardFront, uploadDir, "id_front_");
             courier.setIdentityDocumentFrontImage(savedPath);
             log.info("✅ Photo recto CIN sauvegardée: {}", savedPath);
         }
         if (idCardBack != null && !idCardBack.isEmpty()) {
-            String savedPath = saveUploadedFile(idCardBack, uploadDir, "id_back_");
+            String savedPath = fileStorageService.storeCourierDocument(idCardBack, uploadDir, "id_back_");
             courier.setIdentityDocumentBackImage(savedPath);
             log.info("✅ Photo verso CIN sauvegardée: {}", savedPath);
         }
         if (licenseFront != null && !licenseFront.isEmpty()) {
-            String savedPath = saveUploadedFile(licenseFront, uploadDir, "license_front_");
+            String savedPath = fileStorageService.storeCourierDocument(licenseFront, uploadDir, "license_front_");
             courier.setDrivingLicenseImage(savedPath);
             log.info("✅ Photo permis recto sauvegardée: {}", savedPath);
         }
         if (licenseBack != null && !licenseBack.isEmpty()) {
-            String savedPath = saveUploadedFile(licenseBack, uploadDir, "license_back_");
+            String savedPath = fileStorageService.storeCourierDocument(licenseBack, uploadDir, "license_back_");
             // Le modèle actuel n'a pas de champ pour le verso du permis
             log.info("✅ Photo permis verso sauvegardée: {}", savedPath);
         }
@@ -1045,75 +1022,4 @@ public class CourierServiceImpl implements CourierService {
         return dto;
     }
 
-    // ==================== GESTION DES FICHIERS ====================
-
-    /**
-     * Sauvegarde un fichier uploadé sur le disque
-     *
-     * @param file Le fichier à sauvegarder
-     * @param directory Le répertoire de destination relatif (ex: "couriers/123/")
-     * @param prefix Le préfixe du nom de fichier (ex: "id_front_")
-     * @return Le chemin relatif du fichier sauvegardé (pour stockage en DB et accès via URL)
-     */
-    private String saveUploadedFile(org.springframework.web.multipart.MultipartFile file,
-                                    String directory, String prefix) {
-        try {
-            // Construire le chemin absolu complet
-            java.io.File uploadBaseDirFile = new java.io.File(uploadBaseDir);
-            java.io.File targetDir = new java.io.File(uploadBaseDirFile, directory);
-
-            // Créer le répertoire s'il n'existe pas
-            if (!targetDir.exists()) {
-                boolean created = targetDir.mkdirs();
-                if (created) {
-                    log.info("📁 Répertoire créé: {} (chemin absolu: {})", directory, targetDir.getAbsolutePath());
-                } else {
-                    log.error("❌ Impossible de créer le répertoire: {}", targetDir.getAbsolutePath());
-                }
-            }
-
-            // Générer un nom de fichier déterministe par livreur et type de document
-            // directory attendu: "couriers/{userId}/"
-            String userIdPart = "unknown";
-            try {
-                String tmp = directory.replaceAll("\\\\", "/");
-                if (tmp.endsWith("/")) tmp = tmp.substring(0, tmp.length() - 1);
-                String[] parts = tmp.split("/");
-                if (parts.length > 0) {
-                    userIdPart = parts[parts.length - 1];
-                }
-            } catch (Exception e) {
-                log.warn("Could not parse userId from directory '{}': {}", directory, e.getMessage());
-            }
-
-            String originalFilename = file.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-
-            // Exemple de nom: id_front_123.jpg => prefix + userId
-            String filename = prefix + userIdPart + extension;
-
-            // Créer le fichier de destination
-            java.io.File destinationFile = new java.io.File(targetDir, filename);
-
-            // Sauvegarder le fichier
-            file.transferTo(destinationFile);
-
-            // Retourner le chemin pour accès via URL (avec préfixe /uploads/)
-            // Les fichiers seront accessibles via: http://localhost:8082/uploads/couriers/123/file.jpg
-            String urlPath = "/uploads/" + directory + filename;
-            log.info("💾 Fichier sauvegardé avec succès!");
-            log.info("   📍 Chemin absolu: {}", destinationFile.getAbsolutePath());
-            log.info("   🌐 URL d'accès: {}", urlPath);
-            log.info("   📊 Taille: {} bytes", file.getSize());
-
-            return urlPath;
-
-        } catch (java.io.IOException e) {
-            log.error("❌ Erreur lors de la sauvegarde du fichier: {}", e.getMessage(), e);
-            throw new RuntimeException("Échec de la sauvegarde du fichier: " + e.getMessage(), e);
-        }
-    }
 }

@@ -90,6 +90,8 @@ spring:
 
 # File storage configuration
 file:
+  storage:
+    type: local
   upload-dir: ./uploads
   base-url: http://localhost:8083/uploads
 

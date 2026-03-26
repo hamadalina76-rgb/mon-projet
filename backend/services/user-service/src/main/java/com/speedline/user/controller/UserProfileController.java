@@ -3,22 +3,13 @@ package com.speedline.user.controller;
 import com.speedline.user.client.AuthServiceClient;
 import com.speedline.user.dto.UserInfoDTO;
 import com.speedline.user.dto.UserProfileUpdateRequest;
+import com.speedline.user.service.FileStorageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.Objects;
-import java.util.UUID;
 
 /**
  * Contrôleur pour la gestion des profils utilisateurs
@@ -30,12 +21,7 @@ import java.util.UUID;
 public class UserProfileController {
 
     private final AuthServiceClient authServiceClient;
-
-    @Value("${file.upload.dir}")
-    private String uploadDir;
-
-    @Value("${file.upload.base-url}")
-    private String baseUrl;
+    private final FileStorageService fileStorageService;
 
     /**
      * Upload d'une photo de profil
@@ -63,23 +49,7 @@ public class UserProfileController {
                 throw new RuntimeException("File must be an image");
             }
 
-            // Create upload directory if it doesn't exist
-            Path uploadPath = Paths.get(uploadDir);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
-
-            // Generate unique filename
-            String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-            String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
-
-            // Save file
-            Path targetLocation = uploadPath.resolve(uniqueFilename);
-            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
-
-            // Build URL (use 10.0.2.2 for Android emulator)
-            String fileUrl = baseUrl + "/" + uniqueFilename;
+            String fileUrl = fileStorageService.storeProfilePicture(file);
 
             log.info("Profile picture uploaded successfully: {}", fileUrl);
 
@@ -97,7 +67,7 @@ public class UserProfileController {
 
             return ResponseEntity.ok(response);
 
-        } catch (IOException e) {
+        } catch (RuntimeException e) {
             log.error("Failed to upload profile picture", e);
             throw new RuntimeException("Failed to upload file: " + e.getMessage());
         }

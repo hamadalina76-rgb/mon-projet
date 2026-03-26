@@ -750,7 +750,11 @@ export class MenuListComponent implements OnInit, OnDestroy {
   }
 
   saveCategory(): void {
-    if (this.categoryForm.invalid) return;
+    if (this.saving()) return;
+    if (this.categoryForm.invalid) {
+      this.categoryForm.markAllAsTouched();
+      return;
+    }
     this.saving.set(true);
 
     const raw = this.categoryForm.value;
@@ -778,7 +782,7 @@ export class MenuListComponent implements OnInit, OnDestroy {
         if (pendingFile) {
           this.menuService.uploadCategoryImage(saved.id, pendingFile).subscribe({
             next: () => this.onCategorySaved(),
-            error: (err) => this.onCategorySaveError(err),
+            error: () => this.onCategorySavedWithImageWarning(),
           });
         } else {
           this.onCategorySaved();
@@ -803,6 +807,17 @@ export class MenuListComponent implements OnInit, OnDestroy {
     this.saving.set(false);
     const msg = err?.error?.message || this.translate.instant('MENU.CATEGORY_FORM.SAVE_ERROR');
     this.snackBar.open(msg, this.translate.instant('MENU.CLOSE'), { duration: 4000 });
+  }
+
+  private onCategorySavedWithImageWarning(): void {
+    this.saving.set(false);
+    this.snackBar.open(
+      this.translate.instant('MENU.PRODUCT_FORM.CREATE_IMAGE_UPLOAD_ERROR'),
+      this.translate.instant('MENU.CLOSE'),
+      { duration: 4000 }
+    );
+    this.loadCategories();
+    this.closePanel();
   }
 
   // ─── Products ────────────────────────────────────────────────────────────

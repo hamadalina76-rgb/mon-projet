@@ -1,4 +1,8 @@
-﻿server:
+﻿# ============================================================================
+# DELIVERY-SERVICE - application-dev.yml (Cloud Run DEV)
+# Aligné sur le pattern des autres microservices Spring Boot déployés sur GCP.,
+# ============================================================================
+server:
   port: ${PORT:8080}
   address: 0.0.0.0
   servlet:
@@ -9,70 +13,92 @@ spring:
   application:
     name: delivery-service
 
+  main:
+    lazy-initialization: true
+
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:5432/speedline_delivery}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:5432/speedline_dev}
     username: ${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:postgres}}
     password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:postgres123}}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      initialization-fail-timeout: 0
 
   jpa:
-    show-sql: true
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
 
   flyway:
+    enabled: true
     baseline-on-migrate: true
+    baseline-version: 0
+    table: flyway_schema_history_delivery_v1
+    locations: classpath:db/migration
+    validate-on-migrate: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:${SPRING_DATA_REDIS_HOST:localhost}}
+      port: ${REDIS_PORT:${SPRING_DATA_REDIS_PORT:6379}}
+      password: ${REDIS_PASSWORD:}
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
 
   cloud:
+    config:
+      enabled: false
+    bootstrap:
+      enabled: false
     gcp:
       project-id: ${GCP_PROJECT_ID:speedline-dev-488413}
       credentials:
         enabled: true
-      pubsub:
-        emulator-host: ${PUBSUB_EMULATOR_HOST:}
-        subscriber:
-          parallel-pull-count: 1
-          max-outstanding-element-count: 100
-    pubsub:
-      project-id: ${GCP_PROJECT_ID:speedline-dev-488413}
-      credentials:
-        enabled: true
+      core:
+        enabled: ${SPRING_CLOUD_GCP_CORE_ENABLED:false}
+      sql:
+        enabled: ${SPRING_CLOUD_GCP_SQL_ENABLED:false}
+        database-name: ${SPRING_CLOUD_GCP_SQL_DATABASE_NAME:speedline_dev}
+        instance-connection-name: ${SPRING_CLOUD_GCP_SQL_INSTANCE_CONNECTION_NAME:}
+    openfeign:
+      client:
+        config:
+          user-service:
+            url: ${USER_SERVICE_URL:https://user-service-392205979525.europe-west1.run.app}
+          location-service:
+            url: ${LOCATION_SERVICE_URL:https://location-service-392205979525.europe-west1.run.app}
 
 eureka:
   client:
     enabled: ${EUREKA_ENABLED:false}
-    service-url:
-      defaultZone: http://${EUREKA_USER:eureka}:${EUREKA_PASSWORD:eureka123}@localhost:8761/eureka/
     register-with-eureka: false
     fetch-registry: false
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
   instance:
     prefer-ip-address: true
-    instance-id: ${spring.application.name}:${random.value}
 
 management:
-  server:
-    port: ${MANAGEMENT_SERVER_PORT:9090}
   endpoints:
     web:
+      base-path: /actuator
       exposure:
         include: health,info,metrics
-      base-path: /actuator
   endpoint:
     health:
       show-details: always
-      show-components: always
       probes:
         enabled: true
 
 logging:
   level:
     root: INFO
-    org.springframework: DEBUG
-    org.springframework.web: DEBUG
     com.speedline: DEBUG
-    com.speedline.delivery: DEBUG
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-
-  file:
-    name: logs/delivery-service.log
-

@@ -22,6 +22,11 @@ spring:
     baseline-on-migrate: true
 
   cloud:
+    openfeign:
+      client:
+        config:
+          delivery-service:
+            url: ${DELIVERY_SERVICE_URL:https://delivery-service-392205979525.europe-west1.run.app}
     gcp:
       project-id: ${GCP_PROJECT_ID:speedline-dev-488413}
       credentials:
