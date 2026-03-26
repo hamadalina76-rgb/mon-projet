@@ -85,5 +85,5 @@ LABEL maintainer="speedline-team" \
 
 # Démarrer l'application avec options JVM
 # Cloud Run capture STDOUT/STDERR pour les logs
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dserver.port=${PORT:-8085} -jar app.jar"]
 

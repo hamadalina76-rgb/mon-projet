@@ -16,6 +16,9 @@ spring:
   main:
     lazy-initialization: true  # âœ… RÃ©duit le cold start
 
+  cache:
+    type: redis
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:5432/speedline_partners}
     username: ${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:postgres}}
@@ -41,6 +44,17 @@ spring:
     locations: classpath:db/migration
     table: flyway_schema_history
     validate-on-migrate: false
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:${REDIS_PASSWORD:}}
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
 
   cloud:
     config:
@@ -93,8 +107,12 @@ eureka:
     prefer-ip-address: true
 
 file:
+  storage:
+    type: ${FILE_STORAGE_TYPE:gcs}
   upload-dir: ${UPLOAD_DIR:/tmp/uploads}
-  base-url: ${UPLOAD_BASE_URL:http://localhost:8083/uploads}
+  base-url: ${UPLOAD_BASE_URL:https://storage.googleapis.com/${FILE_GCS_BUCKET}}
+  gcs:
+    bucket: ${FILE_GCS_BUCKET}
 
 management:
   endpoints:
@@ -112,4 +130,3 @@ logging:
   level:
     root: INFO
     com.speedline: DEBUG
-

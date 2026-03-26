@@ -19,6 +19,7 @@ import com.speedline.partner.dto.response.OptionGroupResponse;
 import com.speedline.partner.dto.response.OptionResponse;
 import com.speedline.partner.dto.response.ProductResponse;
 import com.speedline.partner.dto.response.PromotionLogResponse;
+import com.speedline.partner.exception.BusinessRuleException;
 import com.speedline.partner.exception.ResourceNotFoundException;
 import com.speedline.partner.repository.*;
 import com.speedline.partner.service.AuditLogService;
@@ -194,6 +195,11 @@ public class MenuProductServiceImpl implements MenuProductService {
     @CacheEvict(value = "menus:full", key = "#partnerId")
     public ProductResponse createProduct(Long partnerId, CreateProductRequest req) {
         log.info("createProduct partnerId={} name={}", partnerId, req.getName());
+        String normalizedName = normalizeName(req.getName());
+
+        if (productRepository.existsByPartnerIdAndNameIgnoreCaseAndStatusNot(partnerId, normalizedName, ProductStatus.DELETED)) {
+            throw new BusinessRuleException("A product with this name already exists for this partner");
+        }
 
         boolean allowDirectEdits = isProductAutoApprovalEnabled(partnerId);
         ProductModerationStatus initialModerationStatus = allowDirectEdits
@@ -201,11 +207,13 @@ public class MenuProductServiceImpl implements MenuProductService {
                 : ProductModerationStatus.PENDING;
 
         int nextPos = resolveNextProductPosition(partnerId, req.getPosition());
+        log.info("createProduct beforeSave partnerId={} name={} categoryId={} position={}",
+                partnerId, normalizedName, req.getCategoryId(), nextPos);
 
         Product product = Product.builder()
                 .partnerId(partnerId)
                 .categoryId(req.getCategoryId())
-                .name(req.getName())
+                .name(normalizedName)
                 .description(req.getDescription())
                 .image(req.getImageUrl())
                 .price(req.getPrice())
@@ -262,7 +270,9 @@ public class MenuProductServiceImpl implements MenuProductService {
         } else {
             publishProductModerationRequest(partnerId, saved);
         }
-        return toProductResponse(saved);
+        ProductResponse response = toProductResponse(saved);
+        log.info("createProduct beforeResponse partnerId={} productId={}", partnerId, saved.getId());
+        return response;
     }
 
     @Override
@@ -273,8 +283,16 @@ public class MenuProductServiceImpl implements MenuProductService {
         Product product = findProductOrThrow(partnerId, productId);
         String beforeSnapshot = buildProductSnapshot(product);
         boolean allowDirectEdits = isProductAutoApprovalEnabled(partnerId);
+        ProductModerationStatus previousModerationStatus = product.getModerationStatus();
 
-        if (req.getName() != null)             product.setName(req.getName());
+        if (req.getName() != null) {
+            String normalizedName = normalizeName(req.getName());
+            if (productRepository.existsByPartnerIdAndNameIgnoreCaseAndStatusNotAndIdNot(
+                    partnerId, normalizedName, ProductStatus.DELETED, productId)) {
+                throw new BusinessRuleException("A product with this name already exists for this partner");
+            }
+            product.setName(normalizedName);
+        }
         if (req.getPrice() != null)            product.setPrice(req.getPrice());
         if (req.getCategoryId() != null)       product.setCategoryId(req.getCategoryId());
         if (req.getDescription() != null)      product.setDescription(req.getDescription());
@@ -329,7 +347,11 @@ public class MenuProductServiceImpl implements MenuProductService {
                     PartnerEvent.EventType.PRODUCT_APPROVED
             );
         } else {
-            publishProductModerationRequest(partnerId, saved);
+            if (previousModerationStatus != ProductModerationStatus.PENDING) {
+                publishProductModerationRequest(partnerId, saved);
+            } else {
+                log.info("Skipping moderation resubmission notification for productId={} because it is already pending", saved.getId());
+            }
         }
         return toProductResponse(saved);
     }
@@ -1318,6 +1340,10 @@ public class MenuProductServiceImpl implements MenuProductService {
     private String safe(String value) {
         if (value == null) return "";
         return value.replace("\"", "\\\"");
+    }
+
+    private String normalizeName(String value) {
+        return value == null ? null : value.trim();
     }
 
     private Map<String, Object> parseJsonMap(String raw) {

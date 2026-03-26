@@ -62,9 +62,13 @@ eureka:
 
 # File Upload Configuration
 file:
+  storage:
+    type: ${FILE_STORAGE_TYPE:gcs}
+  gcs:
+    bucket: ${FILE_GCS_BUCKET}
   upload:
     dir: ${UPLOAD_DIR:uploads/profile-pictures}
-    base-url: ${UPLOAD_BASE_URL:http://localhost:8082/uploads}
+    base-url: ${UPLOAD_BASE_URL:https://storage.googleapis.com/${FILE_GCS_BUCKET}}
     max-file-size: 5MB
     max-request-size: 5MB
 
@@ -84,4 +88,3 @@ logging:
   level:
     root: INFO
     com.speedline: DEBUG
-

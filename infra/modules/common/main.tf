@@ -32,6 +32,7 @@ locals {
     "run.googleapis.com",                  # Cloud Run
     "cloudbuild.googleapis.com",           # Cloud Build (frontend image builds)
     "artifactregistry.googleapis.com",     # Artifact Registry
+    "storage.googleapis.com",              # Cloud Storage
     "sqladmin.googleapis.com",             # Cloud SQL
     "pubsub.googleapis.com",               # Pub/Sub
     "redis.googleapis.com",                # Memorystore Redis
@@ -69,5 +70,4 @@ resource "time_sleep" "wait_for_apis" {
 
   create_duration = "60s" # Attend 60 secondes après activation
 }
-
 

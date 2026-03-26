@@ -16,8 +16,8 @@
 
 stages:
   - build
-  - deploy
   - terraform
+  - deploy
 
 # ==============================================================================
 # WORKFLOW GLOBAL
@@ -214,6 +214,11 @@ default:
     - test -n "$SERVICE_NAME"
     - test -n "$IMAGE_URI"
     - export READY_REVISION="$(gcloud run services describe "$SERVICE_NAME" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" --format='value(status.latestReadyRevisionName)' || true)"
+    - export SERVICE_EXISTS="false"
+    - |
+      if gcloud run services describe "$SERVICE_NAME" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" >/dev/null 2>&1; then
+        SERVICE_EXISTS="true"
+      fi
     - |
       PUBSUB_EMULATOR_EXCLUDE="com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
       CLOUDRUN_REMOVE_ENV_VARS="PUBSUB_EMULATOR_HOST,SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST"
@@ -263,13 +268,9 @@ default:
             --quiet
         fi
       else
-        gcloud run deploy "$SERVICE_NAME" \
-          --image "$IMAGE_URI" \
-          --region "$GCP_REGION" \
-          --project "$GCP_PROJECT_ID" \
-          --update-env-vars "$CLOUDRUN_UPDATE_ENV_VARS" \
-          --remove-env-vars "$CLOUDRUN_REMOVE_ENV_VARS" \
-          --quiet
+        echo "ERROR: Cloud Run service '$SERVICE_NAME' does not exist yet."
+        echo "Bootstrap it first with Terraform (stage terraform) so the service is created with the full DEV runtime configuration."
+        exit 1
       fi
 
 # ==============================================================================
@@ -462,6 +463,35 @@ deploy_location_service:
         - backend/pom.xml
 
 # ==============================================================================
+# BACKEND - DELIVERY SERVICE
+# ==============================================================================
+build_delivery_service:
+  extends: .backend_build_template
+  variables:
+    SERVICE_NAME: "delivery-service"
+    MODULE_PATH: "services/delivery-service"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+      changes:
+        - backend/services/delivery-service/**/*
+        - backend/pom.xml
+
+deploy_delivery_service:
+  extends: .cloudrun_deploy_template
+  needs:
+    - job: build_delivery_service
+      artifacts: true
+    - job: terraform_apply_dev
+      optional: true
+  variables:
+    SERVICE_NAME: "delivery-service"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+      changes:
+        - backend/services/delivery-service/**/*
+        - backend/pom.xml
+
+# ==============================================================================
 # BACKEND - NOTIFICATION SERVICE
 # ==============================================================================
 build_notification_service:
@@ -554,6 +584,10 @@ terraform_apply_dev:
     - terraform
   interruptible: true
   resource_group: terraform-dev
+  needs:
+    - job: build_delivery_service
+      artifacts: true
+      optional: true
   id_tokens:
     GITLAB_OIDC_TOKEN:
       aud: "//iam.googleapis.com/${WIF_PROVIDER}"
@@ -611,6 +645,54 @@ terraform_apply_dev:
     # --------------------------------------------------------------------------
     - terraform init -input=false
     - terraform validate
+    - |
+      DELIVERY_TF_IMAGE_URI=""
+      DELIVERY_SERVICE_EXISTS="false"
+      if gcloud run services describe "delivery-service" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" >/dev/null 2>&1; then
+        DELIVERY_SERVICE_EXISTS="true"
+      fi
+
+      if [ "${SERVICE_NAME:-}" = "delivery-service" ] && [ -n "${IMAGE_URI:-}" ]; then
+        echo "Using delivery-service image from current job environment."
+        DELIVERY_TF_IMAGE_URI="$IMAGE_URI"
+      elif [ -f "$CI_PROJECT_DIR/delivery-service.env" ]; then
+        echo "Using delivery-service image from build artifact."
+        unset SERVICE_NAME IMAGE_URI
+        . "$CI_PROJECT_DIR/delivery-service.env"
+        if [ -n "${SERVICE_NAME:-}" ] && [ -n "${IMAGE_URI:-}" ]; then
+          DELIVERY_TF_IMAGE_URI="$IMAGE_URI"
+        fi
+      elif [ "$DELIVERY_SERVICE_EXISTS" = "true" ]; then
+        echo "Using current Cloud Run image for delivery-service bootstrap."
+        DELIVERY_TF_IMAGE_URI="$(gcloud run services describe "delivery-service" \
+          --region "$GCP_REGION" \
+          --project "$GCP_PROJECT_ID" \
+          --format='value(spec.template.containers[0].image)')"
+      fi
+
+      if [ -n "$DELIVERY_TF_IMAGE_URI" ]; then
+        echo "Injecting built delivery-service image into Terraform image map..."
+        jq --arg service "delivery-service" --arg image "$DELIVERY_TF_IMAGE_URI" \
+          '.images[$service] = $image' \
+          images.auto.tfvars.json > /tmp/images.auto.tfvars.json
+        mv /tmp/images.auto.tfvars.json images.auto.tfvars.json
+      elif [ "$DELIVERY_SERVICE_EXISTS" != "true" ]; then
+        echo "ERROR: delivery-service requires a built image before Terraform can create Cloud Run."
+        echo "Run build_delivery_service first so Terraform can use a real Artifact Registry image."
+        exit 1
+      fi
+    - |
+      DELIVERY_TF_ADDR="module.delivery_service.google_cloud_run_v2_service.this"
+      if terraform state show "$DELIVERY_TF_ADDR" >/dev/null 2>&1; then
+        echo "Skipping import: '$DELIVERY_TF_ADDR' is already managed in Terraform state."
+      elif gcloud run services describe "delivery-service" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" >/dev/null 2>&1; then
+        echo "Importing existing Cloud Run service 'delivery-service' into Terraform state..."
+        terraform import \
+          "$DELIVERY_TF_ADDR" \
+          "projects/${GCP_PROJECT_ID}/locations/${GCP_REGION}/services/delivery-service"
+      else
+        echo "Skipping import: Cloud Run service 'delivery-service' does not exist yet."
+      fi
     - terraform apply -auto-approve -input=false -lock-timeout=5m
 
   rules:
@@ -621,11 +703,15 @@ terraform_apply_dev:
     - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
       changes:
         - infra/**/*
+        - backend/services/delivery-service/**/*
+        - backend/pom.xml
 
     # Sur la branche ciblée, Terraform ne part que si infra a changé
     - if: '$CI_COMMIT_BRANCH == "develop"'
       changes:
         - infra/**/*
+        - backend/services/delivery-service/**/*
+        - backend/pom.xml
 
 # ==============================================================================
 # STAGING - SQUELETTE MANUEL

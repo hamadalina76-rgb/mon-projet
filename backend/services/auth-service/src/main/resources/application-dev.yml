@@ -129,6 +129,9 @@ oauth2:
 frontend:
   url: ${FRONTEND_URL:http://localhost:4300}
 
+uploads:
+  base-url: ${UPLOADS_BASE_URL:https://storage.googleapis.com/${FILE_GCS_BUCKET}}
+
 otp:
   expiration:
     minutes: ${OTP_EXPIRATION_MINUTES:3}

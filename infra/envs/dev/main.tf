@@ -47,7 +47,7 @@ module "common" {
 }
 
 # ==============================================================================
-# ARTIFACT REGISTRY
+# ARTIFACT REGISTRY,
 # ==============================================================================
 module "artifact_registry" {
   source        = "../../modules/artifact_registry"
@@ -183,6 +183,69 @@ module "redis" {
   }
 
   depends_on = [module.common]
+}
+
+# ==============================================================================
+# CLOUD STORAGE - Partner uploads (Cloud Run DEV)
+# ==============================================================================
+resource "google_storage_bucket" "partner_uploads" {
+  name     = "${var.project_id}-partner-uploads-dev"
+  project  = var.project_id
+  location = var.region
+
+  uniform_bucket_level_access = true
+  force_destroy               = false
+
+  labels = {
+    env        = var.environment
+    managed-by = "terraform"
+    project    = "speedline"
+    usage      = "partner-uploads"
+  }
+
+  depends_on = [module.common]
+}
+
+resource "google_storage_bucket_iam_member" "partner_uploads_public_read" {
+  bucket = google_storage_bucket.partner_uploads.name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}
+
+resource "google_storage_bucket_iam_member" "partner_uploads_runtime_write" {
+  bucket = google_storage_bucket.partner_uploads.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${module.iam.cloudrun_runtime_sa_email}"
+}
+
+resource "google_storage_bucket" "user_uploads" {
+  name     = "${var.project_id}-user-uploads-dev"
+  project  = var.project_id
+  location = var.region
+
+  uniform_bucket_level_access = true
+  force_destroy               = false
+
+  labels = {
+    env        = var.environment
+    managed-by = "terraform"
+    project    = "speedline"
+    usage      = "user-uploads"
+  }
+
+  depends_on = [module.common]
+}
+
+resource "google_storage_bucket_iam_member" "user_uploads_public_read" {
+  bucket = google_storage_bucket.user_uploads.name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}
+
+resource "google_storage_bucket_iam_member" "user_uploads_runtime_write" {
+  bucket = google_storage_bucket.user_uploads.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${module.iam.cloudrun_runtime_sa_email}"
 }
 
 # ==============================================================================
@@ -468,6 +531,8 @@ module "auth_service" {
     # Feign inter-service URLs (Eureka désactivé en DEV — communication directe Cloud Run)
     PARTNER_SERVICE_URL = "https://partner-service-392205979525.europe-west1.run.app"
     USER_SERVICE_URL    = "https://user-service-392205979525.europe-west1.run.app"
+    UPLOADS_BASE_URL    = "https://storage.googleapis.com/${google_storage_bucket.user_uploads.name}"
+    FILE_GCS_BUCKET     = google_storage_bucket.user_uploads.name
 
     SPRING_MAIN_LAZY_INITIALIZATION = "true"
     SPRING_CLOUD_DISCOVERY_ENABLED  = "false"
@@ -515,6 +580,10 @@ module "user_service" {
     SPRING_DATASOURCE_URL      = "jdbc:postgresql:///speedline_dev?cloudSqlInstance=${module.cloudsql.instance_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
     SPRING_DATASOURCE_USERNAME = "auth_dev"
     SPRING_DATASOURCE_PASSWORD = var.db_dev_password
+    SPRING_CLOUD_GCP_PROJECT_ID = var.project_id
+
+    FILE_STORAGE_TYPE = "gcs"
+    FILE_GCS_BUCKET   = google_storage_bucket.user_uploads.name
 
     SPRING_MAIN_LAZY_INITIALIZATION = "true"
     SPRING_CLOUD_DISCOVERY_ENABLED  = "false"
@@ -564,6 +633,14 @@ module "partner_service" {
     SPRING_DATASOURCE_USERNAME = "auth_dev"
     SPRING_DATASOURCE_PASSWORD = var.db_dev_password
     UPLOAD_DIR                 = "/tmp/uploads"
+
+    # Redis - Memorystore DEV (must override local localhost defaults from application.yml)
+    SPRING_DATA_REDIS_HOST = module.redis.host
+    SPRING_DATA_REDIS_PORT = tostring(module.redis.port)
+
+    # Uploads - Cloud Storage in DEV (local profile keeps filesystem uploads)
+    FILE_STORAGE_TYPE = "gcs"
+    FILE_GCS_BUCKET   = google_storage_bucket.partner_uploads.name
 
     # GCP Pub/Sub runtime
     GCP_PROJECT_ID = var.project_id
@@ -616,6 +693,63 @@ module "location_service" {
     SPRING_DATASOURCE_URL      = "jdbc:postgresql:///speedline_dev?cloudSqlInstance=${module.cloudsql.instance_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
     SPRING_DATASOURCE_USERNAME = "auth_dev"
     SPRING_DATASOURCE_PASSWORD = var.db_dev_password
+
+    SPRING_MAIN_LAZY_INITIALIZATION = "true"
+    SPRING_CLOUD_DISCOVERY_ENABLED  = "false"
+  }
+
+  labels = {
+    env        = var.environment
+    managed-by = "terraform"
+    project    = "speedline"
+  }
+}
+
+# ------------------------------------------------------------------------------
+# DELIVERY SERVICE (CloudSQL + Redis + Pub/Sub)
+# ------------------------------------------------------------------------------
+module "delivery_service" {
+  source     = "../../modules/cloudrun_service"
+  project_id = var.project_id
+  region     = var.region
+
+  name  = "delivery-service"
+  image = var.images["delivery-service"]
+
+  service_account_email = module.iam.cloudrun_runtime_sa_email
+  allow_unauthenticated = true
+  inject_cloud_run_port = false
+  min_instances         = 0
+  cpu_boost             = true
+
+  memory = "1Gi"
+  cpu    = "1"
+
+  cloudsql_instances = [module.cloudsql.instance_connection_name]
+
+  vpc_connector_id = module.vpc_connector.id
+  vpc_egress       = "PRIVATE_RANGES_ONLY"
+
+  env_vars = {
+    SPRING_PROFILES_ACTIVE       = "dev"
+    SPRING_APPLICATION_NAME      = "delivery-service"
+    EUREKA_ENABLED               = "false"
+    GCP_PROJECT_ID               = var.project_id
+    SPRING_CLOUD_GCP_PROJECT_ID  = var.project_id
+    JAVA_TOOL_OPTIONS            = "-Dserver.port=8080 -Dspring.cloud.bootstrap.enabled=false -Dspring.cloud.config.enabled=false -Dspring.cloud.gcp.sql.enabled=false -Dspring.cloud.gcp.core.enabled=false"
+
+    SPRING_CLOUD_GCP_SQL_ENABLED  = "false"
+    SPRING_CLOUD_GCP_CORE_ENABLED = "false"
+
+    SPRING_DATASOURCE_URL      = "jdbc:postgresql:///speedline_dev?cloudSqlInstance=${module.cloudsql.instance_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
+    SPRING_DATASOURCE_USERNAME = "auth_dev"
+    SPRING_DATASOURCE_PASSWORD = var.db_dev_password
+
+    SPRING_DATA_REDIS_HOST = module.redis.host
+    SPRING_DATA_REDIS_PORT = tostring(module.redis.port)
+
+    USER_SERVICE_URL     = "https://user-service-392205979525.europe-west1.run.app"
+    LOCATION_SERVICE_URL = "https://location-service-392205979525.europe-west1.run.app"
 
     SPRING_MAIN_LAZY_INITIALIZATION = "true"
     SPRING_CLOUD_DISCOVERY_ENABLED  = "false"

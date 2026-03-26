@@ -56,5 +56,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
 USER appuser
 
 # Démarrer l'application avec options JVM
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dserver.port=${PORT:-8085} -jar app.jar"]
 

@@ -263,13 +263,31 @@ spring:
         #     - StripPrefix=1
         #     - AuthenticationFilter
 
-        # - id: delivery-service
-        #   uri: https://delivery-service-392205979525.europe-west1.run.app
-        #   predicates:
-        #     - Path=/api/deliveries/**
-        #   filters:
-        #     - StripPrefix=1
-        #     - AuthenticationFilter
+        # ====================================================================
+        # DELIVERY SERVICE
+        # ====================================================================
+        - id: delivery-service
+          uri: https://delivery-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/api/deliveries/**
+          filters:
+            - StripPrefix=1
+            - AuthenticationFilter
+
+        # Delivery Service - WebSocket (tracking courier position)
+        - id: delivery-service-ws
+          uri: wss://delivery-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/ws/location,/ws/tracking/**
+            - Header=Upgrade, websocket
+
+        # Delivery Service - REST tracking (position from Redis)
+        - id: delivery-service-tracking
+          uri: https://delivery-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/api/v1/tracking/**,/api/v1/docs/tracking-websocket
+          filters:
+            - AuthenticationFilter
 
         # ====================================================================
         # DELIVERY SERVICE (LOCAL DEV)

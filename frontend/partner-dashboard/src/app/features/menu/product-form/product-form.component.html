@@ -207,7 +207,7 @@
         </div>
         <div class="form-actions-btns">
           <button mat-stroked-button type="button" (click)="cancel()">{{ 'MENU.PRODUCT_FORM.CANCEL' | translate }}</button>
-          <button mat-flat-button type="submit" class="btn-save" [disabled]="saving()">
+          <button mat-flat-button type="submit" class="btn-save" [disabled]="productForm.invalid || saving()">
             @if (saving()) {
               <mat-spinner diameter="18" class="btn-spinner"></mat-spinner>
               {{ 'MENU.PRODUCT_FORM.SAVING' | translate }}
@@ -223,4 +223,3 @@
     </form>
   }
 </div>
-

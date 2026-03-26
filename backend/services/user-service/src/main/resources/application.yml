@@ -39,6 +39,8 @@ spring:
 
 # File Upload Configuration
 file:
+  storage:
+    type: local
   # Use a relative `uploads` directory inside the service folder:
   # when running from backend/services/user-service, this resolves to
   # backend/services/user-service/uploads (i.e. C:\git\speedline\backend\services\user-service\uploads)
@@ -100,4 +102,3 @@ resilience4j:
     configs:
       default:
         timeoutDuration: 5s
-

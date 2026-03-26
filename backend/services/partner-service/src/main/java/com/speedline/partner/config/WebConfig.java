@@ -18,8 +18,15 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${file.upload-dir:./uploads}")
     private String uploadDir;
 
+    @Value("${file.storage.type:local}")
+    private String storageType;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        if ("gcs".equalsIgnoreCase(storageType)) {
+            return;
+        }
+
         Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
         
         registry.addResourceHandler("/uploads/**")

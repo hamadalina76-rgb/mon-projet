@@ -9,6 +9,7 @@ import com.speedline.partner.dto.request.CreateMenuCategoryRequest;
 import com.speedline.partner.dto.request.ReorderRequest;
 import com.speedline.partner.dto.request.UpdateMenuCategoryRequest;
 import com.speedline.partner.dto.response.*;
+import com.speedline.partner.exception.BusinessRuleException;
 import com.speedline.partner.exception.ResourceNotFoundException;
 import com.speedline.partner.repository.MenuCategoryRepository;
 import com.speedline.partner.repository.PartnerRepository;
@@ -62,13 +63,19 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
     @CacheEvict(value = "menus:full", key = "#partnerId")
     public MenuCategoryResponse createCategory(Long partnerId, CreateMenuCategoryRequest request) {
         log.info("createCategory partnerId={} name={}", partnerId, request.getName());
+        String normalizedName = normalizeName(request.getName());
+
+        if (menuCategoryRepository.existsByPartnerIdAndNameIgnoreCase(partnerId, normalizedName)) {
+            throw new BusinessRuleException("A category with this name already exists for this partner");
+        }
 
         // Auto-position : max(position) + 1 si non fournie (TC-09)
         int nextPosition = resolveNextCategoryPosition(partnerId, request.getPosition());
+        log.info("createCategory beforeSave partnerId={} name={} position={}", partnerId, normalizedName, nextPosition);
 
         MenuCategory category = MenuCategory.builder()
                 .partnerId(partnerId)
-                .name(request.getName())
+                .name(normalizedName)
                 .description(request.getDescription())
                 .imageUrl(request.getImageUrl())
                 .position(nextPosition)
@@ -77,7 +84,9 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
 
         MenuCategory saved = menuCategoryRepository.save(category);
         log.info("MenuCategory created id={} position={}", saved.getId(), saved.getPosition());
-        return toResponse(saved);
+        MenuCategoryResponse response = toResponse(saved);
+        log.info("createCategory beforeResponse partnerId={} categoryId={}", partnerId, saved.getId());
+        return response;
     }
 
     // ========================= UPDATE =======================
@@ -90,7 +99,13 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
 
         MenuCategory category = findCategoryOrThrow(partnerId, categoryId);
 
-        Optional.ofNullable(request.getName()).ifPresent(category::setName);
+        if (request.getName() != null) {
+            String normalizedName = normalizeName(request.getName());
+            if (menuCategoryRepository.existsByPartnerIdAndNameIgnoreCaseAndIdNot(partnerId, normalizedName, categoryId)) {
+                throw new BusinessRuleException("A category with this name already exists for this partner");
+            }
+            category.setName(normalizedName);
+        }
         Optional.ofNullable(request.getDescription()).ifPresent(category::setDescription);
         Optional.ofNullable(request.getImageUrl()).ifPresent(category::setImageUrl);
         Optional.ofNullable(request.getPosition()).ifPresent(category::setPosition);
@@ -302,5 +317,9 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
                 .findTopByPartnerIdOrderByPositionDesc(partnerId)
                 .map(cat -> cat.getPosition() + 1)
                 .orElse(1);
+    }
+
+    private String normalizeName(String value) {
+        return value == null ? null : value.trim();
     }
 }

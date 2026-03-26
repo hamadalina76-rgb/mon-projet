@@ -1,5 +1,9 @@
 package com.speedline.partner.service;
 
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -7,10 +11,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -22,14 +28,36 @@ import java.util.UUID;
 @Slf4j
 public class FileStorageService {
 
+    private static final String STORAGE_TYPE_LOCAL = "local";
+    private static final String STORAGE_TYPE_GCS = "gcs";
+
     @Value("${file.upload-dir:./uploads}")
     private String uploadDir;
 
     @Value("${file.base-url:http://localhost:8083/uploads}")
     private String baseUrl;
 
+    @Value("${file.storage.type:local}")
+    private String storageType;
+
+    @Value("${file.gcs.bucket:}")
+    private String gcsBucket;
+
+    @Value("${spring.cloud.gcp.project-id:}")
+    private String gcpProjectId;
+
+    private Storage storage;
+
     @PostConstruct
     public void init() {
+        if (isGcsStorage()) {
+            this.storage = gcpProjectId == null || gcpProjectId.isBlank()
+                    ? StorageOptions.getDefaultInstance().getService()
+                    : StorageOptions.newBuilder().setProjectId(gcpProjectId).build().getService();
+            log.info("File storage initialized in GCS mode for bucket={}", gcsBucket);
+            return;
+        }
+
         try {
             Path uploadPath = Paths.get(uploadDir);
             Files.createDirectories(uploadPath);
@@ -139,6 +167,9 @@ public class FileStorageService {
     }
 
     private String storeFile(MultipartFile file, String subDir, Long partnerId) {
+        if (isGcsStorage()) {
+            return storeFileInGcs(file, subDir, partnerId, null);
+        }
         try {
             // Validate file
             if (file.isEmpty()) {
@@ -173,6 +204,9 @@ public class FileStorageService {
     }
 
     private String storeFileWithSuffix(MultipartFile file, String subDir, Long partnerId, String suffix) {
+        if (isGcsStorage()) {
+            return storeFileInGcs(file, subDir, partnerId, suffix);
+        }
         try {
             if (file.isEmpty()) {
                 throw new RuntimeException("Cannot store empty file");
@@ -200,7 +234,12 @@ public class FileStorageService {
      */
     public void deleteFile(String fileUrl) {
         if (fileUrl == null || fileUrl.isEmpty()) return;
-        
+
+        if (isGcsStorage()) {
+            deleteFileFromGcs(fileUrl);
+            return;
+        }
+
         try {
             // Extract relative path from URL
             String relativePath = fileUrl.replace(baseUrl + "/", "");
@@ -212,6 +251,81 @@ public class FileStorageService {
             }
         } catch (IOException e) {
             log.warn("Failed to delete file {}: {}", fileUrl, e.getMessage());
+        }
+    }
+
+    private boolean isGcsStorage() {
+        return STORAGE_TYPE_GCS.equalsIgnoreCase(storageType);
+    }
+
+    private String storeFileInGcs(MultipartFile file, String subDir, Long partnerId, String suffix) {
+        try {
+            if (file.isEmpty()) {
+                throw new RuntimeException("Cannot store empty file");
+            }
+            if (gcsBucket == null || gcsBucket.isBlank()) {
+                throw new IllegalStateException("file.gcs.bucket must be configured when file.storage.type=gcs");
+            }
+
+            String originalFilename = file.getOriginalFilename();
+            String extension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+
+            String sanitizedSubDir = subDir.startsWith("/") ? subDir.substring(1) : subDir;
+            String filename = suffix == null || suffix.isBlank()
+                    ? partnerId + "_" + UUID.randomUUID().toString().substring(0, 8) + extension
+                    : partnerId + "_" + suffix + "_" + UUID.randomUUID().toString().substring(0, 8) + extension;
+            String objectName = sanitizedSubDir + "/" + filename;
+
+            BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(gcsBucket, objectName))
+                    .setContentType(resolveContentType(file, extension))
+                    .build();
+
+            try (InputStream inputStream = file.getInputStream()) {
+                storage.createFrom(blobInfo, inputStream);
+            }
+
+            String publicUrl = "https://storage.googleapis.com/" + gcsBucket + "/" + objectName;
+            log.info("File stored successfully in GCS: bucket={} object={}", gcsBucket, objectName);
+            return publicUrl;
+        } catch (IOException e) {
+            log.error("Failed to store file in GCS for partner {}: {}", partnerId, e.getMessage());
+            throw new RuntimeException("Failed to store file in GCS: " + e.getMessage(), e);
+        }
+    }
+
+    private String resolveContentType(MultipartFile file, String extension) {
+        if (file.getContentType() != null && !file.getContentType().isBlank()) {
+            return file.getContentType();
+        }
+        String ext = extension == null ? "" : extension.toLowerCase(Locale.ROOT);
+        return switch (ext) {
+            case ".png" -> "image/png";
+            case ".jpg", ".jpeg" -> "image/jpeg";
+            case ".svg" -> "image/svg+xml";
+            case ".webp" -> "image/webp";
+            case ".pdf" -> "application/pdf";
+            default -> "application/octet-stream";
+        };
+    }
+
+    private void deleteFileFromGcs(String fileUrl) {
+        try {
+            String publicPrefix = "https://storage.googleapis.com/" + gcsBucket + "/";
+            if (!fileUrl.startsWith(publicPrefix)) {
+                log.warn("Skipping GCS delete for unsupported URL format: {}", fileUrl);
+                return;
+            }
+
+            String objectName = fileUrl.substring(publicPrefix.length());
+            boolean deleted = storage.delete(BlobId.of(gcsBucket, objectName));
+            if (deleted) {
+                log.info("Deleted GCS object bucket={} object={}", gcsBucket, objectName);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to delete GCS file {}: {}", fileUrl, e.getMessage());
         }
     }
 }
