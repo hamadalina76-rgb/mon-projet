@@ -7,6 +7,8 @@ import '../core/constants/app_constants.dart';
 import '../core/utils/logger.dart';
 
 class BackgroundLocationService {
+  static const Duration _positionFixTimeout = Duration(seconds: 15);
+
   final Battery _battery;
 
   StreamSubscription<Position>? _positionStreamSubscription;
@@ -42,6 +44,7 @@ class BackgroundLocationService {
     _isTracking = true;
 
     await _startPositionStream();
+    await _primeInitialPosition();
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       _emitIfDue();
     });
@@ -91,7 +94,40 @@ class BackgroundLocationService {
     ).listen((position) {
       _latestPosition = position;
       _trackMovement(position);
+    }, onError: (Object error) {
+      AppLogger.warning('Geolocator stream error: $error');
     });
+  }
+
+  Future<void> _primeInitialPosition() async {
+    try {
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        _latestPosition = lastKnown;
+        _trackMovement(lastKnown);
+        AppLogger.info('Primed tracking with last known GPS position');
+      }
+    } catch (e) {
+      AppLogger.warning('Unable to read last known position: $e');
+    }
+
+    if (_latestPosition != null) {
+      return;
+    }
+
+    try {
+      final current = await Geolocator.getCurrentPosition(
+        locationSettings: LocationSettings(
+          accuracy: _highAccuracy ? LocationAccuracy.high : LocationAccuracy.medium,
+          timeLimit: _positionFixTimeout,
+        ),
+      );
+      _latestPosition = current;
+      _trackMovement(current);
+      AppLogger.info('Primed tracking with current GPS position');
+    } catch (e) {
+      AppLogger.warning('Unable to prime current position on tracking start: $e');
+    }
   }
 
   void _trackMovement(Position position) {
@@ -167,6 +203,18 @@ class BackgroundLocationService {
       return _latestPosition;
     }
 
+    // Reuse cached platform location first to avoid unnecessary active GPS fixes.
+    try {
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        _latestPosition = lastKnown;
+        _trackMovement(lastKnown);
+        return lastKnown;
+      }
+    } catch (e) {
+      AppLogger.warning('Unable to read fallback last known position: $e');
+    }
+
     // Avoid repeatedly triggering OS location resolution prompts on emulator/device.
     final now = DateTime.now();
     if (_lastFallbackAttemptAt != null &&
@@ -185,6 +233,7 @@ class BackgroundLocationService {
       return await Geolocator.getCurrentPosition(
         locationSettings: LocationSettings(
           accuracy: _highAccuracy ? LocationAccuracy.high : LocationAccuracy.medium,
+          timeLimit: _positionFixTimeout,
         ),
       );
     } catch (e) {
@@ -217,3 +266,4 @@ class BackgroundLocationService {
     }
   }
 }
+

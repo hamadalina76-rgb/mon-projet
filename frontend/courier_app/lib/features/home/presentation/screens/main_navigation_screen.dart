@@ -54,7 +54,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       }
       setState(() {
         _canAccessApp = canAccess;
-        if (!canAccess) _currentIndex = 4;
+        if (!canAccess) _currentIndex = 3;
       });
     } catch (_) {}
   }
@@ -63,7 +63,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     CourierHomeScreen(canAccessApp: _canAccessApp),
     const Center(child: Text('Orders')), // TODO: Implement OrdersScreen
     const Center(child: Text('Earnings')), // TODO: Implement EarningsScreen
-    const Center(child: Text('Support')), // TODO: Implement SupportScreen
     const ProfileScreen(),
   ];
 
@@ -104,14 +103,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   index: 2,
                 ),
                 _buildNavItem(
-                  icon: Icons.support_agent_outlined,
-                  activeIcon: Icons.support_agent,
-                  index: 3,
-                ),
-                _buildNavItem(
                   icon: Icons.person_outline,
                   activeIcon: Icons.person,
-                  index: 4,
+                  index: 3,
                 ),
               ],
             ),
@@ -127,7 +121,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     required int index,
   }) {
     final isActive = _currentIndex == index;
-    final isProfile = index == 4;
+    final isProfile = index == 3;
     final isDisabled = !_canAccessApp && !isProfile;
 
     return GestureDetector(

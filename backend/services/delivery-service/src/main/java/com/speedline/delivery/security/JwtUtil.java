@@ -8,7 +8,9 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * JWT utility dedicated to delivery-service.
@@ -63,12 +65,45 @@ public class JwtUtil {
     public String extractRole(String token) {
         try {
             Map<String, Object> claims = extractAllClaims(token);
-            Object role = claims.get("role");
-            return role != null ? String.valueOf(role) : null;
+            String role = toRoleString(claims.get("role"));
+            if (role != null && !role.isBlank()) {
+                return role;
+            }
+
+            String roles = toRoleString(claims.get("roles"));
+            if (roles != null && !roles.isBlank()) {
+                return roles;
+            }
+
+            String authorities = toRoleString(claims.get("authorities"));
+            if (authorities != null && !authorities.isBlank()) {
+                return authorities;
+            }
+
+            return null;
         } catch (Exception e) {
             log.error("Failed to extract role from JWT: {}", e.getMessage(), e);
             return null;
         }
+    }
+
+    private String toRoleString(Object claimValue) {
+        if (claimValue == null) {
+            return null;
+        }
+
+        if (claimValue instanceof String s) {
+            return s;
+        }
+
+        if (claimValue instanceof Collection<?> c) {
+            return c.stream()
+                    .filter(v -> v != null && !String.valueOf(v).isBlank())
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+        }
+
+        return String.valueOf(claimValue);
     }
 
     @SuppressWarnings("unchecked")

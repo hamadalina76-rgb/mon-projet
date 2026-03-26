@@ -178,10 +178,15 @@ public class TrackingWebSocketHandler extends TextWebSocketHandler {
     private static boolean isCourierRole(String role) {
         if (role == null || role.isBlank()) return false;
 
-        // Accepte: "COURIER", "ROLE_COURIER", "ROLE_ADMIN,ROLE_COURIER", "ROLE_ADMIN ROLE_COURIER", etc.
+        // Accepts: "COURIER", "ROLE_COURIER", "ROLE_DELIVERY", "DELIVERY_AGENT",
+        // comma/space-separated role lists, etc.
         return Stream.of(role.split("[,\\s]+"))
                 .filter(s -> !s.isBlank())
-                .anyMatch(token -> token.toUpperCase().contains("COURIER"));
+            .map(token -> token.toUpperCase())
+            .anyMatch(token -> token.contains("COURIER")
+                || token.contains("DELIVERY")
+                || token.contains("DRIVER")
+                || token.contains("LIVREUR"));
     }
 
     /**

@@ -34,7 +34,9 @@ dependencies:
   google_maps_flutter: ^2.5.3
   flutter_polyline_points: ^3.1.0
   geocoding: ^4.0.0
+  latlong2: ^0.9.1
   location: ^8.0.1
+  flutter_map: ^8.2.2
   
   # NAVIGATION
   go_router: ^17.0.1
