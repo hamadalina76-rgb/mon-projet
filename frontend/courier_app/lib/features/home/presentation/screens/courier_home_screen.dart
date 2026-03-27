@@ -2,16 +2,20 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../../features/navigation/presentation/models/live_tracking_position.dart';
 import '../../../../features/navigation/presentation/widgets/map_widget.dart';
+import '../../../../features/auth/domain/entities/courier.dart';
 import '../../../../providers/location_websocket_provider.dart';
 import '../../../../providers/tracking_provider.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../providers/current_courier_provider.dart';
 import '../../../../config/runtime_config.dart';
@@ -42,9 +46,83 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
   LatLng? _lastGeocodedPoint;
   Timer? _geocodeDebounce;
   DateTime? _lastGeocodeAt;
-  String _locationSubtitle = 'Pret a livrer ?';
+  String _locationSubtitle = '';
   bool _followCourier = true;
   bool _mapReady = false;
+  Timer? _activeDeliveryTicker;
+  StreamSubscription<dynamic>? _positionSubscription;
+  ProviderSubscription<TrackingState>? _trackingSubscription;
+
+  void _startActiveDeliveryTicker() {
+    _activeDeliveryTicker?.cancel();
+    _activeDeliveryTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {});
+    });
+  }
+
+  void _stopActiveDeliveryTicker() {
+    _activeDeliveryTicker?.cancel();
+    _activeDeliveryTicker = null;
+  }
+
+  Future<void> _playActiveDeliveryCue({required bool playSound}) async {
+    await HapticFeedback.lightImpact();
+    if (playSound) {
+      await SystemSound.play(SystemSoundType.alert);
+    }
+  }
+
+  bool _isSoundEnabledForCourier(Courier? courier) {
+    return courier?.activeDeliverySoundEnabled ?? false;
+  }
+
+  String _formatActiveDuration(DateTime? startedAt) {
+    if (startedAt == null) {
+      return '00:00';
+    }
+    final elapsed = DateTime.now().difference(startedAt);
+    final hours = elapsed.inHours;
+    final minutes = elapsed.inMinutes.remainder(60);
+    final seconds = elapsed.inSeconds.remainder(60);
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Future<bool> _confirmToggle(bool toOnline) async {
+    final l10n = AppLocalizations.of(context)!;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(toOnline
+              ? l10n.translate('go_online_question')
+              : l10n.translate('go_offline_question')),
+          content: Text(
+            toOnline
+                ? l10n.translate('go_online_desc')
+                : l10n.translate('go_offline_desc'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.translate('cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.translate('confirm')),
+            ),
+          ],
+        );
+      },
+    );
+    return result ?? false;
+  }
 
   void _zoomBy(double delta) {
     try {
@@ -65,7 +143,7 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
         ? null
         : LiveTrackingPosition.fromPayload(initialPayload);
 
-    ref.read(locationWebSocketProvider.notifier).positionStream.listen((payload) {
+    _positionSubscription = ref.read(locationWebSocketProvider.notifier).positionStream.listen((payload) {
       final next = LiveTrackingPosition.fromPayload(payload);
       if (!mounted || next == null) {
         return;
@@ -82,11 +160,29 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
     if (_currentPosition != null) {
       _scheduleReverseGeocode(_currentPosition!);
     }
+
+    _trackingSubscription = ref.listenManual<TrackingState>(trackingProvider, (previous, next) {
+      final wasActive = previous?.hasActiveDelivery ?? false;
+      if (!wasActive && next.hasActiveDelivery) {
+        _startActiveDeliveryTicker();
+        final courierState = ref.read(currentCourierProvider);
+        final courier = courierState is AsyncData<Courier?> ? courierState.value : null;
+        unawaited(
+          _playActiveDeliveryCue(playSound: _isSoundEnabledForCourier(courier)),
+        );
+      }
+      if (wasActive && !next.hasActiveDelivery) {
+        _stopActiveDeliveryTicker();
+      }
+    });
   }
 
   @override
   void dispose() {
     _geocodeDebounce?.cancel();
+    _stopActiveDeliveryTicker();
+    _positionSubscription?.cancel();
+    _trackingSubscription?.close();
     super.dispose();
   }
 
@@ -138,7 +234,7 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
             'format': 'jsonv2',
             'lat': position.latitude.toStringAsFixed(6),
             'lon': position.longitude.toStringAsFixed(6),
-            'accept-language': 'fr',
+            'accept-language': Localizations.localeOf(context).languageCode,
             'addressdetails': 1,
             'zoom': 18,
           },
@@ -173,6 +269,7 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final trackingState = ref.watch(trackingProvider);
     final wsState = ref.watch(locationWebSocketProvider);
     final trackingController = ref.read(trackingProvider.notifier);
@@ -180,8 +277,8 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
     final courier = courierAsync is AsyncData ? courierAsync.value : null;
     final profileUrl = _resolveProfileImageUrl(courier?.photoUrl);
 
-    final statusText = _statusLabel(trackingState, _currentPosition);
-    final wsBadgeText = _wsLabel(trackingState, wsState);
+    final statusText = _statusLabel(trackingState, _currentPosition, l10n);
+    final wsBadgeText = _wsLabel(trackingState, wsState, l10n);
     final wsBadgeColor = _wsColor(trackingState, wsState);
 
     return Scaffold(
@@ -285,7 +382,7 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Bonjour, ${courier?.firstName ?? 'Livreur'}',
+                                '${l10n.translate('hello')}, ${courier?.firstName ?? l10n.translate('courier')}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -296,7 +393,9 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
                                 ),
                               ),
                               Text(
-                                _locationSubtitle,
+                                _locationSubtitle.isEmpty
+                                    ? l10n.translate('home_ready_to_deliver')
+                                    : _locationSubtitle,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -357,6 +456,85 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
             ),
           ),
 
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            top: trackingState.isOnline && trackingState.hasActiveDelivery
+                ? MediaQuery.of(context).padding.top + 92.h
+                : MediaQuery.of(context).padding.top + 66.h,
+            left: 16.w,
+            right: 16.w,
+            child: IgnorePointer(
+              ignoring: !(trackingState.isOnline && trackingState.hasActiveDelivery),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                opacity: trackingState.isOnline && trackingState.hasActiveDelivery ? 1 : 0,
+                child: GestureDetector(
+                  onTap: () => context.push('/active-delivery'),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFD166),
+                      borderRadius: BorderRadius.circular(14.r),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.delivery_dining, color: Colors.black87, size: 22.sp),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l10n.translate('active_delivery_in_progress'),
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              Text(
+                                '${l10n.translate('duration')}: ${_formatActiveDuration(trackingState.activeDeliveryStartedAt)}',
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87.withValues(alpha: 0.8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            l10n.translate('view'),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
           // 3. Status Bar & Offline/Online Toggle Bottom Sheet
           Positioned(
             left: 0,
@@ -368,6 +546,7 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
               trackingController: trackingController,
               statusText: statusText,
               position: _currentPosition,
+              l10n: l10n,
             ),
           ),
         ],
@@ -381,11 +560,14 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
     required TrackingController trackingController,
     required String statusText,
     required LiveTrackingPosition? position,
+    required AppLocalizations l10n,
   }) {
     final bool isOnline = trackingState.isOnline;
     final bool isBusy = trackingState.isBusy;
+    final bool offlineBlockedByDelivery = isOnline && trackingState.hasActiveDelivery;
+    final bool canToggle = widget.canAccessApp && !isBusy && !offlineBlockedByDelivery;
     final precisionText = position == null
-      ? 'En attente du signal GPS'
+      ? l10n.translate('waiting_gps_signal')
       : '${position.precisionLabel} (${position.accuracyMeters.toStringAsFixed(1)}m)';
     final precisionColor = position?.precisionColor ?? Colors.grey;
     final speedText = position?.formattedSpeed ?? '-- km/h';
@@ -461,9 +643,9 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
             SizedBox(height: 10.h),
             Row(
               children: [
-                Expanded(child: _buildMiniStat('Vitesse', speedText)),
-                Expanded(child: _buildMiniStat('Batterie', batteryText)),
-                Expanded(child: _buildMiniStat('Debut service', shiftText)),
+                Expanded(child: _buildMiniStat(l10n.translate('speed'), speedText)),
+                Expanded(child: _buildMiniStat(l10n.translate('battery'), batteryText)),
+                Expanded(child: _buildMiniStat(l10n.translate('shift_start'), shiftText)),
               ],
             ),
             SizedBox(height: 12.h),
@@ -482,20 +664,53 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
                     SizedBox(width: 12.w),
                     Expanded(
                       child: Text(
-                        'Compte en cours d\'examen. Actuellement limite au profil.',
+                        l10n.translate('account_under_review_profile_only'),
                         style: TextStyle(fontSize: 12.sp, color: Colors.orange.shade900),
                       ),
                     ),
                   ],
                 ),
               ),
+            if (offlineBlockedByDelivery)
+              Container(
+                width: double.infinity,
+                margin: EdgeInsets.only(bottom: 12.h),
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF2CC),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: const Color(0xFFFFD166)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.lock_clock, color: Colors.orange.shade800, size: 20.sp),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: Text(
+                        l10n.translate('finish_delivery_before_offline'),
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.orange.shade900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             GestureDetector(
-              onTap: (!widget.canAccessApp || isBusy)
+              onTap: !canToggle
                   ? null
                   : () async {
+                      final targetOnline = !isOnline;
+                      final confirmed = await _confirmToggle(targetOnline);
+                      if (!confirmed || !context.mounted) {
+                        return;
+                      }
+
                       await trackingController.setOnline(
                         context,
-                        !isOnline,
+                        targetOnline,
                         inDelivery: false,
                       );
                       final message = ref.read(trackingProvider).blockingMessage;
@@ -512,10 +727,12 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
                 decoration: BoxDecoration(
                   color: isBusy
                       ? Colors.grey[300]
-                      : (isOnline ? Colors.redAccent : AppColors.primary),
+                      : (offlineBlockedByDelivery
+                          ? Colors.orange.shade600
+                          : (isOnline ? Colors.redAccent : AppColors.primary)),
                   borderRadius: BorderRadius.circular(30.r),
                   boxShadow: [
-                    if (!isBusy)
+                    if (!isBusy && !offlineBlockedByDelivery)
                       BoxShadow(
                         color: (isOnline ? Colors.redAccent : AppColors.primary).withValues(alpha: 0.3),
                         blurRadius: 10,
@@ -534,7 +751,11 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
                           ),
                         )
                       : Text(
-                          isOnline ? 'PASSER HORS LIGNE' : 'PASSER EN LIGNE',
+                          offlineBlockedByDelivery
+                            ? l10n.translate('delivery_in_progress_upper')
+                            : (isOnline
+                              ? l10n.translate('go_offline_upper')
+                              : l10n.translate('go_online_upper')),
                           style: TextStyle(
                             fontSize: 16.sp,
                             fontWeight: FontWeight.bold,
@@ -551,27 +772,30 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
     );
   }
 
-  String _statusLabel(TrackingState state, LiveTrackingPosition? position) {
+  String _statusLabel(TrackingState state, LiveTrackingPosition? position, AppLocalizations l10n) {
     if (!state.isOnline) {
-      return 'Hors ligne';
+      return l10n.translate('offline');
+    }
+    if (state.hasActiveDelivery) {
+      return l10n.translate('in_delivery');
     }
     if (position == null) {
-      return 'En ligne - En attente GPS';
+      return l10n.translate('online_waiting_gps');
     }
     if (position.speedKmh > 3) {
-      return 'En livraison';
+      return l10n.translate('in_delivery');
     }
-    return 'En ligne - En attente';
+    return l10n.translate('online_waiting');
   }
 
-  String _wsLabel(TrackingState state, LocationWebSocketState wsState) {
+  String _wsLabel(TrackingState state, LocationWebSocketState wsState, AppLocalizations l10n) {
     if (!state.isOnline) {
-      return 'Off';
+      return l10n.translate('off');
     }
     if (wsState.status == LocationWebSocketStatus.connected) {
-      return 'Connecte';
+      return l10n.translate('connected');
     }
-    return 'Hors ligne';
+    return l10n.translate('offline');
   }
 
   Color _wsColor(TrackingState state, LocationWebSocketState wsState) {

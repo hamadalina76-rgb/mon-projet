@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -24,6 +25,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -36,7 +39,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         title: Column(
           children: [
             Text(
-              'Registration',
+              l10n.translate('register_title'),
               style: TextStyle(
                 fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
@@ -44,7 +47,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             Text(
-              'Create Your Account',
+              l10n.translate('register_subtitle'),
               style: TextStyle(
                 fontSize: 14.sp,
                 color: Colors.grey[600],
@@ -79,7 +82,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'CREATE ACCOUNT',
+                          l10n.translate('create_account_upper'),
                           style: TextStyle(
                             fontSize: 18.sp,
                             fontWeight: FontWeight.w600,
@@ -96,7 +99,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 
                 // Helper Text
                 Text(
-                  'Click CREATE ACCOUNT too complete your registration.',
+                  l10n.translate('register_helper_text'),
                   style: TextStyle(
                     fontSize: 14.sp,
                     color: Colors.grey[600],

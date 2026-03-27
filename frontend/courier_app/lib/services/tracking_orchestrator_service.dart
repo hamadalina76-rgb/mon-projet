@@ -41,6 +41,11 @@ class TrackingOrchestratorService {
 
   bool get isOnline => _isOnline;
 
+  Future<bool> shouldResumeOnlineSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(AppConstants.trackingOnlinePrefKey) ?? false;
+  }
+
   Future<void> start({
     required String jwt,
     required bool highAccuracy,

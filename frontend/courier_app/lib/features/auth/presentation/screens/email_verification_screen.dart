@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
 
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../widgets/otp_input.dart';
 import '../../data/repositories/auth_repository_impl.dart';
@@ -73,6 +74,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
   void _showExpiredDialog() {
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
     
     showDialog(
       context: context,
@@ -85,17 +87,17 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
           children: [
             Icon(Icons.timer_off, color: AppColors.error),
             SizedBox(width: 8.w),
-            const Text('Code Expired'),
+            Text(l10n.translate('email_verification_code_expired')),
           ],
         ),
-        content: const Text('The verification code has expired. Please request a new one.'),
+        content: Text(l10n.translate('email_verification_code_expired_desc')),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               context.go('/login');
             },
-            child: const Text('Back'),
+            child: Text(l10n.translate('back')),
           ),
           ElevatedButton(
             onPressed: () {
@@ -106,7 +108,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Resend Code'),
+            child: Text(l10n.translate('resend_code')),
           ),
         ],
       ),
@@ -120,9 +122,11 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   }
 
   Future<void> _handleVerify() async {
+    final l10n = AppLocalizations.of(context)!;
+
     if (_otp.length != 6) {
       _showSnackBar(
-        message: 'Please enter the complete 6-digit code',
+        message: l10n.translate('email_verification_enter_full_code'),
         isError: true,
       );
       return;
@@ -158,7 +162,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
       _timer?.cancel();
       _showSnackBar(
-        message: 'Email verified successfully!',
+        message: l10n.translate('email_verified_success'),
         isError: false,
       );
       
@@ -176,7 +180,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     } catch (e) {
       if (!mounted) return;
       print('❌ OTP verification error: $e');
-      String errorMessage = 'Invalid or expired code. Please try again.';
+      String errorMessage = l10n.translate('email_verification_invalid_code');
       
       // Try to extract error message from exception
       if (e.toString().contains('Exception:')) {
@@ -195,9 +199,13 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   }
 
   Future<void> _handleResend() async {
+    final l10n = AppLocalizations.of(context)!;
+
     if (_resendCountdown > 0) {
       _showSnackBar(
-        message: 'Please wait $_resendCountdown seconds before resending',
+        message: l10n.translateWithParams('email_verification_wait_resend', {
+          'seconds': _resendCountdown.toString(),
+        }),
         isError: true,
       );
       return;
@@ -222,13 +230,13 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       _startResendCountdown();
       
       _showSnackBar(
-        message: 'Verification code sent successfully!',
+        message: l10n.translate('email_verification_code_sent'),
         isError: false,
       );
     } catch (e) {
       if (!mounted) return;
       _showSnackBar(
-        message: 'Failed to resend code. Please try again.',
+        message: l10n.translate('email_verification_resend_failed'),
         isError: true,
       );
     } finally {
@@ -277,7 +285,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
         duration: Duration(seconds: isError ? 4 : 2),
         action: SnackBarAction(
-          label: 'OK',
+          label: AppLocalizations.of(context)!.translate('ok'),
           textColor: Colors.white,
           onPressed: () {
             if (mounted) {
@@ -291,6 +299,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -328,7 +338,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               
               // Title
               Text(
-                'Verify Your Email',
+                l10n.translate('verify_your_email'),
                 style: TextStyle(
                   fontSize: 28.sp,
                   fontWeight: FontWeight.bold,
@@ -349,9 +359,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     height: 1.5,
                   ),
                   children: [
-                    const TextSpan(
-                      text: 'We\'ve sent a 6-digit verification code to\n',
-                    ),
+                    TextSpan(text: '${l10n.translate('email_verification_sent_to')}\n'),
                     TextSpan(
                       text: widget.email,
                       style: const TextStyle(
@@ -387,7 +395,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     ),
                     SizedBox(width: 8.w),
                     Text(
-                      'Expires in: $_timerDisplay',
+                      '${l10n.translate('email_verification_expires_in')} $_timerDisplay',
                       style: TextStyle(
                         fontSize: 15.sp,
                         fontWeight: FontWeight.w600,
@@ -434,7 +442,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                           ),
                         )
                       : Text(
-                          'VERIFY EMAIL',
+                          l10n.translate('verify_email'),
                           style: TextStyle(
                             fontSize: 18.sp,
                             fontWeight: FontWeight.w600,
@@ -452,7 +460,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                 spacing: 4.w,
                 children: [
                   Text(
-                    'Didn\'t receive the code? ',
+                    l10n.translate('didnt_receive_code'),
                     style: TextStyle(
                       fontSize: 14.sp,
                       color: AppColors.textSecondary,
@@ -467,8 +475,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     ),
                     child: Text(
                       _resendCountdown > 0 
-                          ? 'Resend ($_resendCountdown s)'
-                          : 'Resend',
+                          ? l10n.translateWithParams('resend_countdown', {'seconds': _resendCountdown.toString()})
+                          : l10n.translate('resend'),
                       style: TextStyle(
                         fontSize: 14.sp,
                         fontWeight: FontWeight.w600,

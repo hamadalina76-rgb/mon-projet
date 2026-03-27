@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../config/di/injection_container.dart';
 import '../../domain/repositories/auth_repository.dart';
 
@@ -12,6 +12,8 @@ class RejectedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
@@ -36,7 +38,7 @@ class RejectedScreen extends StatelessWidget {
                           ),
                           SizedBox(height: 24.h),
                           Text(
-                            'Compte non autorisé',
+                            l10n.translate('account_not_authorized'),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 22.sp,
@@ -48,7 +50,7 @@ class RejectedScreen extends StatelessWidget {
                           Text(
                             reason != null && reason.isNotEmpty
                                 ? reason
-                                : 'Votre compte n\'est pas autorisé à utiliser l\'application. En cas de question, contactez le support.',
+                                : l10n.translate('account_not_authorized_desc'),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 16.sp,
@@ -73,7 +75,7 @@ class RejectedScreen extends StatelessWidget {
                               } catch (_) {}
                             },
                             icon: Icon(Icons.refresh, size: 20.sp),
-                            label: Text('Rafraîchir le statut', style: TextStyle(fontSize: 15.sp)),
+                            label: Text(l10n.translate('refresh_status'), style: TextStyle(fontSize: 15.sp)),
                             style: OutlinedButton.styleFrom(
                               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
                               minimumSize: Size(double.infinity, 48.h),
@@ -82,7 +84,7 @@ class RejectedScreen extends StatelessWidget {
                           SizedBox(height: 24.h),
                           TextButton(
                             onPressed: () => context.go('/login'),
-                            child: Text('Se déconnecter', style: TextStyle(fontSize: 15.sp)),
+                            child: Text(l10n.translate('logout'), style: TextStyle(fontSize: 15.sp)),
                           ),
                         ],
                       );

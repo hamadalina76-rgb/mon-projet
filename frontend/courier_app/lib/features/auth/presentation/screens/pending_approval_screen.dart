@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../config/di/injection_container.dart';
 import '../../domain/repositories/auth_repository.dart';
 
@@ -12,6 +13,8 @@ class PendingApprovalScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -26,7 +29,7 @@ class PendingApprovalScreen extends StatelessWidget {
               ),
               SizedBox(height: 24.h),
               Text(
-                'Inscription en cours d\'examen',
+                l10n.translate('pending_title'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 22.sp,
@@ -36,7 +39,7 @@ class PendingApprovalScreen extends StatelessWidget {
               ),
               SizedBox(height: 16.h),
               Text(
-                'Votre inscription est en cours d\'examen par notre équipe. Vous serez notifié dès que votre compte sera activé.',
+                l10n.translate('pending_desc'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16.sp,
@@ -46,7 +49,7 @@ class PendingApprovalScreen extends StatelessWidget {
               ),
               SizedBox(height: 12.h),
               Text(
-                'Si nous avons demandé des informations complémentaires, vous pouvez modifier votre profil et vos documents ci‑dessous.',
+                l10n.translate('pending_desc_2'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14.sp,
@@ -58,7 +61,7 @@ class PendingApprovalScreen extends StatelessWidget {
               FilledButton.icon(
                 onPressed: () => context.push('/documentation'),
                 icon: const Icon(Icons.edit_document, size: 20),
-                label: const Text('Compléter ou modifier mon profil'),
+                label: Text(l10n.translate('complete_or_edit_profile')),
                 style: FilledButton.styleFrom(
                   padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
                   backgroundColor: AppColors.primary,
@@ -81,7 +84,7 @@ class PendingApprovalScreen extends StatelessWidget {
                   } catch (_) {}
                 },
                 icon: const Icon(Icons.refresh),
-                label: const Text('Rafraîchir le statut'),
+                label: Text(l10n.translate('refresh_status')),
                 style: OutlinedButton.styleFrom(
                   padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                 ),
@@ -89,7 +92,7 @@ class PendingApprovalScreen extends StatelessWidget {
               SizedBox(height: 48.h),
               TextButton(
                 onPressed: () => context.go('/login'),
-                child: const Text('Se déconnecter'),
+                child: Text(l10n.translate('logout')),
               ),
             ],
           ),

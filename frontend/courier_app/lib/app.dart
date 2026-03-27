@@ -7,6 +7,8 @@ import 'config/di/injection_container.dart';
 import 'config/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/localization/app_localizations.dart';
+import 'core/localization/locale_config.dart';
+import 'core/localization/locale_provider.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'services/notification_service.dart';
 
@@ -16,6 +18,7 @@ class CourierApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final locale = ref.watch(localeProvider);
     // Réaction en temps réel aux notifications (compte approuvé / bloqué)
     NotificationService().setCourierActionHandler((action) async {
       if (!getIt.isRegistered<AuthRepository>()) return;
@@ -57,11 +60,9 @@ class CourierApp extends ConsumerWidget {
             GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: const [
-            Locale('en', ''),
-            Locale('fr', ''),
-            Locale('ar', ''),
+            ...supportedLocales,
           ],
-          locale: const Locale('fr', ''),
+          locale: locale,
           
           // BUILDER
           builder: (context, widget) {
