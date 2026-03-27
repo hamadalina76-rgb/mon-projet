@@ -13,35 +13,102 @@
   </div>
 
   <div class="ctd-body">
-    <div class="ctd-grid">
-      <button class="ctd-card"
-              [class.ctd-card--active]="selected() === 'INTERNAL'"
-              (click)="selected.set('INTERNAL')"
-              type="button" matRipple matRippleColor="rgba(227,30,36,0.08)">
-        <div class="ctd-card__check" [class.ctd-card__check--on]="selected() === 'INTERNAL'">
-          @if (selected() === 'INTERNAL') { <mat-icon>check</mat-icon> }
-        </div>
-        <div class="ctd-card__icon"><mat-icon>badge</mat-icon></div>
-        <div class="ctd-card__content">
-          <span class="ctd-card__label">{{ 'users.couriers.internal' | translate }}</span>
-          <p class="ctd-card__desc">{{ 'users.couriers.internalDesc' | translate }}</p>
-        </div>
-      </button>
 
-      <button class="ctd-card"
-              [class.ctd-card--active]="selected() === 'EXTERNAL'"
-              (click)="selected.set('EXTERNAL')"
-              type="button" matRipple matRippleColor="rgba(16,185,129,0.08)">
-        <div class="ctd-card__check" [class.ctd-card__check--on]="selected() === 'EXTERNAL'">
-          @if (selected() === 'EXTERNAL') { <mat-icon>check</mat-icon> }
+    <mat-tab-group class="ctd-tabs" animationDuration="200ms" dynamicHeight>
+
+      <!-- ── Tab 1 : Type de livreur ── -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon class="ctd-tab__icon">badge</mat-icon>
+          <span>{{ 'users.couriers.courierType' | translate }}</span>
+        </ng-template>
+
+        <div class="ctd-tab__content">
+          <div class="ctd-grid">
+            <button class="ctd-card"
+                    [class.ctd-card--active]="selected() === 'INTERNAL'"
+                    (click)="selected.set('INTERNAL')"
+                    type="button" matRipple matRippleColor="rgba(227,30,36,0.08)">
+              <div class="ctd-card__check" [class.ctd-card__check--on]="selected() === 'INTERNAL'">
+                @if (selected() === 'INTERNAL') { <mat-icon>check</mat-icon> }
+              </div>
+              <div class="ctd-card__icon"><mat-icon>badge</mat-icon></div>
+              <div class="ctd-card__content">
+                <span class="ctd-card__label">{{ 'users.couriers.internal' | translate }}</span>
+                <p class="ctd-card__desc">{{ 'users.couriers.internalDesc' | translate }}</p>
+              </div>
+            </button>
+
+            <button class="ctd-card"
+                    [class.ctd-card--active]="selected() === 'EXTERNAL'"
+                    (click)="selected.set('EXTERNAL')"
+                    type="button" matRipple matRippleColor="rgba(16,185,129,0.08)">
+              <div class="ctd-card__check" [class.ctd-card__check--on]="selected() === 'EXTERNAL'">
+                @if (selected() === 'EXTERNAL') { <mat-icon>check</mat-icon> }
+              </div>
+              <div class="ctd-card__icon"><mat-icon>handshake</mat-icon></div>
+              <div class="ctd-card__content">
+                <span class="ctd-card__label">{{ 'users.couriers.external' | translate }}</span>
+                <p class="ctd-card__desc">{{ 'users.couriers.externalDesc' | translate }}</p>
+              </div>
+            </button>
+          </div>
         </div>
-        <div class="ctd-card__icon"><mat-icon>handshake</mat-icon></div>
-        <div class="ctd-card__content">
-          <span class="ctd-card__label">{{ 'users.couriers.external' | translate }}</span>
-          <p class="ctd-card__desc">{{ 'users.couriers.externalDesc' | translate }}</p>
+      </mat-tab>
+
+      <!-- ── Tab 2 : Zones assignées ── -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon class="ctd-tab__icon">map</mat-icon>
+          <span>{{ 'users.couriers.assignZones' | translate }}</span>
+          @if (selectedZoneIds().size > 0) {
+            <span class="ctd-tab__badge">{{ selectedZoneIds().size }}</span>
+          }
+        </ng-template>
+
+        <div class="ctd-tab__content">
+          @if (zonesLoading()) {
+            <div class="ctd-loading"><mat-spinner diameter="26"></mat-spinner></div>
+          } @else if (zones().length === 0) {
+            <p class="ctd-empty"><mat-icon>location_off</mat-icon>{{ 'users.couriers.noZones' | translate }}</p>
+          } @else {
+            <div class="ctd-zone-list">
+              @for (zone of zones(); track zone.id) {
+                <div
+                  class="ctd-zone-item"
+                  [class.ctd-zone-item--selected]="isZoneSelected(zone.id)"
+                  (click)="toggleZone(zone.id)"
+                  role="checkbox"
+                  [attr.aria-checked]="isZoneSelected(zone.id)">
+                  <div class="ctd-zone-item__check" [class.ctd-zone-item__check--on]="isZoneSelected(zone.id)">
+                    @if (isZoneSelected(zone.id)) { <mat-icon>check</mat-icon> }
+                  </div>
+                  <div class="ctd-zone-item__body">
+                    <div class="ctd-zone-item__top">
+                      <span class="ctd-zone-item__name">{{ zone.name }}</span>
+                      <span class="ctd-zone-badge ctd-zone-badge--{{ zone.type | lowercase }}">{{ zone.type }}</span>
+                    </div>
+                    <div class="ctd-zone-item__meta">
+                      @if (zone.city) {
+                        <span class="ctd-chip"><mat-icon>place</mat-icon>{{ zone.city }}</span>
+                      }
+                      @if (zone.deliveryFee != null) {
+                        <span class="ctd-chip"><mat-icon>payments</mat-icon>{{ zone.deliveryFee | number:'1.2-2' }} MAD</span>
+                      }
+                      @if (zone.radiusKm) {
+                        <span class="ctd-chip"><mat-icon>radio_button_checked</mat-icon>{{ zone.radiusKm }} km</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
         </div>
-      </button>
-    </div>
+      </mat-tab>
+
+    </mat-tab-group>
+
   </div>
 
   <div class="ctd-footer">
@@ -49,11 +116,12 @@
       {{ 'common.cancel' | translate }}
     </button>
     <button class="ctd-btn ctd-btn--primary"
-            [class.ctd-btn--disabled]="!selected() || selected() === currentType"
-            [disabled]="!selected() || selected() === currentType"
+            [class.ctd-btn--disabled]="!selected()"
+            [disabled]="!selected()"
             (click)="onConfirm()" type="button">
       <mat-icon>check_circle</mat-icon>
       <span>{{ 'common.save' | translate }}</span>
     </button>
   </div>
 </div>
+

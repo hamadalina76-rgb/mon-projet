@@ -95,7 +95,7 @@ export class CourierApprovalComponent implements OnInit {
     dialogRef.afterClosed().subscribe((result: ApproveTypeResult | null) => {
       if (!result) return;
       this.actionLoading.set(true);
-      this.couriersService.approveCourier(String(c.id), result.courierType).subscribe({
+      this.couriersService.approveCourier(String(c.id), result.courierType, result.zoneIds ?? []).subscribe({
         next: () => {
           if (result.courierType === 'INTERNAL' && result.templateId) {
             this.scheduleSvc.applyTemplate(String(c.id), result.templateId).subscribe();

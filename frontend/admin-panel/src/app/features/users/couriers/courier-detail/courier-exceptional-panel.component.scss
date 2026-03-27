@@ -1,0 +1,275 @@
+/* ─────────────────────────────────────────────────────
+   Courier Exceptional Schedule Panel (embedded in detail)
+   ───────────────────────────────────────────────────── */
+
+:host { display: block; }
+
+.cep-panel {
+  padding: 8px 0;
+}
+
+/* ── Header ───────────────────────────────────────── */
+.cep-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__icon {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+    color: #E31E24;
+  }
+}
+
+.cep-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.cep-subtitle {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+/* ── Add button ───────────────────────────────────── */
+.cep-btn-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #E31E24;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+  &:hover { background: #c01920; }
+}
+
+/* ── Form card ────────────────────────────────────── */
+.cep-form-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+
+    h4 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1e293b;
+    }
+  }
+}
+
+/* ── Overlap warning ──────────────────────────────── */
+.cep-overlap-warn {
+  display: flex;
+  gap: 10px;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  color: #92400e;
+
+  mat-icon { color: #d97706; flex-shrink: 0; margin-top: 2px; }
+
+  strong { display: block; margin-bottom: 4px; font-size: 0.875rem; }
+
+  ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 0.8rem;
+  }
+}
+
+/* ── Form layout ──────────────────────────────────── */
+.cep-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+}
+
+.cep-field {
+  flex: 1 1 220px;
+  min-width: 200px;
+
+  &--full { flex: 1 1 100%; }
+}
+
+.cep-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+
+  .cep-field { flex: 1 1 160px; }
+}
+
+/* ── Checkbox row ─────────────────────────────────── */
+.cep-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+  padding: 8px 0;
+  width: 100%;
+
+  input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #E31E24; }
+}
+
+/* ── Form actions ─────────────────────────────────── */
+.cep-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    border-radius: 8px;
+  }
+}
+
+/* ── Loading / Empty ──────────────────────────────── */
+.cep-loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+.cep-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 0;
+  color: #94a3b8;
+
+  mat-icon { font-size: 48px; width: 48px; height: 48px; opacity: .45; }
+
+  p { margin: 0; font-size: 0.95rem; }
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 8px;
+    font-weight: 600;
+  }
+}
+
+/* ── Table ────────────────────────────────────────── */
+.cep-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.cep-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  thead tr {
+    background: #f1f5f9;
+  }
+
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 10px 14px;
+    color: #374151;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  tbody tr:hover td { background: #f8fafc; }
+}
+
+/* ── Badge ────────────────────────────────────────── */
+.cep-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.cep-badge-sm {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ── Misc cells ───────────────────────────────────── */
+.cep-date { white-space: nowrap; font-size: 0.82rem; color: #475569; }
+
+.cep-reason-cell {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+/* ── Row actions ──────────────────────────────────── */
+.cep-row-actions {
+  display: flex;
+  gap: 2px;
+
+  button { color: #64748b; }
+}
+
+.cep-del-btn { color: #ef4444 !important; }

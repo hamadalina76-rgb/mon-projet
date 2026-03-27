@@ -9,6 +9,9 @@ import {
   CopyDayRequest,
   CourierScheduleAuditLog,
   AuditLogPageResponse,
+  CourierExceptionalSchedule,
+  ExceptionalScheduleCreateRequest,
+  OverlapCheckResult,
 } from '../models/courier-schedule.model';
 
 @Injectable({ providedIn: 'root' })
@@ -83,5 +86,66 @@ export class CourierScheduleService {
     if (dateFrom) url += `&dateFrom=${encodeURIComponent(dateFrom)}`;
     if (dateTo)   url += `&dateTo=${encodeURIComponent(dateTo)}`;
     return this.api.get(url);
+  }
+
+  // ── Exceptional Schedules ─────────────────────────────────────────────────
+
+  getExceptionalSchedulesByCourier(
+    courierId: string,
+    from?: string,
+    to?: string
+  ): Observable<CourierExceptionalSchedule[]> {
+    let url = `admin/exceptional-schedules/courier/${courierId}`;
+    const params: string[] = [];
+    if (from) params.push(`from=${from}`);
+    if (to)   params.push(`to=${to}`);
+    if (params.length) url += '?' + params.join('&');
+    return this.api.get(url);
+  }
+
+  getAllExceptionalSchedules(
+    page: number = 0,
+    size: number = 20,
+    q?: string,
+    exceptionType?: string,
+    from?: string,
+    to?: string,
+    courierId?: number
+  ): Observable<{ content: CourierExceptionalSchedule[]; totalElements: number }> {
+    let url = `admin/exceptional-schedules?page=${page}&size=${size}`;
+    if (q)             url += `&search=${encodeURIComponent(q)}`;
+    if (exceptionType) url += `&exceptionType=${exceptionType}`;
+    if (from)          url += `&dateFrom=${from}`;
+    if (to)            url += `&dateTo=${to}`;
+    if (courierId)     url += `&courierId=${courierId}`;
+    return this.api.get(url);
+  }
+
+  checkExceptionalOverlap(
+    courierId: number,
+    startDate: string,
+    endDate: string,
+    excludeId?: number
+  ): Observable<OverlapCheckResult> {
+    let url = `admin/exceptional-schedules/check-overlap?courierId=${courierId}&startDate=${startDate}&endDate=${endDate}`;
+    if (excludeId !== undefined) url += `&excludeId=${excludeId}`;
+    return this.api.get(url);
+  }
+
+  createExceptionalSchedule(
+    req: ExceptionalScheduleCreateRequest
+  ): Observable<CourierExceptionalSchedule> {
+    return this.api.post('admin/exceptional-schedules', req);
+  }
+
+  updateExceptionalSchedule(
+    id: number,
+    req: ExceptionalScheduleCreateRequest
+  ): Observable<CourierExceptionalSchedule> {
+    return this.api.put(`admin/exceptional-schedules/${id}`, req);
+  }
+
+  deleteExceptionalSchedule(id: number): Observable<void> {
+    return this.api.delete(`admin/exceptional-schedules/${id}`);
   }
 }

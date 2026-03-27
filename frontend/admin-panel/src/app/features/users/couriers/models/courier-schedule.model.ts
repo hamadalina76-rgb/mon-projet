@@ -74,3 +74,41 @@ export interface AuditLogPageResponse {
   number: number;
   size: number;
 }
+
+// ── Exceptional Schedules ───────────────────────────────────────────────────
+
+export type ExceptionType = 'JOUR_FERIE' | 'EVENEMENT_SPECIAL' | 'CONGE' | 'FERMETURE' | 'FORMATION';
+
+export const EXCEPTION_TYPES: ExceptionType[] = [
+  'JOUR_FERIE', 'EVENEMENT_SPECIAL', 'CONGE', 'FERMETURE', 'FORMATION'
+];
+
+export interface CourierExceptionalSchedule {
+  id: number;
+  courierId: number;
+  courierName?: string;
+  exceptionType: ExceptionType;
+  label: string;
+  startDate: string;
+  endDate: string;
+  reason?: string;
+  isRestPeriod: boolean;
+  adminId?: number;
+  adminName?: string;
+  createdAt?: string;
+}
+
+export interface ExceptionalScheduleCreateRequest {
+  courierId: number;
+  exceptionType: ExceptionType;
+  label: string;
+  startDate: string;
+  endDate: string;
+  reason?: string;
+  isRestPeriod: boolean;
+}
+
+export interface OverlapCheckResult {
+  hasOverlap: boolean;
+  overlapping: Array<{ id: number; label: string; startDate: string; endDate: string }>;
+}

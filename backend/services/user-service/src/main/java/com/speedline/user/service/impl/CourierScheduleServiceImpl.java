@@ -5,6 +5,7 @@ import com.speedline.user.dto.CourierScheduleDTO;
 import com.speedline.user.dto.ScheduleTemplateDTO;
 import com.speedline.user.dto.ShiftDTO;
 import com.speedline.user.exception.CourierNotFoundException;
+import com.speedline.user.repository.CourierExceptionalScheduleRepository;
 import com.speedline.user.repository.CourierRepository;
 import com.speedline.user.repository.CourierScheduleRepository;
 import com.speedline.user.repository.ScheduleTemplateRepository;
@@ -30,6 +31,7 @@ public class CourierScheduleServiceImpl implements CourierScheduleService {
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final CourierScheduleRepository scheduleRepository;
+    private final CourierExceptionalScheduleRepository exceptionalScheduleRepository;
     private final ScheduleTemplateRepository templateRepository;
     private final CourierRepository courierRepository;
     private final ScheduleTemplateServiceImpl templateServiceImpl;
@@ -183,6 +185,64 @@ public class CourierScheduleServiceImpl implements CourierScheduleService {
         scheduleRepository.deleteById(scheduleId);
         auditLogService.log(courierId, "DELETED", "Planning #" + scheduleId + " supprimé",
                 scheduleId, null, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CourierScheduleDTO.EffectiveScheduleResponse getEffectiveSchedule(Long courierId, LocalDate date) {
+        DayOfWeek dow = date.getDayOfWeek();
+
+        // 1. Vérifier s'il existe une exception active qui couvre cette date
+        List<CourierExceptionalSchedule> exceptions =
+                exceptionalScheduleRepository.findActiveOnDate(courierId, date);
+
+        if (!exceptions.isEmpty()) {
+            CourierExceptionalSchedule ex = exceptions.get(0);
+            String status = Boolean.TRUE.equals(ex.getIsRestPeriod())
+                    ? "EXCEPTION_REST" : "EXCEPTION_SPECIAL";
+            return CourierScheduleDTO.EffectiveScheduleResponse.builder()
+                    .status(status)
+                    .date(date)
+                    .dayOfWeek(dow)
+                    .isRestDay(ex.getIsRestPeriod())
+                    .shifts(List.of())
+                    .exception(CourierScheduleDTO.ExceptionInfo.builder()
+                            .id(ex.getId())
+                            .exceptionType(ex.getExceptionType())
+                            .label(ex.getLabel())
+                            .startDate(ex.getStartDate())
+                            .endDate(ex.getEndDate())
+                            .reason(ex.getReason())
+                            .isRestPeriod(ex.getIsRestPeriod())
+                            .build())
+                    .build();
+        }
+
+        // 2. Pas d'exception → chercher le planning hebdomadaire permanent
+        List<ShiftDTO> dayShifts = scheduleRepository
+                .findByCourierIdAndWeekStartDateIsNull(courierId)
+                .map(schedule -> schedule.getShifts().stream()
+                        .filter(s -> s.getDayOfWeek() == dow)
+                        .map(s -> ShiftDTO.builder()
+                                .id(s.getId())
+                                .shiftOrder(s.getShiftOrder())
+                                .startTime(s.getStartTime())
+                                .endTime(s.getEndTime())
+                                .breakStart(s.getBreakStart())
+                                .breakEnd(s.getBreakEnd())
+                                .build())
+                        .collect(Collectors.toList()))
+                .orElse(List.of());
+
+        boolean isRest = dayShifts.isEmpty();
+        return CourierScheduleDTO.EffectiveScheduleResponse.builder()
+                .status("REGULAR")
+                .date(date)
+                .dayOfWeek(dow)
+                .isRestDay(isRest)
+                .shifts(dayShifts)
+                .exception(null)
+                .build();
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

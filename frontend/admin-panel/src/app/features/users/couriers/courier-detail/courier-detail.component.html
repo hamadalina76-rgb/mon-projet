@@ -330,6 +330,354 @@
           </mat-card>
         </div>
       </mat-tab>
+
+      <!-- ── ZONES TAB ── -->
+      <mat-tab [label]="'users.couriers.tabs.zones' | translate">
+        <div class="tab-content zones-tab">
+
+          <!-- HEADER -->
+          <div class="zones-header">
+            <div class="zones-title-block">
+              <mat-icon class="zones-title-icon">map</mat-icon>
+              <h3 class="zones-title">{{ 'users.couriers.assignZones' | translate }}</h3>
+              <span class="zones-count-badge" *ngIf="assignedZoneIds().length > 0">
+                {{ assignedZoneIds().length }}
+              </span>
+            </div>
+            <!-- Boutons mode vue -->
+            <div class="zones-header-actions" *ngIf="!zonesEditMode()">
+              <button mat-stroked-button class="btn-zones-edit"
+                      [disabled]="zonesLoading()"
+                      (click)="enterZonesEditMode()">
+                <mat-icon>edit</mat-icon> {{ 'partners.detail.zones.editBtn' | translate }}
+              </button>
+            </div>
+            <!-- Boutons mode édition -->
+            <div class="zones-header-actions" *ngIf="zonesEditMode()">
+              <button mat-button class="btn-zones-cancel"
+                      [disabled]="zonesLoading()"
+                      (click)="cancelZonesEdit()">
+                <mat-icon>close</mat-icon> {{ 'partners.detail.zones.cancelBtn' | translate }}
+              </button>
+              <button mat-flat-button class="btn-zones-save"
+                      [disabled]="zonesLoading()"
+                      (click)="saveZones()">
+                <mat-icon>save</mat-icon> {{ 'partners.detail.zones.saveBtn' | translate }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Bandeau mode édition -->
+          <div class="zones-edit-banner" *ngIf="zonesEditMode()">
+            <mat-icon>info_outline</mat-icon>
+            {{ 'partners.detail.zones.editBanner' | translate }}
+          </div>
+
+          <div *ngIf="zonesLoading()" class="zones-loading">
+            <mat-spinner diameter="32"></mat-spinner>
+          </div>
+
+          <div *ngIf="!zonesLoading()" class="zones-body">
+
+            <!-- ========================= -->
+            <!-- MODE VUE : zones assignées -->
+            <!-- ========================= -->
+            <ng-container *ngIf="!zonesEditMode()">
+              <div class="zones-list">
+                <div *ngIf="assignedZones().length === 0" class="empty-zones">
+                  <mat-icon>info_outline</mat-icon>
+                  <span>{{ 'partners.detail.zones.noZones' | translate }}</span>
+                </div>
+                <div *ngFor="let zone of assignedZones()" class="zone-row assigned zone-row-view">
+                  <mat-icon class="zone-view-icon">check_circle</mat-icon>
+                  <div class="zone-info">
+                    <span class="zone-name">{{ zone.name }}</span>
+                    <span class="zone-meta">
+                      <span *ngIf="zone.city" class="zone-city">{{ zone.city }}</span>
+                      <span *ngIf="zone.type" class="zone-type-badge zone-type-{{ zone.type | lowercase }}">{{ zone.type }}</span>
+                      <span *ngIf="zone.deliveryFee != null" class="zone-fee">
+                        <mat-icon class="meta-icon">local_shipping</mat-icon>{{ zone.deliveryFee }} TND
+                      </span>
+                      <span *ngIf="zone.minDeliveryTime != null" class="zone-time">
+                        <mat-icon class="meta-icon">schedule</mat-icon>
+                        {{ zone.minDeliveryTime }}{{ zone.maxDeliveryTime != null ? '–' + zone.maxDeliveryTime : '' }} min
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Carte Mapbox en temps réel -->
+              <div class="zones-map-wrap" *ngIf="assignedZoneIds().length > 0">
+                <p class="map-label"><mat-icon>location_on</mat-icon> {{ 'partners.detail.zones.mapLabel' | translate }}</p>
+                <div #zonesMapContainer class="zones-map"></div>
+              </div>
+              <div class="empty-zones-map" *ngIf="assignedZoneIds().length === 0">
+                <mat-icon>map</mat-icon>
+                <span>{{ 'partners.detail.zones.mapEmpty' | translate }}</span>
+              </div>
+            </ng-container>
+
+            <!-- ========================== -->
+            <!-- MODE ÉDITION : toutes zones -->
+            <!-- ========================== -->
+            <ng-container *ngIf="zonesEditMode()">
+              <div class="zones-list">
+                <div *ngIf="allZones().length === 0" class="empty-zones">
+                  <mat-icon>info_outline</mat-icon>
+                  <span>{{ 'partners.detail.zones.noAvailable' | translate }}</span>
+                </div>
+                <div *ngFor="let zone of allZones()" class="zone-row"
+                     [class.assigned]="isZoneAssigned(zone.id)"
+                     (click)="toggleZoneAssignment(zone.id)">
+                  <mat-icon class="zone-check">{{ isZoneAssigned(zone.id) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+                  <div class="zone-info">
+                    <span class="zone-name">{{ zone.name }}</span>
+                    <span class="zone-meta">
+                      <span *ngIf="zone.city" class="zone-city">{{ zone.city }}</span>
+                      <span *ngIf="zone.type" class="zone-type-badge zone-type-{{ zone.type | lowercase }}">{{ zone.type }}</span>
+                      <span *ngIf="zone.deliveryFee != null" class="zone-fee">
+                        <mat-icon class="meta-icon">local_shipping</mat-icon>{{ zone.deliveryFee }} TND
+                      </span>
+                      <span *ngIf="zone.minDeliveryTime != null" class="zone-time">
+                        <mat-icon class="meta-icon">schedule</mat-icon>
+                        {{ zone.minDeliveryTime }}{{ zone.maxDeliveryTime != null ? '–' + zone.maxDeliveryTime : '' }} min
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Carte Mapbox prévisualisation en temps réel -->
+              <div class="zones-map-wrap" *ngIf="editingZoneIds().length > 0">
+                <p class="map-label"><mat-icon>preview</mat-icon> {{ 'partners.detail.zones.mapPreview' | translate }}</p>
+                <div #zonesMapContainer class="zones-map"></div>
+              </div>
+              <div class="empty-zones-map" *ngIf="editingZoneIds().length === 0">
+                <mat-icon>map</mat-icon>
+                <span>{{ 'partners.detail.zones.mapEditEmpty' | translate }}</span>
+              </div>
+            </ng-container>
+
+          </div>
+        </div>
+      </mat-tab>
+
+      <!-- ── AUDIT LOG TAB ── -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon class="cl-tab-icon">history</mat-icon>
+          {{ 'users.couriers.tabs.auditLog' | translate }}
+        </ng-template>
+        <div class="tab-content audit-tab">
+
+          <!-- FILTER BAR -->
+          <div class="cl-audit-filters">
+
+            <!-- Action dropdown -->
+            <mat-form-field appearance="outline" class="cl-audit-filter__select">
+              <mat-label>
+                <mat-icon class="cl-audit-filter__icon">filter_list</mat-icon>
+                {{ 'users.couriers.audit.filterAction' | translate }}
+              </mat-label>
+              <mat-select [value]="auditFilterAction()"
+                          (selectionChange)="auditFilterAction.set($event.value); onAuditFilterChange()">
+                <mat-option value="">{{ 'users.couriers.audit.allActions' | translate }}</mat-option>
+                <mat-option value="APPROVE">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--approve">check_circle</mat-icon>
+                  {{ 'users.couriers.audit.APPROVE' | translate }}
+                </mat-option>
+                <mat-option value="REJECT">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--reject">cancel</mat-icon>
+                  {{ 'users.couriers.audit.REJECT' | translate }}
+                </mat-option>
+                <mat-option value="SUSPEND">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--suspend">gpp_bad</mat-icon>
+                  {{ 'users.couriers.audit.SUSPEND' | translate }}
+                </mat-option>
+                <mat-option value="DEACTIVATE">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--deactivate">block</mat-icon>
+                  {{ 'users.couriers.audit.DEACTIVATE' | translate }}
+                </mat-option>
+                <mat-option value="ACTIVATE">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--activate">check_circle</mat-icon>
+                  {{ 'users.couriers.audit.ACTIVATE' | translate }}
+                </mat-option>
+                <mat-option value="REQUEST_MORE_INFO">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--info">info</mat-icon>
+                  {{ 'users.couriers.audit.REQUEST_MORE_INFO' | translate }}
+                </mat-option>
+                <mat-option value="ASSIGN_ZONES">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--zones">map</mat-icon>
+                  {{ 'users.couriers.audit.ASSIGN_ZONES' | translate }}
+                </mat-option>
+                <mat-option value="CHANGE_TYPE">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--type">swap_horiz</mat-icon>
+                  {{ 'users.couriers.audit.CHANGE_TYPE' | translate }}
+                </mat-option>
+                <mat-option value="SCHEDULE_UPDATED">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--schedule">edit_calendar</mat-icon>
+                  {{ 'users.couriers.audit.SCHEDULE_UPDATED' | translate }}
+                </mat-option>
+                <mat-option value="SCHEDULE_TEMPLATE_APPLIED">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--schedule">content_copy</mat-icon>
+                  {{ 'users.couriers.audit.SCHEDULE_TEMPLATE_APPLIED' | translate }}
+                </mat-option>
+                <mat-option value="SCHEDULE_DAY_COPIED">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--schedule">copy_all</mat-icon>
+                  {{ 'users.couriers.audit.SCHEDULE_DAY_COPIED' | translate }}
+                </mat-option>
+                <mat-option value="SCHEDULE_DELETED">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--schedule">delete_sweep</mat-icon>
+                  {{ 'users.couriers.audit.SCHEDULE_DELETED' | translate }}
+                </mat-option>
+                <mat-option value="VEHICLE_UPDATED">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--vehicle">directions_car</mat-icon>
+                  {{ 'users.couriers.audit.VEHICLE_UPDATED' | translate }}
+                </mat-option>
+                <mat-option value="DELIVERY_ZONE_UPDATED">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--zone-pref">explore</mat-icon>
+                  {{ 'users.couriers.audit.DELIVERY_ZONE_UPDATED' | translate }}
+                </mat-option>
+                <mat-option value="BANK_INFO_UPDATED">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--bank">account_balance</mat-icon>
+                  {{ 'users.couriers.audit.BANK_INFO_UPDATED' | translate }}
+                </mat-option>
+                <mat-option value="DOCUMENTS_UPDATED">
+                  <mat-icon class="cl-audit-opt-icon cl-audit-opt-icon--docs">description</mat-icon>
+                  {{ 'users.couriers.audit.DOCUMENTS_UPDATED' | translate }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <!-- Date picker -->
+            <mat-form-field appearance="outline" class="cl-audit-filter__date">
+              <mat-label>
+                <mat-icon class="cl-audit-filter__icon">event</mat-icon>
+                {{ 'users.couriers.audit.filterDate' | translate }}
+              </mat-label>
+              <input matInput type="date"
+                     [value]="auditFilterDate()"
+                     (change)="auditFilterDate.set($any($event.target).value); onAuditFilterChange()" />
+              <button *ngIf="auditFilterDate()" matSuffix mat-icon-button
+                      (click)="auditFilterDate.set(''); onAuditFilterChange()">
+                <mat-icon>close</mat-icon>
+              </button>
+            </mat-form-field>
+
+            <!-- Active filters info + reset -->
+            <div class="cl-audit-filters__meta">
+              <span class="cl-audit-filters__count" *ngIf="auditTotalItems() > 0">
+                {{ auditTotalItems() }} {{ 'users.couriers.audit.results' | translate }}
+              </span>
+              <button mat-stroked-button class="cl-audit-reset"
+                      (click)="resetAuditFilters()"
+                      [disabled]="!auditFilterAction() && !auditFilterDate()">
+                <mat-icon>restart_alt</mat-icon>
+                {{ 'users.couriers.audit.reset' | translate }}
+              </button>
+            </div>
+          </div>
+
+          <!-- TABLE -->
+          <app-list-page
+            title=""
+            [showBackButton]="false"
+            [loading]="auditLoading()"
+            [empty]="!auditLoading() && auditTotalItems() === 0"
+            emptyIcon="manage_search"
+            [emptyMessage]="'users.couriers.audit.empty'"
+            [showPagination]="auditTotalItems() > 0"
+            [totalItems]="auditTotalItems()"
+            [currentPage]="auditPage()"
+            [itemsPerPage]="auditPageSize()"
+            [itemsPerPageOptions]="[10, 20, 50]"
+            (pageChange)="onAuditPageChange($event)"
+          >
+            <table table class="data-table">
+              <thead>
+                <tr>
+                  <th>{{ 'users.couriers.audit.colAction' | translate | uppercase }}</th>
+                  <th>{{ 'users.couriers.audit.colDetails' | translate | uppercase }}</th>
+                  <th>{{ 'users.couriers.audit.colAdmin' | translate | uppercase }}</th>
+                  <th>{{ 'users.couriers.audit.colDate' | translate | uppercase }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (entry of auditEntries(); track entry.id) {
+                  <tr class="table-row">
+                    <!-- Action -->
+                    <td>
+                      <span class="cl-audit-action"
+                            [ngClass]="auditActionConfig[entry.action]?.cssClass">
+                        <mat-icon class="cl-audit-action__icon">
+                          {{ auditActionConfig[entry.action]?.icon ?? 'info' }}
+                        </mat-icon>
+                        {{ (auditActionConfig[entry.action]?.labelKey ?? '') | translate }}
+                      </span>
+                    </td>
+                    <!-- Détails -->
+                    <td class="cl-audit-details">
+                      @if (entry.statusBefore || entry.statusAfter) {
+                        <div class="cl-audit-detail-row">
+                          <span class="cl-audit-detail-label">{{ 'users.couriers.audit.status' | translate }} :</span>
+                          <span class="cl-audit-before">{{ entry.statusBefore || '—' }}</span>
+                          <mat-icon class="cl-audit-arrow">arrow_forward</mat-icon>
+                          <span class="cl-audit-after">{{ entry.statusAfter || '—' }}</span>
+                        </div>
+                      }
+                      @if (entry.courierTypeBefore || entry.courierTypeAfter) {
+                        <div class="cl-audit-detail-row">
+                          <span class="cl-audit-detail-label">{{ 'users.couriers.audit.type' | translate }} :</span>
+                          <span class="cl-audit-before">{{ entry.courierTypeBefore || '—' }}</span>
+                          <mat-icon class="cl-audit-arrow">arrow_forward</mat-icon>
+                          <span class="cl-audit-after">{{ entry.courierTypeAfter || '—' }}</span>
+                        </div>
+                      }
+                      @if (entry.zoneIdsBefore || entry.zoneIdsAfter) {
+                        <div class="cl-audit-detail-row cl-audit-detail-row--zones">
+                          <span class="cl-audit-detail-label">
+                            <mat-icon class="cl-audit-zone-icon">map</mat-icon>
+                            {{ 'users.couriers.audit.zones' | translate }} :
+                          </span>
+                          <span class="cl-audit-before">{{ getZoneNames(entry.zoneIdsBefore) }}</span>
+                          <mat-icon class="cl-audit-arrow">arrow_forward</mat-icon>
+                          <span class="cl-audit-after">{{ getZoneNames(entry.zoneIdsAfter) }}</span>
+                        </div>
+                      }
+                      @if (entry.reason) {
+                        <div class="cl-audit-detail-row">
+                          <span class="cl-audit-detail-label">{{ 'users.couriers.audit.reason' | translate }} :</span>
+                          <span class="cl-audit-reason">{{ entry.reason }}</span>
+                        </div>
+                      }
+                      @if (entry.description) {
+                        <div class="cl-audit-detail-row">
+                          <span class="cl-audit-detail-label">{{ 'users.couriers.audit.description' | translate }} :</span>
+                          <span class="cl-audit-description">{{ entry.description }}</span>
+                        </div>
+                      }
+                      @if (!entry.statusBefore && !entry.statusAfter && !entry.courierTypeBefore && !entry.courierTypeAfter && !entry.zoneIdsBefore && !entry.zoneIdsAfter && !entry.reason && !entry.description) {
+                        <span class="cl-audit-na">—</span>
+                      }
+                    </td>
+                    <!-- Admin -->
+                    <td>
+                      <div class="cl-audit-admin">
+                        <mat-icon class="cl-audit-admin__icon">person</mat-icon>
+                        {{ entry.adminName ?? ('users.couriers.audit.system' | translate) }}
+                      </div>
+                    </td>
+                    <!-- Date -->
+                    <td class="cl-audit-date">{{ entry.changedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </app-list-page>
+        </div>
+      </mat-tab>
+
     </mat-tab-group>
   </div>
   }

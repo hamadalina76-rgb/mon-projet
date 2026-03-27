@@ -42,6 +42,34 @@ $ease:         cubic-bezier(.4, 0, .2, 1);
   &:active { transform: scale(.97); }
 }
 
+// ── Outlined button – 'Plannings exceptionnels' ───────────────────────────
+.btn-exceptional {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 18px;
+  border: 1.5px solid $primary;
+  border-radius: 10px;
+  font-size: .85rem;
+  font-weight: 700;
+  letter-spacing: .01em;
+  cursor: pointer;
+  background: transparent;
+  color: $primary;
+  transition: all .22s $ease;
+  white-space: nowrap;
+
+  .material-icons-round { font-size: 18px; }
+
+  &:hover {
+    background: $primary-soft;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px $primary-glow;
+  }
+  &:active { transform: scale(.97); }
+}
+
 // ── All deep-scoped rules ───────────────────────────────────────────
 :host ::ng-deep {
 
