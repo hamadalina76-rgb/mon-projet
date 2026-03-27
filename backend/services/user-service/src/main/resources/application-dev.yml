@@ -49,6 +49,41 @@ spring:
       enabled: false
     bootstrap:
       enabled: false
+    openfeign:
+      circuitbreaker:
+        enabled: true
+
+# URL directe vers auth-service (bypass Eureka)
+auth-service:
+  url: ${AUTH_SERVICE_URL:http://localhost:8081}
+
+# Feign config
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 10000
+        loggerLevel: full
+
+# Resilience4j — plus tolérant en DEV
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        failureRateThreshold: 80
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 5
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 1s
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 10s
 
 eureka:
   client:

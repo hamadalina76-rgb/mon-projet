@@ -14,8 +14,10 @@
     </button>
   </div>
 
-  <!-- ═══ CARDS ════════════════════════════════════════════════════════════ -->
+  <!-- ═══ BODY (scrollable) ════════════════════════════════════════════════ -->
   <div class="atd-body">
+
+    <!-- TYPE CARDS -->
     <div class="atd-grid">
 
       <!-- INTERNE -->
@@ -27,17 +29,10 @@
         matRipple
         matRippleColor="rgba(227,30,36,0.08)">
         <div class="atd-card__shine"></div>
-
         <div class="atd-card__check" [class.atd-card__check--on]="selected() === 'INTERNAL'">
-          @if (selected() === 'INTERNAL') {
-            <mat-icon>check</mat-icon>
-          }
+          @if (selected() === 'INTERNAL') { <mat-icon>check</mat-icon> }
         </div>
-
-        <div class="atd-card__icon">
-          <mat-icon>badge</mat-icon>
-        </div>
-
+        <div class="atd-card__icon"><mat-icon>badge</mat-icon></div>
         <div class="atd-card__content">
           <span class="atd-card__label">{{ 'users.couriers.internal' | translate }}</span>
           <p class="atd-card__desc">{{ 'users.couriers.internalDesc' | translate }}</p>
@@ -53,17 +48,10 @@
         matRipple
         matRippleColor="rgba(16,185,129,0.08)">
         <div class="atd-card__shine"></div>
-
         <div class="atd-card__check" [class.atd-card__check--on]="selected() === 'EXTERNAL'">
-          @if (selected() === 'EXTERNAL') {
-            <mat-icon>check</mat-icon>
-          }
+          @if (selected() === 'EXTERNAL') { <mat-icon>check</mat-icon> }
         </div>
-
-        <div class="atd-card__icon">
-          <mat-icon>handshake</mat-icon>
-        </div>
-
+        <div class="atd-card__icon"><mat-icon>handshake</mat-icon></div>
         <div class="atd-card__content">
           <span class="atd-card__label">{{ 'users.couriers.external' | translate }}</span>
           <p class="atd-card__desc">{{ 'users.couriers.externalDesc' | translate }}</p>
@@ -72,91 +60,192 @@
 
     </div>
 
-    <!-- ═══ TEMPLATE PICKER (INTERNAL only) ═══════════════════════════════ -->
+    <!-- ═══ INTERNAL : tabs Planning + Zones ════════════════════════════════ -->
     @if (selected() === 'INTERNAL') {
-      <div class="atd-tpl-section">
-        <div class="atd-tpl-section__header">
-          <span class="material-icons-round atd-tpl-section__icon">calendar_month</span>
-          <div>
-            <span class="atd-tpl-section__title">{{ 'schedule.assignOnApprove' | translate }}</span>
-            <span class="atd-tpl-section__hint">{{ 'schedule.assignOptional' | translate }}</span>
-          </div>
-        </div>
+      <mat-tab-group class="atd-tabs" animationDuration="220ms" dynamicHeight>
 
-        @if (templatesLoading()) {
-          <div class="atd-tpl-loading">
-            <mat-spinner diameter="28"></mat-spinner>
-          </div>
-        } @else if (templates().length === 0) {
-          <p class="atd-tpl-empty">{{ 'schedule.noTemplates' | translate }}</p>
-        } @else {
-          <div class="atd-tpl-list">
-            @for (tpl of templates(); track tpl.id) {
-              <div
-                class="atd-tpl-item"
-                [class.atd-tpl-item--selected]="selectedTemplateId() === tpl.id">
+        <!-- ── Tab 1 : Modèle de planning ── -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="atd-tab__icon">calendar_month</mat-icon>
+            <span>{{ 'schedule.assignOnApprove' | translate }}</span>
+          </ng-template>
 
-                <!-- Row: select + name + preview toggle -->
-                <div class="atd-tpl-item__row" (click)="selectTemplate(tpl.id)">
-                  <div class="atd-tpl-item__radio"
-                       [class.atd-tpl-item__radio--on]="selectedTemplateId() === tpl.id">
-                    @if (selectedTemplateId() === tpl.id) {
-                      <mat-icon>check</mat-icon>
-                    }
-                  </div>
-                  <div class="atd-tpl-item__info">
-                    <span class="atd-tpl-item__name">{{ tpl.name }}</span>
-                    @if (tpl.description) {
-                      <span class="atd-tpl-item__desc">{{ tpl.description }}</span>
-                    }
-                    <div class="atd-tpl-item__meta">
-                      <span class="atd-tpl-item__days-count">
-                        <mat-icon class="atd-meta-icon">wb_sunny</mat-icon>
-                        {{ getActiveDays(tpl).length }} {{ 'schedule.activeDays' | translate }}
-                      </span>
+          <div class="atd-tab__content">
+            @if (templatesLoading()) {
+              <div class="atd-loading"><mat-spinner diameter="26"></mat-spinner></div>
+            } @else if (templates().length === 0) {
+              <p class="atd-empty"><mat-icon>event_busy</mat-icon>{{ 'schedule.noTemplates' | translate }}</p>
+            } @else {
+              <div class="atd-list">
+                @for (tpl of templates(); track tpl.id) {
+                  <div
+                    class="atd-item"
+                    [class.atd-item--selected]="selectedTemplateId() === tpl.id">
+                    <div class="atd-item__row" (click)="selectTemplate(tpl.id)">
+                      <div class="atd-item__check" [class.atd-item__check--on]="selectedTemplateId() === tpl.id">
+                        @if (selectedTemplateId() === tpl.id) { <mat-icon>check</mat-icon> }
+                      </div>
+                      <div class="atd-item__body">
+                        <div class="atd-item__top">
+                          <span class="atd-item__name">{{ tpl.name }}</span>
+                        </div>
+                        <div class="atd-item__meta">
+                          @if (tpl.description) {
+                            <span class="atd-chip">{{ tpl.description }}</span>
+                          }
+                          <span class="atd-chip"><mat-icon>wb_sunny</mat-icon>{{ getActiveDays(tpl).length }} {{ 'schedule.activeDays' | translate }}</span>
+                        </div>
+                      </div>
+                      <button
+                        class="atd-preview-btn"
+                        [class.atd-preview-btn--open]="previewTemplateId() === tpl.id"
+                        type="button"
+                        [matTooltip]="'schedule.previewTemplate' | translate"
+                        (click)="togglePreview(tpl.id, $event)">
+                        <mat-icon>{{ previewTemplateId() === tpl.id ? 'expand_less' : 'visibility' }}</mat-icon>
+                      </button>
                     </div>
-                  </div>
-                  <button
-                    class="atd-tpl-preview-btn"
-                    [class.atd-tpl-preview-btn--open]="previewTemplateId() === tpl.id"
-                    type="button"
-                    [matTooltip]="'schedule.previewTemplate' | translate"
-                    (click)="togglePreview(tpl.id, $event)">
-                    <mat-icon>{{ previewTemplateId() === tpl.id ? 'expand_less' : 'visibility' }}</mat-icon>
-                  </button>
-                </div>
 
-                <!-- Preview: days grid -->
-                @if (previewTemplateId() === tpl.id) {
-                  <div class="atd-tpl-preview">
-                    @for (day of DAYS; track day) {
-                      @if (tpl.days[day].length > 0) {
-                        <div class="atd-tpl-day">
-                          <span class="atd-tpl-day__label">{{ 'schedule.short.' + day | translate }}</span>
-                          <div class="atd-tpl-day__shifts">
-                            @for (shift of tpl.days[day]; track $index) {
-                              <span class="atd-tpl-day__shift">
-                                {{ shift.startTime }}–{{ shift.endTime }}
-                                @if (shift.breakStart) {
-                                  <span class="atd-tpl-day__break">
-                                    <mat-icon class="atd-break-icon">coffee</mat-icon>
-                                    {{ shift.breakStart }}–{{ shift.breakEnd }}
+                    @if (previewTemplateId() === tpl.id) {
+                      <div class="atd-tpl-preview">
+                        @for (day of DAYS; track day) {
+                          @if ((tpl.days[day]?.length ?? 0) > 0) {
+                            <div class="atd-tpl-day">
+                              <span class="atd-tpl-day__label">{{ 'schedule.short.' + day | translate }}</span>
+                              <div class="atd-tpl-day__shifts">
+                                @for (shift of tpl.days[day]; track $index) {
+                                  <span class="atd-tpl-day__shift">
+                                    {{ shift.startTime }}–{{ shift.endTime }}
+                                    @if (shift.breakStart) {
+                                      <span class="atd-tpl-day__break">
+                                        <mat-icon class="atd-break-icon">coffee</mat-icon>
+                                        {{ shift.breakStart }}–{{ shift.breakEnd }}
+                                      </span>
+                                    }
                                   </span>
                                 }
-                              </span>
-                            }
-                          </div>
-                        </div>
-                      } @else {
-                        <div class="atd-tpl-day atd-tpl-day--rest">
-                          <span class="atd-tpl-day__label">{{ 'schedule.short.' + day | translate }}</span>
-                          <span class="atd-tpl-day__rest-label">{{ 'schedule.restDay' | translate }}</span>
-                        </div>
-                      }
+                              </div>
+                            </div>
+                          } @else {
+                            <div class="atd-tpl-day atd-tpl-day--rest">
+                              <span class="atd-tpl-day__label">{{ 'schedule.short.' + day | translate }}</span>
+                              <span class="atd-tpl-day__rest-label">{{ 'schedule.restDay' | translate }}</span>
+                            </div>
+                          }
+                        }
+                      </div>
                     }
                   </div>
                 }
+              </div>
+            }
+          </div>
+        </mat-tab>
 
+        <!-- ── Tab 2 : Zones assignées ── -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="atd-tab__icon">map</mat-icon>
+            <span>{{ 'users.couriers.assignZones' | translate }}</span>
+            @if (selectedZoneIds().size > 0) {
+              <span class="atd-tab__badge">{{ selectedZoneIds().size }}</span>
+            }
+          </ng-template>
+
+          <div class="atd-tab__content">
+            @if (zonesLoading()) {
+              <div class="atd-loading"><mat-spinner diameter="26"></mat-spinner></div>
+            } @else if (zones().length === 0) {
+              <p class="atd-empty"><mat-icon>location_off</mat-icon>{{ 'users.couriers.noZones' | translate }}</p>
+            } @else {
+              <div class="atd-list">
+                @for (zone of zones(); track zone.id) {
+                  <div
+                    class="atd-item"
+                    [class.atd-item--selected]="isZoneSelected(zone.id)"
+                    (click)="toggleZone(zone.id)"
+                    role="checkbox"
+                    [attr.aria-checked]="isZoneSelected(zone.id)">
+                    <div class="atd-item__check" [class.atd-item__check--on]="isZoneSelected(zone.id)">
+                      @if (isZoneSelected(zone.id)) { <mat-icon>check</mat-icon> }
+                    </div>
+                    <div class="atd-item__body">
+                      <div class="atd-item__top">
+                        <span class="atd-item__name">{{ zone.name }}</span>
+                        <span class="atd-zone-badge atd-zone-badge--{{ zone.type | lowercase }}">{{ zone.type }}</span>
+                      </div>
+                      <div class="atd-item__meta">
+                        @if (zone.city) {
+                          <span class="atd-chip"><mat-icon>place</mat-icon>{{ zone.city }}</span>
+                        }
+                        @if (zone.deliveryFee != null) {
+                          <span class="atd-chip"><mat-icon>payments</mat-icon>{{ zone.deliveryFee | number:'1.2-2' }} MAD</span>
+                        }
+                        @if (zone.radiusKm) {
+                          <span class="atd-chip"><mat-icon>radio_button_checked</mat-icon>{{ zone.radiusKm }} km</span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </mat-tab>
+
+      </mat-tab-group>
+    }
+
+    <!-- ═══ EXTERNAL : zones directement ════════════════════════════════════ -->
+    @if (selected() === 'EXTERNAL') {
+      <div class="atd-section atd-section--zones">
+        <div class="atd-section__header">
+          <div class="atd-section__icon atd-section__icon--zones">
+            <mat-icon>map</mat-icon>
+          </div>
+          <div class="atd-section__titles">
+            <span class="atd-section__title">{{ 'users.couriers.assignZones' | translate }}</span>
+            <span class="atd-section__hint">{{ 'users.couriers.assignZonesHint' | translate }}</span>
+          </div>
+          @if (selectedZoneIds().size > 0) {
+            <span class="atd-section__badge">{{ selectedZoneIds().size }}</span>
+          }
+        </div>
+
+        @if (zonesLoading()) {
+          <div class="atd-loading"><mat-spinner diameter="26"></mat-spinner></div>
+        } @else if (zones().length === 0) {
+          <p class="atd-empty"><mat-icon>location_off</mat-icon>{{ 'users.couriers.noZones' | translate }}</p>
+        } @else {
+          <div class="atd-list">
+            @for (zone of zones(); track zone.id) {
+              <div
+                class="atd-item"
+                [class.atd-item--selected]="isZoneSelected(zone.id)"
+                (click)="toggleZone(zone.id)"
+                role="checkbox"
+                [attr.aria-checked]="isZoneSelected(zone.id)">
+                <div class="atd-item__check" [class.atd-item__check--on]="isZoneSelected(zone.id)">
+                  @if (isZoneSelected(zone.id)) { <mat-icon>check</mat-icon> }
+                </div>
+                <div class="atd-item__body">
+                  <div class="atd-item__top">
+                    <span class="atd-item__name">{{ zone.name }}</span>
+                    <span class="atd-zone-badge atd-zone-badge--{{ zone.type | lowercase }}">{{ zone.type }}</span>
+                  </div>
+                  <div class="atd-item__meta">
+                    @if (zone.city) {
+                      <span class="atd-chip"><mat-icon>place</mat-icon>{{ zone.city }}</span>
+                    }
+                    @if (zone.deliveryFee != null) {
+                      <span class="atd-chip"><mat-icon>payments</mat-icon>{{ zone.deliveryFee | number:'1.2-2' }} MAD</span>
+                    }
+                    @if (zone.radiusKm) {
+                      <span class="atd-chip"><mat-icon>radio_button_checked</mat-icon>{{ zone.radiusKm }} km</span>
+                    }
+                  </div>
+                </div>
               </div>
             }
           </div>
@@ -166,6 +255,14 @@
 
   </div>
 
+  <!-- ═══ ZONE VALIDATION ALERT ═══════════════════════════════════════════ -->
+  @if (selected() && selectedZoneIds().size === 0) {
+    <div class="atd-zone-alert">
+      <mat-icon>warning_amber</mat-icon>
+      <span>{{ 'users.couriers.zoneRequired' | translate }}</span>
+    </div>
+  }
+
   <!-- ═══ FOOTER ══════════════════════════════════════════════════════════ -->
   <div class="atd-footer">
     <button class="atd-btn atd-btn--ghost" (click)="onCancel()" type="button">
@@ -173,8 +270,7 @@
     </button>
     <button
       class="atd-btn atd-btn--primary"
-      [class.atd-btn--disabled]="!selected()"
-      [disabled]="!selected()"
+      [disabled]="!selected() || selectedZoneIds().size === 0"
       (click)="onConfirm()"
       type="button">
       <mat-icon>check_circle</mat-icon>
@@ -183,3 +279,4 @@
   </div>
 
 </div>
+

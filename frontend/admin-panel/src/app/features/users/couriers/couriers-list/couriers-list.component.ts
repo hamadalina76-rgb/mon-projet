@@ -18,7 +18,7 @@ import { ToastrService } from 'ngx-toastr';
 import { CouriersService } from '../services/couriers.service';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '@shared/components/confirmation-dialog/confirmation-dialog.component';
 import { RejectDialogComponent } from '../../../partners/partner-approval/reject-dialog.component';
-import { ChangeTypeDialogComponent } from '../courier-detail/change-type-dialog.component';
+import { ChangeTypeDialogComponent, ChangeTypeResult } from '../courier-detail/change-type-dialog.component';
 import { ListPageComponent } from '@shared/components/list-page/list-page.component';
 
 @Component({
@@ -246,14 +246,16 @@ export class CouriersListComponent implements OnInit, OnDestroy {
 
   changeCourierType(courier: any): void {
     const dialogRef = this.dialog.open(ChangeTypeDialogComponent, {
-      width: '460px',
+      width: '480px',
       maxWidth: '95vw',
-      data: courier.courierType ?? null,
+      data: { courierType: courier.courierType ?? null, assignedZoneIds: courier.assignedZoneIds ?? [] },
     });
-    dialogRef.afterClosed().subscribe((newType: 'INTERNAL' | 'EXTERNAL' | null) => {
-      if (!newType) return;
-      this.couriersService.updateCourier(String(courier.id), { courierType: newType }).subscribe({
+    dialogRef.afterClosed().subscribe((result: ChangeTypeResult | null) => {
+      if (!result) return;
+      const id = String(courier.id);
+      this.couriersService.updateCourier(id, { courierType: result.courierType }).subscribe({
         next: () => {
+          this.couriersService.assignZones(id, result.zoneIds).subscribe();
           this.toastr.success(this.translate.instant('users.couriers.changeTypeSuccess'));
           this.loadCouriers();
         },

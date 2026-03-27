@@ -19,7 +19,7 @@ import java.util.List;
  * Permet de récupérer les informations utilisateur et créer des comptes
  * Permet de récupérer et mettre à jour les informations utilisateur
  */
-@FeignClient(name = "auth-service", configuration = FeignConfig.class)
+@FeignClient(name = "auth-service", url = "${auth-service.url:}", configuration = FeignConfig.class)
 public interface AuthServiceClient {
 
     /**

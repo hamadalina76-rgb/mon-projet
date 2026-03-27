@@ -14,7 +14,6 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTabsModule } from '@angular/material/tabs';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { ListPageComponent } from '@shared/components/list-page/list-page.component';
 import { ToastrService } from 'ngx-toastr';
 
 import { FullCalendarModule, FullCalendarComponent } from '@fullcalendar/angular';
@@ -31,15 +30,8 @@ import {
   DayOfWeek,
   DAYS_OF_WEEK,
   ShiftDTO,
-  CourierScheduleAuditLog,
-  AuditLogPageResponse,
+  CourierExceptionalSchedule,
 } from '../models/courier-schedule.model';
-
-// ── FullCalendar: DayOfWeek → daysOfWeek index (0 = Sunday) ─────────────────
-const FC_DAY_INDEX: Record<DayOfWeek, number> = {
-  SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3,
-  THURSDAY: 4, FRIDAY: 5, SATURDAY: 6,
-};
 
 // ── One distinct colour per day ──────────────────────────────────────────────
 const DAY_COLORS: Record<DayOfWeek, string> = {
@@ -57,7 +49,7 @@ const DAY_COLORS: Record<DayOfWeek, string> = {
     MatSelectModule, MatFormFieldModule, MatInputModule,
     MatProgressSpinnerModule, MatTooltipModule,
     MatCheckboxModule, MatDividerModule, MatTabsModule,
-    TranslateModule, FullCalendarModule, ListPageComponent,
+    TranslateModule, FullCalendarModule,
   ],
   templateUrl: './courier-schedule.component.html',
   styleUrls: ['./courier-schedule.component.scss'],
@@ -83,22 +75,14 @@ export class CourierScheduleComponent implements OnInit {
   selectedTemplateId = signal<number | null>(null);
   weekLabel          = signal<string>('');
 
-  // ── Audit log (traceability) ──────────────────────────────────────────
-  auditEntries       = signal<CourierScheduleAuditLog[]>([]);
-  auditTotalItems    = signal(0);
-  auditLoading       = signal(false);
-  auditPage          = signal(1);
-  auditPageSize      = signal(10);
-  auditFilterAction  = signal('');
-  auditFilterDate    = signal('');
+  /** Map day → active exception (if any) for the currently viewed week */
+  dayExceptionMap    = signal<Partial<Record<DayOfWeek, CourierExceptionalSchedule>>>({});
 
-  readonly auditActionConfig: Record<string, { icon: string; cssClass: string; labelKey: string }> = {
-    CREATED:          { icon: 'add_circle',    cssClass: 'cs-audit-action--created',  labelKey: 'schedule.audit.CREATED' },
-    UPDATED:          { icon: 'edit',          cssClass: 'cs-audit-action--updated',  labelKey: 'schedule.audit.UPDATED' },
-    TEMPLATE_APPLIED: { icon: 'auto_fix_high', cssClass: 'cs-audit-action--template', labelKey: 'schedule.audit.TEMPLATE_APPLIED' },
-    DAY_COPIED:       { icon: 'content_copy',  cssClass: 'cs-audit-action--copied',   labelKey: 'schedule.audit.DAY_COPIED' },
-    DELETED:          { icon: 'delete',        cssClass: 'cs-audit-action--deleted',  labelKey: 'schedule.audit.DELETED' },
-  };
+  /** Monday of the week currently displayed in FullCalendar */
+  currentViewStart   = signal<Date>(new Date());
+
+  /** All exceptions loaded for the year — persisted for week-navigation rebuilds */
+  exceptionsCache    = signal<CourierExceptionalSchedule[]>([]);
 
   @ViewChild('calendarRef') private calendarRef!: FullCalendarComponent;
 
@@ -112,8 +96,8 @@ export class CourierScheduleComponent implements OnInit {
     locale: frLocale,
     headerToolbar: false,
     allDaySlot: false,
-    slotMinTime: '05:00:00',
-    slotMaxTime: '23:00:00',
+    slotMinTime: '00:00:00',
+    slotMaxTime: '24:00:00',
     slotDuration: '00:30:00',
     slotLabelInterval: '01:00',
     height: 'auto',
@@ -134,6 +118,12 @@ export class CourierScheduleComponent implements OnInit {
     },
     datesSet: (info: any) => {
       this.weekLabel.set(this.formatWeekLabel(info.start, info.end));
+      // Track the Monday of the currently viewed week so exception overlays
+      // are anchored to the EXACT dates being displayed, not always today.
+      const viewStart = new Date(info.start);
+      this.currentViewStart.set(viewStart);
+      this._rebuildExceptionMapForView(viewStart);
+      this.refreshCalendarWithExceptions();
     },
     eventDisplay: 'block',
     eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
@@ -146,39 +136,7 @@ export class CourierScheduleComponent implements OnInit {
     this.courierId.set(this.route.snapshot.paramMap.get('id') ?? '');
     this.svc.getActiveTemplates().subscribe({ next: (t) => this.templates.set(t) });
     this.loadSchedule();
-    this.loadAuditLogs();
-  }
-
-  loadAuditLogs(): void {
-    this.auditLoading.set(true);
-    const action = this.auditFilterAction() || undefined;
-    const date   = this.auditFilterDate()   || undefined;
-    this.svc.getAuditLogs(this.courierId(), this.auditPage() - 1, this.auditPageSize(), action, date, date).subscribe({
-      next: (r: AuditLogPageResponse) => {
-        this.auditEntries.set(r.content ?? []);
-        this.auditTotalItems.set(r.totalElements ?? 0);
-        this.auditLoading.set(false);
-      },
-      error: () => this.auditLoading.set(false),
-    });
-  }
-
-  onAuditFilterChange(): void {
-    this.auditPage.set(1);
-    this.loadAuditLogs();
-  }
-
-  onAuditPageChange(event: { page: number; pageSize: number }): void {
-    this.auditPage.set(event.page);
-    this.auditPageSize.set(event.pageSize);
-    this.loadAuditLogs();
-  }
-
-  resetAuditFilters(): void {
-    this.auditFilterAction.set('');
-    this.auditFilterDate.set('');
-    this.auditPage.set(1);
-    this.loadAuditLogs();
+    this.loadExceptionsForCurrentWeek();
   }
 
   loadSchedule(): void {
@@ -186,8 +144,8 @@ export class CourierScheduleComponent implements OnInit {
     this.svc.getCourierSchedule(this.courierId()).subscribe({
       next: (s) => {
         this.schedule.set(s);
-        this.updateCalendarEvents(s);
         this.buildForm(s);
+        this.refreshCalendarWithExceptions();
         this.loading.set(false);
       },
       error: () => {
@@ -198,63 +156,155 @@ export class CourierScheduleComponent implements OnInit {
     });
   }
 
-  // ── FullCalendar ──────────────────────────────────────────────────────
-  updateCalendarEvents(s: CourierScheduleResponse | null): void {
-    const events: EventInput[] = [];
-    if (s) {
-      (Object.entries(s.days) as [DayOfWeek, ShiftDTO[]][]).forEach(([day, shifts]) => {
-        shifts.forEach((shift, idx) => {
-          const color = DAY_COLORS[day];
-          const dow   = [FC_DAY_INDEX[day]];
+  /** Load exceptions covering a wide range, then map each day-of-week to active exceptions */
+  loadExceptionsForCurrentWeek(): void {
+    const now  = new Date();
+    const from = new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10);
+    const to   = new Date(now.getFullYear() + 1, 11, 31).toISOString().slice(0, 10);
+    this.svc.getExceptionalSchedulesByCourier(this.courierId(), from, to).subscribe({
+      next: (exceptions) => this.buildDayExceptionMap(exceptions),
+    });
+  }
 
-          if (shift.breakStart && shift.breakEnd) {
-            // Before break
-            events.push({
-              id: `${day}-${idx}-a`,
-              title: `${shift.startTime} – ${shift.breakStart}`,
-              startTime: `${shift.startTime}:00`,
-              endTime:   `${shift.breakStart}:00`,
-              daysOfWeek: dow,
-              backgroundColor: color,
-              borderColor: color,
-            });
-            // Break slot (lighter, dashed)
-            events.push({
-              id: `${day}-${idx}-break`,
-              title: `☕ Pause`,
-              startTime: `${shift.breakStart}:00`,
-              endTime:   `${shift.breakEnd}:00`,
-              daysOfWeek: dow,
-              backgroundColor: '#F1F5F9',
-              borderColor: '#CBD5E1',
-              textColor: '#64748B',
-              classNames: ['cs-break-event'],
-            });
-            // After break
-            events.push({
-              id: `${day}-${idx}-b`,
-              title: `${shift.breakEnd} – ${shift.endTime}`,
-              startTime: `${shift.breakEnd}:00`,
-              endTime:   `${shift.endTime}:00`,
-              daysOfWeek: dow,
-              backgroundColor: color,
-              borderColor: color,
-            });
-          } else {
-            events.push({
-              id: `${day}-${idx}`,
-              title: `${shift.startTime} – ${shift.endTime}`,
-              startTime: `${shift.startTime}:00`,
-              endTime:   `${shift.endTime}:00`,
-              daysOfWeek: dow,
-              backgroundColor: color,
-              borderColor: color,
-            });
-          }
+  /** For each day of the currently viewed week, check if that exact date falls within an exception */
+  buildDayExceptionMap(exceptions: CourierExceptionalSchedule[]): void {
+    this.exceptionsCache.set(exceptions);
+    this._rebuildExceptionMapForView(this.currentViewStart());
+    this.refreshCalendarWithExceptions();
+  }
+
+  /**
+   * Rebuilds the day→exception map for the week that starts on `viewStart`.
+   * Only dates that are EXPLICITLY covered by an exception record are flagged —
+   * there is no day-of-week extrapolation to other weeks.
+   */
+  private _rebuildExceptionMapForView(viewStart: Date): void {
+    const exceptions = this.exceptionsCache();
+    const map: Partial<Record<DayOfWeek, CourierExceptionalSchedule>> = {};
+    this.days.forEach((day, idx) => {
+      const d = new Date(viewStart);
+      d.setDate(viewStart.getDate() + idx);
+      const iso = d.toISOString().slice(0, 10);
+      const match = exceptions.find(ex => iso >= ex.startDate && iso <= ex.endDate);
+      if (match) map[day] = match;
+    });
+    this.dayExceptionMap.set(map);
+  }
+
+  /** Returns the exception covering a specific day, or undefined */
+  exceptionForDay(day: DayOfWeek): CourierExceptionalSchedule | undefined {
+    return this.dayExceptionMap()[day];
+  }
+
+  /** True if at least one day this week has an active exception */
+  hasExceptionsThisWeek(): boolean {
+    return Object.keys(this.dayExceptionMap()).length > 0;
+  }
+
+  // ── FullCalendar ──────────────────────────────────────────────────────
+
+  /**
+   * Builds shift events for a single specific ISO date.
+   * Returns date-anchored events (no daysOfWeek), so they only appear on
+   * that exact date in the calendar view.
+   */
+  private _shiftEventsForDate(day: DayOfWeek, isoDate: string, shifts: ShiftDTO[]): EventInput[] {
+    const events: EventInput[] = [];
+    const color = DAY_COLORS[day];
+    shifts.forEach((shift, idx) => {
+      if (shift.breakStart && shift.breakEnd) {
+        events.push({
+          id: `${day}-${idx}-a`,
+          title: `${shift.startTime} – ${shift.breakStart}`,
+          start: `${isoDate}T${shift.startTime}:00`,
+          end:   `${isoDate}T${shift.breakStart}:00`,
+          backgroundColor: color,
+          borderColor: color,
         });
-      });
-    }
+        events.push({
+          id: `${day}-${idx}-break`,
+          title: `☕ Pause`,
+          start: `${isoDate}T${shift.breakStart}:00`,
+          end:   `${isoDate}T${shift.breakEnd}:00`,
+          backgroundColor: '#F1F5F9',
+          borderColor: '#CBD5E1',
+          textColor: '#64748B',
+          classNames: ['cs-break-event'],
+        });
+        events.push({
+          id: `${day}-${idx}-b`,
+          title: `${shift.breakEnd} – ${shift.endTime}`,
+          start: `${isoDate}T${shift.breakEnd}:00`,
+          end:   `${isoDate}T${shift.endTime}:00`,
+          backgroundColor: color,
+          borderColor: color,
+        });
+      } else {
+        events.push({
+          id: `${day}-${idx}`,
+          title: `${shift.startTime} – ${shift.endTime}`,
+          start: `${isoDate}T${shift.startTime}:00`,
+          end:   `${isoDate}T${shift.endTime}:00`,
+          backgroundColor: color,
+          borderColor: color,
+        });
+      }
+    });
+    return events;
+  }
+
+  /**
+   * Rebuilds ALL calendar events for the currently viewed week.
+   * Each day is rendered using its exact ISO date (not daysOfWeek), so:
+   * - exception overlays appear ONLY on the selected exception dates;
+   * - shift blocks appear on every other day of this specific week;
+   * - nothing bleeds into other weeks.
+   */
+  refreshCalendarWithExceptions(): void {
+    const s      = this.schedule();
+    const exMap  = this.dayExceptionMap();
+    const monday = this.currentViewStart();
+    const events: EventInput[] = [];
+
+    this.days.forEach((day, idx) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + idx);
+      const isoDate = d.toISOString().slice(0, 10);
+      const ex = exMap[day];
+
+      if (ex) {
+        // Exception date: grey background + foreground block only
+        events.push({
+          id: `exception-bg-${day}`,
+          start: `${isoDate}T00:00:00`,
+          end:   `${isoDate}T23:59:59`,
+          display: 'background',
+          backgroundColor: 'rgba(148,163,184,0.35)',
+          classNames: ['cs-exception-bg'],
+        });
+        const typeLabel = this.translate.instant('exceptional.type_' + ex.exceptionType);
+        events.push({
+          id: `exception-block-${day}`,
+          title: `🚫 ${typeLabel}\n${ex.label}`,
+          start: `${isoDate}T00:00:00`,
+          end:   `${isoDate}T23:59:59`,
+          backgroundColor: 'rgba(100,116,139,0.75)',
+          borderColor: '#475569',
+          textColor: '#ffffff',
+          classNames: ['cs-exception-block'],
+        });
+      } else if (s) {
+        // Normal date: render the courier's shifts for this exact day
+        events.push(...this._shiftEventsForDate(day, isoDate, s.days[day] ?? []));
+      }
+    });
+
     (this.calendarOptions as any).events = events;
+    const calApi = this.calendarRef?.getApi();
+    if (calApi) {
+      calApi.removeAllEvents();
+      events.forEach(e => calApi.addEvent(e));
+    }
   }
 
   // ── Reactive Form ─────────────────────────────────────────────────────
@@ -289,11 +339,10 @@ export class CourierScheduleComponent implements OnInit {
     this.svc.applyTemplate(this.courierId(), templateId).subscribe({
       next: (s) => {
         this.schedule.set(s);
-        this.updateCalendarEvents(s);
         this.buildForm(s);
+        this.refreshCalendarWithExceptions();
         this.editMode.set(false);
         this.saving.set(false);
-        this.loadAuditLogs();
         this.toastr.success(this.translate.instant('schedule.applySuccess'));
       },
       error: (err) => {
@@ -320,11 +369,10 @@ export class CourierScheduleComponent implements OnInit {
     this.svc.copyDay(this.courierId(), { sourceDay: source, targetDays: targets }).subscribe({
       next: (s) => {
         this.schedule.set(s);
-        this.updateCalendarEvents(s);
         this.buildForm(s);
+        this.refreshCalendarWithExceptions();
         this.cancelCopy();
         this.saving.set(false);
-        this.loadAuditLogs();
         this.toastr.success(this.translate.instant('schedule.copySuccess'));
       },
       error: (err) => {
@@ -358,11 +406,10 @@ export class CourierScheduleComponent implements OnInit {
     this.svc.saveCourierSchedule(this.courierId(), req).subscribe({
       next: (s) => {
         this.schedule.set(s);
-        this.updateCalendarEvents(s);
         this.buildForm(s);
+        this.refreshCalendarWithExceptions();
         this.editMode.set(false);
         this.saving.set(false);
-        this.loadAuditLogs();
         this.toastr.success(this.translate.instant('schedule.saveSuccess'));
       },
       error: (err) => {

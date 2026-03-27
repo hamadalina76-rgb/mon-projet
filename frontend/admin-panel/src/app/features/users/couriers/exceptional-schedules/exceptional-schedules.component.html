@@ -1,0 +1,355 @@
+<div class="ex-page">
+
+  <!-- ── Header ─────────────────────────────────────────────────────── -->
+  <div class="ex-header">
+    <div class="ex-header__left">
+      <mat-icon class="ex-header__icon">event_busy</mat-icon>
+      <div>
+        <h1>{{ 'exceptional.title' | translate }}</h1>
+        <p>{{ 'exceptional.subtitle' | translate }}</p>
+      </div>
+    </div>
+    <button class="ex-btn-add" (click)="openNew()">
+      <span class="material-icons-round">add</span>
+      {{ 'exceptional.create' | translate }}
+    </button>
+  </div>
+
+  <!-- ── Slide-in drawer ──────────────────────────────────────────────── -->
+  @if (showForm()) {
+    <div class="ex-drawer-overlay" (click)="closeForm()"></div>
+    <aside class="ex-drawer">
+      <div class="ex-drawer__head">
+        <h2>{{ (editId() ? 'exceptional.editTitle' : 'exceptional.createTitle') | translate }}</h2>
+        <button mat-icon-button (click)="closeForm()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <!-- Overlap warning -->
+      @if (overlapWarning().length) {
+        <div class="ex-overlap-warn">
+          <mat-icon>warning</mat-icon>
+          <div>
+            <strong>{{ 'exceptional.overlapWarning' | translate }}</strong>
+            <ul>
+              @for (w of overlapWarning(); track w) { <li>{{ w }}</li> }
+            </ul>
+          </div>
+        </div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="save()" class="ex-form">
+
+        <!-- ── Courier picker ── -->
+        <div class="ex-form-group">
+          <label class="ex-label">
+            {{ 'exceptional.courier' | translate }}
+            @if (!allSelected()) { <span class="ex-required">*</span> }
+          </label>
+
+          <!-- "Select all internal couriers" button -->
+          @if (!editId()) {
+            <button type="button" class="ex-select-all-btn"
+                    [class.active]="allSelected()"
+                    (click)="allSelected() ? clearCourier() : selectAllCouriers()">
+              <mat-icon>{{ allSelected() ? 'deselect' : 'select_all' }}</mat-icon>
+              {{ (allSelected() ? 'exceptional.deselectAll' : 'exceptional.selectAll') | translate }}
+            </button>
+          }
+
+          @if (!allSelected()) {
+            @if (form.get('courierId')?.value) {
+              <!-- Selected state: chip -->
+              <div class="ex-courier-chip">
+                <mat-icon class="ex-courier-chip__icon">person</mat-icon>
+                <span class="ex-courier-chip__name">{{ selectedCourierName() }}</span>
+                <button type="button" class="ex-chip-clear" (click)="clearCourier()"
+                        [title]="'exceptional.changeCourier' | translate">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            } @else {
+              <!-- Search + dropdown list -->
+              <div class="ex-courier-search">
+                <div class="ex-courier-search__input-wrap">
+                  <mat-icon>search</mat-icon>
+                  <input
+                    #cfInput
+                    class="ex-courier-search__input"
+                    type="text"
+                    autocomplete="off"
+                    [placeholder]="'exceptional.searchCourier' | translate"
+                    [value]="courierFilterText()"
+                    (input)="courierFilterText.set(cfInput.value)"
+                  />
+                  @if (loadingCouriers()) {
+                    <mat-icon class="spinning">sync</mat-icon>
+                  }
+                </div>
+                <ul class="ex-courier-list">
+                  @for (c of filteredCouriersForSelect(); track c.id) {
+                    <li class="ex-courier-list__item" (mousedown)="selectCourier(c)">
+                      <span class="ex-courier-list__avatar">
+                        {{ c.name.charAt(0).toUpperCase() }}
+                      </span>
+                      {{ c.name }}
+                    </li>
+                  } @empty {
+                    <li class="ex-courier-list__empty">
+                      <mat-icon>person_off</mat-icon>
+                      {{ 'exceptional.noResults' | translate }}
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          } @else {
+            <!-- All couriers selected state -->
+            <div class="ex-courier-chip ex-courier-chip--all">
+              <mat-icon class="ex-courier-chip__icon">groups</mat-icon>
+              <span class="ex-courier-chip__name">{{ selectedCourierName() }}</span>
+              <button type="button" class="ex-chip-clear" (click)="clearCourier()"
+                      [title]="'exceptional.deselectAll' | translate">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          }
+
+          @if (!allSelected() && form.get('courierId')?.invalid && form.get('courierId')?.touched) {
+            <span class="ex-field-error">{{ 'exceptional.selectCourierRequired' | translate }}</span>
+          }
+        </div>
+
+        <!-- Exception type -->
+        <div class="ex-form-group">
+          <label class="ex-label">
+            {{ 'exceptional.type' | translate }}
+            <span class="ex-required">*</span>
+          </label>
+          <div class="ex-type-select-wrap">
+            @for (t of exceptionTypes; track t) {
+              <button type="button"
+                class="ex-type-option"
+                [class.active]="form.get('exceptionType')?.value === t"
+                [style.--type-color]="exColor(t)"
+                (click)="form.get('exceptionType')?.setValue(t); form.get('exceptionType')?.markAsTouched(); checkOverlapIfReady()">
+                <span class="ex-type-dot" [style.background]="exColor(t)"></span>
+                {{ ('exceptional.type_' + t) | translate }}
+              </button>
+            }
+          </div>
+          @if (form.get('exceptionType')?.invalid && form.get('exceptionType')?.touched) {
+            <span class="ex-field-error">{{ 'exceptional.typeRequired' | translate }}</span>
+          }
+        </div>
+
+        <!-- Label -->
+        <mat-form-field appearance="outline" class="ex-field">
+          <mat-label>{{ 'exceptional.label' | translate }}</mat-label>
+          <input matInput formControlName="label"
+                 [placeholder]="'exceptional.labelPlaceholder' | translate" />
+          @if (form.get('label')?.invalid && form.get('label')?.touched) {
+            <mat-error>{{ 'exceptional.labelRequired' | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        <!-- Dates -->
+        <div class="ex-row">
+          <div class="ex-form-group ex-field">
+            <label class="ex-label">
+              {{ 'exceptional.startDate' | translate }}
+              <span class="ex-required">*</span>
+            </label>
+            <input type="date" class="ex-date-native" formControlName="startDate"
+                   (change)="checkOverlapIfReady()" />
+            @if (form.get('startDate')?.invalid && form.get('startDate')?.touched) {
+              <span class="ex-field-error">{{ 'exceptional.startDateRequired' | translate }}</span>
+            }
+          </div>
+
+          <div class="ex-form-group ex-field">
+            <label class="ex-label">
+              {{ 'exceptional.endDate' | translate }}
+              <span class="ex-required">*</span>
+            </label>
+            <input type="date" class="ex-date-native" formControlName="endDate"
+                   (change)="checkOverlapIfReady()" />
+            @if (form.get('endDate')?.invalid && form.get('endDate')?.touched) {
+              <span class="ex-field-error">{{ 'exceptional.endDateRequired' | translate }}</span>
+            }
+          </div>
+        </div>
+
+        <!-- Reason -->
+        <mat-form-field appearance="outline" class="ex-field">
+          <mat-label>{{ 'exceptional.reason' | translate }}</mat-label>
+          <textarea matInput formControlName="reason" rows="3"
+                    [placeholder]="'exceptional.reasonPlaceholder' | translate"></textarea>
+        </mat-form-field>
+
+        <!-- Rest period -->
+        <label class="ex-checkbox-row">
+          <input type="checkbox" formControlName="isRestPeriod" />
+          <span>{{ 'exceptional.isRestPeriod' | translate }}</span>
+        </label>
+        @if (form.get('isRestPeriod')?.value) {
+          <div class="ex-override-info">
+            <mat-icon>info</mat-icon>
+            <div>
+              <span>{{ 'exceptional.overrideWeekly' | translate }}</span>
+              @if (form.get('exceptionType')?.value && form.get('label')?.value) {
+                <p class="ex-override-detail">
+                  <span class="ex-badge ex-badge--sm" [style.background]="exColor(form.get('exceptionType')!.value)">
+                    {{ ('exceptional.type_' + form.get('exceptionType')!.value) | translate }}
+                  </span>
+                  <strong>{{ form.get('label')!.value }}</strong>
+                  @if (form.get('startDate')?.value && form.get('endDate')?.value) {
+                    — {{ form.get('startDate')!.value }} → {{ form.get('endDate')!.value }}
+                  }
+                </p>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Actions -->
+        <div class="ex-form-actions">
+          <button type="button" class="ex-btn-cancel" (click)="closeForm()">
+            {{ 'common.cancel' | translate }}
+          </button>
+          <button type="submit" class="ex-btn-save"
+                  [disabled]="form.invalid || saving() || (!allSelected() && !form.get('courierId')?.value)">
+            @if (saving()) {
+              <span class="spinning">⟳</span>
+            } @else {
+              <mat-icon>save</mat-icon>
+            }
+            {{ (editId() ? 'exceptional.update' : 'exceptional.save') | translate }}
+          </button>
+        </div>
+      </form>
+    </aside>
+  }
+
+  <!-- ── Filters ─────────────────────────────────────────────────────── -->
+  <div class="ex-filters">
+    <div class="ex-search-box">
+      <span class="material-icons-round">search</span>
+      <input
+        type="text"
+        class="ex-search-input"
+        [placeholder]="'exceptional.searchPlaceholder' | translate"
+        [(ngModel)]="searchText"
+        (ngModelChange)="onSearchChange()"
+      />
+    </div>
+
+    <select class="ex-select" [(ngModel)]="filterCourierId" (change)="onCourierChange()">
+      <option [value]="0">{{ 'exceptional.allCouriers' | translate }}</option>
+      @for (c of allCouriers(); track c.id) {
+        <option [value]="c.id">{{ c.name }}</option>
+      }
+    </select>
+
+    <select class="ex-select" [(ngModel)]="filterType" (change)="onTypeChange()">
+      <option value="">{{ 'exceptional.allTypes' | translate }}</option>
+      @for (t of exceptionTypes; track t) {
+        <option [value]="t">{{ ('exceptional.type_' + t) | translate }}</option>
+      }
+    </select>
+
+    <div class="ex-date-filter">
+      <input type="date" class="ex-date-input"
+             [(ngModel)]="filterDateFrom" (change)="onDateChange()"
+             [title]="'exceptional.filterFrom' | translate" />
+      <span>—</span>
+      <input type="date" class="ex-date-input"
+             [(ngModel)]="filterDateTo" (change)="onDateChange()"
+             [title]="'exceptional.filterTo' | translate" />
+    </div>
+
+    <button class="ex-btn-reset" (click)="resetFilters()" [title]="'common.reset' | translate">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
+
+  <!-- ── Table ───────────────────────────────────────────────────────── -->
+  @if (loading()) {
+    <div class="ex-loading">
+      <mat-icon class="spinning">sync</mat-icon>
+    </div>
+  } @else if (items().length === 0) {
+    <div class="ex-empty">
+      <mat-icon>event_busy</mat-icon>
+      <p>{{ 'exceptional.empty' | translate }}</p>
+      <button class="ex-btn-add" (click)="openNew()">
+        {{ 'exceptional.createFirst' | translate }}
+      </button>
+    </div>
+  } @else {
+    <div class="ex-table-wrap">
+      <table class="ex-table">
+        <thead>
+          <tr>
+            <th>{{ 'exceptional.colType'    | translate }}</th>
+            <th>{{ 'exceptional.colCourier' | translate }}</th>
+            <th>{{ 'exceptional.colLabel'   | translate }}</th>
+            <th>{{ 'exceptional.colStart'   | translate }}</th>
+            <th>{{ 'exceptional.colEnd'     | translate }}</th>
+            <th>{{ 'exceptional.colReason'  | translate }}</th>
+            <th>{{ 'exceptional.colAdmin'   | translate }}</th>
+            <th>{{ 'exceptional.colActions' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of items(); track item.id) {
+            <tr>
+              <td>
+                <span class="ex-badge" [style.background]="exColor(item.exceptionType)">
+                  {{ ('exceptional.type_' + item.exceptionType) | translate }}
+                </span>
+              </td>
+              <td class="ex-courier-name">{{ item.courierName ?? '—' }}</td>
+              <td>{{ item.label }}</td>
+              <td>{{ item.startDate }}</td>
+              <td>{{ item.endDate }}</td>
+              <td class="ex-reason-cell" [title]="item.reason ?? ''">
+                {{ item.reason
+                    ? (item.reason.length > 60 ? (item.reason.slice(0, 60) + '…') : item.reason)
+                    : '—' }}
+              </td>
+              <td>{{ item.adminName ?? '—' }}</td>
+              <td>
+                <div class="ex-row-actions">
+                  <button mat-icon-button [title]="'common.edit' | translate"
+                          (click)="openEdit(item)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    @if (totalPages > 1) {
+      <div class="ex-pagination">
+        <span class="ex-total">{{ totalItems }} {{ 'exceptional.results' | translate }}</span>
+        <div class="ex-pages">
+          <button [disabled]="currentPage === 0" (click)="onPageChange(currentPage)">‹</button>
+          @for (i of pageNumbers; track i) {
+            <button [class.active]="i === currentPage" (click)="onPageChange(i + 1)">
+              {{ i + 1 }}
+            </button>
+          }
+          <button [disabled]="currentPage >= totalPages - 1"
+                  (click)="onPageChange(currentPage + 2)">›</button>
+        </div>
+      </div>
+    }
+  }
+</div>
+

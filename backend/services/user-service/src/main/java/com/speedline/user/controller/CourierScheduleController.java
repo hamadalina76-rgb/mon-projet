@@ -8,9 +8,11 @@ import com.speedline.user.service.CourierScheduleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -84,6 +86,17 @@ public class CourierScheduleController {
                 null, null, null, null, null, null,
                 "Planning #" + scheduleId + " supprimé", null);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Retourne le planning effectif d'un livreur pour une date donnée.
+     * Si une exception active couvre cette date, elle écrase le planning hebdo.
+     */
+    @GetMapping("/effective")
+    public ResponseEntity<CourierScheduleDTO.EffectiveScheduleResponse> getEffectiveSchedule(
+            @PathVariable Long courierId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(scheduleService.getEffectiveSchedule(courierId, date));
     }
 
     /** Journal d'audit des modifications de planning (paginé et filtrable) */

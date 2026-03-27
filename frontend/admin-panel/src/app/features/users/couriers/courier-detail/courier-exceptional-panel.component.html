@@ -1,0 +1,185 @@
+<div class="cep-panel">
+
+  <!-- ── Header ──────────────────────────────────────────────────────── -->
+  <div class="cep-header">
+    <div class="cep-header__left">
+      <mat-icon class="cep-header__icon">event_busy</mat-icon>
+      <div>
+        <h3 class="cep-title">{{ 'exceptional.title' | translate }}</h3>
+        <p class="cep-subtitle">{{ 'exceptional.subtitle' | translate }}</p>
+      </div>
+    </div>
+    <button class="cep-btn-add" (click)="openNew()">
+      <mat-icon>add</mat-icon>
+      {{ 'exceptional.create' | translate }}
+    </button>
+  </div>
+
+  <!-- ── Inline form ─────────────────────────────────────────────────── -->
+  @if (showForm()) {
+    <div class="cep-form-card">
+
+      <div class="cep-form-card__head">
+        <h4>{{ (editId() ? 'exceptional.editTitle' : 'exceptional.createTitle') | translate }}</h4>
+        <button mat-icon-button type="button" (click)="closeForm()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <!-- Overlap warning -->
+      @if (overlapWarning().length) {
+        <div class="cep-overlap-warn">
+          <mat-icon>warning</mat-icon>
+          <div>
+            <strong>{{ 'exceptional.overlapWarning' | translate }}</strong>
+            <ul>
+              @for (w of overlapWarning(); track w) {
+                <li>{{ w }}</li>
+              }
+            </ul>
+          </div>
+        </div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="save()" class="cep-form">
+
+        <!-- Exception type -->
+        <mat-form-field appearance="outline" class="cep-field">
+          <mat-label>{{ 'exceptional.type' | translate }}</mat-label>
+          <mat-select formControlName="exceptionType" (selectionChange)="checkOverlapIfReady()">
+            @for (t of exceptionTypes; track t) {
+              <mat-option [value]="t">
+                <span class="cep-badge-sm" [style.background]="exColor(t)">
+                  {{ ('exceptional.type_' + t) | translate }}
+                </span>
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <!-- Label -->
+        <mat-form-field appearance="outline" class="cep-field">
+          <mat-label>{{ 'exceptional.label' | translate }}</mat-label>
+          <input matInput formControlName="label"
+                 [placeholder]="'exceptional.labelPlaceholder' | translate" />
+        </mat-form-field>
+
+        <!-- Dates -->
+        <div class="cep-row">
+          <mat-form-field appearance="outline" class="cep-field">
+            <mat-label>{{ 'exceptional.startDate' | translate }}</mat-label>
+            <input matInput [matDatepicker]="dpStart" formControlName="startDate"
+                   (dateChange)="checkOverlapIfReady()" />
+            <mat-datepicker-toggle matSuffix [for]="dpStart"></mat-datepicker-toggle>
+            <mat-datepicker #dpStart></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="cep-field">
+            <mat-label>{{ 'exceptional.endDate' | translate }}</mat-label>
+            <input matInput [matDatepicker]="dpEnd" formControlName="endDate"
+                   (dateChange)="checkOverlapIfReady()" />
+            <mat-datepicker-toggle matSuffix [for]="dpEnd"></mat-datepicker-toggle>
+            <mat-datepicker #dpEnd></mat-datepicker>
+          </mat-form-field>
+        </div>
+
+        <!-- Reason -->
+        <mat-form-field appearance="outline" class="cep-field cep-field--full">
+          <mat-label>{{ 'exceptional.reason' | translate }}</mat-label>
+          <textarea matInput formControlName="reason" rows="2"
+                    [placeholder]="'exceptional.reasonPlaceholder' | translate"></textarea>
+        </mat-form-field>
+
+        <!-- Rest period -->
+        <label class="cep-checkbox-row">
+          <input type="checkbox" formControlName="isRestPeriod" />
+          <span>{{ 'exceptional.isRestPeriod' | translate }}</span>
+        </label>
+
+        <!-- Actions -->
+        <div class="cep-form-actions">
+          <button type="button" mat-stroked-button (click)="closeForm()">
+            {{ 'common.cancel' | translate }}
+          </button>
+          <button type="submit" mat-flat-button color="primary"
+                  [disabled]="form.invalid || saving()">
+            @if (saving()) {
+              <mat-spinner diameter="18" color="accent"></mat-spinner>
+            } @else {
+              <mat-icon>save</mat-icon>
+            }
+            {{ (editId() ? 'exceptional.update' : 'exceptional.save') | translate }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <!-- ── Loading ─────────────────────────────────────────────────────── -->
+  @if (loading()) {
+    <div class="cep-loading">
+      <mat-spinner diameter="36"></mat-spinner>
+    </div>
+
+  <!-- ── Empty ───────────────────────────────────────────────────────── -->
+  } @else if (items().length === 0 && !showForm()) {
+    <div class="cep-empty">
+      <mat-icon>event_busy</mat-icon>
+      <p>{{ 'exceptional.empty' | translate }}</p>
+      <button mat-stroked-button (click)="openNew()">
+        <mat-icon>add</mat-icon>
+        {{ 'exceptional.createFirst' | translate }}
+      </button>
+    </div>
+
+  <!-- ── Table ───────────────────────────────────────────────────────── -->
+  } @else if (items().length > 0) {
+    <div class="cep-table-wrap">
+      <table class="cep-table">
+        <thead>
+          <tr>
+            <th>{{ 'exceptional.colType'    | translate }}</th>
+            <th>{{ 'exceptional.colLabel'   | translate }}</th>
+            <th>{{ 'exceptional.colStart'   | translate }}</th>
+            <th>{{ 'exceptional.colEnd'     | translate }}</th>
+            <th>{{ 'exceptional.colReason'  | translate }}</th>
+            <th>{{ 'exceptional.colAdmin'   | translate }}</th>
+            <th>{{ 'exceptional.colActions' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of items(); track item.id) {
+            <tr>
+              <td>
+                <span class="cep-badge" [style.background]="exColor(item.exceptionType)">
+                  {{ ('exceptional.type_' + item.exceptionType) | translate }}
+                </span>
+              </td>
+              <td>{{ item.label }}</td>
+              <td class="cep-date">{{ item.startDate }}</td>
+              <td class="cep-date">{{ item.endDate }}</td>
+              <td class="cep-reason-cell" [title]="item.reason || ''">
+                {{ truncateReason(item.reason) }}
+              </td>
+              <td>{{ item.adminName ?? '—' }}</td>
+              <td>
+                <div class="cep-row-actions">
+                  <button mat-icon-button [title]="'common.edit' | translate"
+                          (click)="openEdit(item)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button class="cep-del-btn"
+                          [title]="'common.delete' | translate"
+                          (click)="delete(item)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+</div>

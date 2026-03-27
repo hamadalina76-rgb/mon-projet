@@ -25,6 +25,13 @@ export const USERS_ROUTES: Routes = [
       ),
   },
   {
+    path: 'couriers/exceptional-schedules',
+    loadComponent: () =>
+      import('./couriers/exceptional-schedules/exceptional-schedules.component').then(
+        (m) => m.ExceptionalSchedulesComponent
+      ),
+  },
+  {
     path: 'couriers/:id',
     loadComponent: () =>
       import('./couriers/courier-detail/courier-detail.component').then(

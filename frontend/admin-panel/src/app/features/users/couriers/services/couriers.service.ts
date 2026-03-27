@@ -31,8 +31,12 @@ export class CouriersService {
     return this.api.get(`admin/couriers/pending?page=${page}&size=${pageSize}`);
   }
 
-  approveCourier(id: string, courierType: 'INTERNAL' | 'EXTERNAL'): Observable<any> {
-    return this.api.post(`admin/couriers/${id}/approve?courierType=${courierType}`, {});
+  approveCourier(id: string, courierType: 'INTERNAL' | 'EXTERNAL', zoneIds: number[] = []): Observable<any> {
+    return this.api.post(`admin/couriers/${id}/approve`, { courierType, zoneIds });
+  }
+
+  assignZones(id: string, zoneIds: number[]): Observable<any> {
+    return this.api.put(`admin/couriers/${id}/zones`, { zoneIds });
   }
 
   rejectCourier(id: string, reason: string): Observable<any> {
@@ -57,5 +61,9 @@ export class CouriersService {
 
   updateCourier(id: string, request: any): Observable<any> {
     return this.api.put(`admin/couriers/${id}`, request);
+  }
+
+  getChangeLogs(id: string, page: number = 0, size: number = 20): Observable<any> {
+    return this.api.get(`admin/couriers/${id}/change-logs?page=${page}&size=${size}`);
   }
 }
