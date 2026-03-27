@@ -27,6 +27,7 @@ class CourierModel extends Courier {
     bool isVerified = false,
     bool isEmailVerified = false,
     bool documentsVerified = false,
+    bool activeDeliverySoundEnabled = false,
     String? status,
     String? rejectionReason,
     String? suspensionReason,
@@ -56,10 +57,33 @@ class CourierModel extends Courier {
           isVerified: isVerified,
           isEmailVerified: isEmailVerified,
           documentsVerified: documentsVerified,
+          activeDeliverySoundEnabled: activeDeliverySoundEnabled,
           status: status,
           rejectionReason: rejectionReason,
           suspensionReason: suspensionReason,
         );
+
+  static bool _resolveActiveDeliverySoundEnabled(Map<String, dynamic> json) {
+    final dynamic direct =
+        json['activeDeliverySoundEnabled'] ??
+        json['deliverySoundEnabled'] ??
+        json['soundEnabled'];
+    if (direct is bool) {
+      return direct;
+    }
+
+    final settings = json['settings'];
+    if (settings is Map) {
+      final dynamic nested = settings['activeDeliverySoundEnabled'] ??
+          settings['deliverySoundEnabled'] ??
+          settings['soundEnabled'];
+      if (nested is bool) {
+        return nested;
+      }
+    }
+
+    return false;
+  }
 
   factory CourierModel.fromJson(Map<String, dynamic> json) {
     print('👤 Parsing CourierModel from JSON: $json');
@@ -89,6 +113,7 @@ class CourierModel extends Courier {
       isVerified: json['isVerified'] as bool? ?? false,
       isEmailVerified: json['isEmailVerified'] as bool? ?? json['emailVerified'] as bool? ?? false,
       documentsVerified: json['documentsVerified'] as bool? ?? false,
+      activeDeliverySoundEnabled: _resolveActiveDeliverySoundEnabled(json),
       status: json['status']?.toString(),
       rejectionReason: json['rejectionReason'] as String?,
       suspensionReason: json['suspensionReason'] as String?,
@@ -122,6 +147,7 @@ class CourierModel extends Courier {
       'isVerified': isVerified,
       'isEmailVerified': isEmailVerified,
       'documentsVerified': documentsVerified,
+      'activeDeliverySoundEnabled': activeDeliverySoundEnabled,
       'status': status,
       'rejectionReason': rejectionReason,
       'suspensionReason': suspensionReason,
@@ -154,8 +180,10 @@ class CourierModel extends Courier {
     bool? isVerified,
     bool? isEmailVerified,
     bool? documentsVerified,
+    bool? activeDeliverySoundEnabledValue,
     String? status,
     String? rejectionReason,
+    String? suspensionReason,
   }) {
     return CourierModel(
       id: id ?? this.id,
@@ -183,9 +211,11 @@ class CourierModel extends Courier {
       isVerified: isVerified ?? this.isVerified,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       documentsVerified: documentsVerified ?? this.documentsVerified,
+        activeDeliverySoundEnabled:
+          activeDeliverySoundEnabledValue ?? activeDeliverySoundEnabled,
       status: status ?? this.status,
       rejectionReason: rejectionReason ?? this.rejectionReason,
-      suspensionReason: suspensionReason ?? this.suspensionReason,
+        suspensionReason: suspensionReason ?? this.suspensionReason,
     );
   }
 }

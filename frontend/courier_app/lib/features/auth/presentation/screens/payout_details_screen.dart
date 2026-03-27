@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class PayoutDetailsScreen extends StatefulWidget {
@@ -33,6 +34,8 @@ class _PayoutDetailsScreenState extends State<PayoutDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -45,7 +48,7 @@ class _PayoutDetailsScreenState extends State<PayoutDetailsScreen> {
         title: Column(
           children: [
             Text(
-              'Payout Details',
+              l10n.translate('payout_details_title'),
               style: TextStyle(
                 fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
@@ -53,7 +56,7 @@ class _PayoutDetailsScreenState extends State<PayoutDetailsScreen> {
               ),
             ),
             Text(
-              'Step 4 of 4',
+              l10n.translate('step_4_of_4'),
               style: TextStyle(
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w400,
@@ -106,7 +109,7 @@ class _PayoutDetailsScreenState extends State<PayoutDetailsScreen> {
 
                     // Title and Description
                     Text(
-                      'Bank Information',
+                      l10n.translate('bank_information'),
                       style: TextStyle(
                         fontSize: 24.sp,
                         fontWeight: FontWeight.bold,
@@ -115,7 +118,7 @@ class _PayoutDetailsScreenState extends State<PayoutDetailsScreen> {
                     ),
                     SizedBox(height: 12.h),
                     Text(
-                      'Please provide your bank details to\nreceive your weekly payouts.',
+                      l10n.translate('bank_info_desc'),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 15.sp,
@@ -129,7 +132,7 @@ class _PayoutDetailsScreenState extends State<PayoutDetailsScreen> {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'ACCOUNT HOLDER NAME',
+                        l10n.translate('account_holder_name'),
                         style: TextStyle(
                           fontSize: 12.sp,
                           fontWeight: FontWeight.w600,
@@ -142,7 +145,7 @@ class _PayoutDetailsScreenState extends State<PayoutDetailsScreen> {
                     TextFormField(
                       controller: _accountHolderController,
                       decoration: InputDecoration(
-                        hintText: 'Full Legal Name',
+                        hintText: l10n.translate('full_legal_name'),
                         hintStyle: TextStyle(
                           color: Colors.grey[400],
                           fontSize: 16.sp,
@@ -165,7 +168,7 @@ class _PayoutDetailsScreenState extends State<PayoutDetailsScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Please enter account holder name';
+                          return l10n.translate('enter_account_holder_name');
                         }
                         return null;
                       },
@@ -176,7 +179,7 @@ class _PayoutDetailsScreenState extends State<PayoutDetailsScreen> {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'IBAN / ACCOUNT NUMBER',
+                        l10n.translate('iban_account_number'),
                         style: TextStyle(
                           fontSize: 12.sp,
                           fontWeight: FontWeight.w600,
@@ -189,7 +192,7 @@ class _PayoutDetailsScreenState extends State<PayoutDetailsScreen> {
                     TextFormField(
                       controller: _accountNumberController,
                       decoration: InputDecoration(
-                        hintText: 'FR76 0000 0000 0000...',
+                        hintText: l10n.translate('iban_hint'),
                         hintStyle: TextStyle(
                           color: Colors.grey[400],
                           fontSize: 16.sp,
@@ -212,7 +215,7 @@ class _PayoutDetailsScreenState extends State<PayoutDetailsScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Please enter your account number';
+                          return l10n.translate('enter_account_number');
                         }
                         return null;
                       },
@@ -236,7 +239,7 @@ class _PayoutDetailsScreenState extends State<PayoutDetailsScreen> {
                           SizedBox(width: 12.w),
                           Expanded(
                             child: Text(
-                              'Your banking information is encrypted and securely stored. We only use this for automated payout processing.',
+                              l10n.translate('bank_security_info'),
                               style: TextStyle(
                                 fontSize: 13.sp,
                                 color: Colors.blue[900],
@@ -269,7 +272,7 @@ class _PayoutDetailsScreenState extends State<PayoutDetailsScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'CREATE ACCOUNT',
+                        l10n.translate('create_account_upper'),
                         style: TextStyle(
                           fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
@@ -295,11 +298,9 @@ class _PayoutDetailsScreenState extends State<PayoutDetailsScreen> {
                     height: 1.5,
                   ),
                   children: [
-                    const TextSpan(
-                      text: 'By completing registration, you confirm that the\nbank details provided belong to you. ',
-                    ),
+                    TextSpan(text: l10n.translate('payout_terms_prefix')),
                     TextSpan(
-                      text: 'Terms of\nService',
+                      text: l10n.translate('terms_of_service'),
                       style: TextStyle(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w600,

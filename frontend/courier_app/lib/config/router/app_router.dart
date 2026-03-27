@@ -38,7 +38,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/documentation',
-        builder: (context, state) => const DocumentationScreen(),
+        builder: (context, state) {
+          final readOnly = state.uri.queryParameters['readOnly'] == 'true';
+          return DocumentationScreen(readOnly: readOnly);
+        },
       ),
       GoRoute(
         path: '/driving-license',

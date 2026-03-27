@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../config/di/injection_container.dart';
+import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/localization/locale_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/domain/entities/courier.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   Future<Courier?> _loadCourier() async {
@@ -16,28 +19,28 @@ class ProfileScreen extends StatelessWidget {
     return getIt<AuthRepository>().getCurrentCourier();
   }
 
-  static String _statusLabel(String? status) {
-    if (status == null || status.isEmpty) return 'Livreur';
+  static String _statusLabel(AppLocalizations l10n, String? status) {
+    if (status == null || status.isEmpty) return l10n.translate('courier');
     switch (status.toUpperCase()) {
       case 'ACTIVE':
       case 'AVAILABLE':
       case 'BUSY':
       case 'OFFLINE':
-        return 'Livreur actif';
+        return l10n.translate('courier_active');
       case 'PENDING_APPROVAL':
-        return 'En attente';
+        return l10n.translate('pending');
       case 'REJECTED':
-        return 'Refusé';
+        return l10n.translate('rejected');
       case 'SUSPENDED':
-        return 'Suspendu';
+        return l10n.translate('suspended');
       case 'DEACTIVATED':
-        return 'Désactivé';
+        return l10n.translate('deactivated');
       default:
         return status;
     }
   }
 
-  Future<void> _onChangePhotoPressed(BuildContext context) async {
+  Future<void> _onChangePhotoPressed(BuildContext context, AppLocalizations l10n) async {
     try {
       if (!getIt.isRegistered<AuthRepository>()) return;
 
@@ -57,23 +60,83 @@ class ProfileScreen extends StatelessWidget {
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Photo de profil mise à jour.'),
+        SnackBar(
+          content: Text(l10n.translate('profile_photo_updated')),
         ),
       );
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur lors de la mise à jour de la photo: $e'),
+          content: Text('${l10n.translate('profile_photo_update_error')}: $e'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
+  Future<void> _showLanguageDialog(
+    BuildContext context,
+    WidgetRef ref,
+    AppLocalizations l10n,
+  ) async {
+    final currentLocale = ref.read(localeProvider);
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.translate('select_language')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RadioListTile<String>(
+              title: Text(l10n.translate('english')),
+              value: 'en',
+              groupValue: currentLocale.languageCode,
+              onChanged: (_) async {
+                await ref.read(localeProvider.notifier).setLocale(const Locale('en', 'US'));
+                if (context.mounted) Navigator.pop(context);
+              },
+            ),
+            RadioListTile<String>(
+              title: Text(l10n.translate('french')),
+              value: 'fr',
+              groupValue: currentLocale.languageCode,
+              onChanged: (_) async {
+                await ref.read(localeProvider.notifier).setLocale(const Locale('fr', 'FR'));
+                if (context.mounted) Navigator.pop(context);
+              },
+            ),
+            RadioListTile<String>(
+              title: Text(l10n.translate('arabic')),
+              value: 'ar',
+              groupValue: currentLocale.languageCode,
+              onChanged: (_) async {
+                await ref.read(localeProvider.notifier).setLocale(const Locale('ar', 'SA'));
+                if (context.mounted) Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _localeLabel(Locale locale) {
+    switch (locale.languageCode) {
+      case 'fr':
+        return 'Francais';
+      case 'ar':
+        return 'العربية';
+      default:
+        return 'English';
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final currentLocale = ref.watch(localeProvider);
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SafeArea(
@@ -81,6 +144,7 @@ class ProfileScreen extends StatelessWidget {
           future: _loadCourier(),
           builder: (context, snapshot) {
             final courier = snapshot.data;
+            final bool isReadOnly = courier?.canAccessApp == true;
             return SingleChildScrollView(
               child: Column(
                 children: [
@@ -132,43 +196,44 @@ class ProfileScreen extends StatelessWidget {
                                       color: AppColors.primary,
                                     ),
                             ),
-                            Positioned(
-                              bottom: 0,
-                              right: 6.w,
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () => _onChangePhotoPressed(context),
-                                  borderRadius: BorderRadius.circular(18.r),
-                                  child: Container(
-                                    padding: EdgeInsets.all(6.w),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.15),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Icon(
-                                      Icons.camera_alt,
-                                      size: 18.sp,
-                                      color: AppColors.primary,
+                            if (!isReadOnly)
+                              Positioned(
+                                bottom: 0,
+                                right: 6.w,
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () => _onChangePhotoPressed(context, l10n),
+                                    borderRadius: BorderRadius.circular(18.r),
+                                    child: Container(
+                                      padding: EdgeInsets.all(6.w),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.15),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Icon(
+                                        Icons.camera_alt,
+                                        size: 18.sp,
+                                        color: AppColors.primary,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                         SizedBox(height: 16.h),
                         Text(
                           courier != null
                               ? '${courier.firstName} ${courier.lastName}'.trim()
-                              : 'Livreur',
+                              : l10n.translate('courier'),
                           style: TextStyle(
                             fontSize: 24.sp,
                             fontWeight: FontWeight.bold,
@@ -179,7 +244,7 @@ class ProfileScreen extends StatelessWidget {
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20.r),
                           ),
                           child: Row(
@@ -192,7 +257,9 @@ class ProfileScreen extends StatelessWidget {
                               ),
                               SizedBox(width: 6.w),
                               Text(
-                                courier != null ? _statusLabel(courier.status) : 'Chargement...',
+                                courier != null
+                                  ? _statusLabel(l10n, courier.status)
+                                  : l10n.translate('loading'),
                                 style: TextStyle(
                                   fontSize: 14.sp,
                                   color: Colors.white,
@@ -214,7 +281,7 @@ class ProfileScreen extends StatelessWidget {
                         Expanded(
                           child: _buildStatCard(
                             icon: Icons.delivery_dining,
-                            title: 'Livraisons',
+                            title: l10n.translate('deliveries'),
                             value: '${courier?.totalDeliveries ?? 0}',
                             color: Colors.blue,
                           ),
@@ -223,7 +290,7 @@ class ProfileScreen extends StatelessWidget {
                         Expanded(
                           child: _buildStatCard(
                             icon: Icons.star,
-                            title: 'Note',
+                            title: l10n.translate('rating'),
                             value: courier?.rating != null
                                 ? courier!.rating!.toStringAsFixed(1)
                                 : '—',
@@ -243,7 +310,7 @@ class ProfileScreen extends StatelessWidget {
                         Padding(
                           padding: EdgeInsets.only(bottom: 12.h),
                           child: Text(
-                            'Informations personnelles',
+                            l10n.translate('account_data'),
                             style: TextStyle(
                               fontSize: 18.sp,
                               fontWeight: FontWeight.bold,
@@ -253,11 +320,10 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         _buildInfoCard(
                           children: [
-                            _buildInfoRow(Icons.person_outline, 'Prénom', courier?.firstName ?? '—'),
-                            _buildInfoRow(Icons.badge_outlined, 'Nom', courier?.lastName ?? '—'),
-                            _buildInfoRow(Icons.phone_outlined, 'Téléphone', (courier?.phone ?? '').trim().isEmpty ? '—' : (courier?.phone ?? '—')),
-                            _buildInfoRow(Icons.email_outlined, 'Email', courier?.email ?? '—'),
-                            _buildInfoRow(Icons.location_on_outlined, 'Adresse', 'Non renseignée'),
+                            _buildInfoRow(Icons.person_outline, l10n.translate('first_name'), courier?.firstName ?? '—'),
+                            _buildInfoRow(Icons.badge_outlined, l10n.translate('last_name'), courier?.lastName ?? '—'),
+                            _buildInfoRow(Icons.phone_outlined, l10n.translate('phone'), (courier?.phone ?? '').trim().isEmpty ? '—' : (courier?.phone ?? '—')),
+                            _buildInfoRow(Icons.email_outlined, l10n.translate('email'), courier?.email ?? '—'),
                           ],
                         ),
                       ],
@@ -272,49 +338,23 @@ class ProfileScreen extends StatelessWidget {
                     _buildMenuItem(
                       context: context,
                       icon: Icons.description_outlined,
-                      title: 'Documentation',
-                      subtitle: 'Upload your documents',
-                      onTap: () => context.push('/documentation'),
-                      showBadge: true,
+                      title: l10n.translate('data_documents'),
+                      subtitle: l10n.translate('consult_data_documents'),
+                      onTap: () => context.push('/documentation?readOnly=true'),
                     ),
                     _buildMenuItem(
                       context: context,
-                      icon: Icons.drive_eta_outlined,
-                      title: 'Vehicle Information',
-                      subtitle: 'Manage your vehicle details',
-                      onTap: () => context.push('/documentation'),
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.account_balance_wallet_outlined,
-                      title: 'Payout Details',
-                      subtitle: 'Bank account information',
-                      onTap: () => context.push('/payout-details'),
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.settings_outlined,
-                      title: 'Settings',
-                      subtitle: 'App preferences',
-                      onTap: () {
-                        // TODO: Navigate to settings
-                      },
-                    ),
-                    _buildMenuItem(
-                      context: context,
-                      icon: Icons.help_outline,
-                      title: 'Help & Support',
-                      subtitle: 'Get assistance',
-                      onTap: () {
-                        // TODO: Navigate to support
-                      },
+                      icon: Icons.language_outlined,
+                      title: l10n.translate('language'),
+                      subtitle: '${l10n.translate('choose_app_language')} (${_localeLabel(currentLocale)})',
+                      onTap: () => _showLanguageDialog(context, ref, l10n),
                     ),
                     _buildMenuItem(
                       context: context,
                       icon: Icons.logout,
-                      title: 'Logout',
-                      subtitle: 'Sign out of your account',
-                      onTap: () => _handleLogout(context),
+                      title: l10n.translate('logout'),
+                      subtitle: l10n.translate('logout_subtitle'),
+                      onTap: () => _handleLogout(context, l10n),
                       isDestructive: true,
                     ),
                   ],
@@ -339,7 +379,7 @@ class ProfileScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -410,7 +450,7 @@ class ProfileScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -461,7 +501,7 @@ class ProfileScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -475,8 +515,8 @@ class ProfileScreen extends StatelessWidget {
           height: 48.h,
           decoration: BoxDecoration(
             color: isDestructive
-                ? Colors.red.withOpacity(0.1)
-                : AppColors.primary.withOpacity(0.1),
+                ? Colors.red.withValues(alpha: 0.1)
+                : AppColors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12.r),
           ),
           child: Icon(
@@ -534,16 +574,16 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  void _handleLogout(BuildContext context) {
+  void _handleLogout(BuildContext context, AppLocalizations l10n) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: Text(l10n.translate('logout')),
+        content: Text(l10n.translate('are_you_sure_logout')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(l10n.translate('cancel')),
           ),
           TextButton(
             onPressed: () {
@@ -553,7 +593,7 @@ class ProfileScreen extends StatelessWidget {
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
             ),
-            child: const Text('Logout'),
+            child: Text(l10n.translate('logout')),
           ),
         ],
       ),

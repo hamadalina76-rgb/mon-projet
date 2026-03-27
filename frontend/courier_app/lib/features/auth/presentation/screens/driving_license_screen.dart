@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class DrivingLicenseScreen extends StatefulWidget {
@@ -54,12 +55,14 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
   }
 
   Future<void> _pickImage() async {
+    final l10n = AppLocalizations.of(context)!;
+
     final source = await showDialog<ImageSource>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(
-            'Choisir une source',
+            l10n.translate('choose_source'),
             style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
           ),
           content: Column(
@@ -67,12 +70,12 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
             children: [
               ListTile(
                 leading: Icon(Icons.photo_library, color: AppColors.primary, size: 28.sp),
-                title: Text('Galerie', style: TextStyle(fontSize: 16.sp)),
+                title: Text(l10n.translate('gallery'), style: TextStyle(fontSize: 16.sp)),
                 onTap: () => Navigator.pop(context, ImageSource.gallery),
               ),
               ListTile(
                 leading: Icon(Icons.camera_alt, color: AppColors.primary, size: 28.sp),
-                title: Text('Caméra', style: TextStyle(fontSize: 16.sp)),
+                title: Text(l10n.translate('camera'), style: TextStyle(fontSize: 16.sp)),
                 onTap: () => Navigator.pop(context, ImageSource.camera),
               ),
             ],
@@ -98,7 +101,7 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de la sélection de l\'image: $e'),
+            content: Text('${l10n.translate('image_pick_error')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -107,11 +110,13 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
   }
 
   void _handleContinue() {
+    final l10n = AppLocalizations.of(context)!;
+
     if (_formKey.currentState!.validate()) {
       if (_uploadedLicenseFront == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please upload your license photo'),
+          SnackBar(
+            content: Text(l10n.translate('upload_license_photo')),
             backgroundColor: Colors.red,
           ),
         );
@@ -124,6 +129,8 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -136,7 +143,7 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
         title: Column(
           children: [
             Text(
-              'Step 2: Driving License',
+              l10n.translate('driving_license_step_title'),
               style: TextStyle(
                 fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
@@ -144,7 +151,7 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
               ),
             ),
             Text(
-              'Documentation Verification',
+              l10n.translate('driving_license_subtitle'),
               style: TextStyle(
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w400,
@@ -180,12 +187,12 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionTitle('License Details'),
+                    _buildSectionTitle(l10n.translate('license_details')),
                     SizedBox(height: 24.h),
 
                     // License Number Field
                     Text(
-                      'LICENSE NUMBER',
+                      l10n.translate('license_number_label'),
                       style: TextStyle(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
@@ -197,7 +204,7 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
                     TextFormField(
                       controller: _licenseNumberController,
                       decoration: InputDecoration(
-                        hintText: 'ABC-12345-6789',
+                        hintText: l10n.translate('license_number_hint'),
                         hintStyle: TextStyle(
                           color: Colors.grey[400],
                           fontSize: 16.sp,
@@ -217,7 +224,7 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Please enter your license number';
+                          return l10n.translate('enter_license_number');
                         }
                         return null;
                       },
@@ -226,7 +233,7 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
 
                     // License Expiry Date Field
                     Text(
-                      'LICENSE EXPIRY DATE',
+                      l10n.translate('license_expiry_date_label'),
                       style: TextStyle(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
@@ -240,7 +247,7 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
                       readOnly: true,
                       onTap: _selectDate,
                       decoration: InputDecoration(
-                        hintText: 'mm/dd/yyyy',
+                        hintText: l10n.translate('license_expiry_date_hint'),
                         hintStyle: TextStyle(
                           color: Colors.grey[400],
                           fontSize: 16.sp,
@@ -265,7 +272,7 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Please select expiry date';
+                          return l10n.translate('select_expiry_date');
                         }
                         return null;
                       },
@@ -274,7 +281,7 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
 
                     // Document Photo Section
                     Text(
-                      'DOCUMENT PHOTO',
+                      l10n.translate('document_photo'),
                       style: TextStyle(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
@@ -345,7 +352,7 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
                                   ),
                                   SizedBox(height: 16.h),
                                   Text(
-                                    'Upload Front Side',
+                                    l10n.translate('upload_front_side'),
                                     style: TextStyle(
                                       fontSize: 18.sp,
                                       fontWeight: FontWeight.w600,
@@ -354,7 +361,7 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
                                   ),
                                   SizedBox(height: 8.h),
                                   Text(
-                                    'CLEAR PHOTO, NO GLARE',
+                                    l10n.translate('clear_photo_no_glare'),
                                     style: TextStyle(
                                       fontSize: 12.sp,
                                       color: Colors.grey[400],
@@ -387,7 +394,7 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'SUIVANT',
+                        l10n.translate('next_upper'),
                         style: TextStyle(
                           fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
@@ -431,7 +438,7 @@ class _DrivingLicenseScreenState extends State<DrivingLicenseScreen> {
                     ),
                     SizedBox(height: 16.h),
                     Text(
-                      'STEP 2 OF 3 • DOCUMENT VERIFICATION MODE',
+                      l10n.translate('driving_license_progress'),
                       style: TextStyle(
                         fontSize: 11.sp,
                         color: Colors.grey[400],

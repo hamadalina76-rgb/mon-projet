@@ -25,6 +25,7 @@ class Courier {
   final bool isVerified;
   final bool isEmailVerified;
   final bool documentsVerified;
+  final bool activeDeliverySoundEnabled;
   /// Backend status: PENDING_APPROVAL, ACTIVE, REJECTED, SUSPENDED, AVAILABLE, BUSY, OFFLINE, DEACTIVATED
   final String? status;
   final String? rejectionReason;
@@ -56,6 +57,7 @@ class Courier {
     this.isVerified = false,
     this.isEmailVerified = false,
     this.documentsVerified = false,
+    this.activeDeliverySoundEnabled = false,
     this.status,
     this.rejectionReason,
     this.suspensionReason,

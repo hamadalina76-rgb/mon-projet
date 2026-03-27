@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../config/di/injection_container.dart';
 import '../../../../services/notification_service.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
@@ -86,6 +87,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
@@ -115,7 +118,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                             ),
                             SizedBox(height: 16.h),
                             Text(
-                              'SpeedLine',
+                              l10n.translate('app_name'),
                               style: TextStyle(
                                 fontSize: 32.sp,
                                 fontWeight: FontWeight.bold,
@@ -140,7 +143,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     
                     // Tagline
                     Text(
-                      'Courier App',
+                      l10n.translate('courier_app'),
                       style: TextStyle(
                         fontSize: 18.sp,
                         color: AppColors.textSecondary,

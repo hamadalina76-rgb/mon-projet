@@ -163,4 +163,30 @@ class AuthRepositoryImpl implements AuthRepository {
     await localDataSource.saveCourierData(courier.toJson());
     return courier;
   }
+
+  @override
+  Future<Courier> updateAvailability({
+    required String courierId,
+    required bool isOnline,
+    required bool isAvailable,
+  }) async {
+    final response = await remoteDataSource.updateCourierAvailability(
+      courierId: courierId,
+      isOnline: isOnline,
+      isAvailable: isAvailable,
+    );
+    Courier courier;
+    try {
+      courier = CourierModel.fromJson(response);
+      await localDataSource.saveCourierData((courier as CourierModel).toJson());
+    } catch (_) {
+      courier = await fetchCourierProfile();
+    }
+    return courier;
+  }
+
+  @override
+  Future<bool> hasActiveDelivery({required String courierId}) {
+    return remoteDataSource.hasActiveDelivery(courierId: courierId);
+  }
 }

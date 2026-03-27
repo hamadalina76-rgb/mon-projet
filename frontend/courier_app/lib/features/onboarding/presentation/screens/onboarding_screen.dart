@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 import '../widgets/onboarding_page.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -16,15 +17,6 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  
-  final List<OnboardingPageData> _pages = [
-    OnboardingPageData(
-      title: 'Deliver with',
-      subtitle: 'Speed & Precision',
-      description: 'Manage your fleet in real-time. The fastest way to get from A to B starts here.',
-      image: 'assets/images/speedline_logo.png',
-    ),
-  ];
 
   @override
   void dispose() {
@@ -52,6 +44,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final pages = [
+      OnboardingPageData(
+        title: l10n.translate('onboarding_title'),
+        subtitle: l10n.translate('onboarding_subtitle'),
+        description: l10n.translate('onboarding_description'),
+        image: 'assets/images/speedline_logo.png',
+      ),
+    ];
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -65,7 +67,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: TextButton(
                   onPressed: _skipOnboarding,
                   child: Text(
-                    'Skip',
+                    l10n.translate('skip'),
                     style: TextStyle(
                       fontSize: 16.sp,
                       color: AppColors.textSecondary,
@@ -80,9 +82,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: PageView.builder(
                 controller: _pageController,
                 onPageChanged: _onPageChanged,
-                itemCount: _pages.length,
+                itemCount: pages.length,
                 itemBuilder: (context, index) {
-                  return OnboardingPage(data: _pages[index]);
+                  return OnboardingPage(data: pages[index]);
                 },
               ),
             ),
@@ -111,7 +113,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Connexion',
+                            l10n.translate('continue'),
                             style: TextStyle(
                               fontSize: 18.sp,
                               fontWeight: FontWeight.w600,
@@ -140,7 +142,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                       ),
                       child: Text(
-                        'Log In',
+                        l10n.translate('log_in'),
                         style: TextStyle(
                           fontSize: 18.sp,
                           fontWeight: FontWeight.w600,
@@ -155,14 +157,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   RichText(
                     textAlign: TextAlign.center,
                     text: TextSpan(
-                      text: 'By continuing, you agree to our ',
+                      text: l10n.translate('terms_agreement_prefix'),
                       style: TextStyle(
                         fontSize: 12.sp,
                         color: AppColors.textSecondary,
                       ),
                       children: [
                         TextSpan(
-                          text: 'Termss',
+                          text: l10n.translate('terms'),
                           style: TextStyle(
                             fontSize: 12.sp,
                             color: AppColors.textSecondary,
@@ -171,7 +173,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                         const TextSpan(text: ' & '),
                         TextSpan(
-                          text: 'Privacy Policy',
+                          text: l10n.translate('privacy_policy'),
                           style: TextStyle(
                             fontSize: 12.sp,
                             color: AppColors.textSecondary,

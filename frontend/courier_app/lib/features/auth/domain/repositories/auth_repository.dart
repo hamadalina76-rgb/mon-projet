@@ -17,4 +17,10 @@ abstract class AuthRepository {
     required Map<String, String> filePaths,
   });
   Future<Courier> uploadProfilePhoto({required String filePath});
+  Future<Courier> updateAvailability({
+    required String courierId,
+    required bool isOnline,
+    required bool isAvailable,
+  });
+  Future<bool> hasActiveDelivery({required String courierId});
 }

@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 
+import '../../../../config/runtime_config.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../config/di/injection_container.dart';
@@ -14,8 +16,13 @@ import '../../domain/entities/courier.dart';
 
 class DocumentationScreen extends StatefulWidget {
   final Courier? existingCourier;
+  final bool readOnly;
   
-  const DocumentationScreen({super.key, this.existingCourier});
+  const DocumentationScreen({
+    super.key,
+    this.existingCourier,
+    this.readOnly = false,
+  });
 
   @override
   State<DocumentationScreen> createState() => _DocumentationScreenState();
@@ -198,12 +205,14 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
   }
 
   Future<void> _pickImage(bool isFront, {required bool isLicense}) async {
+    final l10n = AppLocalizations.of(context)!;
+
     final source = await showDialog<ImageSource>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(
-            'Choisir une source',
+            l10n.translate('choose_source'),
             style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
           ),
           content: Column(
@@ -211,12 +220,12 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
             children: [
               ListTile(
                 leading: Icon(Icons.photo_library, color: AppColors.primary, size: 28.sp),
-                title: Text('Galerie', style: TextStyle(fontSize: 16.sp)),
+                title: Text(l10n.translate('gallery'), style: TextStyle(fontSize: 16.sp)),
                 onTap: () => Navigator.pop(context, ImageSource.gallery),
               ),
               ListTile(
                 leading: Icon(Icons.camera_alt, color: AppColors.primary, size: 28.sp),
-                title: Text('Caméra', style: TextStyle(fontSize: 16.sp)),
+                title: Text(l10n.translate('camera'), style: TextStyle(fontSize: 16.sp)),
                 onTap: () => Navigator.pop(context, ImageSource.camera),
               ),
             ],
@@ -254,7 +263,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de la sélection de l\'image: $e'),
+            content: Text('${l10n.translate('image_pick_error')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -263,6 +272,8 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
   }
 
   void _handleNext() async {
+    final l10n = AppLocalizations.of(context)!;
+
     if (_formKey.currentState!.validate()) {
       // Validate based on current step
       if (_currentStep == 0) {
@@ -279,7 +290,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
         if (!hasExistingImages && (_uploadedIdFront == null || _uploadedIdBack == null)) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Please upload both sides of your ID card'),
+              content: Text(l10n.translate('upload_both_id_sides')),
               backgroundColor: Colors.red,
             ),
           );
@@ -296,7 +307,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
         if (!hasExistingLicense && _uploadedLicenseFront == null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Please  your driving license'),
+              content: Text(l10n.translate('upload_driving_license')),
               backgroundColor: Colors.red,
             ),
           );
@@ -313,6 +324,8 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
   }
 
   Future<void> _submitDocumentation() async {
+    final l10n = AppLocalizations.of(context)!;
+
     setState(() {
       _isSubmitting = true;
     });
@@ -398,8 +411,8 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
       if (mounted) {
         // Show success dialog with appropriate message
         final successMessage = _isEditMode 
-            ? 'Documentation updated successfully!' 
-            : 'Documentation submitted successfully!';
+            ? l10n.translate('documentation_updated_success')
+            : l10n.translate('documentation_submitted_success');
         
         await showDialog(
           context: context,
@@ -409,11 +422,11 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
-              title: const Row(
+              title: Row(
                 children: [
-                  Icon(Icons.check_circle, color: Colors.green, size: 28),
-                  SizedBox(width: 10),
-                  Text('Success'),
+                  const Icon(Icons.check_circle, color: Colors.green, size: 28),
+                  const SizedBox(width: 10),
+                  Text(l10n.translate('success')),
                 ],
               ),
               content: Text(
@@ -432,8 +445,8 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    'OK',
+                  child: Text(
+                    l10n.translate('ok'),
                     style: TextStyle(fontSize: 16, color: Colors.white),
                   ),
                 ),
@@ -447,7 +460,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
       }
     } catch (e) {
       print('❌ Documentation upload error: $e');
-      String errorMessage = 'Une erreur est survenue. Veuillez réessayer.';
+      String errorMessage = l10n.translate('generic_try_again_error');
 
       if (e is ApiValidationException) {
         errorMessage = e.userFriendlyMessage;
@@ -459,15 +472,15 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
           } else if (data is String) {
             errorMessage = data;
           } else {
-            errorMessage = 'Erreur serveur. Réessayez plus tard.';
+            errorMessage = l10n.translate('server_error_try_later');
           }
         } else {
-          errorMessage = e.message ?? 'Problème de connexion. Vérifiez votre réseau.';
+          errorMessage = e.message ?? l10n.translate('check_network_error');
         }
       } else {
         final s = e.toString();
         if (s.contains('Profile update failed') || s.contains('400')) {
-          errorMessage = 'Vérifiez les informations saisies (ex. format IBAN tunisien).';
+          errorMessage = l10n.translate('check_entered_info_error');
         } else {
           errorMessage = s;
         }
@@ -528,6 +541,8 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     if (_isLoading) {
       return Scaffold(
         backgroundColor: Colors.white,
@@ -538,7 +553,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
               CircularProgressIndicator(color: AppColors.primary),
               SizedBox(height: 16.h),
               Text(
-                'Loading documentation...',
+                l10n.translate('loading_documentation'),
                 style: TextStyle(
                   fontSize: 16.sp,
                   color: Colors.grey[600],
@@ -551,10 +566,10 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
     }
 
     final stepTitles = [
-      'Vehicle Information',
-      'ID Card Details',
-      'License Details',
-      'Bank Information',
+      l10n.translate('vehicle_information'),
+      l10n.translate('id_card_details'),
+      l10n.translate('license_details'),
+      l10n.translate('bank_information'),
     ];
     
     return Scaffold(
@@ -573,7 +588,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  stepTitles[_currentStep],
+                  widget.readOnly ? l10n.translate('documents_title') : stepTitles[_currentStep],
                   style: TextStyle(
                     fontSize: 20.sp,
                     fontWeight: FontWeight.bold,
@@ -582,14 +597,27 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                 ),
               ],
             ),
-            Text(
-              'Step ${_currentStep + 1} of 4',
-              style: TextStyle(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w400,
-                color: Colors.grey[600],
+            if (!widget.readOnly)
+              Text(
+                l10n.translateWithParams('step_of', {
+                  'current': '${_currentStep + 1}',
+                  'total': '4',
+                }),
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.grey[600],
+                ),
+              )
+            else
+              Text(
+                l10n.translate('read_only_mode'),
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.grey[600],
+                ),
               ),
-            ),
           ],
         ),
         centerTitle: true,
@@ -597,7 +625,33 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
       body: Column(
         children: [
           // Progress Indicator
-          _buildProgressIndicator(),
+          if (!widget.readOnly) _buildProgressIndicator(),
+          if (widget.readOnly)
+            Container(
+              width: double.infinity,
+              margin: EdgeInsets.fromLTRB(24.w, 16.h, 24.w, 0),
+              padding: EdgeInsets.all(12.w),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: Colors.blue[100]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.visibility_outlined, color: Colors.blue[700], size: 20.sp),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      l10n.translate('read_only_banner'),
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: Colors.blue[900],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           
           // Content
           Expanded(
@@ -605,13 +659,25 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 24.h),
               child: Form(
                 key: _formKey,
-                child: _buildCurrentStep(),
+                child: widget.readOnly
+                    ? Column(
+                        children: [
+                          _buildVehicleStep(),
+                          SizedBox(height: 24.h),
+                          _buildIDCardStep(),
+                          SizedBox(height: 24.h),
+                          _buildLicenseStep(),
+                          SizedBox(height: 24.h),
+                          _buildBankStep(),
+                        ],
+                      )
+                    : _buildCurrentStep(),
               ),
             ),
           ),
           
           // Bottom Navigation Buttons
-          _buildBottomNav(),
+          if (!widget.readOnly) _buildBottomNav(),
         ],
       ),
     );
@@ -658,6 +724,8 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
   }
 
   Widget _buildBottomNav() {
+    final l10n = AppLocalizations.of(context)!;
+
     return Container(
       padding: EdgeInsets.all(24.w),
       decoration: BoxDecoration(
@@ -698,8 +766,10 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                     children: [
                       Text(
                         _currentStep == 3 
-                            ? (_isEditMode ? 'UPDATE' : 'COMPLETE')
-                            : 'NEXT',
+                          ? (_isEditMode
+                            ? l10n.translate('update_upper')
+                            : l10n.translate('complete_upper'))
+                          : l10n.translate('next_upper'),
                         style: TextStyle(
                           fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
@@ -722,6 +792,8 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
 
   // Step 1: Vehicle Information
   Widget _buildVehicleStep() {
+    final l10n = AppLocalizations.of(context)!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -742,18 +814,18 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionTitle('Vehicle Type'),
+              _buildSectionTitle(l10n.translate('vehicle_type')),
               SizedBox(height: 16.h),
               Column(
                 children: [
                   Row(
                     children: [
                       Expanded(
-                        child: _buildVehicleTypeCard('bicycle', 'Bicycle', Icons.pedal_bike),
+                        child: _buildVehicleTypeCard('bicycle', l10n.translate('vehicle_bicycle'), Icons.pedal_bike),
                       ),
                       SizedBox(width: 12.w),
                       Expanded(
-                        child: _buildVehicleTypeCard('ebike', 'E-Bike', Icons.electric_bike),
+                        child: _buildVehicleTypeCard('ebike', l10n.translate('vehicle_ebike'), Icons.electric_bike),
                       ),
                     ],
                   ),
@@ -761,16 +833,16 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildVehicleTypeCard('motorcycle', 'Motorcycle', Icons.two_wheeler),
+                        child: _buildVehicleTypeCard('motorcycle', l10n.translate('vehicle_motorcycle'), Icons.two_wheeler),
                       ),
                       SizedBox(width: 12.w),
                       Expanded(
-                        child: _buildVehicleTypeCard('car', 'Car', Icons.directions_car),
+                        child: _buildVehicleTypeCard('car', l10n.translate('vehicle_car'), Icons.directions_car),
                       ),
                     ],
                   ),
                   SizedBox(height: 12.h),
-                  _buildVehicleTypeCard('walking', 'Walking / Foot', Icons.directions_walk, fullWidth: true),
+                  _buildVehicleTypeCard('walking', l10n.translate('vehicle_walking'), Icons.directions_walk, fullWidth: true),
                 ],
               ),
             ],
@@ -796,12 +868,12 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionTitle('Specifications'),
+              _buildSectionTitle(l10n.translate('specifications')),
               SizedBox(height: 16.h),
               _buildTextField(
                 controller: _vehicleModelController,
-                label: 'VEHICLE MODEL',
-                hint: 'e.g. Honda Civic, Yamaha NMAX',
+                label: l10n.translate('vehicle_model_label'),
+                hint: l10n.translate('vehicle_model_hint'),
                 icon: Icons.directions_car_outlined,
               ),
               SizedBox(height: 16.h),
@@ -810,8 +882,8 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                   Expanded(
                     child: _buildTextField(
                       controller: _vehicleColorController,
-                      label: 'COLOR',
-                      hint: 'Red',
+                      label: l10n.translate('color_label'),
+                      hint: l10n.translate('color_hint'),
                       icon: Icons.palette_outlined,
                     ),
                   ),
@@ -819,8 +891,8 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                   Expanded(
                     child: _buildTextField(
                       controller: _plateNumberController,
-                      label: 'PLATE',
-                      hint: 'XYZ-1234',
+                      label: l10n.translate('plate_label'),
+                      hint: l10n.translate('plate_hint'),
                       icon: Icons.tag,
                     ),
                   ),
@@ -835,6 +907,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
 
   // Step 2: ID Card Details
   Widget _buildIDCardStep() {
+    final l10n = AppLocalizations.of(context)!;
     final hasExistingIdFront = _currentCourier?.identityDocumentFrontImage != null;
     final hasExistingIdBack = _currentCourier?.identityDocumentBackImage != null;
     
@@ -855,16 +928,16 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionTitle('Détails de la Carte'),
+          _buildSectionTitle(l10n.translate('id_card_details')),
           SizedBox(height: 24.h),
           _buildTextField(
             controller: _idNumberController,
-            label: 'ID CARD NUMBER',
-            hint: 'Enter your ID number',
+            label: l10n.translate('id_card_number_label'),
+            hint: l10n.translate('id_card_number_hint'),
             icon: Icons.credit_card,
           ),
           SizedBox(height: 32.h),
-          _buildSectionTitle('Upload ID Card'),
+          _buildSectionTitle(l10n.translate('upload_id_card')),
           if (_isEditMode && (hasExistingIdFront || hasExistingIdBack)) ...[
             SizedBox(height: 8.h),
             Container(
@@ -880,7 +953,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                   SizedBox(width: 8.w),
                   Expanded(
                     child: Text(
-                      'Documents already uploaded. Upload new ones to replace.',
+                      l10n.translate('documents_already_uploaded_replace'),
                       style: TextStyle(
                         fontSize: 12.sp,
                         color: Colors.blue[900],
@@ -896,29 +969,56 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
             children: [
               Expanded(
                 child: _buildImageUpload(
-                  label: 'Front Side',
+                    label: l10n.translate('front_side'),
                   subtitle: hasExistingIdFront && _uploadedIdFront == null 
-                      ? '✓ Already uploaded' 
-                      : 'Clear photo of front',
+                      ? l10n.translate('already_uploaded_check')
+                      : l10n.translate('clear_photo_front'),
                   imageFile: _uploadedIdFront,
-                  onTap: () => _pickImage(true, isLicense: false),
+                  onTap: widget.readOnly ? null : () => _pickImage(true, isLicense: false),
                   hasExisting: hasExistingIdFront && _uploadedIdFront == null,
                 ),
               ),
               SizedBox(width: 16.w),
               Expanded(
                 child: _buildImageUpload(
-                  label: 'Back Side',
+                    label: l10n.translate('back_side'),
                   subtitle: hasExistingIdBack && _uploadedIdBack == null 
-                      ? '✓ Already uploaded' 
-                      : 'Clear photo of back',
+                      ? l10n.translate('already_uploaded_check')
+                      : l10n.translate('clear_photo_back'),
                   imageFile: _uploadedIdBack,
-                  onTap: () => _pickImage(false, isLicense: false),
+                  onTap: widget.readOnly ? null : () => _pickImage(false, isLicense: false),
                   hasExisting: hasExistingIdBack && _uploadedIdBack == null,
                 ),
               ),
             ],
           ),
+          if (hasExistingIdFront || hasExistingIdBack) ...[
+            SizedBox(height: 16.h),
+            Wrap(
+              spacing: 10.w,
+              runSpacing: 10.h,
+              children: [
+                if (hasExistingIdFront)
+                  _buildViewDocumentButton(
+                    label: l10n.translate('view_id_front'),
+                    icon: Icons.visibility_outlined,
+                    onTap: () => _openDocumentPreview(
+                      title: l10n.translate('id_front_title'),
+                      imageUrl: _currentCourier!.identityDocumentFrontImage!,
+                    ),
+                  ),
+                if (hasExistingIdBack)
+                  _buildViewDocumentButton(
+                    label: l10n.translate('view_id_back'),
+                    icon: Icons.visibility_outlined,
+                    onTap: () => _openDocumentPreview(
+                      title: l10n.translate('id_back_title'),
+                      imageUrl: _currentCourier!.identityDocumentBackImage!,
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -926,6 +1026,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
 
   // Step 3: License Details  
   Widget _buildLicenseStep() {
+    final l10n = AppLocalizations.of(context)!;
     final hasExistingLicense = _currentCourier?.drivingLicenseImage != null;
     
     return Container(
@@ -945,7 +1046,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionTitle('License Details'),
+          _buildSectionTitle(l10n.translate('license_details')),
           SizedBox(height: 24.h),
 
           // License Number Field
@@ -961,8 +1062,9 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
           SizedBox(height: 8.h),
           TextFormField(
             controller: _licenseNumberController,
+            readOnly: widget.readOnly,
             decoration: InputDecoration(
-              hintText: 'ABC-12345-6789',
+              hintText: l10n.translate('license_number_hint'),
               hintStyle: TextStyle(
                 color: Colors.grey[400],
                 fontSize: 16.sp,
@@ -1003,9 +1105,9 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
           TextFormField(
             controller: _expiryDateController,
             readOnly: true,
-            onTap: _selectExpiryDate,
+            onTap: widget.readOnly ? null : _selectExpiryDate,
             decoration: InputDecoration(
-              hintText: 'mm/dd/yyyy',
+              hintText: l10n.translate('license_expiry_date_hint'),
               hintStyle: TextStyle(
                 color: Colors.grey[400],
                 fontSize: 16.sp,
@@ -1062,7 +1164,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                   SizedBox(width: 8.w),
                   Expanded(
                     child: Text(
-                      'License already uploaded. Upload new one to replace.',
+                      l10n.translate('license_already_uploaded_replace'),
                       style: TextStyle(
                         fontSize: 12.sp,
                         color: Colors.blue[900],
@@ -1077,7 +1179,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
 
           // Photo Upload Box
           GestureDetector(
-            onTap: () => _pickImage(true, isLicense: true),
+            onTap: widget.readOnly ? null : () => _pickImage(true, isLicense: true),
             child: Container(
               width: double.infinity,
               height: 200.h,
@@ -1145,8 +1247,8 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                         SizedBox(height: 16.h),
                         Text(
                           hasExistingLicense 
-                              ? 'Already Uploaded' 
-                              : 'Upload Front Side',
+                              ? l10n.translate('already_uploaded')
+                              : l10n.translate('upload_front_side'),
                           style: TextStyle(
                             fontSize: 18.sp,
                             fontWeight: FontWeight.w600,
@@ -1158,8 +1260,8 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                         SizedBox(height: 8.h),
                         Text(
                           hasExistingLicense 
-                              ? 'Tap to replace' 
-                              : 'CLEAR PHOTO, NO GLARE',
+                              ? l10n.translate('tap_to_replace')
+                              : l10n.translate('clear_photo_no_glare'),
                           style: TextStyle(
                             fontSize: 12.sp,
                             color: Colors.grey[400],
@@ -1170,13 +1272,182 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                     ),
             ),
           ),
+          if (hasExistingLicense) ...[
+            SizedBox(height: 16.h),
+            _buildViewDocumentButton(
+              label: l10n.translate('view_license'),
+              icon: Icons.visibility_outlined,
+              onTap: () => _openDocumentPreview(
+                title: l10n.translate('license_title'),
+                imageUrl: _currentCourier!.drivingLicenseImage!,
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
+  Widget _buildViewDocumentButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12.r),
+        child: Container(
+          constraints: BoxConstraints(minWidth: 160.w),
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(6.w),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Icon(icon, size: 16.sp, color: AppColors.primary),
+              ),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              SizedBox(width: 6.w),
+              Icon(Icons.chevron_right, size: 18.sp, color: AppColors.primary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDocumentPreview({
+    required String title,
+    required String imageUrl,
+  }) async {
+    final l10n = AppLocalizations.of(context)!;
+    final resolvedUrl = _resolveDocumentUrl(imageUrl);
+    if (resolvedUrl == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.translate('document_link_unavailable')),
+        ),
+      );
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          insetPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 24.h),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(14.w),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8.h),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12.r),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 420.h,
+                    child: InteractiveViewer(
+                      minScale: 1,
+                      maxScale: 4,
+                      child: Image.network(
+                        resolvedUrl,
+                        fit: BoxFit.contain,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16.w),
+                              child: Text(
+                                l10n.translate('document_load_error'),
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String? _resolveDocumentUrl(String? rawUrl) {
+    if (rawUrl == null || rawUrl.trim().isEmpty) {
+      return null;
+    }
+    final trimmed = rawUrl.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    return '${RuntimeConfig.apiBaseUrl}$trimmed';
+  }
+
   // Step 4: Bank Information
   Widget _buildBankStep() {
+    final l10n = AppLocalizations.of(context)!;
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(24.w),
@@ -1208,7 +1479,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
           ),
           SizedBox(height: 24.h),
           Text(
-            'Bank Information',
+            l10n.translate('bank_information'),
             style: TextStyle(
               fontSize: 24.sp,
               fontWeight: FontWeight.bold,
@@ -1217,7 +1488,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
           ),
           SizedBox(height: 12.h),
           Text(
-            'Provide your bank details to receive your weekly payouts.',
+            l10n.translate('bank_info_desc_short'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 15.sp,
@@ -1228,15 +1499,15 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
           SizedBox(height: 32.h),
           _buildTextField(
             controller: _accountHolderController,
-            label: 'ACCOUNT HOLDER NAME',
-            hint: 'Full Legal Name',
+            label: l10n.translate('account_holder_name'),
+            hint: l10n.translate('full_legal_name'),
             icon: Icons.person_outline,
           ),
           SizedBox(height: 24.h),
           _buildTextField(
             controller: _accountNumberController,
-            label: 'IBAN / ACCOUNT NUMBER',
-            hint: 'FR76 0000 0000 0000...',
+            label: l10n.translate('iban_account_number'),
+            hint: l10n.translate('iban_hint'),
             icon: Icons.account_balance_wallet_outlined,
           ),
           SizedBox(height: 24.h),
@@ -1252,7 +1523,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
                 SizedBox(width: 12.w),
                 Expanded(
                   child: Text(
-                    'Your banking information is encrypted and securely stored.',
+                    l10n.translate('bank_security_info_short'),
                     style: TextStyle(
                       fontSize: 13.sp,
                       color: Colors.blue[900],
@@ -1289,6 +1560,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
         SizedBox(height: 8.h),
         TextFormField(
           controller: controller,
+          readOnly: widget.readOnly,
           style: TextStyle(fontSize: 16.sp),
           decoration: InputDecoration(
             hintText: hint,
@@ -1310,7 +1582,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
             ),
             contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
           ),
-          validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+          validator: (value) => value?.isEmpty ?? true ? AppLocalizations.of(context)!.translate('required_field') : null,
         ),
       ],
     );
@@ -1342,7 +1614,7 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
     required String label,
     required String subtitle,
     required File? imageFile,
-    required VoidCallback onTap,
+    VoidCallback? onTap,
     bool hasExisting = false,
   }) {
     final isUploaded = imageFile != null;
@@ -1515,11 +1787,13 @@ class _DocumentationScreenState extends State<DocumentationScreen> {
     final isSelected = _selectedVehicleType == type;
     
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedVehicleType = type;
-        });
-      },
+      onTap: widget.readOnly
+          ? null
+          : () {
+              setState(() {
+                _selectedVehicleType = type;
+              });
+            },
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 16.w),
         decoration: BoxDecoration(

@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../config/di/injection_container.dart';
 import '../../../../services/notification_service.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
@@ -59,17 +60,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     } catch (_) {}
   }
 
-  List<Widget> get _screens => [
-    CourierHomeScreen(canAccessApp: _canAccessApp),
-    const Center(child: Text('Orders')), // TODO: Implement OrdersScreen
-    const Center(child: Text('Earnings')), // TODO: Implement EarningsScreen
-    const ProfileScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final screens = [
+      CourierHomeScreen(canAccessApp: _canAccessApp),
+      Center(child: Text(l10n.translate('orders'))), // TODO: Implement OrdersScreen
+      Center(child: Text(l10n.translate('earnings'))), // TODO: Implement EarningsScreen
+      const ProfileScreen(),
+    ];
+
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: screens[_currentIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -127,7 +129,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     return GestureDetector(
       onTap: () {
         if (isDisabled) {
-          setState(() => _currentIndex = 4);
+          setState(() => _currentIndex = 3);
           return;
         }
         setState(() => _currentIndex = index);

@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../config/di/injection_container.dart';
 import '../../../../services/notification_service.dart';
@@ -47,6 +48,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleSignIn() async {
+    final l10n = AppLocalizations.of(context)!;
+
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
@@ -75,10 +78,10 @@ class _LoginScreenState extends State<LoginScreen> {
           if (!courier.isEmailVerified) {
             print('⚠️ Email not verified, redirecting to email verification screen');
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please verify your email to continue'),
+              SnackBar(
+                content: Text(l10n.translate('login_verify_email_continue')),
                 backgroundColor: Colors.orange,
-                duration: Duration(seconds: 3),
+                duration: const Duration(seconds: 3),
               ),
             );
             context.go('/email-verification?email=${Uri.encodeComponent(_emailController.text.trim())}');
@@ -88,10 +91,10 @@ class _LoginScreenState extends State<LoginScreen> {
           if (!courier.documentsVerified) {
             print('⚠️ Documents not verified, redirecting to documentation screen');
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please complete your documentation to continue'),
+              SnackBar(
+                content: Text(l10n.translate('login_complete_docs_continue')),
                 backgroundColor: Colors.orange,
-                duration: Duration(seconds: 3),
+                duration: const Duration(seconds: 3),
               ),
             );
             _registerPushTokenIfPossible(courier);
@@ -118,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } catch (e) {
         print('❌ Login error: $e');
-        String errorMessage = 'Login failed';
+        String errorMessage = l10n.translate('login_failed');
         
         if (e is DioException) {
           if (e.response != null && e.response?.data != null) {
@@ -132,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
               errorMessage = 'Status ${e.response?.statusCode}: ${e.message}';
             }
           } else {
-            errorMessage = e.message ?? 'Network error';
+            errorMessage = e.message ?? l10n.translate('network_error');
           }
         } else {
           errorMessage = e.toString();
@@ -158,10 +161,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleSignUp() async {
+    final l10n = AppLocalizations.of(context)!;
+
     if (_formKey.currentState!.validate()) {
       if (!_acceptTerms) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please accept the Terms and Conditions')),
+          SnackBar(content: Text(l10n.translate('accept_terms_required'))),
         );
         return;
       }
@@ -215,15 +220,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15),
                 ),
-                title: const Row(
+                title: Row(
                   children: [
-                    Icon(Icons.check_circle, color: Colors.green, size: 28),
-                    SizedBox(width: 10),
-                    Text('Success'),
+                    const Icon(Icons.check_circle, color: Colors.green, size: 28),
+                    const SizedBox(width: 10),
+                    Text(l10n.translate('success')),
                   ],
                 ),
-                content: const Text(
-                  'Account created successfully!',
+                content: Text(
+                  l10n.translate('account_created_success'),
                   style: TextStyle(fontSize: 16),
                 ),
                 actions: [
@@ -238,8 +243,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      'OK',
+                    child: Text(
+                      l10n.translate('ok'),
                       style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
@@ -255,7 +260,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } catch (e) {
         print('❌ Registration error: $e');
-        String errorMessage = 'Registration failed';
+        String errorMessage = l10n.translate('registration_failed');
         
         if (e is DioException) {
           print('📋 Response status: ${e.response?.statusCode}');
@@ -274,7 +279,7 @@ class _LoginScreenState extends State<LoginScreen> {
               errorMessage = 'Status ${e.response?.statusCode}: ${e.message}';
             }
           } else {
-            errorMessage = e.message ?? 'Network error';
+            errorMessage = e.message ?? l10n.translate('network_error');
           }
         } else {
           errorMessage = e.toString();
@@ -309,6 +314,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SafeArea(
@@ -335,7 +342,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         SizedBox(height: 8.h),
                         Text(
-                          'SpeedLine',
+                          l10n.translate('speedline_brand'),
                           style: TextStyle(
                             fontSize: 24.sp,
                             fontWeight: FontWeight.bold,
@@ -351,7 +358,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 // Tagline
                 Text(
-                  'Fast delivery, right to your door.',
+                  l10n.translate('login_tagline'),
                   style: TextStyle(
                     fontSize: 16.sp,
                     color: Colors.grey[600],
@@ -398,7 +405,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       borderRadius: BorderRadius.circular(8.r),
                                     ),
                                     child: Text(
-                                      'Log In',
+                                      l10n.translate('log_in'),
                                       style: TextStyle(
                                         fontSize: 16.sp,
                                         fontWeight: FontWeight.w600,
@@ -424,7 +431,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       borderRadius: BorderRadius.circular(8.r),
                                     ),
                                     child: Text(
-                                      'Sign Up',
+                                      l10n.translate('sign_up'),
                                       style: TextStyle(
                                         fontSize: 16.sp,
                                         fontWeight: FontWeight.w600,
@@ -445,7 +452,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             // LOGIN FORM
                             // Email Address Label
                             Text(
-                              'Email Address',
+                              l10n.translate('email_address'),
                               style: TextStyle(
                                 fontSize: 16.sp,
                                 fontWeight: FontWeight.w600,
@@ -461,7 +468,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               keyboardType: TextInputType.emailAddress,
                               style: TextStyle(fontSize: 16.sp, color: Colors.black),
                               decoration: InputDecoration(
-                                hintText: 'you@example.com',
+                                hintText: l10n.translate('email_hint'),
                                 hintStyle: TextStyle(
                                   fontSize: 16.sp,
                                   color: Colors.grey[400],
@@ -492,10 +499,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Please enter your email';
+                                  return l10n.translate('please_enter_email');
                                 }
                                 if (!value.contains('@')) {
-                                  return 'Please enter a valid email';
+                                  return l10n.translate('please_enter_valid_email');
                                 }
                                 return null;
                               },
@@ -508,7 +515,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Password',
+                                  l10n.translate('password'),
                                   style: TextStyle(
                                     fontSize: 16.sp,
                                     fontWeight: FontWeight.w600,
@@ -518,7 +525,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 GestureDetector(
                                   onTap: _handleForgotPassword,
                                   child: Text(
-                                    'Forgot Password?',
+                                    l10n.translate('forgot_password'),
                                     style: TextStyle(
                                       fontSize: 14.sp,
                                       color: AppColors.primary,
@@ -583,7 +590,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Please enter your password';
+                                  return l10n.translate('please_enter_password');
                                 }
                                 return null;
                               },
@@ -619,7 +626,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           Text(
-                                            'Sign In',
+                                            l10n.translate('sign_in'),
                                             style: TextStyle(
                                               fontSize: 18.sp,
                                               fontWeight: FontWeight.w600,
@@ -641,7 +648,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Prénom',
+                                        l10n.translate('first_name'),
                                         style: TextStyle(
                                           fontSize: 16.sp,
                                           fontWeight: FontWeight.w600,
@@ -653,7 +660,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         controller: _firstNameController,
                                         style: TextStyle(fontSize: 16.sp),
                                         decoration: InputDecoration(
-                                          hintText: 'John',
+                                          hintText: l10n.translate('first_name_hint'),
                                           hintStyle: TextStyle(color: Colors.grey[400]),
                                           filled: true,
                                           fillColor: Colors.grey[50],
@@ -671,7 +678,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           ),
                                           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
                                         ),
-                                        validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                                        validator: (value) => value?.isEmpty ?? true ? l10n.translate('required_field') : null,
                                       ),
                                     ],
                                   ),
@@ -682,7 +689,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Nom',
+                                        l10n.translate('last_name'),
                                         style: TextStyle(
                                           fontSize: 16.sp,
                                           fontWeight: FontWeight.w600,
@@ -694,7 +701,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         controller: _lastNameController,
                                         style: TextStyle(fontSize: 16.sp),
                                         decoration: InputDecoration(
-                                          hintText: 'Doe',
+                                          hintText: l10n.translate('last_name_hint'),
                                           hintStyle: TextStyle(color: Colors.grey[400]),
                                           filled: true,
                                           fillColor: Colors.grey[50],
@@ -712,7 +719,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           ),
                                           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
                                         ),
-                                        validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                                        validator: (value) => value?.isEmpty ?? true ? l10n.translate('required_field') : null,
                                       ),
                                     ],
                                   ),
@@ -724,7 +731,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             
                             // Email
                             Text(
-                              'Email Address',
+                              l10n.translate('email_address'),
                               style: TextStyle(
                                 fontSize: 16.sp,
                                 fontWeight: FontWeight.w600,
@@ -737,7 +744,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               keyboardType: TextInputType.emailAddress,
                               style: TextStyle(fontSize: 16.sp),
                               decoration: InputDecoration(
-                                hintText: 'john.doe@example.com',
+                                hintText: l10n.translate('signup_email_hint'),
                                 hintStyle: TextStyle(color: Colors.grey[400]),
                                 prefixIcon: Icon(Icons.email_outlined, color: Colors.grey[400]),
                                 filled: true,
@@ -757,8 +764,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
                               ),
                               validator: (value) {
-                                if (value?.isEmpty ?? true) return 'Email is required';
-                                if (!value!.contains('@') || !value.contains('.')) return 'Invalid email format';
+                                if (value?.isEmpty ?? true) return l10n.translate('email_required');
+                                if (!value!.contains('@') || !value.contains('.')) return l10n.translate('invalid_email_format');
                                 return null;
                               },
                             ),
@@ -767,7 +774,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                             // Password
                             Text(
-                              'Password',
+                              l10n.translate('password'),
                               style: TextStyle(
                                 fontSize: 16.sp,
                                 fontWeight: FontWeight.w600,
@@ -826,10 +833,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Please enter your password';
+                                  return l10n.translate('please_enter_password');
                                 }
                                 if (value.length < 8) {
-                                  return 'Password must be at least 8 characters';
+                                  return l10n.translate('password_min_8');
                                 }
                                 return null;
                               },
@@ -837,7 +844,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             
                             // Phone Number
                             Text(
-                              'Phone Number',
+                              l10n.translate('phone_number'),
                               style: TextStyle(
                                 fontSize: 16.sp,
                                 fontWeight: FontWeight.w600,
@@ -850,7 +857,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               keyboardType: TextInputType.phone,
                               style: TextStyle(fontSize: 16.sp),
                               decoration: InputDecoration(
-                                hintText: '+216 20202020',
+                                hintText: l10n.translate('phone_hint_tn'),
                                 hintStyle: TextStyle(color: Colors.grey[400]),
                                 prefixIcon: Icon(Icons.phone_outlined, color: Colors.grey[400]),
                                 filled: true,
@@ -871,12 +878,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Phone number is required';
+                                  return l10n.translate('phone_required');
                                 }
                                 // Remove spaces and check if it's a valid phone number
                                 final cleaned = value.replaceAll(' ', '');
                                 if (!cleaned.startsWith('+216') && cleaned.length < 8) {
-                                  return 'Invalid phone number';
+                                  return l10n.translate('invalid_phone_number');
                                 }
                                 return null;
                               },
@@ -901,14 +908,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                     padding: EdgeInsets.only(top: 12.h),
                                     child: RichText(
                                       text: TextSpan(
-                                        text: 'I accept the ',
+                                        text: l10n.translate('accept_terms_prefix'),
                                         style: TextStyle(fontSize: 14.sp, color: Colors.grey[600]),
                                         children: [
                                           TextSpan(
-                                            text: 'Terms and Conditions (CGU)',
+                                            text: l10n.translate('terms_and_conditions_cgu'),
                                             style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
                                           ),
-                                          TextSpan(text: ' and Privacy Policy.'),
+                                          TextSpan(text: l10n.translate('and_privacy_policy_suffix')),
                                         ],
                                       ),
                                     ),
@@ -947,7 +954,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           Text(
-                                            'CREATE ACCOUNT',
+                                            l10n.translate('create_account_upper'),
                                             style: TextStyle(
                                               fontSize: 18.sp,
                                               fontWeight: FontWeight.w600,
@@ -975,7 +982,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Having trouble? ',
+                        l10n.translate('having_trouble'),
                         style: TextStyle(
                           fontSize: 14.sp,
                           color: Colors.grey[600],
@@ -984,7 +991,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       GestureDetector(
                         onTap: _handleContactSupport,
                         child: Text(
-                          'Contact Support',
+                          l10n.translate('contact_support'),
                           style: TextStyle(
                             fontSize: 14.sp,
                             color: AppColors.primary,
@@ -1000,7 +1007,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Already have an account? ',
+                        l10n.translate('already_have_account'),
                         style: TextStyle(
                           fontSize: 14.sp,
                           color: Colors.grey[600],
@@ -1013,7 +1020,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           });
                         },
                         child: Text(
-                          'Sign In',
+                          l10n.translate('sign_in'),
                           style: TextStyle(
                             fontSize: 14.sp,
                             color: AppColors.primary,

@@ -19,6 +19,12 @@ abstract class AuthRemoteDataSource {
   Future<Map<String, dynamic>> getCourierProfile();
   Future<Map<String, dynamic>> updateProfile({required Map<String, dynamic> data});
   Future<Map<String, dynamic>> uploadProfilePhoto({required String filePath});
+  Future<Map<String, dynamic>> updateCourierAvailability({
+    required String courierId,
+    required bool isOnline,
+    required bool isAvailable,
+  });
+  Future<bool> hasActiveDelivery({required String courierId});
   Future<void> uploadDocumentation({
     required Map<String, dynamic> documentData,
     required Map<String, String> filePaths,
@@ -95,7 +101,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         }
 
           print('❌ DioException during verifyOtp: dioType=${e.type}, message=${e.message}, '
-            'error=${e.error}, statusCode=${resp?.statusCode}, headers=${resp?.headers?.map}, '
+            'error=${e.error}, statusCode=${resp?.statusCode}, headers=${resp?.headers.map}, '
             'dataType=${resp?.data.runtimeType}, rawData=$rawDataRepr, '
             'request=${e.requestOptions.uri}');
 
@@ -328,6 +334,46 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       print('❌ updateProfile failed: status=$statusCode, body=$body, error=${e.message}');
       throw Exception('Profile update failed: status=$statusCode, body=$body');
     }
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateCourierAvailability({
+    required String courierId,
+    required bool isOnline,
+    required bool isAvailable,
+  }) async {
+    final response = await dio.put(
+      '/couriers/$courierId/availability',
+      data: {
+        'isOnline': isOnline,
+        'isAvailable': isAvailable,
+      },
+    );
+
+    if (response.data is Map<String, dynamic>) {
+      return response.data as Map<String, dynamic>;
+    }
+    return <String, dynamic>{};
+  }
+
+  @override
+  Future<bool> hasActiveDelivery({required String courierId}) async {
+    try {
+      final response = await dio.get('/deliveries/couriers/$courierId/active-status');
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        final raw = data['hasActiveDelivery'];
+        if (raw is bool) {
+          return raw;
+        }
+      }
+    } on DioException {
+      // Fallback for environments where the dedicated endpoint is not deployed yet.
+    }
+
+    final profile = await getCourierProfile();
+    final status = (profile['status'] ?? '').toString().toUpperCase();
+    return status == 'BUSY';
   }
 
   @override
