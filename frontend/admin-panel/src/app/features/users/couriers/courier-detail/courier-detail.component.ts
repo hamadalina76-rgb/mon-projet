@@ -88,7 +88,7 @@ export class CourierDetailComponent implements OnInit, OnDestroy {
   auditFilterAction = signal('');
   auditFilterDate   = signal('');
 
-  readonly auditActionConfig: Record<string, { icon: string; cssClass: string; labelKey: string }> = {
+  readonly auditActionConfig: Partial<Record<string, { icon: string; cssClass: string; labelKey: string }>> = {
     APPROVE:            { icon: 'check_circle',  cssClass: 'cl-audit-action--approve',    labelKey: 'users.couriers.audit.APPROVE' },
     REJECT:             { icon: 'cancel',        cssClass: 'cl-audit-action--reject',     labelKey: 'users.couriers.audit.REJECT' },
     SUSPEND:            { icon: 'gpp_bad',       cssClass: 'cl-audit-action--suspend',    labelKey: 'users.couriers.audit.SUSPEND' },

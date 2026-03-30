@@ -1,0 +1,837 @@
+// src/app/features/settings/working-hours/working-hours.component.scss
+@use 'sass:color';
+
+// ── Variables ────────────────────────────────────────────────────────
+$green:      #22c55e;
+$red:        #ef4444;
+$blue:       #E31E24;
+$text-main:  #111827;
+$text-sub:   #6b7280;
+$border:     #e5e7eb;
+$bg-page:    #f9fafb;
+$bg-card:    #ffffff;
+$bg-soft:    #f3f4f6;
+$radius:     12px;
+$radius-sm:  8px;
+$transition: .2s cubic-bezier(.4, 0, .2, 1);
+
+// ── Page layout ──────────────────────────────────────────────────────
+.wh-page {
+  padding: 24px;
+  max-width: 860px;
+  margin: 0 auto;
+  background: $bg-page;
+  min-height: 100%;
+}
+
+// ── Live status banner ────────────────────────────────────────────────
+.wh-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: $radius;
+  margin-bottom: 20px;
+  font-size: .9rem;
+  border: 1.5px solid transparent;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  &__text { flex: 1; }
+  &__hours { font-size: .82rem; opacity: .8; margin-left: 4px; }
+
+  &--open {
+    background: rgba($green, .08);
+    border-color: rgba($green, .25);
+    color: color.adjust($green, $lightness: -15%);
+    mat-icon { color: color.adjust($green, $lightness: -15%); }
+  }
+
+  &--closed {
+    background: rgba($red, .06);
+    border-color: rgba($red, .2);
+    color: color.adjust($red, $lightness: -10%);
+    mat-icon { color: color.adjust($red, $lightness: -10%); }
+  }
+}
+
+// ── Header ───────────────────────────────────────────────────────────
+.wh-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+
+  &__icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, $blue 0%, color.adjust($blue, $lightness: 15%) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba($blue, .35);
+
+    mat-icon {
+      color: #fff;
+      font-size: 26px;
+      width: 26px;
+      height: 26px;
+    }
+  }
+
+  &__text {
+    flex: 1;
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: $text-main;
+    }
+
+    p {
+      margin: 0;
+      font-size: .875rem;
+      color: $text-sub;
+    }
+  }
+}
+
+// ── Save button ──────────────────────────────────────────────────────
+.wh-save-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: $radius-sm !important;
+  padding: 0 20px !important;
+  height: 40px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+// ── Loading ──────────────────────────────────────────────────────────
+.wh-loading {
+  display: flex;
+  justify-content: center;
+  padding: 80px 0;
+}
+
+// ── Weekly grid ──────────────────────────────────────────────────────
+.wh-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+// ── Day card ─────────────────────────────────────────────────────────
+.wh-day {
+  background: $bg-card;
+  border: 1.5px solid $border;
+  border-radius: $radius;
+  padding: 16px 20px;
+  transition: border-color $transition, box-shadow $transition;
+
+  &--open {
+    border-left: 4px solid $green;
+
+    .wh-day__dot  { background: $green; }
+    .wh-day__name { color: $text-main; font-weight: 600; }
+  }
+
+  &--closed {
+    border-left: 4px solid $red;
+    opacity: .75;
+
+    .wh-day__dot  { background: $red; }
+    .wh-day__name { color: $text-sub; }
+  }
+
+  &:hover { box-shadow: 0 2px 16px rgba(0,0,0,.08); }
+}
+
+// Day head ───────────────────────────────────────────────────────────
+.wh-day__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wh-day__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.wh-day__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background $transition;
+}
+
+.wh-day__name {
+  font-size: .95rem;
+  min-width: 100px;
+  transition: color $transition;
+}
+
+.wh-day__badge {
+  font-size: .75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: .03em;
+
+  &--open   { background: rgba($green, .1); color: color.adjust($green, $lightness: -15%); }
+  &--closed { background: rgba($red,   .1); color: color.adjust($red,   $lightness: -10%); }
+}
+
+// Day times ──────────────────────────────────────────────────────────
+.wh-day__times {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid $border;
+  transition: opacity $transition, max-height $transition;
+  max-height: 80px;
+  overflow: hidden;
+
+  &--hidden {
+    opacity: 0;
+    max-height: 0;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    pointer-events: none;
+  }
+}
+
+.wh-time-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wh-time-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .75rem;
+  color: $text-sub;
+  font-weight: 500;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.wh-time-input {
+  height: 36px;
+  padding: 0 10px;
+  border: 1.5px solid $border;
+  border-radius: $radius-sm;
+  font-size: .9rem;
+  font-family: inherit;
+  color: $text-main;
+  background: $bg-soft;
+  outline: none;
+  cursor: pointer;
+  transition: border-color $transition, box-shadow $transition;
+  width: 110px;
+
+  &:focus {
+    border-color: $blue;
+    box-shadow: 0 0 0 3px rgba($blue, .12);
+  }
+
+  &:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+  }
+}
+
+.wh-time-sep {
+  font-size: 1.1rem;
+  color: $text-sub;
+  margin-top: 18px;
+}
+
+.wh-duration {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .8rem;
+  font-weight: 600;
+  color: $blue;
+  background: rgba($blue, .08);
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-top: 18px;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.wh-apply-btn {
+  margin-top: 14px;
+  color: $text-sub !important;
+  transition: color $transition !important;
+
+  &:not(:disabled):hover { color: $blue !important; }
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────
+.wh-tabs {
+  .tab-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  .tab-badge {
+    background: $blue;
+    color: #fff;
+    font-size: .65rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 6px;
+    line-height: 1.4;
+  }
+
+  // Add padding to tab content
+  .mat-mdc-tab-body-content {
+    padding-top: 20px;
+  }
+}
+
+// ── Audit section ────────────────────────────────────────────────────
+.audit-section {
+  &__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+
+    h3 {
+      margin: 0 0 4px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: $text-main;
+    }
+    p {
+      margin: 0;
+      font-size: .82rem;
+      color: $text-sub;
+    }
+
+    button {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      border-radius: $radius-sm !important;
+    }
+  }
+}
+
+// ── Content card (like list-page) ───────────────────────────────────
+.content-card {
+  background: #fff;
+  border-radius: $radius;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  overflow: hidden;
+
+  .audit-filters {
+    background: transparent;
+    border: none;
+    border-bottom: 1.5px solid $border;
+    border-radius: 0;
+    margin-bottom: 0;
+    padding: 14px 16px 8px;
+  }
+}
+
+// ── Log states (loading / empty) ─────────────────────────────────────
+.log-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 60px 0;
+  color: $text-sub;
+
+  .material-icons-round {
+    font-size: 48px;
+    opacity: .4;
+  }
+  p { margin: 0; font-size: .9rem; }
+
+  .btn-clear {
+    padding: 6px 16px;
+    border: 1.5px solid $border;
+    border-radius: $radius-sm;
+    background: #fff;
+    font-size: .82rem;
+    cursor: pointer;
+    color: $text-main;
+    &:hover { background: $bg-soft; }
+  }
+}
+
+// ── Native data table (same style as couriers-list) ──────────────────
+.log-table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  .data-table {
+    width: 100%;
+    min-width: 640px;
+    border-collapse: collapse;
+
+    thead {
+      background: #f8fafc;
+      th {
+        padding: .875rem 1.25rem;
+        text-align: left;
+        font-size: .6875rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        border-bottom: 1px solid $border;
+        white-space: nowrap;
+      }
+    }
+
+    tbody {
+      tr {
+        border-bottom: 1px solid #f1f5f9;
+        transition: background .15s ease;
+        &:hover { background: #f8fafc; }
+      }
+      td {
+        padding: .875rem 1.25rem;
+        font-size: .875rem;
+        color: #475569;
+        vertical-align: middle;
+      }
+    }
+
+    .col-date    { white-space: nowrap; color: #64748b; font-size: .8rem; }
+    .col-action  { width: 200px; }
+    .col-admin   { width: 180px; }
+    .col-details { max-width: 320px; }
+  }
+}
+
+.admin-cell {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  .material-icons-round { font-size: 15px; color: #94a3b8; }
+}
+
+.details-text {
+  display: block;
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+  font-size: .82rem;
+  color: #64748b;
+}
+
+// ── Pagination (same style as list-page) ─────────────────────────────
+.log-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .875rem 1.25rem;
+  border-top: 1px solid $border;
+  font-size: .875rem;
+  color: #64748b;
+
+  .pagination-info {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+  }
+
+  .pagination-range {
+    font-size: .8rem;
+    color: $text-sub;
+  }
+
+  .items-select {
+    padding: .2rem .5rem;
+    border: 1px solid $border;
+    border-radius: $radius-sm;
+    background: #fff;
+    font-size: .82rem;
+    color: #475569;
+    cursor: pointer;
+    font-family: inherit;
+    &:focus { outline: none; border-color: $blue; }
+  }
+
+  .pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+  }
+
+  .page-indicator {
+    font-size: .82rem;
+    padding: 0 .5rem;
+    color: $text-sub;
+    min-width: 60px;
+    text-align: center;
+  }
+
+  .page-btn {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    transition: all .15s ease;
+    color: #64748b;
+    font-family: inherit;
+
+    .material-icons-round { font-size: 1.25rem; }
+
+    &:hover:not(:disabled) {
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    &:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.audit-date {
+  font-size: .8rem;
+  color: $text-sub;
+  white-space: nowrap;
+}
+
+.audit-admin {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .875rem;
+  mat-icon { font-size: 15px; width: 15px; height: 15px; color: $text-sub; }
+}
+
+.audit-details {
+  font-size: .8rem;
+  color: $text-sub;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 280px;
+}
+
+// Action badges ──────────────────────────────────────────────────────
+.audit-badge {
+  font-size: .72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: .03em;
+  white-space: nowrap;
+
+  &.badge--green  { background: rgba($green, .12); color: color.adjust($green, $lightness: -12%); }
+  &.badge--red    { background: rgba($red,   .12); color: color.adjust($red,   $lightness: -12%); }
+  &.badge--blue   { background: rgba($blue,  .12); color: color.adjust($blue,  $lightness: -12%); }
+  &.badge--orange {
+    $orange: #f97316;
+    background: rgba($orange, .12);
+    color: color.adjust($orange, $lightness: -12%);
+  }
+  &.badge--grey   { background: $bg-soft; color: $text-sub; }
+}
+
+// ── Responsive ───────────────────────────────────────────────────────
+@media (max-width: 640px) {
+  .wh-page { padding: 16px; }
+
+  .wh-header {
+    flex-wrap: wrap;
+    &__text h1 { font-size: 1.15rem; }
+  }
+
+  .wh-day {
+    padding: 14px 16px;
+  }
+
+  .wh-day__times {
+    flex-wrap: wrap;
+    gap: 10px;
+    max-height: 160px;
+  }
+
+  .wh-time-sep { display: none; }
+  .wh-time-input { width: 100%; }
+
+  .audit-section__head { flex-direction: column; }
+  .audit-details { max-width: 140px; }
+
+  .audit-filters__controls {
+    flex-direction: column;
+    .filter-field { width: 100%; }
+  }
+}
+
+// ── Week Summary bar ─────────────────────────────────────────────────
+.wh-week-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: $bg-card;
+  border: 1.5px solid $border;
+  border-radius: $radius;
+  padding: 14px 20px;
+  margin-bottom: 16px;
+
+  &__stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 56px;
+
+    .stat-num {
+      font-size: 1.4rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: .7rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: $text-sub;
+    }
+
+    &--open  .stat-num { color: $green; }
+    &--closed .stat-num { color: $red; }
+  }
+
+  &__sep {
+    width: 1px;
+    height: 32px;
+    background: $border;
+    flex-shrink: 0;
+  }
+
+  &__days {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+}
+
+.day-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: default;
+  transition: transform $transition;
+
+  &--open {
+    background: rgba($green, .15);
+    border-color: $green;
+  }
+
+  &--closed {
+    background: rgba($red, .1);
+    border-color: rgba($red, .3);
+  }
+
+  &:hover { transform: scale(1.2); }
+}
+
+// ── Audit section redesign ───────────────────────────────────────────
+.audit-section__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.audit-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: $radius-sm;
+  background: linear-gradient(135deg, $blue 0%, color.adjust($blue, $lightness: -10%) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  mat-icon {
+    color: #fff;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.btn-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 16px;
+  border: 1.5px solid $red;
+  border-radius: $radius-sm;
+  background: transparent;
+  color: $red;
+  font-size: .85rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+  cursor: pointer;
+  transition: all .2s $transition;
+  white-space: nowrap;
+  font-family: inherit;
+
+  .material-icons-round { font-size: 18px; transition: transform .3s ease; }
+
+  &:hover:not(:disabled) {
+    background: rgba($red, .06);
+    box-shadow: 0 2px 10px rgba($red, .2);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) { transform: scale(.97); }
+
+  &:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+  }
+}
+
+// ── Filter bar ───────────────────────────────────────────────────────
+.audit-filters {
+  background: $bg-soft;
+  border: 1.5px solid $border;
+  border-radius: $radius;
+  padding: 14px 16px 8px;
+  margin-bottom: 16px;
+  transition: border-color $transition;
+
+  &--active {
+    border-color: rgba($blue, .4);
+    background: rgba($blue, .03);
+  }
+
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  &__count {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .8rem;
+    color: $text-sub;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid $border;
+  }
+}
+
+.filter-field {
+  min-width: 160px;
+  font-size: .85rem;
+
+  // Override mat-form-field height
+  .mat-mdc-text-field-wrapper { padding-top: 0; }
+
+  &--date { min-width: 140px; max-width: 160px; }
+
+  ::ng-deep {
+    .mat-mdc-form-field-subscript-wrapper { display: none; }
+    .mat-mdc-outlined-field .mdc-notched-outline__leading,
+    .mat-mdc-outlined-field .mdc-notched-outline__notch,
+    .mat-mdc-outlined-field .mdc-notched-outline__trailing {
+      border-color: $border;
+    }
+    .mdc-text-field--outlined:not(.mdc-text-field--disabled):hover
+      .mdc-notched-outline__leading,
+    .mdc-text-field--outlined:not(.mdc-text-field--disabled):hover
+      .mdc-notched-outline__notch,
+    .mdc-text-field--outlined:not(.mdc-text-field--disabled):hover
+      .mdc-notched-outline__trailing {
+      border-color: $blue;
+    }
+    .mat-mdc-form-field-infix { padding: 8px 0; min-height: unset; }
+    .mat-mdc-floating-label { font-size: .82rem; }
+  }
+}
+
+.results-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 7px;
+  background: $blue;
+  color: #fff;
+  border-radius: 10px;
+  font-size: .72rem;
+  font-weight: 700;
+}
+
+.filtered-hint {
+  font-size: .78rem;
+  color: $blue;
+  font-style: italic;
+}
+
+.clear-filters-btn {
+  color: $red !important;
+  flex-shrink: 0;
+
+  mat-icon { font-size: 20px; }
+}
+
+// (pagination remplacée par .log-pagination dans .content-card)

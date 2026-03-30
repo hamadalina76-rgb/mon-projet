@@ -368,6 +368,39 @@ html.dark {
   --mdc-text-button-label-text-color: #E31E24;
 }
 
+/* ==========================================================================
+   RTL overrides (Arabic) — [dir="rtl"] is set on <html> by the header
+   ========================================================================== */
+[dir="rtl"] app-categories-list {
+  // ── Header ─────────────────────────────────────────────
+  .page-header   { flex-direction: row-reverse; }
+  .title-row     { flex-direction: row-reverse; }
+
+  // ── Cards ─────────────────────────────────────────────
+  .card-header   { flex-direction: row-reverse; }
+  .cat-info      { text-align: right; }
+  .cat-name      { flex-direction: row-reverse; }
+  .inactive-badge { right: auto; left: 14px; }
+  .menu-btn      { margin-right: 0; margin-left: -4px; }
+
+  // ── Stats ─────────────────────────────────────────────
+  .stat          { flex-direction: row-reverse; }
+  .stat-text     { align-items: flex-end; }
+
+  // ── Subcategories ──────────────────────────────────────
+  .subcategories-header { flex-direction: row-reverse; }
+  .subcategories-chips  { flex-direction: row-reverse; flex-wrap: wrap; }
+  .sub-chip             { flex-direction: row-reverse; }
+  .sub-chip-icon        { margin-right: 0; margin-left: 4px; transform: scaleX(-1); }
+  .sub-chip-off         { margin-left: 0; margin-right: 2px; }
+  .sub-add-link         { margin-left: 0; margin-right: auto; }
+
+  // ── Footer ─────────────────────────────────────────────
+  .card-footer   { flex-direction: row-reverse; }
+  .status-toggle { flex-direction: row-reverse; }
+  .footer-actions { flex-direction: row-reverse; }
+}
+
 /* =====================================================================
    SpeedLine — Angular Material slide-toggle brand override (global)
    Force ALL mat-slide-toggle to use brand red instead of Material pink
@@ -414,6 +447,15 @@ html.dark {
     min-height: unset !important;
   }
 }
+
+/* =====================================================================
+   SpeedLine — Shared badge colors (used by app-data-table .col-badge)
+   ===================================================================== */
+.badge--green  { background: rgba(16, 185, 129, 0.12) !important; color: #059669 !important; }
+.badge--red    { background: rgba(239, 68,  68,  0.12) !important; color: #dc2626 !important; }
+.badge--blue   { background: rgba(59,  130, 246, 0.12) !important; color: #2563eb !important; }
+.badge--orange { background: rgba(249, 115,  22, 0.12) !important; color: #ea580c !important; }
+.badge--grey   { background: rgba(107, 114, 128, 0.10) !important; color: #6b7280 !important; }
 
 /* =====================================================================
    SpeedLine — Commission dialog responsive panel

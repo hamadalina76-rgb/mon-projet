@@ -52,6 +52,13 @@ export const SETTINGS_ROUTES: Routes = [
       ),
   },
   {
+    path: 'working-hours',
+    loadComponent: () =>
+      import('./working-hours/working-hours.component').then(
+        (m) => m.WorkingHoursComponent
+      ),
+  },
+  {
     path: '',
     redirectTo: 'general',
     pathMatch: 'full',

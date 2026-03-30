@@ -110,7 +110,7 @@
                     @if (previewTemplateId() === tpl.id) {
                       <div class="atd-tpl-preview">
                         @for (day of DAYS; track day) {
-                          @if ((tpl.days[day]?.length ?? 0) > 0) {
+                          @if (tpl.days[day].length > 0) {
                             <div class="atd-tpl-day">
                               <span class="atd-tpl-day__label">{{ 'schedule.short.' + day | translate }}</span>
                               <div class="atd-tpl-day__shifts">

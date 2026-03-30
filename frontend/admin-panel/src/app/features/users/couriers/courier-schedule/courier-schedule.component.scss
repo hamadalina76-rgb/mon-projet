@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Courier Schedule — Component Styles (responsive + polished UX)
 // ─────────────────────────────────────────────────────────────────────────────
+@use 'sass:color';
 
 $radius-lg: 16px;
 $radius-md: 10px;
@@ -309,7 +310,7 @@ $transition: .2s cubic-bezier(.4,0,.2,1);
   overflow: hidden;
   transition: box-shadow $transition, transform $transition;
   &:hover { box-shadow: $shadow-md; }
-  &:focus-within { box-shadow: $shadow-md; border-color: lighten($red, 30%); }
+  &:focus-within { box-shadow: $shadow-md; border-color: color.adjust($red, $lightness: 30%); }
 
   &__header {
     display: flex; align-items: center; gap: 10px;
