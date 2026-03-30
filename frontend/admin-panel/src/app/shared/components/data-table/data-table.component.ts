@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { SelectionModel } from '@angular/cdk/collections';
 import { TranslateModule } from '@ngx-translate/core';
 
@@ -16,8 +17,12 @@ export interface TableColumn {
   key: string;
   label: string;
   sortable?: boolean;
-  type?: 'text' | 'date' | 'currency' | 'status' | 'actions';
+  type?: 'text' | 'date' | 'currency' | 'status' | 'actions' | 'badge';
   format?: (value: any) => string;
+  /** Show full raw value as tooltip (useful for truncated text) */
+  tooltip?: boolean;
+  /** CSS class(es) to add to the badge span when type='badge' */
+  badgeClass?: (value: any) => string;
 }
 
 export interface TableAction {
@@ -41,6 +46,7 @@ export interface TableAction {
     MatIconModule,
     MatMenuModule,
     MatProgressBarModule,
+    MatTooltipModule,
     TranslateModule,
   ],
   template: `
@@ -106,8 +112,19 @@ export interface TableAction {
                     }
                   </mat-menu>
                 }
+                @case ('badge') {
+                  <span class="col-badge" [ngClass]="column.badgeClass ? column.badgeClass(row[column.key]) : ''">
+                    {{ column.format ? column.format(row[column.key]) : row[column.key] }}
+                  </span>
+                }
                 @default {
-                  {{ column.format ? column.format(row[column.key]) : row[column.key] }}
+                  <span
+                    [class.cell-truncate]="column.tooltip"
+                    [matTooltip]="column.tooltip ? row[column.key] : ''"
+                    matTooltipShowDelay="300"
+                  >
+                    {{ column.format ? column.format(row[column.key]) : row[column.key] }}
+                  </span>
                 }
               }
             </td>
@@ -192,6 +209,26 @@ export interface TableAction {
           height: 48px;
           margin-bottom: 1rem;
         }
+      }
+
+      .cell-truncate {
+        display: block;
+        max-width: 280px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: default;
+      }
+
+      .col-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 100px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
       }
     `,
   ],

@@ -1,67 +1,142 @@
 <!-- General Settings Component Template -->
 <div class="general-settings-page">
+
   <header class="page-header">
-    <h1>{{ 'settings.general' | translate }}</h1>
+    <div class="page-header__left">
+      <div class="page-header__icon"><mat-icon>settings</mat-icon></div>
+      <div>
+        <h1>{{ 'settings.general.title' | translate }}</h1>
+        <p class="page-header__sub">{{ 'settings.general.subtitle' | translate }}</p>
+      </div>
+    </div>
+    <a mat-stroked-button class="page-header__wh-btn" routerLink="/settings/working-hours">
+      <mat-icon>schedule</mat-icon>
+      <span>{{ 'settings.workingHours.title' | translate }}</span>
+    </a>
   </header>
 
-  <mat-card class="settings-card">
-    <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()">
-      <!-- Platform Info -->
-      <section class="settings-section">
-        <h3>Informations de la plateforme</h3>
+  <!-- ═══════ LOADING ═══════ -->
+  <div class="gs-loading" *ngIf="loading">
+    <mat-spinner diameter="48"></mat-spinner>
+  </div>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Nom de la plateforme</mat-label>
-          <input matInput formControlName="platformName" />
-        </mat-form-field>
+  <ng-container *ngIf="!loading">
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Email de contact</mat-label>
-          <input matInput type="email" formControlName="contactEmail" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Téléphone de contact</mat-label>
-          <input matInput formControlName="contactPhone" />
-        </mat-form-field>
-      </section>
-
-      <!-- Regional Settings -->
-      <section class="settings-section">
-        <h3>Paramètres régionaux</h3>
-
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Langue par défaut</mat-label>
-          <mat-select formControlName="defaultLanguage">
-            <mat-option value="fr">Français</mat-option>
-            <mat-option value="ar">العربية</mat-option>
-            <mat-option value="en">English</mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Devise</mat-label>
-          <mat-select formControlName="defaultCurrency">
-            <mat-option value="MAD">MAD - Dirham marocain</mat-option>
-            <mat-option value="EUR">EUR - Euro</mat-option>
-          </mat-select>
-        </mat-form-field>
-      </section>
-
-      <!-- Maintenance -->
-      <section class="settings-section">
-        <h3>Maintenance</h3>
-        <mat-slide-toggle formControlName="maintenanceMode">
-          Mode maintenance
-        </mat-slide-toggle>
-      </section>
-
-      <!-- Actions -->
-      <div class="form-actions">
-        <button mat-flat-button color="primary" type="submit" [disabled]="loading">
-          {{ 'common.save' | translate }}
-        </button>
+    <!-- ═══════ APP TOGGLE — full-width hero card ═══════ -->
+    <mat-card class="gs-app-toggle-card" [class.gs-app-toggle-card--off]="!settingsForm.value.appEnabled">
+      <div class="gs-app-toggle">
+        <div class="gs-app-toggle__icon-wrap" [class.gs-app-toggle__icon-wrap--off]="!settingsForm.value.appEnabled">
+          <mat-icon>{{ settingsForm.value.appEnabled ? 'power' : 'power_off' }}</mat-icon>
+        </div>
+        <div class="gs-app-toggle__text">
+          <h2>{{ 'settings.general.appToggleTitle' | translate }}</h2>
+          <p>{{ 'settings.general.appToggleDesc' | translate }}</p>
+          <span class="gs-app-toggle__status"
+                [class.gs-app-toggle__status--on]="settingsForm.value.appEnabled"
+                [class.gs-app-toggle__status--off]="!settingsForm.value.appEnabled">
+            <mat-icon>{{ settingsForm.value.appEnabled ? 'check_circle' : 'cancel' }}</mat-icon>
+            {{ (settingsForm.value.appEnabled ? 'settings.general.appStatusOn' : 'settings.general.appStatusOff') | translate }}
+          </span>
+        </div>
+        <div class="gs-app-toggle__action">
+          <mat-slide-toggle
+            [checked]="settingsForm.value.appEnabled"
+            [disabled]="togglingApp"
+            (change)="toggleAppEnabled()"
+            color="primary">
+          </mat-slide-toggle>
+        </div>
       </div>
-    </form>
-  </mat-card>
+
+      <!-- Warning banner when app is OFF -->
+      <div class="gs-app-toggle__warning" *ngIf="!settingsForm.value.appEnabled">
+        <mat-icon>warning</mat-icon>
+        <span>{{ 'settings.general.appDisabledWarning' | translate }}</span>
+      </div>
+    </mat-card>
+
+    <!-- ═══════ SETTINGS FORM ═══════ -->
+    <mat-card class="settings-card">
+      <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()">
+
+        <!-- Platform Info -->
+        <section class="settings-section">
+          <div class="settings-section__header">
+            <mat-icon>business</mat-icon>
+            <h3>{{ 'settings.general.platformInfoTitle' | translate }}</h3>
+          </div>
+
+          <div class="gs-form-grid">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ 'settings.general.appName' | translate }}</mat-label>
+              <input matInput formControlName="platformName" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ 'settings.general.contactEmail' | translate }}</mat-label>
+              <input matInput type="email" formControlName="contactEmail" />
+              <mat-icon matPrefix>email</mat-icon>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ 'settings.general.contactPhone' | translate }}</mat-label>
+              <input matInput formControlName="contactPhone" />
+              <mat-icon matPrefix>phone</mat-icon>
+            </mat-form-field>
+          </div>
+        </section>
+
+        <!-- Regional Settings -->
+        <section class="settings-section">
+          <div class="settings-section__header">
+            <mat-icon>language</mat-icon>
+            <h3>{{ 'settings.general.regionalTitle' | translate }}</h3>
+          </div>
+
+          <div class="gs-form-grid">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ 'settings.general.defaultLanguage' | translate }}</mat-label>
+              <mat-select formControlName="defaultLanguage">
+                <mat-option value="fr">Français</mat-option>
+                <mat-option value="ar">العربية</mat-option>
+                <mat-option value="en">English</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ 'settings.general.currency' | translate }}</mat-label>
+              <mat-select formControlName="defaultCurrency">
+                <mat-option value="MAD">MAD - Dirham marocain</mat-option>
+                <mat-option value="EUR">EUR - Euro</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </section>
+
+        <!-- Maintenance Mode -->
+        <section class="settings-section">
+          <div class="settings-section__header">
+            <mat-icon>build</mat-icon>
+            <h3>{{ 'settings.general.maintenanceTitle' | translate }}</h3>
+          </div>
+          <div class="gs-toggle-row">
+            <mat-slide-toggle formControlName="maintenanceMode" color="warn">
+              {{ 'settings.general.maintenanceLabel' | translate }}
+            </mat-slide-toggle>
+            <p class="gs-toggle-hint">{{ 'settings.general.maintenanceHint' | translate }}</p>
+          </div>
+        </section>
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <button mat-flat-button color="primary" type="submit" [disabled]="saving">
+            <mat-icon *ngIf="!saving">save</mat-icon>
+            <mat-spinner *ngIf="saving" diameter="20"></mat-spinner>
+            {{ 'common.save' | translate }}
+          </button>
+        </div>
+      </form>
+    </mat-card>
+
+  </ng-container>
 </div>

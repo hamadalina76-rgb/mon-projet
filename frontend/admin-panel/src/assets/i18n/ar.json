@@ -11,6 +11,7 @@
     "export": "تصدير",
     "import": "استيراد",
     "refresh": "تحديث",
+    "saving": "جارٍ الحفظ...",
     "loading": "جاري التحميل...",
     "noData": "لا توجد بيانات",
     "actions": "إجراءات",
@@ -550,7 +551,7 @@
       "suspendError": "حدث خطأ أثناء تعليق الشريك."
     },
     "edit": {
-      "tooltip": "تعديل الشريك",
+      "tooltip": "تعديل",
       "title": "تعديل الشريك",
       "commissionSection": "العمولة",
       "typePercentage": "نسبة مئوية",
@@ -953,18 +954,46 @@
     "title": "الإعدادات",
     "general": {
       "title": "عام",
+      "subtitle": "الإعداد العام لمنصة SpeedLine",
       "appName": "اسم التطبيق",
       "timezone": "المنطقة الزمنية",
-      "currency": "العملة"
+      "currency": "العملة",
+      "contactEmail": "البريد الإلكتروني للتواصل",
+      "contactPhone": "هاتف التواصل",
+      "platformInfoTitle": "معلومات المنصة",
+      "regionalTitle": "الإعدادات الإقليمية",
+      "defaultLanguage": "اللغة الافتراضية",
+      "maintenanceTitle": "الصيانة",
+      "maintenanceLabel": "تفعيل وضع الصيانة",
+      "maintenanceHint": "في وضع الصيانة، سيرى المستخدمون صفحة صيانة بدلاً من التطبيق.",
+      "appToggleTitle": "حالة التطبيق",
+      "appToggleDesc": "تفعيل أو تعطيل المنصة بالكامل. عند التعطيل، لا يمكن لأي عميل أو ساعٍ الوصول إليها.",
+      "appStatusOn": "التطبيق نشط",
+      "appStatusOff": "التطبيق معطل",
+      "appDisabledWarning": "التطبيق معطل حاليًا. لا يمكن للعملاء والسعاة الوصول إلى المنصة.",
+      "enableAppTitle": "تفعيل التطبيق",
+      "enableAppMessage": "هل تريد إعادة تفعيل التطبيق؟ سيتمكن العملاء والسعاة من الوصول إلى المنصة مجددًا.",
+      "enableAppConfirm": "تفعيل",
+      "disableAppTitle": "تعطيل التطبيق",
+      "disableAppMessage": "هل أنت متأكد من تعطيل التطبيق بالكامل؟ لن يتمكن أي عميل أو ساعٍ من الوصول إليه.",
+      "disableAppConfirm": "تعطيل",
+      "appEnabledSuccess": "تم تفعيل التطبيق بنجاح",
+      "appDisabledSuccess": "تم تعطيل التطبيق بنجاح",
+      "saveSuccess": "تم حفظ الإعدادات بنجاح",
+      "otherSettings": "إعدادات أخرى"
     },
     "commission": {
       "title": "العمولة",
       "partnerRate": "نسبة الشريك",
-      "courierRate": "نسبة الساعي"
+      "courierRate": "نسبة الساعي",
+      "platformRate": "عمولة المنصة (%)"
     },
     "payment": {
       "title": "الدفع",
-      "enabledMethods": "الطرق المفعلة"
+      "enabledMethods": "الطرق المفعلة",
+      "methodsTitle": "طرق الدفع",
+      "cashPayment": "الدفع نقدًا",
+      "cardPayment": "الدفع بالبطاقة"
     },
     "notifications": {
       "title": "الإشعارات",
@@ -973,6 +1002,59 @@
     },
     "emailTemplates": {
       "title": "قوالب البريد"
+    },
+    "workingHours": {
+      "title": "ساعات العمل",
+      "subtitle": "قم بتكوين ساعات العمل لكامل المنصة",
+      "tabSchedule": "الجدول",
+      "statusNow": "الآن",
+      "statusOpen": "المنصة مفتوحة",
+      "statusClosed": "المنصة مغلقة",
+      "statusAppDisabled": "التطبيق معطل",
+      "statusMaintenance": "تحت الصيانة",
+      "statusHours": "ساعات اليوم:",
+      "statusDayClosed": "يوم إجازة",
+      "open": "مفتوح",
+      "closed": "مغلق",
+      "openTime": "وقت الفتح",
+      "closeTime": "وقت الإغلاق",
+      "applyToAll": "تطبيق هذه الساعات على جميع الأيام المفتوحة",
+      "appliedToAll": "تم تطبيق الساعات على جميع الأيام المفتوحة",
+      "saveSuccess": "تم حفظ ساعات العمل بنجاح",
+      "invalidTimes": "تأكد من أن وقت الإغلاق بعد وقت الفتح",
+      "daysOpen": "أيام مفتوحة",
+      "daysClosed": "أيام مغلقة",
+      "days": {
+        "MONDAY": "الإثنين",
+        "TUESDAY": "الثلاثاء",
+        "WEDNESDAY": "الأربعاء",
+        "THURSDAY": "الخميس",
+        "FRIDAY": "الجمعة",
+        "SATURDAY": "السبت",
+        "SUNDAY": "الأحد"
+      }
+    },
+    "auditLog": {
+      "title": "سجل التغييرات",
+      "subtitle": "سجل آخر 50 تعديل على الإعدادات",
+      "date": "التاريخ",
+      "action": "الإجراء",
+      "admin": "المشرف",
+      "details": "التفاصيل",
+      "empty": "لا توجد تعديلات مسجّلة",
+      "noResults": "لا نتائج لهذه المرشحات",
+      "filtered": "نتيجة (نتائج) مصفاة",
+      "filterAction": "نوع الإجراء",
+      "allActions": "جميع الإجراءات",
+      "filterAdmin": "المشرف",
+      "filterDate": "تاريخ التعديل",
+      "clearFilters": "مسح الفلاتر",
+      "actions": {
+        "APP_ENABLED": "تم تفعيل التطبيق",
+        "APP_DISABLED": "تم تعطيل التطبيق",
+        "WORKING_HOURS_UPDATED": "تم تحديث ساعات العمل",
+        "GENERAL_SETTINGS_UPDATED": "تم تحديث الإعدادات"
+      }
     }
   },
   "monitoring": {

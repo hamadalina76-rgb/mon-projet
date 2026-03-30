@@ -1,0 +1,327 @@
+<div class="wh-page">
+
+  <!-- Header -->
+  <div class="wh-header">
+    <div class="wh-header__icon">
+      <mat-icon>schedule</mat-icon>
+    </div>
+    <div class="wh-header__text">
+      <h1>{{ 'settings.workingHours.title' | translate }}</h1>
+      <p>{{ 'settings.workingHours.subtitle' | translate }}</p>
+    </div>
+    <button
+      mat-flat-button
+      color="primary"
+      class="wh-save-btn"
+      [disabled]="saving() || loading()"
+      (click)="save()"
+    >
+      <mat-icon *ngIf="!saving()">save</mat-icon>
+      <mat-progress-spinner *ngIf="saving()" diameter="18" mode="indeterminate" />
+      {{ (saving() ? 'common.saving' : 'common.save') | translate }}
+    </button>
+  </div>
+
+  <!-- Live status banner -->
+  <div *ngIf="appStatus()" class="wh-status-banner"
+       [class.wh-status-banner--open]="appStatus()!.currentlyOpen && appStatus()!.appEnabled && !appStatus()!.maintenanceMode"
+       [class.wh-status-banner--closed]="!appStatus()!.currentlyOpen || !appStatus()!.appEnabled || appStatus()!.maintenanceMode">
+    <mat-icon>{{ (appStatus()!.currentlyOpen && appStatus()!.appEnabled && !appStatus()!.maintenanceMode) ? 'check_circle' : 'cancel' }}</mat-icon>
+    <span class="wh-status-banner__text">
+      <strong>{{ 'settings.workingHours.statusNow' | translate }} :</strong>
+      <ng-container *ngIf="!appStatus()!.appEnabled">
+        {{ 'settings.workingHours.statusAppDisabled' | translate }}
+      </ng-container>
+      <ng-container *ngIf="appStatus()!.appEnabled && appStatus()!.maintenanceMode">
+        {{ 'settings.workingHours.statusMaintenance' | translate }}
+      </ng-container>
+      <ng-container *ngIf="appStatus()!.appEnabled && !appStatus()!.maintenanceMode && appStatus()!.currentlyOpen">
+        {{ 'settings.workingHours.statusOpen' | translate }}
+        <span *ngIf="appStatus()!.todayOpenTime && appStatus()!.todayCloseTime" class="wh-status-banner__hours">
+          ({{ appStatus()!.todayOpenTime }} – {{ appStatus()!.todayCloseTime }})
+        </span>
+      </ng-container>
+      <ng-container *ngIf="appStatus()!.appEnabled && !appStatus()!.maintenanceMode && !appStatus()!.currentlyOpen">
+        {{ 'settings.workingHours.statusClosed' | translate }}
+        <span *ngIf="appStatus()!.todayIsOpen && appStatus()!.todayOpenTime && appStatus()!.todayCloseTime" class="wh-status-banner__hours">
+          ({{ 'settings.workingHours.statusHours' | translate }} {{ appStatus()!.todayOpenTime }} – {{ appStatus()!.todayCloseTime }})
+        </span>
+        <span *ngIf="!appStatus()!.todayIsOpen" class="wh-status-banner__hours">
+          — {{ 'settings.workingHours.statusDayClosed' | translate }}
+        </span>
+      </ng-container>
+    </span>
+  </div>
+
+  <!-- Tabs -->
+  <mat-tab-group animationDuration="200ms" class="wh-tabs">
+
+    <!-- ═══ Tab 1: Schedule ═══ -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">calendar_today</mat-icon>
+        {{ 'settings.workingHours.tabSchedule' | translate }}
+      </ng-template>
+
+      <!-- Loading state -->
+      <div *ngIf="loading()" class="wh-loading">
+        <mat-progress-spinner mode="indeterminate" diameter="48" />
+      </div>
+
+      <!-- Week summary bar -->
+      <div *ngIf="!loading()" class="wh-week-summary">
+        <div class="wh-week-summary__stat wh-week-summary__stat--open">
+          <span class="stat-num">{{ openDaysCount() }}</span>
+          <span class="stat-label">{{ 'settings.workingHours.daysOpen' | translate }}</span>
+        </div>
+        <div class="wh-week-summary__sep"></div>
+        <div class="wh-week-summary__stat wh-week-summary__stat--closed">
+          <span class="stat-num">{{ 7 - openDaysCount() }}</span>
+          <span class="stat-label">{{ 'settings.workingHours.daysClosed' | translate }}</span>
+        </div>
+        <div class="wh-week-summary__sep"></div>
+        <div class="wh-week-summary__days">
+          <div
+            *ngFor="let day of days"
+            class="day-dot"
+            [class.day-dot--open]="dayFor(day).isOpen"
+            [class.day-dot--closed]="!dayFor(day).isOpen"
+            [matTooltip]="('settings.workingHours.days.' + day) | translate">
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly grid -->
+      <div *ngIf="!loading()" class="wh-grid">
+
+        <ng-container *ngFor="let day of days">
+          <div class="wh-day" [class.wh-day--open]="dayFor(day).isOpen" [class.wh-day--closed]="!dayFor(day).isOpen">
+
+            <!-- Day label + toggle -->
+            <div class="wh-day__head">
+              <div class="wh-day__label">
+                <span class="wh-day__dot"></span>
+                <span class="wh-day__name">{{ ('settings.workingHours.days.' + day) | translate }}</span>
+              </div>
+              <div class="wh-day__badge" [class.wh-day__badge--open]="dayFor(day).isOpen" [class.wh-day__badge--closed]="!dayFor(day).isOpen">
+                {{ (dayFor(day).isOpen ? 'settings.workingHours.open' : 'settings.workingHours.closed') | translate }}
+              </div>
+              <mat-slide-toggle
+                color="primary"
+                [checked]="dayFor(day).isOpen"
+                (change)="toggleDay(day)"
+              />
+            </div>
+
+            <!-- Time pickers (visible only when open) -->
+            <div class="wh-day__times" [class.wh-day__times--hidden]="!dayFor(day).isOpen">
+              <div class="wh-time-group">
+                <label class="wh-time-label">
+                  <mat-icon>login</mat-icon>
+                  {{ 'settings.workingHours.openTime' | translate }}
+                </label>
+                <input
+                  type="time"
+                  class="wh-time-input"
+                  [value]="dayFor(day).openTime ?? ''"
+                  [disabled]="!dayFor(day).isOpen"
+                  (change)="updateTime(day, 'openTime', $any($event.target).value)"
+                />
+              </div>
+
+              <div class="wh-time-sep">→</div>
+
+              <div class="wh-time-group">
+                <label class="wh-time-label">
+                  <mat-icon>logout</mat-icon>
+                  {{ 'settings.workingHours.closeTime' | translate }}
+                </label>
+                <input
+                  type="time"
+                  class="wh-time-input"
+                  [value]="dayFor(day).closeTime ?? ''"
+                  [disabled]="!dayFor(day).isOpen"
+                  (change)="updateTime(day, 'closeTime', $any($event.target).value)"
+                />
+              </div>
+
+              <!-- Duration badge -->
+              <div class="wh-duration" *ngIf="duration(day)">
+                <mat-icon>timer</mat-icon>
+                {{ duration(day) }}
+              </div>
+
+              <!-- Apply-to-all button -->
+              <button
+                mat-icon-button
+                class="wh-apply-btn"
+                [matTooltip]="'settings.workingHours.applyToAll' | translate"
+                (click)="applyToAll(day)"
+                [disabled]="!dayFor(day).isOpen"
+              >
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </div>
+
+          </div>
+        </ng-container>
+
+      </div><!-- /wh-grid -->
+    </mat-tab>
+
+    <!-- ═══ Tab 2: Audit Logs ═══ -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">history</mat-icon>
+        {{ 'settings.auditLog.title' | translate }}
+        <span class="tab-badge" *ngIf="auditLogs().length">{{ auditLogs().length }}</span>
+      </ng-template>
+
+      <div class="audit-section">
+
+        <!-- Section header -->
+        <div class="audit-section__head">
+          <div class="audit-section__title">
+            <div class="audit-icon-wrap">
+              <mat-icon>manage_history</mat-icon>
+            </div>
+            <div>
+              <h3>{{ 'settings.auditLog.title' | translate }}</h3>
+              <p>{{ 'settings.auditLog.subtitle' | translate }}</p>
+            </div>
+          </div>
+          <button class="btn-refresh" (click)="loadLogs()" [disabled]="logsLoading()">
+            <span class="material-icons-round" [class.spin]="logsLoading()">autorenew</span>
+            {{ 'common.refresh' | translate }}
+          </button>
+        </div>
+
+        <!-- ── Content card (style liste livreurs) ─────────────────── -->
+        <div class="content-card">
+
+          <!-- Filter bar -->
+          <div class="audit-filters" [class.audit-filters--active]="hasActiveFilters()">
+            <div class="audit-filters__controls">
+
+              <mat-form-field appearance="outline" class="filter-field">
+                <mat-label>{{ 'settings.auditLog.filterAction' | translate }}</mat-label>
+                <mat-select [ngModel]="filterAction()" (ngModelChange)="onFilterChange('action', $event)">
+                  <mat-option value="">{{ 'settings.auditLog.allActions' | translate }}</mat-option>
+                  <mat-option value="APP_ENABLED">{{ actionLabel('APP_ENABLED') }}</mat-option>
+                  <mat-option value="APP_DISABLED">{{ actionLabel('APP_DISABLED') }}</mat-option>
+                  <mat-option value="WORKING_HOURS_UPDATED">{{ actionLabel('WORKING_HOURS_UPDATED') }}</mat-option>
+                  <mat-option value="GENERAL_SETTINGS_UPDATED">{{ actionLabel('GENERAL_SETTINGS_UPDATED') }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="filter-field">
+                <mat-label>{{ 'settings.auditLog.filterAdmin' | translate }}</mat-label>
+                <input matInput [ngModel]="filterAdmin()" (ngModelChange)="onFilterChange('admin', $event)">
+                <mat-icon matSuffix>search</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="filter-field filter-field--date">
+                <mat-label>{{ 'settings.auditLog.filterDate' | translate }}</mat-label>
+                <input matInput type="date" [ngModel]="filterDate()" (ngModelChange)="onFilterChange('date', $event)">
+                <mat-icon matSuffix>calendar_today</mat-icon>
+              </mat-form-field>
+
+              <button mat-icon-button class="clear-filters-btn" *ngIf="hasActiveFilters()" (click)="clearFilters()"
+                [matTooltip]="'settings.auditLog.clearFilters' | translate">
+                <mat-icon>filter_list_off</mat-icon>
+              </button>
+            </div>
+
+            <div class="audit-filters__count" *ngIf="!logsLoading()">
+              <span class="results-pill">{{ totalLogs() }}</span>
+              <span *ngIf="hasActiveFilters()" class="filtered-hint">— {{ 'settings.auditLog.filtered' | translate }}</span>
+            </div>
+          </div>
+
+          <!-- Loading -->
+          <div *ngIf="logsLoading()" class="log-state">
+            <span class="material-icons-round spin">autorenew</span>
+            <p>{{ 'common.loading' | translate }}</p>
+          </div>
+
+          <!-- Empty -->
+          <div *ngIf="!logsLoading() && auditLogs().length === 0" class="log-state">
+            <span class="material-icons-round">{{ hasActiveFilters() ? 'search_off' : 'history_toggle_off' }}</span>
+            <p>{{ (hasActiveFilters() ? 'settings.auditLog.noResults' : 'settings.auditLog.empty') | translate }}</p>
+            <button *ngIf="hasActiveFilters()" class="btn-clear" (click)="clearFilters()">
+              {{ 'settings.auditLog.clearFilters' | translate }}
+            </button>
+          </div>
+
+          <!-- Table -->
+          <div *ngIf="!logsLoading() && auditLogs().length > 0" class="log-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="col-date">{{ 'settings.auditLog.date'    | translate | uppercase }}</th>
+                  <th class="col-action">{{ 'settings.auditLog.action'  | translate | uppercase }}</th>
+                  <th class="col-admin">{{ 'settings.auditLog.admin'   | translate | uppercase }}</th>
+                  <th class="col-details">{{ 'settings.auditLog.details' | translate | uppercase }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let log of auditLogs()" class="table-row">
+                  <td class="col-date">{{ formatDate(log.createdAt) }}</td>
+                  <td class="col-action">
+                    <span class="audit-badge" [ngClass]="actionClass(log.action)">
+                      {{ actionLabel(log.action) }}
+                    </span>
+                  </td>
+                  <td class="col-admin">
+                    <div class="admin-cell">
+                      <span class="material-icons-round">person</span>
+                      {{ log.adminName || '—' }}
+                    </div>
+                  </td>
+                  <td class="col-details">
+                    <span class="details-text" [title]="log.details">{{ log.details }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div *ngIf="!logsLoading() && totalLogs() > pageSize()" class="log-pagination">
+            <div class="pagination-info">
+              <span class="pagination-range">
+                {{ pageIndex() * pageSize() + 1 }}–{{ (pageIndex() + 1) * pageSize() > totalLogs() ? totalLogs() : (pageIndex() + 1) * pageSize() }}
+                / {{ totalLogs() }}
+              </span>
+              <select class="items-select" [ngModel]="pageSize()" (ngModelChange)="onPageSizeChange($event)">
+                <option [value]="5">5</option>
+                <option [value]="10">10</option>
+                <option [value]="25">25</option>
+                <option [value]="50">50</option>
+              </select>
+            </div>
+            <div class="pagination-controls">
+              <button class="page-btn" (click)="goToPage(0)" [disabled]="pageIndex() === 0">
+                <span class="material-icons-round">first_page</span>
+              </button>
+              <button class="page-btn" (click)="goToPage(pageIndex() - 1)" [disabled]="pageIndex() === 0">
+                <span class="material-icons-round">chevron_left</span>
+              </button>
+              <span class="page-indicator">{{ pageIndex() + 1 }} / {{ totalPages() }}</span>
+              <button class="page-btn" (click)="goToPage(pageIndex() + 1)" [disabled]="pageIndex() + 1 >= totalPages()">
+                <span class="material-icons-round">chevron_right</span>
+              </button>
+              <button class="page-btn" (click)="goToPage(totalPages() - 1)" [disabled]="pageIndex() + 1 >= totalPages()">
+                <span class="material-icons-round">last_page</span>
+              </button>
+            </div>
+          </div>
+
+        </div><!-- /content-card -->
+
+      </div>
+    </mat-tab>
+
+  </mat-tab-group>
+
+</div>
