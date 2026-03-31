@@ -5,8 +5,11 @@ import com.speedline.partner.dto.CreatePartnerRequest;
 import com.speedline.partner.dto.PartnerDTO;
 import com.speedline.partner.dto.StaffMemberDTO;
 import com.speedline.partner.dto.UpdatePartnerStatusRequest;
+import com.speedline.partner.dto.request.FavoriteCreateRequest;
 import com.speedline.partner.dto.request.PartnerFilterRequest;
+import com.speedline.partner.dto.response.FavoriteUpsertResult;
 import com.speedline.partner.service.FileStorageService;
+import com.speedline.partner.service.FavoriteService;
 import com.speedline.partner.service.PartnerService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
@@ -63,6 +66,7 @@ import java.util.stream.Collectors;
 public class PartnerController implements PartnerApi {
     
     private final PartnerService partnerService;
+    private final FavoriteService favoriteService;
     private final FileStorageService fileStorageService;
     private final PartnerRepository partnerRepository;
     private final ObjectMapper objectMapper;
@@ -488,6 +492,96 @@ public class PartnerController implements PartnerApi {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(trending);
+    }
+
+    @Override
+    @GetMapping("/favorites")
+    public ResponseEntity<?> getFavorites(
+            @RequestParam("userId") Long userId,
+            @RequestHeader(value = "X-User-Id", required = false) String authenticatedUserId) {
+
+        final Long customerId = parseAuthenticatedUserId(authenticatedUserId);
+        if (customerId == null) {
+            return errorResponse(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "JWT missing or invalid");
+        }
+        if (!customerId.equals(userId)) {
+            return errorResponse(HttpStatus.FORBIDDEN, "FORBIDDEN", "You can only access your own favorites");
+        }
+
+        return ResponseEntity.ok(favoriteService.getFavorites(customerId));
+    }
+
+    @Override
+    @PostMapping(path = "/favorites", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> addFavorite(
+            @RequestBody FavoriteCreateRequest request,
+            @RequestHeader(value = "X-User-Id", required = false) String authenticatedUserId) {
+
+        final Long customerId = parseAuthenticatedUserId(authenticatedUserId);
+        if (customerId == null) {
+            return errorResponse(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "JWT missing or invalid");
+        }
+
+        final String partnerIdRaw = request != null ? request.getPartnerId() : null;
+        final Long partnerId = parsePartnerId(partnerIdRaw);
+        if (partnerId == null) {
+            return errorResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST", "partnerId must be a numeric identifier");
+        }
+
+        final FavoriteUpsertResult result = favoriteService.addFavorite(customerId, partnerId);
+        if (result.created()) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(result.favorite());
+        }
+        return ResponseEntity.ok(result.favorite());
+    }
+
+    @Override
+    @DeleteMapping("/favorites/{partnerId}")
+    public ResponseEntity<?> removeFavorite(
+            @PathVariable String partnerId,
+            @RequestHeader(value = "X-User-Id", required = false) String authenticatedUserId) {
+
+        final Long customerId = parseAuthenticatedUserId(authenticatedUserId);
+        if (customerId == null) {
+            return errorResponse(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "JWT missing or invalid");
+        }
+
+        final Long partnerIdValue = parsePartnerId(partnerId);
+        if (partnerIdValue == null) {
+            return errorResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST", "partnerId must be a numeric identifier");
+        }
+
+        favoriteService.removeFavorite(customerId, partnerIdValue);
+        return ResponseEntity.noContent().build();
+    }
+
+    private Long parseAuthenticatedUserId(String authenticatedUserId) {
+        if (authenticatedUserId == null || authenticatedUserId.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(authenticatedUserId.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private Long parsePartnerId(String partnerId) {
+        if (partnerId == null || partnerId.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(partnerId.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private ResponseEntity<Map<String, Object>> errorResponse(HttpStatus status, String error, String message) {
+        final Map<String, Object> body = new HashMap<>();
+        body.put("error", error);
+        body.put("message", message);
+        return ResponseEntity.status(status).body(body);
     }
 
     private boolean matchesQuery(PartnerDTO partner, String query) {

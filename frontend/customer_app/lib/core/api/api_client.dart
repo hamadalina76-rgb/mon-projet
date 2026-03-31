@@ -57,11 +57,13 @@ class ApiClient {
 
   /// Initialiser Dio avec la configuration
   void _initializeDio() {
-    // Prioriser .env pour les overrides locaux, puis fallback runtime.
+    // RuntimeConfig is the primary source for automatic device/cloud routing.
+    // Keep .env as a fallback only when runtime config is absent.
     final envBaseUrl = dotenv.env['API_BASE_URL']?.trim();
-    final selectedBaseUrl = (envBaseUrl != null && envBaseUrl.isNotEmpty)
-        ? envBaseUrl
-        : RuntimeConfig.apiBaseUrl;
+    final runtimeBaseUrl = RuntimeConfig.apiBaseUrl.trim();
+    final selectedBaseUrl = runtimeBaseUrl.isNotEmpty
+        ? runtimeBaseUrl
+        : (envBaseUrl ?? '');
     final baseUrl = _normalizeBaseUrl(selectedBaseUrl);
     if (baseUrl.isEmpty) {
       throw StateError('API_BASE_URL must be defined in runtime config');
@@ -141,9 +143,16 @@ class ApiClient {
       InterceptorsWrapper(
         onError: (error, handler) {
           final statusCode = error.response?.statusCode;
+          final uri = error.requestOptions.uri.toString();
           final message = _getErrorMessage(error);
+          final rawError = error.error?.toString();
 
-          _logger.e('❌ API Error [$statusCode]: $message');
+          _logger.e('❌ API Error [${error.type.name}][$statusCode] $uri');
+          _logger.e('📦 Error Data: ${error.response?.data}');
+          _logger.e('🔍 Error Message: $message');
+          if (rawError != null && rawError.trim().isNotEmpty) {
+            _logger.e('🧩 Transport Error: $rawError');
+          }
 
           // Transformer DioException en erreur plus lisible
           if (error.type == DioExceptionType.connectionTimeout ||
@@ -152,6 +161,16 @@ class ApiClient {
             _logger.e('⏱️ Timeout: Vérifiez votre connexion Internet');
           } else if (error.type == DioExceptionType.connectionError) {
             _logger.e('🌐 Erreur de connexion: Backend inaccessible');
+          } else if (error.type == DioExceptionType.unknown) {
+            final lower = (rawError ?? '').toLowerCase();
+            if (lower.contains('cleartext')) {
+              _logger.e('📵 HTTP bloqué par Android (cleartext non autorisé)');
+            } else if (lower.contains('failed host lookup') ||
+                lower.contains('connection refused') ||
+                lower.contains('network is unreachable') ||
+                lower.contains('no route to host')) {
+              _logger.e('🌐 Hôte API inaccessible depuis cet appareil');
+            }
           }
 
           return handler.next(error);
@@ -164,11 +183,27 @@ class ApiClient {
 
   /// Extraire un message d'erreur lisible
   String _getErrorMessage(DioException error) {
+    final data = error.response?.data;
     if (error.response?.data is Map) {
       final data = error.response!.data as Map<String, dynamic>;
       return data['message'] ?? data['error'] ?? 'Erreur inconnue';
     }
-    return error.message ?? 'Erreur inconnue';
+
+    if (data is String && data.trim().isNotEmpty) {
+      return data;
+    }
+
+    final message = error.message;
+    if (message != null && message.trim().isNotEmpty) {
+      return message;
+    }
+
+    final transport = error.error?.toString();
+    if (transport != null && transport.trim().isNotEmpty) {
+      return transport;
+    }
+
+    return 'Erreur reseau inconnue';
   }
 
   /// Sauvegarder les tokens après authentification

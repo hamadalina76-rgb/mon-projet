@@ -3,6 +3,7 @@ package com.speedline.partner.controller;
 import com.speedline.partner.dto.PartnerDTO;
 import com.speedline.partner.dto.request.PartnerFilterRequest;
 import com.speedline.partner.repository.PartnerRepository;
+import com.speedline.partner.service.FavoriteService;
 import com.speedline.partner.service.FileStorageService;
 import com.speedline.partner.service.PartnerService;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,9 @@ class PartnerControllerNearbyTest {
 
     @MockBean
     private PartnerService partnerService;
+
+    @MockBean
+    private FavoriteService favoriteService;
 
     @MockBean
     private FileStorageService fileStorageService;

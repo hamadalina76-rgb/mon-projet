@@ -8,6 +8,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../location/presentation/providers/location_provider.dart';
 import '../../../partners/data/models/partner_nearby_dto.dart';
 import '../../../partners/presentation/providers/nearby_partners_provider.dart';
+import '../../../partners/presentation/screens/partner_details_screen.dart';
 import '../../../profile/data/models/address_model.dart';
 import '../../../profile/presentation/providers/address_provider.dart';
 
@@ -57,7 +58,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       return (lat: selectedLoc.latitude, lng: selectedLoc.longitude);
     }
 
-    final addresses = ref.read(addressNotifierProvider).valueOrNull ?? <AddressModel>[];
+    final addresses =
+        ref.read(addressNotifierProvider).valueOrNull ?? <AddressModel>[];
     for (final a in addresses) {
       if (a.isDefault && a.latitude != null && a.longitude != null) {
         return (lat: a.latitude!, lng: a.longitude!);
@@ -86,7 +88,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         _onQueryChanged(initialQuery);
       });
     }
-
   }
 
   @override
@@ -114,11 +115,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     if (coords.lat == 0.0 && coords.lng == 0.0) return;
 
     try {
-      final items = await ref.read(partnerApiServiceProvider).fetchTrendingSearches(
-            lat: coords.lat,
-            lng: coords.lng,
-            limit: 5,
-          );
+      final items = await ref
+          .read(partnerApiServiceProvider)
+          .fetchTrendingSearches(lat: coords.lat, lng: coords.lng, limit: 5);
       if (!mounted) return;
       setState(() => _trending = items);
     } catch (_) {
@@ -175,7 +174,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     });
 
     try {
-      final page = await ref.read(partnerApiServiceProvider).searchPartners(
+      final page = await ref
+          .read(partnerApiServiceProvider)
+          .searchPartners(
             query: query,
             lat: coords.lat,
             lng: coords.lng,
@@ -302,7 +303,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             ),
                             prefixIcon: const Icon(
                               Icons.search_rounded,
-                              color: AppColors.grey,
+                              color: AppColors.darkGrey,
                             ),
                             suffixIcon: query.isNotEmpty
                                 ? IconButton(
@@ -318,8 +319,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 : null,
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(26),
-                              borderSide:
-                                  const BorderSide(color: Color(0xFFE2E2E8), width: 1),
+                              borderSide: const BorderSide(
+                                color: AppColors.primary,
+                                width: 1,
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(26),
@@ -330,8 +333,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(26),
-                              borderSide:
-                                  const BorderSide(color: Color(0xFFE2E2E8), width: 1),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE2E2E8),
+                                width: 1,
+                              ),
                             ),
                             contentPadding: const EdgeInsets.symmetric(
                               vertical: 12,
@@ -348,122 +353,136 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : showSuggestions
-                        ? _SearchSuggestions(
-                            history: _history,
-                            trending: _trending,
-                            l10n: l10n,
-                            onTap: (value) {
-                              _controller.text = value;
-                              _controller.selection = TextSelection.collapsed(
-                                offset: value.length,
-                              );
-                              _submit(value);
-                            },
-                            onRemoveHistory: _removeHistoryItem,
-                          )
-                        : _didSearch && _results.isEmpty
-                            ? Center(
-                                child: Text(
-                                  '${l10n.translate('no_search_results_for')} "${_controller.text.trim()}"',
-                                  style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w600,
+                    ? _SearchSuggestions(
+                        history: _history,
+                        trending: _trending,
+                        l10n: l10n,
+                        onTap: (value) {
+                          _controller.text = value;
+                          _controller.selection = TextSelection.collapsed(
+                            offset: value.length,
+                          );
+                          _submit(value);
+                        },
+                        onRemoveHistory: _removeHistoryItem,
+                      )
+                    : _didSearch && _results.isEmpty
+                    ? Center(
+                        child: Text(
+                          '${l10n.translate('no_search_results_for')} "${_controller.text.trim()}"',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        itemBuilder: (_, index) {
+                          final partner = _results[index];
+                          final name = partner.displayName;
+
+                          return InkWell(
+                            onTap: () {
+                              _addToHistory(name);
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => PartnerDetailsScreen(
+                                    partnerId: partner.id,
+                                    initialPartner: partner,
                                   ),
                                 ),
-                              )
-                            : ListView.separated(
-                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                                itemBuilder: (_, index) {
-                                  final partner = _results[index];
-                                  final name = partner.displayName;
-
-                                  return InkWell(
-                                    onTap: () => _addToHistory(name),
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: AppColors.border),
-                                        boxShadow: const [
-                                          BoxShadow(
-                                            color: Color(0x12000000),
-                                            blurRadius: 10,
-                                            offset: Offset(0, 3),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(12),
-                                            child: SizedBox(
-                                              width: 58,
-                                              height: 58,
-                                              child: partner.logo?.isNotEmpty == true
-                                                  ? CachedNetworkImage(
-                                                      imageUrl: partner.logo!,
-                                                      fit: BoxFit.cover,
-                                                      errorWidget: (_, __, ___) =>
-                                                          _resultAvatarFallback(name),
-                                                    )
-                                                  : _resultAvatarFallback(name),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                RichText(
-                                                  text: TextSpan(
-                                                    style: const TextStyle(
-                                                      color: AppColors.textPrimary,
-                                                      fontSize: 16,
-                                                      fontWeight: FontWeight.w700,
-                                                    ),
-                                                    children: _highlightSpans(name, query),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  partner.type ?? l10n.translate('partner'),
-                                                  style: const TextStyle(
-                                                    color: AppColors.textSecondary,
-                                                    fontSize: 13,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 6),
-                                                Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.star_rounded,
-                                                      color: Colors.amber,
-                                                      size: 16,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      partner.rating.toStringAsFixed(1),
-                                                      style: const TextStyle(
-                                                        color: AppColors.textSecondary,
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                                itemCount: _results.length,
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.border),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x12000000),
+                                    blurRadius: 10,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
                               ),
+                              child: Row(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: SizedBox(
+                                      width: 58,
+                                      height: 58,
+                                      child: partner.logo?.isNotEmpty == true
+                                          ? CachedNetworkImage(
+                                              imageUrl: partner.logo!,
+                                              fit: BoxFit.cover,
+                                              errorWidget: (_, __, ___) =>
+                                                  _resultAvatarFallback(name),
+                                            )
+                                          : _resultAvatarFallback(name),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        RichText(
+                                          text: TextSpan(
+                                            style: const TextStyle(
+                                              color: AppColors.textPrimary,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                            children: _highlightSpans(
+                                              name,
+                                              query,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          partner.type ??
+                                              l10n.translate('partner'),
+                                          style: const TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.star_rounded,
+                                              color: AppColors.starYellow,
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              partner.rating.toStringAsFixed(1),
+                                              style: const TextStyle(
+                                                color: AppColors.textSecondary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemCount: _results.length,
+                      ),
               ),
             ],
           ),
@@ -531,7 +550,10 @@ class _SearchSuggestions extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       onTap: () => onTap(item),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -584,7 +606,10 @@ class _SearchSuggestions extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       onTap: () => onTap(item),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 9,
+                        ),
                         child: Text(
                           item,
                           style: const TextStyle(
@@ -621,7 +646,10 @@ class _SearchSuggestions extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       onTap: () => onTap(item),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 9,
+                        ),
                         child: Text(
                           item,
                           style: const TextStyle(

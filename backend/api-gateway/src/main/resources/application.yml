@@ -59,11 +59,17 @@ spring:
           filters:
             - AuthenticationFilter
 
-        # User Service - Uploads (static files: profile pictures, etc.)
+        # User Service - Uploads (profile pictures)
         - id: user-service-uploads
           uri: lb://user-service
           predicates:
-            - Path=/uploads/**
+            - Path=/uploads/profile-pictures/**
+
+        # Partner Service - Uploads (logos, covers, category images)
+        - id: partner-service-uploads
+          uri: lb://partner-service
+          predicates:
+            - Path=/uploads/partners/**, /uploads/categories/**
 
         # Partner Service
         - id: partner-service
@@ -78,6 +84,17 @@ spring:
               args:
                 name: partnerServiceBreaker
                 fallbackUri: forward:/fallback/partner
+
+        # Partner Service - Favorites (/api/favorites/** -> /partners/favorites/**)
+        - id: partner-service-favorites
+          uri: lb://partner-service
+          predicates:
+            - Path=/api/favorites, /api/favorites/**
+          filters:
+            - AuthenticationFilter
+            - RoleAuthorizationFilter
+            - StripPrefix=1
+            - PrefixPath=/partners
 
         # Partner Service - Admin Endpoints
         - id: partner-service-admin

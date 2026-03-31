@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geocoding/geocoding.dart' as geo;
+import '../../../../config/runtime_config.dart';
 import '../models/saved_location.dart';
 
 /// Service API pour la géolocalisation
@@ -8,15 +9,10 @@ import '../models/saved_location.dart';
 class LocationApiService {
   final Dio _dio;
 
-  // URL de l'API Gateway (port 8080 → route vers location-service port 8088)
-  // Sur émulateur Android: 10.0.2.2 = localhost machine hôte
-  // Sur appareil physique: adresse IP de la machine hôte
-  static const String _baseUrl = 'http://10.0.2.2:8080';
-
   LocationApiService({Dio? dio})
       : _dio = dio ??
             Dio(BaseOptions(
-              baseUrl: _baseUrl,
+              baseUrl: RuntimeConfig.apiBaseUrl,
               connectTimeout: const Duration(seconds: 3),  // fail fast → Nominatim
               receiveTimeout: const Duration(seconds: 10),
               headers: {
@@ -27,16 +23,16 @@ class LocationApiService {
 
   /// Géocodage inverse: coordonnées GPS → adresse
   ///
-  /// Appelle POST /locations/reverse-geocode
+  /// Appelle POST /api/locations/reverse-geocode
   /// Retourne un [SavedLocation] avec l'adresse détectée
   Future<SavedLocation> reverseGeocode({
     required double latitude,
     required double longitude,
   }) async {
     try {
-      debugPrint('[Geocode] ► reverseGeocode lat=$latitude lon=$longitude (POST /locations/reverse-geocode)');
+      debugPrint('[Geocode] ► reverseGeocode lat=$latitude lon=$longitude (POST /api/locations/reverse-geocode)');
       final response = await _dio.post(
-        '/locations/reverse-geocode',
+        '/api/locations/reverse-geocode',
         data: {
           'latitude': latitude,
           'longitude': longitude,
@@ -151,7 +147,7 @@ class LocationApiService {
   }
 
   /// Récupère les partenaires proches via l'API
-  /// GET /locations/nearby-partners?lat=..&lon=..&radius=..
+  /// GET /api/locations/nearby-partners?lat=..&lon=..&radius=..
   ///
   /// En cas d'erreur retourne une liste vide (ne crash pas l'app).
   Future<List<Map<String, dynamic>>> getNearbyPartners({
@@ -163,7 +159,7 @@ class LocationApiService {
       debugPrint('[PostGIS] ► getNearbyPartners lat=$latitude lon=$longitude radius=${radiusMeters}m');
 
       final response = await _dio.get(
-        '/locations/nearby-partners',
+        '/api/locations/nearby-partners',
         queryParameters: {
           'lat': latitude,
           'lon': longitude,

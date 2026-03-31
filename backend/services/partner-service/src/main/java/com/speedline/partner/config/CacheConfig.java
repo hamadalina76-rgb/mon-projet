@@ -1,79 +1,66 @@
 package com.speedline.partner.config;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.Cache;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cache.annotation.CachingConfigurer;
-import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
+import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
 
 @Configuration
 @EnableCaching
-@Slf4j
-public class CacheConfig implements CachingConfigurer {
+public class CacheConfig {
+
+    private RedisSerializer<Object> redisJsonSerializer() {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.registerModule(new JavaTimeModule());
+    mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    mapper.activateDefaultTyping(
+        LaissezFaireSubTypeValidator.instance,
+        ObjectMapper.DefaultTyping.NON_FINAL,
+        JsonTypeInfo.As.PROPERTY
+    );
+    return new GenericJackson2JsonRedisSerializer(mapper);
+    }
 
     @Bean
     public RedisCacheConfiguration cacheConfiguration() {
+    RedisSerializer<Object> valueSerializer = redisJsonSerializer();
+
         return RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(10))
-                .disableCachingNullValues();
+        .disableCachingNullValues()
+        .serializeKeysWith(
+            RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer())
+        )
+        .serializeValuesWith(
+            RedisSerializationContext.SerializationPair.fromSerializer(valueSerializer)
+        );
     }
 
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
+    RedisSerializer<Object> valueSerializer = redisJsonSerializer();
+
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(factory);
         template.setKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(new StringRedisSerializer());
+    template.setValueSerializer(valueSerializer);
         template.setHashKeySerializer(new StringRedisSerializer());
-        template.setHashValueSerializer(new StringRedisSerializer());
+    template.setHashValueSerializer(valueSerializer);
         template.afterPropertiesSet();
         return template;
     }
-
-    @Bean
-    @Override
-    public CacheErrorHandler errorHandler() {
-        return new CacheErrorHandler() {
-            @Override
-            public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
-                log.warn("Cache GET failed cache={} key={} error={}",
-                        cache != null ? cache.getName() : "unknown",
-                        key,
-                        exception.getMessage());
-            }
-
-            @Override
-            public void handleCachePutError(RuntimeException exception, Cache cache, Object key, Object value) {
-                log.warn("Cache PUT failed cache={} key={} error={}",
-                        cache != null ? cache.getName() : "unknown",
-                        key,
-                        exception.getMessage());
-            }
-
-            @Override
-            public void handleCacheEvictError(RuntimeException exception, Cache cache, Object key) {
-                log.warn("Cache EVICT failed cache={} key={} error={}",
-                        cache != null ? cache.getName() : "unknown",
-                        key,
-                        exception.getMessage());
-            }
-
-            @Override
-            public void handleCacheClearError(RuntimeException exception, Cache cache) {
-                log.warn("Cache CLEAR failed cache={} error={}",
-                        cache != null ? cache.getName() : "unknown",
-                        exception.getMessage());
-            }
-
-            
-        };
-    }
 }
+

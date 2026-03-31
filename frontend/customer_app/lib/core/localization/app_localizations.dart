@@ -5,13 +5,15 @@ class AppLocalizations {
 
   AppLocalizations(this.locale);
 
-  static AppLocalizations? of(BuildContext context) {
-    return Localizations.of<AppLocalizations>(context, AppLocalizations);
+  static AppLocalizations of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations) ??
+        AppLocalizations(const Locale('en'));
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
-  static final Map<String, Map<String, String>> _localizedValues = {
+  static Map<String, Map<String, String>> get _localizedValues => {
     'en': {
       'app_name': 'SpeedLine',
       'welcome': 'Welcome',
@@ -32,7 +34,7 @@ class AppLocalizations {
       'checkout': 'Checkout',
       'order_placed': 'Order Placed Successfully',
       'track_order': 'Track Order',
-      
+
       // Auth screens
       'sign_in': 'Sign In',
       'first_name': 'First Name',
@@ -44,7 +46,7 @@ class AppLocalizations {
       'or_continue_with': 'Or continue with',
       'having_trouble': 'Having trouble? ',
       'contact_support': 'Contact Support',
-      
+
       // Validation messages
       'please_enter_email': 'Please enter your email',
       'invalid_email': 'Invalid email',
@@ -55,13 +57,14 @@ class AppLocalizations {
       'please_enter_valid_email': 'Please enter your valid email',
       'please_enter_phone': 'Please enter your phone number',
       'phone_min_length': 'Phone number must have 8 numbers',
-      
+
       // Forgot Password
       'forgot_password_title': 'Forgot Password?',
-      'forgot_password_desc': "Don't worry! It happens. Please enter the email address associated with your account.",
+      'forgot_password_desc':
+          "Don't worry! It happens. Please enter the email address associated with your account.",
       'send_code': 'Send Code',
       'remember_password': 'Remember your password? ',
-      
+
       // Verify OTP
       'verify_code': 'Verify Code',
       'verify_code_desc': 'Please enter the code we just sent to',
@@ -72,7 +75,8 @@ class AppLocalizations {
       'verify_identity': 'Verify Your Identity',
       'otp_sent_to': 'We sent a verification code to',
       'code_expired': 'Code Expired',
-      'code_expired_message': 'Your OTP code has expired. Please request a new code.',
+      'code_expired_message':
+          'Your OTP code has expired. Please request a new code.',
       'back': 'Back',
       'resend_code': 'Resend',
       'expires_in': 'Expires in',
@@ -84,7 +88,7 @@ class AppLocalizations {
       'wait': 'Wait',
       'seconds': 'seconds',
       'sec': 's',
-      
+
       // Snackbar messages
       'login_failed': 'Login failed. Please check your credentials.',
       'otp_verification_failed': 'OTP verification failed. Please try again.',
@@ -97,12 +101,13 @@ class AppLocalizations {
       'please_wait': 'Please wait...',
       'otp_sent': 'OTP sent successfully to your email.',
       'stay_connected': 'Stay connected',
-      
+
       // Accueil Screen
       'welcome_speedline': 'Welcome to SpeedLine!',
-      'welcome_message': 'You are now logged in to your account.\nThe full home screen is coming soon!',
+      'welcome_message':
+          'You are now logged in to your account.\nThe full home screen is coming soon!',
       'welcome_user': 'Welcome',
-      
+
       // Settings Screen
       'settings': 'Settings',
       'account': 'ACCOUNT',
@@ -138,19 +143,24 @@ class AppLocalizations {
       'english': 'English',
       'french': 'French',
       'arabic': 'Arabic',
-      
+
       // Enable Location Screen
       'enable_location': 'Enable Location Services',
       'location_permission_title': 'What is your location?',
-      'location_permission_desc': 'We need to know your location to show you nearby restaurants and provide accurate delivery estimates.',
+      'location_permission_desc':
+          'We need to know your location to show you nearby restaurants and provide accurate delivery estimates.',
       'accurate_delivery': 'provide accurate delivery estimates',
       'allow_location_access': 'Allow Location Access',
       'enter_address_manually': 'Enter Address Manually',
       'skip_for_now': 'Skip for now',
-      'location_services_disabled': 'Location services are disabled. Please enable them in settings.',
-      'location_permission_denied': 'Location permission denied. Please allow access to continue.',
-      'location_permanently_denied': 'Location permissions are permanently denied.',
-      'open_settings_for_location': 'Please open app settings to allow location access for SpeedLine.',
+      'location_services_disabled':
+          'Location services are disabled. Please enable them in settings.',
+      'location_permission_denied':
+          'Location permission denied. Please allow access to continue.',
+      'location_permanently_denied':
+          'Location permissions are permanently denied.',
+      'open_settings_for_location':
+          'Please open app settings to allow location access for SpeedLine.',
       'open_settings': 'Open Settings',
       'location_timeout': 'Location request timed out. Please try again.',
       'location_error': 'Failed to get location. Please try again.',
@@ -182,7 +192,7 @@ class AppLocalizations {
       'stores': 'Stores',
       'free_delivery_first_order': 'Free delivery on your first order',
       'order_and_enjoy': 'Order and enjoy!',
-      
+
       // Edit Profile Screen
       'save_changes': 'Save Changes',
       'profile_updated_success': 'Profile updated successfully!',
@@ -192,7 +202,7 @@ class AppLocalizations {
       'choose_from_gallery': 'Choose from Gallery',
       'remove_photo': 'Remove Photo',
       'uploading': 'Uploading...',
-      
+
       // Profile Screen
       'my_profile': 'My Profile',
       'delivery_addresses': 'Delivery Addresses',
@@ -216,7 +226,7 @@ class AppLocalizations {
       'manage_all': 'Manage All',
       'manage': 'Manage',
       'view_all': 'View All',
-      
+
       // Search Screen
       'search': 'Search',
       'coming_soon': 'Coming soon...',
@@ -225,16 +235,17 @@ class AppLocalizations {
       'search_trending': 'Trending searches',
       'no_search_results_for': 'No results for',
       'partner': 'Partner',
-      
+
       // Orders Screen
       'my_orders': 'My Orders',
-      
+
       // Main Navigation
       'explore': 'Explore',
-      
+
       // Reset Password
       'reset_password': 'Reset Password',
-      'reset_password_desc': "Please enter your new password. Make sure it's at least 6 characters long.",
+      'reset_password_desc':
+          "Please enter your new password. Make sure it's at least 6 characters long.",
       'new_password': 'New Password',
       'confirm_password': 'Confirm Password',
       'please_enter_password_field': 'Please enter a password',
@@ -242,18 +253,21 @@ class AppLocalizations {
       'please_confirm_password': 'Please confirm the password',
       'passwords_dont_match': 'Passwords do not match',
       'password_reset_success': 'Password reset successfully!',
-      
+
       // Change Password
       'change_password_title': 'Change Your Password',
-      'change_password_desc': 'To change your password, we\'ll send a verification code to your email address.',
+      'change_password_desc':
+          'To change your password, we\'ll send a verification code to your email address.',
       'continue_to_verify': 'Continue',
-      'secure_account': 'Keep your account secure by changing your password regularly.',
-      
+      'secure_account':
+          'Keep your account secure by changing your password regularly.',
+
       // Social login in development
       'google_signin_dev': 'Google Sign In - Under development',
       'facebook_signin_dev': 'Facebook Sign In - Under development',
-      'register_success': 'Registration successful! Please log in with your credentials.',
-      
+      'register_success':
+          'Registration successful! Please log in with your credentials.',
+
       // Home/Onboarding screen
       'skip': 'Skip',
       'next': 'Next',
@@ -261,18 +275,21 @@ class AppLocalizations {
       'terms_prefix': 'By continuing, you agree to our ',
       'terms': 'Terms',
       'privacy_policy': 'Privacy Policy',
-      
+
       // Onboarding pages
       'onboarding_page1_title': 'Deliver with',
       'onboarding_page1_highlight': 'Speed & Precision',
-      'onboarding_page1_desc': 'Manage your fleet in real-time. The fastest way to get from A to B starts here.',
+      'onboarding_page1_desc':
+          'Manage your fleet in real-time. The fastest way to get from A to B starts here.',
       'onboarding_page2_title': 'Track Your',
       'onboarding_page2_highlight': 'Order Live',
-      'onboarding_page2_desc': 'Real-time tracking keeps you informed every step of the way. Never miss a delivery.',
+      'onboarding_page2_desc':
+          'Real-time tracking keeps you informed every step of the way. Never miss a delivery.',
       'onboarding_page3_title': 'Fast & Reliable',
       'onboarding_page3_highlight': 'Service',
-      'onboarding_page3_desc': 'Experience lightning-fast deliveries with our trusted network of professional couriers.',
-      
+      'onboarding_page3_desc':
+          'Experience lightning-fast deliveries with our trusted network of professional couriers.',
+
       // Explore Screen
       'restaurants': 'Restaurants',
       'courses': 'Courses',
@@ -283,7 +300,7 @@ class AppLocalizations {
       'magasins_aziza': 'Magasins Aziza',
       'free_delivery_title': 'Free Delivery',
       'order_now': 'Order Now, We Treat You!',
-      
+
       // Explore Screen
       'deliver_to': 'Deliver to',
       'current_location': 'Current Location',
@@ -331,7 +348,8 @@ class AppLocalizations {
       'retry': 'Retry',
       'no_address_hint': 'Tap "Add" to create\nyour first delivery address.',
       'delete_address': 'Delete Address',
-      'delete_address_confirm': 'Are you sure you want to delete this address? This action is irreversible.',
+      'delete_address_confirm':
+          'Are you sure you want to delete this address? This action is irreversible.',
       'delete': 'Delete',
       'default_label': 'Default',
 
@@ -355,16 +373,20 @@ class AppLocalizations {
       'label_required': 'Label is required for this type.',
       'field_required': 'This field is required.',
       'delete_blocked_title': 'Cannot Delete',
-      'delete_blocked_content': 'This is your currently active delivery address. Please choose another delivery address before deleting it.',
+      'delete_blocked_content':
+          'This is your currently active delivery address. Please choose another delivery address before deleting it.',
       'understood': 'Got it',
       'address_deleted': 'Address deleted.',
       'address_delete_error': 'Could not delete address. Please try again.',
       'changes_saved': 'Changes saved successfully!',
       'address_added': 'Address added to your list!',
-      'label_already_used_error': 'This label is already used by another address. Choose a different name below \u2193',
+      'label_already_used_error':
+          'This label is already used by another address. Choose a different name below \u2193',
       'account_not_found_error': 'Account not found. Please log in again.',
-      'invalid_fields_error': 'Some fields are invalid. Please check the information entered.',
-      'invalid_gps_error': 'GPS coordinates are invalid. Go back to the map and select again.',
+      'invalid_fields_error':
+          'Some fields are invalid. Please check the information entered.',
+      'invalid_gps_error':
+          'GPS coordinates are invalid. Go back to the map and select again.',
       'personalized': 'Custom',
       'custom_label_other_hint': "e.g. Grandma's house",
 
@@ -400,12 +422,134 @@ class AppLocalizations {
       'see_partners_count': 'See',
       'partners': 'partners',
       'back_to_top': 'Top',
-      'all_closed_now_notice': 'None of these places is open now. They will reopen at',
+      'all_closed_now_notice':
+          'None of these places is open now. They will reopen at',
       'categories_all': 'All',
       'pharmacy_cat': 'Pharmacy',
       'other_cat': 'Other',
       'free': 'Free',
       'free_delivery_promo': 'Free Delivery',
+      'partner_status_open': 'Open',
+      'partner_status_closed': 'Closed',
+      'favorites_title': 'My Favorites',
+      'favorites_subtitle': 'Your saved partners',
+      'favorites_count_label': 'saved',
+      'favorites_remove_dialog_title': 'Remove this favorite?',
+      'favorites_remove_dialog_message':
+          'Remove this partner from your favorites?',
+      'favorites_remove_action': 'Remove',
+      'favorites_error_retry': 'Something went wrong. Please try again.',
+      'favorites_removed_success': 'Removed from favorites',
+      'favorites_empty_title': 'No favorites yet',
+      'favorites_empty_description':
+          'Add your favorite partners to find them faster next time.',
+      'favorites_explore_button': 'Explore partners',
+      'favorites_syncing_label': 'Syncing favorites...',
+      'establishment_info_title': 'Establishment Information',
+      'establishment_address_title': 'Address',
+      'establishment_hours_title': 'Opening Hours',
+      'establishment_description_title': 'Description',
+      'establishment_contact_title': 'Contact',
+      'establishment_closed': 'Closed',
+      'establishment_24h': '24/7',
+      'day_monday': 'Monday',
+      'day_tuesday': 'Tuesday',
+      'day_wednesday': 'Wednesday',
+      'day_thursday': 'Thursday',
+      'day_friday': 'Friday',
+      'day_saturday': 'Saturday',
+      'day_sunday': 'Sunday',
+      'partner_details_login_to_favorite': 'Log in to add favorites.',
+      'partner_details_favorite_added': 'Added to favorites',
+      'partner_details_favorite_removed': 'Removed from favorites',
+      'partner_details_favorite_update_failed': 'Could not update favorites',
+      'partner_details_added_to_cart': 'added to cart',
+      'partner_details_opens_today_at': 'Opens today at',
+      'partner_details_opens': 'Opens',
+      'partner_details_opens_at': 'Opens at',
+      'partner_details_at': 'at',
+      'partner_details_options_title': 'Options',
+      'partner_details_option_establishment_info': 'Establishment information',
+      'partner_details_option_fees_info': 'Fees information',
+      'partner_details_option_share_establishment': 'Share establishment',
+      'partner_details_fees_info_toast':
+          'Delivery fees are shown on the partner page.',
+      'partner_details_share_toast':
+          'Partner link copied/shared from this page.',
+      'partner_details_load_error': 'Could not load partner details',
+      'partner_details_reviews_tab': 'Reviews',
+      'partner_details_promo_available': 'Promo available',
+      'partner_details_out_of_zone': 'Does not deliver to your address',
+      'partner_details_reviews_count_suffix': 'reviews',
+      'partner_details_menu_unavailable': 'Menu unavailable for now',
+      'partner_details_be_first_review': 'Be the first to leave a review',
+      'product_detail_refresh_error': 'Could not refresh product details.',
+      'product_detail_options_load_error':
+          'Could not load customization options.',
+      'product_detail_keep_min_options':
+          'Please keep at least {min} option(s) in {group}.',
+      'product_detail_select_up_to': 'You can select up to {max} options.',
+      'product_detail_select_at_least':
+          'Please select at least {min} option(s) in {group}.',
+      'product_detail_select_at_most':
+          'Please select at most {max} option(s) in {group}.',
+      'product_detail_fallback_category': 'this category',
+      'product_detail_unavailable': 'This product is currently unavailable.',
+      'product_detail_badge_popular': 'Popular',
+      'product_detail_minutes_abbr': 'min',
+      'product_detail_choose_for': 'Choose {group} for {category}',
+      'product_detail_required': 'Required',
+      'product_detail_optional': 'Optional',
+      'product_detail_pick_one': 'Pick one',
+      'product_detail_pick_range': 'Pick {min}-{max}',
+      'product_detail_up_to': 'Up to {max}',
+      'menu_label_burger': 'Burger',
+      'menu_label_burgers': 'Burgers',
+      'menu_label_pizza': 'Pizza',
+      'menu_label_pizzas': 'Pizzas',
+      'menu_label_sandwich': 'Sandwich',
+      'menu_label_sandwiches': 'Sandwiches',
+      'menu_label_tacos': 'Tacos',
+      'menu_label_wrap': 'Wrap',
+      'menu_label_wraps': 'Wraps',
+      'menu_label_shawarma': 'Shawarma',
+      'menu_label_drink': 'Drink',
+      'menu_label_drinks': 'Drinks',
+      'menu_label_beverage': 'Beverage',
+      'menu_label_beverages': 'Beverages',
+      'menu_label_boisson': 'Drink',
+      'menu_label_boissons': 'Drinks',
+      'menu_label_dessert': 'Dessert',
+      'menu_label_desserts': 'Desserts',
+      'menu_label_salad': 'Salad',
+      'menu_label_salads': 'Salads',
+      'menu_label_combo': 'Combo',
+      'menu_label_combos': 'Combos',
+      'menu_label_meal': 'Meal',
+      'menu_label_meals': 'Meals',
+      'menu_label_sides': 'Sides',
+      'menu_label_fries': 'Fries',
+      'menu_label_chicken': 'Chicken',
+      'menu_label_size': 'Size',
+      'menu_label_taille': 'Size',
+      'menu_label_crust': 'Crust',
+      'menu_label_sauce': 'Sauce',
+      'menu_label_sauces': 'Sauces',
+      'menu_label_topping': 'Topping',
+      'menu_label_toppings': 'Toppings',
+      'menu_label_extra': 'Extra',
+      'menu_label_extras': 'Extras',
+      'menu_label_supplement': 'Supplement',
+      'menu_label_supplements': 'Supplements',
+      'menu_label_cheese': 'Cheese',
+      'menu_label_small': 'Small',
+      'menu_label_medium': 'Medium',
+      'menu_label_large': 'Large',
+      'menu_label_regular': 'Regular',
+      'menu_label_spicy': 'Spicy',
+      'menu_label_not_spicy': 'Not spicy',
+      'menu_label_mild': 'Mild',
+      'menu_label_hot': 'Hot',
     },
     'fr': {
       'app_name': 'SpeedLine',
@@ -427,7 +571,7 @@ class AppLocalizations {
       'checkout': 'Commander',
       'order_placed': 'Commande passée avec succès',
       'track_order': 'Suivre la commande',
-      
+
       // Auth screens
       'sign_in': 'Se Connecter',
       'first_name': 'Prénom',
@@ -439,27 +583,30 @@ class AppLocalizations {
       'or_continue_with': 'Ou continuer avec',
       'having_trouble': 'Besoin d\'aide? ',
       'contact_support': 'Contacter le Support',
-      
+
       // Validation messages
       'please_enter_email': 'Veuillez entrer votre email',
       'invalid_email': 'Email invalide',
       'please_enter_password': 'Veuillez entrer votre mot de passe',
-      'password_min_length': 'Le mot de passe doit contenir au moins 8 caractères',
+      'password_min_length':
+          'Le mot de passe doit contenir au moins 8 caractères',
       'please_enter_first_name': 'Veuillez entrer votre prénom',
       'please_enter_last_name': 'Veuillez entrer votre nom',
       'please_enter_valid_email': 'Veuillez entrer votre email valide',
       'please_enter_phone': 'Veuillez entrer votre numéro de téléphone',
       'phone_min_length': 'Le numéro doit contenir 8 chiffres',
-      
+
       // Forgot Password
       'forgot_password_title': 'Mot de passe oublié?',
-      'forgot_password_desc': "Pas d'inquiétude! Cela arrive. Veuillez entrer l'adresse email associée à votre compte.",
+      'forgot_password_desc':
+          "Pas d'inquiétude! Cela arrive. Veuillez entrer l'adresse email associée à votre compte.",
       'send_code': 'Envoyer le Code',
       'remember_password': 'Vous vous souvenez de votre mot de passe? ',
-      
+
       // Verify OTP
       'verify_code': 'Vérifier le Code',
-      'verify_code_desc': 'Veuillez entrer le code que nous venons d\'envoyer à',
+      'verify_code_desc':
+          'Veuillez entrer le code que nous venons d\'envoyer à',
       'didnt_receive_code': "Vous n'avez pas reçu le code? ",
       'resend': 'Renvoyer',
       'please_enter_6_digit_code': 'Veuillez entrer le code à 6 chiffres',
@@ -467,7 +614,8 @@ class AppLocalizations {
       'verify_identity': 'Vérifier votre identité',
       'otp_sent_to': 'Nous avons envoyé un code de vérification à',
       'code_expired': 'Code expiré',
-      'code_expired_message': 'Votre code OTP a expiré. Veuillez demander un nouveau code.',
+      'code_expired_message':
+          'Votre code OTP a expiré. Veuillez demander un nouveau code.',
       'back': 'Retour',
       'resend_code': 'Renvoyer',
       'expires_in': 'Expire dans',
@@ -475,36 +623,43 @@ class AppLocalizations {
       'enter_6_digit_code': 'Veuillez entrer un code de 6 chiffres',
       'invalid_or_expired_code': 'Code invalide ou expiré',
       'login_success': '✓ Connexion réussie!',
-      'resend_login_otp_message': 'Pour renvoyer le code, veuillez vous reconnecter',
+      'resend_login_otp_message':
+          'Pour renvoyer le code, veuillez vous reconnecter',
       'wait': 'Attendez',
       'seconds': 'secondes',
       'sec': 's',
-      
+
       // Snackbar messages
-      'login_failed': 'Échec de la connexion. Veuillez vérifier vos identifiants.',
-      'otp_verification_failed': 'Échec de la vérification OTP. Veuillez réessayer.',
+      'login_failed':
+          'Échec de la connexion. Veuillez vérifier vos identifiants.',
+      'otp_verification_failed':
+          'Échec de la vérification OTP. Veuillez réessayer.',
       'otp_verification_success': 'OTP vérifié avec succès!',
-      'password_reset_failed': 'Échec de la réinitialisation. Veuillez réessayer.',
-      'password_reset_complete': 'Votre mot de passe a été réinitialisé avec succès!',
+      'password_reset_failed':
+          'Échec de la réinitialisation. Veuillez réessayer.',
+      'password_reset_complete':
+          'Votre mot de passe a été réinitialisé avec succès!',
       'email_not_found': 'Email introuvable. Veuillez vérifier et réessayer.',
       'invalid_credentials': 'Email ou mot de passe invalide.',
       'generic_error': 'Une erreur s\'est produite. Veuillez réessayer.',
       'please_wait': 'Veuillez patienter...',
       'otp_sent': 'OTP envoyé avec succès à votre email.',
       'stay_connected': 'Rester connecté',
-      
+
       // Accueil Screen
       'welcome_speedline': 'Bienvenue sur SpeedLine!',
-      'welcome_message': 'Vous êtes maintenant connecté à votre compte.\nL\'écran d\'accueil complet arrive bientôt!',
+      'welcome_message':
+          'Vous êtes maintenant connecté à votre compte.\nL\'écran d\'accueil complet arrive bientôt!',
       'welcome_user': 'Bienvenue',
-      
+
       // Settings Screen
       'settings': 'Paramètres',
       'account': 'COMPTE',
       'edit_profile': 'Modifier le Profil',
       'manage_preferences': 'Gérer vos informations de profil',
       'change_password': 'Changer le Mot de Passe',
-      'update_security_credentials': 'Mettre à jour vos identifiants de sécurité',
+      'update_security_credentials':
+          'Mettre à jour vos identifiants de sécurité',
       'app_preferences': 'PRÉFÉRENCES',
       'language': 'Langue',
       'choose_app_language': 'Choisissez la langue de l\'application',
@@ -514,7 +669,8 @@ class AppLocalizations {
       'light_mode_enabled': 'Mode clair activé',
       'notifications': 'NOTIFICATIONS',
       'push_notifications': 'Notifications Push',
-      'receive_order_updates': 'Recevoir des mises à jour de commande et des offres',
+      'receive_order_updates':
+          'Recevoir des mises à jour de commande et des offres',
       'email_notifications': 'Notifications Email',
       'receive_news_offers': 'Recevoir des actualités et des offres spéciales',
       'support': 'SUPPORT',
@@ -533,31 +689,39 @@ class AppLocalizations {
       'english': 'Anglais',
       'french': 'Français',
       'arabic': 'Arabe',
-      
+
       // Enable Location Screen
       'enable_location': 'Activer les Services de Localisation',
       'location_permission_title': 'Quelle est votre position?',
-      'location_permission_desc': 'Nous devons connaître votre position pour vous montrer les restaurants à proximité et fournir des estimations de livraison précises.',
+      'location_permission_desc':
+          'Nous devons connaître votre position pour vous montrer les restaurants à proximité et fournir des estimations de livraison précises.',
       'accurate_delivery': 'fournir des estimations de livraison précises',
       'allow_location_access': 'Autoriser l\'Accès à la Localisation',
       'enter_address_manually': 'Entrer l\'Adresse Manuellement',
       'skip_for_now': 'Passer pour l\'instant',
-      'location_services_disabled': 'Les services de localisation sont désactivés. Veuillez les activer dans les paramètres.',
-      'location_permission_denied': 'Permission de localisation refusée. Veuillez autoriser l\'accès pour continuer.',
-      'location_permanently_denied': 'Les autorisations de localisation sont refusées de façon permanente.',
-      'open_settings_for_location': 'Veuillez ouvrir les paramètres de l\'application pour autoriser la localisation.',
+      'location_services_disabled':
+          'Les services de localisation sont désactivés. Veuillez les activer dans les paramètres.',
+      'location_permission_denied':
+          'Permission de localisation refusée. Veuillez autoriser l\'accès pour continuer.',
+      'location_permanently_denied':
+          'Les autorisations de localisation sont refusées de façon permanente.',
+      'open_settings_for_location':
+          'Veuillez ouvrir les paramètres de l\'application pour autoriser la localisation.',
       'open_settings': 'Ouvrir les Paramètres',
-      'location_timeout': 'La demande de localisation a expiré. Veuillez réessayer.',
+      'location_timeout':
+          'La demande de localisation a expiré. Veuillez réessayer.',
       'location_error': 'Échec de l\'obtention de la localisation. Réessayez.',
       'detecting_location': 'Détection en cours...',
-      'privacy_location_note': 'Votre position est chiffrée et jamais partagée.',
+      'privacy_location_note':
+          'Votre position est chiffrée et jamais partagée.',
       'enter_your_address': 'Entrez Votre Adresse',
       'search_address': 'Rechercher une adresse',
       'address_search_hint': 'ex: 58 Ave. Hédi Chaker, Sfax',
       'confirm_address': 'Confirmer l\'Adresse',
       'retry_gps': 'Réessayer la Détection GPS',
       'manual_address_entry': 'Saisie Manuelle de l\'Adresse',
-      'manual_address_coming_soon': 'L\'écran de saisie manuelle de l\'adresse arrive bientôt!',
+      'manual_address_coming_soon':
+          'L\'écran de saisie manuelle de l\'adresse arrive bientôt!',
       'ok': 'OK',
 
       // Confirm Location Screen
@@ -568,26 +732,29 @@ class AppLocalizations {
       'enter_address_hint': 'Entrez votre adresse complète...',
       'detecting_address': 'Détection de l\'adresse...',
       'no_address_found': 'Aucune adresse trouvée pour cette position.',
-      'tap_map_to_adjust': 'Appuyez sur la carte pour ajuster la position du pin.',
+      'tap_map_to_adjust':
+          'Appuyez sur la carte pour ajuster la position du pin.',
       'confirm_this_location': 'Confirmer Cette Position',
       'current_location_label': 'Emplacement actuel',
       'missing_address_data': 'Données d\'adresse manquantes',
       'default_location': 'Sfax, Tunisie',
       'special_for_you': 'Spécial pour Vous',
       'stores': 'Magasins',
-      'free_delivery_first_order': 'Livraison gratuite sur votre première commande',
+      'free_delivery_first_order':
+          'Livraison gratuite sur votre première commande',
       'order_and_enjoy': 'Commandez et profitez!',
-      
+
       // Edit Profile Screen
       'save_changes': 'Enregistrer les Modifications',
       'profile_updated_success': 'Profil mis à jour avec succès!',
-      'profile_update_error': 'Échec de la mise à jour du profil. Veuillez réessayer.',
+      'profile_update_error':
+          'Échec de la mise à jour du profil. Veuillez réessayer.',
       'choose_photo_source': 'Choisir la Source de la Photo',
       'take_photo': 'Prendre une Photo',
       'choose_from_gallery': 'Choisir dans la Galerie',
       'remove_photo': 'Supprimer la Photo',
       'uploading': 'Téléchargement...',
-      
+
       // Profile Screen
       'my_profile': 'Mon Profil',
       'delivery_addresses': 'Adresses de Livraison',
@@ -611,7 +778,7 @@ class AppLocalizations {
       'manage_all': 'Tout Gérer',
       'manage': 'Gérer',
       'view_all': 'Tout Voir',
-      
+
       // Search Screen
       'search': 'Rechercher',
       'coming_soon': 'Bientôt disponible...',
@@ -620,16 +787,17 @@ class AppLocalizations {
       'search_trending': 'Recherches tendance',
       'no_search_results_for': 'Aucun résultat pour',
       'partner': 'Partenaire',
-      
+
       // Orders Screen
       'my_orders': 'Mes Commandes',
-      
+
       // Main Navigation
       'explore': 'Explorer',
-      
+
       // Reset Password
       'reset_password': 'Réinitialiser le Mot de Passe',
-      'reset_password_desc': 'Veuillez entrer votre nouveau mot de passe. Assurez-vous qu\'il contient au moins 6 caractères.',
+      'reset_password_desc':
+          'Veuillez entrer votre nouveau mot de passe. Assurez-vous qu\'il contient au moins 6 caractères.',
       'new_password': 'Nouveau Mot de Passe',
       'confirm_password': 'Confirmer le Mot de Passe',
       'please_enter_password_field': 'Veuillez entrer un mot de passe',
@@ -637,18 +805,21 @@ class AppLocalizations {
       'please_confirm_password': 'Veuillez confirmer le mot de passe',
       'passwords_dont_match': 'Les mots de passe ne correspondent pas',
       'password_reset_success': 'Mot de passe réinitialisé avec succès!',
-      
+
       // Change Password
       'change_password_title': 'Changer Votre Mot de Passe',
-      'change_password_desc': 'Pour changer votre mot de passe, nous enverrons un code de vérification à votre adresse e-mail.',
+      'change_password_desc':
+          'Pour changer votre mot de passe, nous enverrons un code de vérification à votre adresse e-mail.',
       'continue_to_verify': 'Continuer',
-      'secure_account': 'Gardez votre compte sécurisé en changeant régulièrement votre mot de passe.',
-      
+      'secure_account':
+          'Gardez votre compte sécurisé en changeant régulièrement votre mot de passe.',
+
       // Social login in development
       'google_signin_dev': 'Google Sign In - En cours de développement',
       'facebook_signin_dev': 'Facebook Sign In - En cours de développement',
-      'register_success': 'Inscription réussie! Veuillez vous connecter avec vos identifiants.',
-      
+      'register_success':
+          'Inscription réussie! Veuillez vous connecter avec vos identifiants.',
+
       // Home/Onboarding screen
       'skip': 'Passer',
       'next': 'Suivant',
@@ -656,18 +827,21 @@ class AppLocalizations {
       'terms_prefix': 'En continuant, vous acceptez nos ',
       'terms': 'Conditions',
       'privacy_policy': 'Politique de confidentialité',
-      
+
       // Onboarding pages
       'onboarding_page1_title': 'Livraison avec',
       'onboarding_page1_highlight': 'Rapidité & Précision',
-      'onboarding_page1_desc': 'Gérez votre flotte en temps réel. Le moyen le plus rapide d\'aller d\'un point A à B commence ici.',
+      'onboarding_page1_desc':
+          'Gérez votre flotte en temps réel. Le moyen le plus rapide d\'aller d\'un point A à B commence ici.',
       'onboarding_page2_title': 'Suivez votre',
       'onboarding_page2_highlight': 'Commande en Direct',
-      'onboarding_page2_desc': 'Le suivi en temps réel vous tient informé à chaque étape. Ne manquez jamais une livraison.',
+      'onboarding_page2_desc':
+          'Le suivi en temps réel vous tient informé à chaque étape. Ne manquez jamais une livraison.',
       'onboarding_page3_title': 'Service Rapide',
       'onboarding_page3_highlight': 'et Fiable',
-      'onboarding_page3_desc': 'Profitez de livraisons ultra-rapides avec notre réseau de coursiers professionnels de confiance.',
-      
+      'onboarding_page3_desc':
+          'Profitez de livraisons ultra-rapides avec notre réseau de coursiers professionnels de confiance.',
+
       // Explore Screen
       'restaurants': 'Restaurants',
       'courses': 'Courses',
@@ -678,7 +852,7 @@ class AppLocalizations {
       'magasins_aziza': 'Magasins Aziza',
       'free_delivery_title': 'Livraison gratuite',
       'order_now': 'Commandez, nous régalons!',
-      
+
       // Explore Screen
       'deliver_to': 'Livrer à',
       'current_location': 'Localisation actuelle',
@@ -717,16 +891,19 @@ class AppLocalizations {
       'move_pin_to_adjust': 'Déplacez le pin pour ajuster la position',
       'continue_btn': 'Continuer',
       'what_type_of_place': "De quel genre d'endroit s'agit-il ?",
-      'address_selected_for_delivery': 'sélectionnée comme adresse de livraison',
+      'address_selected_for_delivery':
+          'sélectionnée comme adresse de livraison',
 
       // Addresses Screen
       'my_addresses': 'Mes adresses',
       'add': 'Ajouter',
       'load_addresses_error': 'Impossible de charger les adresses',
       'retry': 'Réessayer',
-      'no_address_hint': 'Appuyez sur « Ajouter » pour créer\nvotre première adresse de livraison.',
+      'no_address_hint':
+          'Appuyez sur « Ajouter » pour créer\nvotre première adresse de livraison.',
       'delete_address': 'Supprimer l\'adresse',
-      'delete_address_confirm': 'Supprimer cette adresse ? Cette action est irréversible.',
+      'delete_address_confirm':
+          'Supprimer cette adresse ? Cette action est irréversible.',
       'delete': 'Supprimer',
       'default_label': 'Défaut',
 
@@ -750,16 +927,21 @@ class AppLocalizations {
       'label_required': 'Le label est obligatoire pour ce type.',
       'field_required': 'Ce champ est obligatoire.',
       'delete_blocked_title': 'Suppression impossible',
-      'delete_blocked_content': 'Cette adresse est actuellement votre adresse de livraison active. Veuillez d\'abord choisir une autre adresse de livraison avant de la supprimer.',
+      'delete_blocked_content':
+          'Cette adresse est actuellement votre adresse de livraison active. Veuillez d\'abord choisir une autre adresse de livraison avant de la supprimer.',
       'understood': 'Compris',
       'address_deleted': 'Adresse supprimée.',
       'address_delete_error': 'Impossible de supprimer l\'adresse. Réessayez.',
       'changes_saved': 'Modifications enregistrées avec succès !',
       'address_added': 'Adresse ajoutée à votre liste !',
-      'label_already_used_error': 'Cette étiquette est déjà utilisée par une autre adresse. Choisissez un nom différent ci-dessous \u2193',
-      'account_not_found_error': 'Compte introuvable. Veuillez vous reconnecter et réessayer.',
-      'invalid_fields_error': 'Certains champs sont invalides. Vérifiez les informations saisies.',
-      'invalid_gps_error': 'Les coordonnées GPS sont invalides. Retournez à la carte et sélectionnez à nouveau.',
+      'label_already_used_error':
+          'Cette étiquette est déjà utilisée par une autre adresse. Choisissez un nom différent ci-dessous \u2193',
+      'account_not_found_error':
+          'Compte introuvable. Veuillez vous reconnecter et réessayer.',
+      'invalid_fields_error':
+          'Certains champs sont invalides. Vérifiez les informations saisies.',
+      'invalid_gps_error':
+          'Les coordonnées GPS sont invalides. Retournez à la carte et sélectionnez à nouveau.',
       'personalized': 'Personnalisé',
       'custom_label_other_hint': 'Ex: Chez grand-mère',
 
@@ -781,7 +963,8 @@ class AppLocalizations {
       'sort_best_rated': 'Meilleur noté',
       'sort_delivery_fee': 'Frais de livraison',
       'no_partners_near_you': 'Aucun partenaire trouvé près de vous.',
-      'partners_loading_error': 'Impossible de charger les partenaires. Veuillez réessayer.',
+      'partners_loading_error':
+          'Impossible de charger les partenaires. Veuillez réessayer.',
       'filters': 'filtres',
       'filters_and_sort': 'Filtres & Tri',
       'reset': 'Réinitialiser',
@@ -795,12 +978,139 @@ class AppLocalizations {
       'see_partners_count': 'Voir',
       'partners': 'partenaires',
       'back_to_top': 'Haut',
-      'all_closed_now_notice': 'Aucun de ces établissements n\'est ouvert maintenant. Ils seront ouverts de nouveau à',
+      'all_closed_now_notice':
+          'Aucun de ces établissements n\'est ouvert maintenant. Ils seront ouverts de nouveau à',
       'categories_all': 'Tous',
       'pharmacy_cat': 'Pharmacie',
       'other_cat': 'Autre',
       'free': 'Gratuit',
       'free_delivery_promo': 'Livraison gratuite',
+      'partner_status_open': 'Ouvert',
+      'partner_status_closed': 'Fermé',
+      'favorites_title': 'Mes favoris',
+      'favorites_subtitle': 'Vos partenaires enregistrés',
+      'favorites_count_label': 'enregistrés',
+      'favorites_remove_dialog_title': 'Retirer ce favori ?',
+      'favorites_remove_dialog_message':
+          'Retirer ce partenaire de vos favoris ?',
+      'favorites_remove_action': 'Retirer',
+      'favorites_error_retry': 'Erreur, veuillez réessayer',
+      'favorites_removed_success': 'Retiré des favoris',
+      'favorites_empty_title': 'Aucun favori pour le moment',
+      'favorites_empty_description':
+          'Ajoutez vos partenaires préférés pour les retrouver ici rapidement.',
+      'favorites_explore_button': 'Explorer les partenaires',
+      'favorites_syncing_label': 'Synchronisation des favoris...',
+      'establishment_info_title': 'Informations de l\'établissement',
+      'establishment_address_title': 'Adresse',
+      'establishment_hours_title': 'Horaires',
+      'establishment_description_title': 'Description',
+      'establishment_contact_title': 'Contact',
+      'establishment_closed': 'Fermé',
+      'establishment_24h': '24h/24',
+      'day_monday': 'Lundi',
+      'day_tuesday': 'Mardi',
+      'day_wednesday': 'Mercredi',
+      'day_thursday': 'Jeudi',
+      'day_friday': 'Vendredi',
+      'day_saturday': 'Samedi',
+      'day_sunday': 'Dimanche',
+      'partner_details_login_to_favorite':
+          'Connectez-vous pour ajouter aux favoris.',
+      'partner_details_favorite_added': 'Ajouté aux favoris',
+      'partner_details_favorite_removed': 'Retiré des favoris',
+      'partner_details_favorite_update_failed':
+          'Impossible de mettre à jour les favoris',
+      'partner_details_added_to_cart': 'ajouté au panier',
+      'partner_details_opens_today_at': 'Ouvre aujourd\'hui à',
+      'partner_details_opens': 'Ouvre',
+      'partner_details_opens_at': 'Ouvre à',
+      'partner_details_at': 'à',
+      'partner_details_options_title': 'Options',
+      'partner_details_option_establishment_info':
+          'Informations de l\'établissement',
+      'partner_details_option_fees_info': 'Informations sur les frais',
+      'partner_details_option_share_establishment': 'Partager l\'établissement',
+      'partner_details_fees_info_toast':
+          'Les frais de livraison sont affichés sur la fiche partenaire.',
+      'partner_details_share_toast':
+          'Lien partenaire copié/partagé depuis cette page.',
+      'partner_details_load_error': 'Impossible de charger la fiche partenaire',
+      'partner_details_reviews_tab': 'Avis',
+      'partner_details_promo_available': 'Promo disponible',
+      'partner_details_out_of_zone': 'Ne livre pas à votre adresse',
+      'partner_details_reviews_count_suffix': 'avis',
+      'partner_details_menu_unavailable': 'Menu indisponible pour le moment',
+      'partner_details_be_first_review': 'Soyez le premier à laisser un avis',
+      'product_detail_refresh_error':
+          'Impossible d\'actualiser les détails du produit.',
+      'product_detail_options_load_error':
+          'Impossible de charger les options de personnalisation.',
+      'product_detail_keep_min_options':
+          'Veuillez garder au moins {min} option(s) dans {group}.',
+      'product_detail_select_up_to':
+          'Vous pouvez sélectionner jusqu\'à {max} options.',
+      'product_detail_select_at_least':
+          'Veuillez sélectionner au moins {min} option(s) dans {group}.',
+      'product_detail_select_at_most':
+          'Veuillez sélectionner au plus {max} option(s) dans {group}.',
+      'product_detail_fallback_category': 'cette catégorie',
+      'product_detail_unavailable': 'Ce produit est actuellement indisponible.',
+      'product_detail_badge_popular': 'Populaire',
+      'product_detail_minutes_abbr': 'min',
+      'product_detail_choose_for': 'Choisir {group} pour {category}',
+      'product_detail_required': 'Obligatoire',
+      'product_detail_optional': 'Optionnel',
+      'product_detail_pick_one': 'Choisir une option',
+      'product_detail_pick_range': 'Choisir {min}-{max}',
+      'product_detail_up_to': 'Jusqu\'à {max}',
+      'menu_label_burger': 'Burger',
+      'menu_label_burgers': 'Burgers',
+      'menu_label_pizza': 'Pizza',
+      'menu_label_pizzas': 'Pizzas',
+      'menu_label_sandwich': 'Sandwich',
+      'menu_label_sandwiches': 'Sandwichs',
+      'menu_label_tacos': 'Tacos',
+      'menu_label_wrap': 'Wrap',
+      'menu_label_wraps': 'Wraps',
+      'menu_label_shawarma': 'Chawarma',
+      'menu_label_drink': 'Boisson',
+      'menu_label_drinks': 'Boissons',
+      'menu_label_beverage': 'Boisson',
+      'menu_label_beverages': 'Boissons',
+      'menu_label_boisson': 'Boisson',
+      'menu_label_boissons': 'Boissons',
+      'menu_label_dessert': 'Dessert',
+      'menu_label_desserts': 'Desserts',
+      'menu_label_salad': 'Salade',
+      'menu_label_salads': 'Salades',
+      'menu_label_combo': 'Combo',
+      'menu_label_combos': 'Combos',
+      'menu_label_meal': 'Plat',
+      'menu_label_meals': 'Plats',
+      'menu_label_sides': 'Accompagnements',
+      'menu_label_fries': 'Frites',
+      'menu_label_chicken': 'Poulet',
+      'menu_label_size': 'Taille',
+      'menu_label_taille': 'Taille',
+      'menu_label_crust': 'Pâte',
+      'menu_label_sauce': 'Sauce',
+      'menu_label_sauces': 'Sauces',
+      'menu_label_topping': 'Garniture',
+      'menu_label_toppings': 'Garnitures',
+      'menu_label_extra': 'Extra',
+      'menu_label_extras': 'Extras',
+      'menu_label_supplement': 'Supplément',
+      'menu_label_supplements': 'Suppléments',
+      'menu_label_cheese': 'Fromage',
+      'menu_label_small': 'Petit',
+      'menu_label_medium': 'Moyen',
+      'menu_label_large': 'Grand',
+      'menu_label_regular': 'Normal',
+      'menu_label_spicy': 'Épicé',
+      'menu_label_not_spicy': 'Non épicé',
+      'menu_label_mild': 'Légèrement épicé',
+      'menu_label_hot': 'Très épicé',
     },
     'ar': {
       'app_name': 'سبيد لاين',
@@ -822,7 +1132,7 @@ class AppLocalizations {
       'checkout': 'الدفع',
       'order_placed': 'تم تقديم الطلب بنجاح',
       'track_order': 'تتبع الطلب',
-      
+
       // Auth screens
       'sign_in': 'تسجيل الدخول',
       'first_name': 'الاسم الأول',
@@ -834,7 +1144,7 @@ class AppLocalizations {
       'or_continue_with': 'أو المتابعة مع',
       'having_trouble': 'تواجه مشكلة؟ ',
       'contact_support': 'اتصل بالدعم',
-      
+
       // Validation messages
       'please_enter_email': 'يرجى إدخال بريدك الإلكتروني',
       'invalid_email': 'بريد إلكتروني غير صالح',
@@ -845,13 +1155,14 @@ class AppLocalizations {
       'please_enter_valid_email': 'يرجى إدخال بريد إلكتروني صالح',
       'please_enter_phone': 'يرجى إدخال رقم هاتفك',
       'phone_min_length': 'يجب أن يحتوي رقم الهاتف على 8 أرقام',
-      
+
       // Forgot Password
       'forgot_password_title': 'نسيت كلمة المرور؟',
-      'forgot_password_desc': 'لا تقلق! هذا يحدث. يرجى إدخال عنوان البريد الإلكتروني المرتبط بحسابك.',
+      'forgot_password_desc':
+          'لا تقلق! هذا يحدث. يرجى إدخال عنوان البريد الإلكتروني المرتبط بحسابك.',
       'send_code': 'إرسال الرمز',
       'remember_password': 'تذكرت كلمة المرور؟ ',
-      
+
       // Verify OTP
       'verify_code': 'تحقق من الرمز',
       'verify_code_desc': 'يرجى إدخال الرمز الذي أرسلناه للتو إلى',
@@ -862,7 +1173,8 @@ class AppLocalizations {
       'verify_identity': 'التحقق من هويتك',
       'otp_sent_to': 'لقد أرسلنا رمز التحقق إلى',
       'code_expired': 'انتهت صلاحية الرمز',
-      'code_expired_message': 'انتهت صلاحية رمز OTP الخاص بك. يرجى طلب رمز جديد.',
+      'code_expired_message':
+          'انتهت صلاحية رمز OTP الخاص بك. يرجى طلب رمز جديد.',
       'back': 'رجوع',
       'resend_code': 'إعادة إرسال',
       'expires_in': 'تنتهي الصلاحية في',
@@ -870,29 +1182,34 @@ class AppLocalizations {
       'enter_6_digit_code': 'يرجى إدخال رمز مكون من 6 أرقام',
       'invalid_or_expired_code': 'رمز غير صالح أو منتهي الصلاحية',
       'login_success': '✓ تم تسجيل الدخول بنجاح!',
-      'resend_login_otp_message': 'لإعادة إرسال الرمز، يرجى تسجيل الدخول مرة أخرى',
+      'resend_login_otp_message':
+          'لإعادة إرسال الرمز، يرجى تسجيل الدخول مرة أخرى',
       'wait': 'انتظر',
       'seconds': 'ثانية',
       'sec': 'ث',
-      
+
       // Snackbar messages
-      'login_failed': 'فشل تسجيل الدخول. يرجى التحقق من بيانات الاعتماد الخاصة بك.',
+      'login_failed':
+          'فشل تسجيل الدخول. يرجى التحقق من بيانات الاعتماد الخاصة بك.',
       'otp_verification_failed': 'فشل التحقق من OTP. يرجى المحاولة مرة أخرى.',
       'otp_verification_success': 'تم التحقق من OTP بنجاح!',
-      'password_reset_failed': 'فشلت إعادة تعيين كلمة المرور. يرجى المحاولة مرة أخرى.',
+      'password_reset_failed':
+          'فشلت إعادة تعيين كلمة المرور. يرجى المحاولة مرة أخرى.',
       'password_reset_complete': 'تمت إعادة تعيين كلمة المرور الخاصة بك بنجاح!',
-      'email_not_found': 'البريد الإلكتروني غير موجود. يرجى التحقق والمحاولة مرة أخرى.',
+      'email_not_found':
+          'البريد الإلكتروني غير موجود. يرجى التحقق والمحاولة مرة أخرى.',
       'invalid_credentials': 'بريد إلكتروني أو كلمة مرور غير صالحة.',
       'generic_error': 'حدث خطأ. يرجى المحاولة مرة أخرى.',
       'please_wait': 'يرجى الانتظار...',
       'otp_sent': 'تم إرسال OTP بنجاح إلى بريدك الإلكتروني.',
       'stay_connected': 'ابق متصلاً',
-      
+
       // Accueil Screen
       'welcome_speedline': 'مرحبا بك في سبيد لاين!',
-      'welcome_message': 'أنت الآن متصل بحسابك.\nشاشة الرئيسية الكاملة قادمة قريباً!',
+      'welcome_message':
+          'أنت الآن متصل بحسابك.\nشاشة الرئيسية الكاملة قادمة قريباً!',
       'welcome_user': 'مرحبا',
-      
+
       // Settings Screen
       'settings': 'الإعدادات',
       'account': 'الحساب',
@@ -928,19 +1245,23 @@ class AppLocalizations {
       'english': 'الإنجليزية',
       'french': 'الفرنسية',
       'arabic': 'العربية',
-      
+
       // Enable Location Screen
       'enable_location': 'تفعيل خدمات الموقع',
       'location_permission_title': 'ما هو موقعك؟',
-      'location_permission_desc': 'نحتاج إلى معرفة موقعك لإظهار المطاعم القريبة وتقديم تقديرات توصيل دقيقة.',
+      'location_permission_desc':
+          'نحتاج إلى معرفة موقعك لإظهار المطاعم القريبة وتقديم تقديرات توصيل دقيقة.',
       'accurate_delivery': 'توفير تقديرات توصيل دقيقة',
       'allow_location_access': 'السماح بالوصول إلى الموقع',
       'enter_address_manually': 'إدخال العنوان يدوياً',
       'skip_for_now': 'تخطي في الوقت الحالي',
-      'location_services_disabled': 'خدمات الموقع معطلة. يرجى تفعيلها في الإعدادات.',
-      'location_permission_denied': 'تم رفض إذن الموقع. يرجى السماح بالوصول للمتابعة.',
+      'location_services_disabled':
+          'خدمات الموقع معطلة. يرجى تفعيلها في الإعدادات.',
+      'location_permission_denied':
+          'تم رفض إذن الموقع. يرجى السماح بالوصول للمتابعة.',
       'location_permanently_denied': 'تم رفض أذونات الموقع بشكل دائم.',
-      'open_settings_for_location': 'يرجى فتح إعدادات التطبيق للسماح بخدمة الموقع.',
+      'open_settings_for_location':
+          'يرجى فتح إعدادات التطبيق للسماح بخدمة الموقع.',
       'open_settings': 'فتح الإعدادات',
       'location_timeout': 'انتهت مهلة طلب الموقع. يرجى المحاولة مرة أخرى.',
       'location_error': 'فشل في الحصول على الموقع',
@@ -972,7 +1293,7 @@ class AppLocalizations {
       'stores': 'متاجر',
       'free_delivery_first_order': 'توصيل مجاني لطلبك الأول',
       'order_and_enjoy': 'اطلب واستمتع!',
-      
+
       // Edit Profile Screen
       'save_changes': 'حفظ التغييرات',
       'profile_updated_success': 'تم تحديث الملف الشخصي بنجاح!',
@@ -982,7 +1303,7 @@ class AppLocalizations {
       'choose_from_gallery': 'اختر من المعرض',
       'remove_photo': 'حذف الصورة',
       'uploading': 'جاري الرفع...',
-      
+
       // Profile Screen
       'my_profile': 'ملفي الشخصي',
       'delivery_addresses': 'عناوين التوصيل',
@@ -1006,7 +1327,7 @@ class AppLocalizations {
       'manage_all': 'إدارة الكل',
       'manage': 'إدارة',
       'view_all': 'عرض الكل',
-      
+
       // Search Screen
       'search': 'بحث',
       'coming_soon': 'قريباً...',
@@ -1015,16 +1336,17 @@ class AppLocalizations {
       'search_trending': 'البحث الأكثر رواجاً',
       'no_search_results_for': 'لا توجد نتائج لـ',
       'partner': 'شريك',
-      
+
       // Orders Screen
       'my_orders': 'طلباتي',
-      
+
       // Main Navigation
       'explore': 'استكشف',
-      
+
       // Reset Password
       'reset_password': 'إعادة تعيين كلمة المرور',
-      'reset_password_desc': 'يرجى إدخال كلمة المرور الجديدة. تأكد من أنها تحتوي على 6 أحرف على الأقل.',
+      'reset_password_desc':
+          'يرجى إدخال كلمة المرور الجديدة. تأكد من أنها تحتوي على 6 أحرف على الأقل.',
       'new_password': 'كلمة المرور الجديدة',
       'confirm_password': 'تأكيد كلمة المرور',
       'please_enter_password_field': 'يرجى إدخال كلمة مرور',
@@ -1032,18 +1354,21 @@ class AppLocalizations {
       'please_confirm_password': 'يرجى تأكيد كلمة المرور',
       'passwords_dont_match': 'كلمات المرور غير متطابقة',
       'password_reset_success': 'تم إعادة تعيين كلمة المرور بنجاح!',
-      
+
       // Change Password
       'change_password_title': 'تغيير كلمة المرور',
-      'change_password_desc': 'لتغيير كلمة المرور، سنرسل رمز التحقق إلى عنوان بريدك الإلكتروني.',
+      'change_password_desc':
+          'لتغيير كلمة المرور، سنرسل رمز التحقق إلى عنوان بريدك الإلكتروني.',
       'continue_to_verify': 'متابعة',
-      'secure_account': 'حافظ على أمان حسابك عن طريق تغيير كلمة المرور بانتظام.',
-      
+      'secure_account':
+          'حافظ على أمان حسابك عن طريق تغيير كلمة المرور بانتظام.',
+
       // Social login in development
       'google_signin_dev': 'تسجيل الدخول عبر Google - قيد التطوير',
       'facebook_signin_dev': 'تسجيل الدخول عبر Facebook - قيد التطوير',
-      'register_success': 'تم التسجيل بنجاح! الرجاء تسجيل الدخول باستخدام بيانات الاعتماد الخاصة بك.',
-      
+      'register_success':
+          'تم التسجيل بنجاح! الرجاء تسجيل الدخول باستخدام بيانات الاعتماد الخاصة بك.',
+
       // Home/Onboarding screen
       'skip': 'تخطي',
       'next': 'التالي',
@@ -1051,18 +1376,21 @@ class AppLocalizations {
       'terms_prefix': 'بالمتابعة، فإنك توافق على ',
       'terms': 'الشروط',
       'privacy_policy': 'سياسة الخصوصية',
-      
+
       // Onboarding pages
       'onboarding_page1_title': 'التوصيل مع',
       'onboarding_page1_highlight': 'السرعة والدقة',
-      'onboarding_page1_desc': 'إدارة أسطولك في الوقت الفعلي. أسرع طريقة للانتقال من أ إلى ب تبدأ هنا.',
+      'onboarding_page1_desc':
+          'إدارة أسطولك في الوقت الفعلي. أسرع طريقة للانتقال من أ إلى ب تبدأ هنا.',
       'onboarding_page2_title': 'تتبع',
       'onboarding_page2_highlight': 'طلبك مباشرة',
-      'onboarding_page2_desc': 'التتبع في الوقت الفعلي يبقيك على اطلاع في كل خطوة. لن تفوت أي توصيل.',
+      'onboarding_page2_desc':
+          'التتبع في الوقت الفعلي يبقيك على اطلاع في كل خطوة. لن تفوت أي توصيل.',
       'onboarding_page3_title': 'خدمة سريعة',
       'onboarding_page3_highlight': 'وموثوقة',
-      'onboarding_page3_desc': 'استمتع بتوصيل سريع للغاية مع شبكتنا الموثوقة من السعاة المحترفين.',
-      
+      'onboarding_page3_desc':
+          'استمتع بتوصيل سريع للغاية مع شبكتنا الموثوقة من السعاة المحترفين.',
+
       // Explore Screen
       'restaurants': 'المطاعم',
       'courses': 'الدورات',
@@ -1073,7 +1401,7 @@ class AppLocalizations {
       'magasins_aziza': 'متاجر عزيزة',
       'free_delivery_title': 'توصيل مجاني',
       'order_now': 'اطلب الآن، نحن نعاملك!',
-      
+
       // Explore Screen
       'deliver_to': 'التوصيل إلى',
       'current_location': 'الموقع الحالي',
@@ -1121,7 +1449,8 @@ class AppLocalizations {
       'retry': 'إعادة المحاولة',
       'no_address_hint': 'اضغط « إضافة » لإنشاء\nأول عنوان توصيل.',
       'delete_address': 'حذف العنوان',
-      'delete_address_confirm': 'هل تريد حذف هذا العنوان؟ لا يمكن التراجع عن هذا الإجراء.',
+      'delete_address_confirm':
+          'هل تريد حذف هذا العنوان؟ لا يمكن التراجع عن هذا الإجراء.',
       'delete': 'حذف',
       'default_label': 'افتراضي',
 
@@ -1145,16 +1474,20 @@ class AppLocalizations {
       'label_required': 'التسمية مطلوبة لهذا النوع.',
       'field_required': 'هذا الحقل إلزامي.',
       'delete_blocked_title': 'لا يمكن الحذف',
-      'delete_blocked_content': 'هذا هو عنوان التوصيل النشط حالياً. يرجى اختيار عنوان آخر قبل حذفه.',
+      'delete_blocked_content':
+          'هذا هو عنوان التوصيل النشط حالياً. يرجى اختيار عنوان آخر قبل حذفه.',
       'understood': 'حسناً',
       'address_deleted': 'تم حذف العنوان.',
       'address_delete_error': 'تعذر حذف العنوان. يرجى المحاولة مجدداً.',
       'changes_saved': 'تم حفظ التغييرات بنجاح!',
       'address_added': 'تمت إضافة العنوان إلى قائمتك!',
-      'label_already_used_error': 'هذه التسمية مستخدمة من قبل عنوان آخر. اختر اسماً مختلفاً أدناه \u2193',
+      'label_already_used_error':
+          'هذه التسمية مستخدمة من قبل عنوان آخر. اختر اسماً مختلفاً أدناه \u2193',
       'account_not_found_error': 'الحساب غير موجود. يرجى تسجيل الدخول مجدداً.',
-      'invalid_fields_error': 'بعض الحقول غير صالحة. يرجى التحقق من المعلومات المدخلة.',
-      'invalid_gps_error': 'إحداثيات GPS غير صالحة. عد إلى الخريطة وحدد الموقع مجدداً.',
+      'invalid_fields_error':
+          'بعض الحقول غير صالحة. يرجى التحقق من المعلومات المدخلة.',
+      'invalid_gps_error':
+          'إحداثيات GPS غير صالحة. عد إلى الخريطة وحدد الموقع مجدداً.',
       'personalized': 'مخصص',
       'custom_label_other_hint': 'مثال: بيت الجدة',
 
@@ -1196,19 +1529,147 @@ class AppLocalizations {
       'other_cat': 'أخرى',
       'free': 'مجاني',
       'free_delivery_promo': 'توصيل مجاني',
+      'partner_status_open': 'مفتوح',
+      'partner_status_closed': 'مغلق',
+      'favorites_title': 'المفضلة',
+      'favorites_subtitle': 'شركاؤك المحفوظون',
+      'favorites_count_label': 'محفوظ',
+      'favorites_remove_dialog_title': 'إزالة هذا المفضل؟',
+      'favorites_remove_dialog_message': 'إزالة هذا الشريك من المفضلة؟',
+      'favorites_remove_action': 'إزالة',
+      'favorites_error_retry': 'حدث خطأ، يرجى المحاولة مرة أخرى',
+      'favorites_removed_success': 'تمت الإزالة من المفضلة',
+      'favorites_empty_title': 'لا توجد مفضلة حالياً',
+      'favorites_empty_description': 'أضف شركاءك المفضلين لتجدهم هنا بسرعة.',
+      'favorites_explore_button': 'استكشف الشركاء',
+      'favorites_syncing_label': 'جاري مزامنة المفضلة...',
+      'establishment_info_title': 'معلومات المتجر',
+      'establishment_address_title': 'العنوان',
+      'establishment_hours_title': 'ساعات العمل',
+      'establishment_description_title': 'الوصف',
+      'establishment_contact_title': 'التواصل',
+      'establishment_closed': 'مغلق',
+      'establishment_24h': '24 ساعة',
+      'day_monday': 'الاثنين',
+      'day_tuesday': 'الثلاثاء',
+      'day_wednesday': 'الأربعاء',
+      'day_thursday': 'الخميس',
+      'day_friday': 'الجمعة',
+      'day_saturday': 'السبت',
+      'day_sunday': 'الأحد',
+      'partner_details_login_to_favorite': 'سجّل الدخول للإضافة إلى المفضلة.',
+      'partner_details_favorite_added': 'تمت الإضافة إلى المفضلة',
+      'partner_details_favorite_removed': 'تمت الإزالة من المفضلة',
+      'partner_details_favorite_update_failed': 'تعذر تحديث المفضلة',
+      'partner_details_added_to_cart': 'تمت إضافته إلى السلة',
+      'partner_details_opens_today_at': 'يفتح اليوم عند',
+      'partner_details_opens': 'يفتح',
+      'partner_details_opens_at': 'يفتح عند',
+      'partner_details_at': 'عند',
+      'partner_details_options_title': 'خيارات',
+      'partner_details_option_establishment_info': 'معلومات المتجر',
+      'partner_details_option_fees_info': 'معلومات الرسوم',
+      'partner_details_option_share_establishment': 'مشاركة المتجر',
+      'partner_details_fees_info_toast': 'رسوم التوصيل معروضة في صفحة الشريك.',
+      'partner_details_share_toast': 'تم نسخ/مشاركة رابط الشريك من هذه الصفحة.',
+      'partner_details_load_error': 'تعذر تحميل بيانات الشريك',
+      'partner_details_reviews_tab': 'التقييمات',
+      'partner_details_promo_available': 'عرض متاح',
+      'partner_details_out_of_zone': 'لا يوصّل إلى عنوانك',
+      'partner_details_reviews_count_suffix': 'تقييم',
+      'partner_details_menu_unavailable': 'القائمة غير متاحة حالياً',
+      'partner_details_be_first_review': 'كن أول من يترك تقييماً',
+      'product_detail_refresh_error': 'تعذر تحديث تفاصيل المنتج.',
+      'product_detail_options_load_error': 'تعذر تحميل خيارات التخصيص.',
+      'product_detail_keep_min_options':
+          'يرجى الإبقاء على {min} خيار(ات) على الأقل في {group}.',
+      'product_detail_select_up_to': 'يمكنك اختيار حتى {max} خيارات.',
+      'product_detail_select_at_least':
+          'يرجى اختيار {min} خيار(ات) على الأقل في {group}.',
+      'product_detail_select_at_most':
+          'يرجى اختيار {max} خيار(ات) كحد أقصى في {group}.',
+      'product_detail_fallback_category': 'هذه الفئة',
+      'product_detail_unavailable': 'هذا المنتج غير متاح حالياً.',
+      'product_detail_badge_popular': 'الأكثر طلباً',
+      'product_detail_minutes_abbr': 'دق',
+      'product_detail_choose_for': 'اختر {group} لـ {category}',
+      'product_detail_required': 'إجباري',
+      'product_detail_optional': 'اختياري',
+      'product_detail_pick_one': 'اختر خياراً واحداً',
+      'product_detail_pick_range': 'اختر {min}-{max}',
+      'product_detail_up_to': 'حتى {max}',
+      'menu_label_burger': 'برغر',
+      'menu_label_burgers': 'برغر',
+      'menu_label_pizza': 'بيتزا',
+      'menu_label_pizzas': 'بيتزا',
+      'menu_label_sandwich': 'ساندويتش',
+      'menu_label_sandwiches': 'ساندويتشات',
+      'menu_label_tacos': 'تاكوس',
+      'menu_label_wrap': 'راب',
+      'menu_label_wraps': 'راب',
+      'menu_label_shawarma': 'شاورما',
+      'menu_label_drink': 'مشروب',
+      'menu_label_drinks': 'مشروبات',
+      'menu_label_beverage': 'مشروب',
+      'menu_label_beverages': 'مشروبات',
+      'menu_label_boisson': 'مشروب',
+      'menu_label_boissons': 'مشروبات',
+      'menu_label_dessert': 'تحلية',
+      'menu_label_desserts': 'حلويات',
+      'menu_label_salad': 'سلطة',
+      'menu_label_salads': 'سلطات',
+      'menu_label_combo': 'كومبو',
+      'menu_label_combos': 'كومبو',
+      'menu_label_meal': 'وجبة',
+      'menu_label_meals': 'وجبات',
+      'menu_label_sides': 'أطباق جانبية',
+      'menu_label_fries': 'بطاطس مقلية',
+      'menu_label_chicken': 'دجاج',
+      'menu_label_size': 'الحجم',
+      'menu_label_taille': 'الحجم',
+      'menu_label_crust': 'العجينة',
+      'menu_label_sauce': 'صلصة',
+      'menu_label_sauces': 'صلصات',
+      'menu_label_topping': 'إضافة',
+      'menu_label_toppings': 'إضافات',
+      'menu_label_extra': 'إضافة',
+      'menu_label_extras': 'إضافات',
+      'menu_label_supplement': 'إضافة',
+      'menu_label_supplements': 'إضافات',
+      'menu_label_cheese': 'جبن',
+      'menu_label_small': 'صغير',
+      'menu_label_medium': 'متوسط',
+      'menu_label_large': 'كبير',
+      'menu_label_regular': 'عادي',
+      'menu_label_spicy': 'حار',
+      'menu_label_not_spicy': 'غير حار',
+      'menu_label_mild': 'حار خفيف',
+      'menu_label_hot': 'حار جداً',
     },
   };
 
   String translate(String key) {
-    return _localizedValues[locale.languageCode]?[key] ?? key;
+    final normalizedKey = key.trim();
+    if (normalizedKey.isEmpty) return key;
+
+    final localeCode = locale.languageCode.toLowerCase();
+    final localized = _localizedValues[localeCode]?[normalizedKey];
+    if (localized != null) return localized;
+
+    final fallbackEn = _localizedValues['en']?[normalizedKey];
+    if (fallbackEn != null) return fallbackEn;
+
+    return normalizedKey;
   }
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
-  bool isSupported(Locale locale) => ['en', 'fr', 'ar'].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      ['en', 'fr', 'ar'].contains(locale.languageCode);
 
   @override
   Future<AppLocalizations> load(Locale locale) async {

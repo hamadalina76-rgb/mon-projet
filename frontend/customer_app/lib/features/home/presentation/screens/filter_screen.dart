@@ -71,7 +71,7 @@ class PartnerFiltersBottomSheet extends ConsumerWidget {
                       child: Text(
                         l10n.translate('filters_and_sort'),
                         style: const TextStyle(
-                          fontSize: 32,
+                          fontSize: 28,
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
                         ),

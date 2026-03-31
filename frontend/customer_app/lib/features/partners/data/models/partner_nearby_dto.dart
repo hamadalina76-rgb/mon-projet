@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/media_url.dart';
+
 class OpeningHourDto {
   final String dayOfWeek;
   final String? openTime;
   final String? closeTime;
   final bool isClosed;
+  final bool is24Hours;
 
   const OpeningHourDto({
     required this.dayOfWeek,
     this.openTime,
     this.closeTime,
     this.isClosed = false,
+    this.is24Hours = false,
   });
 
   factory OpeningHourDto.fromJson(Map<String, dynamic> json) {
-    final raw = json['dayOfWeek'];
+    final raw = json['dayOfWeek'] ?? json['day'];
     const dayNames = [
       'MONDAY',
       'TUESDAY',
@@ -25,15 +29,63 @@ class OpeningHourDto {
       'SUNDAY',
     ];
 
-    final dayOfWeek = (raw is int && raw >= 1 && raw <= 7)
+    final dayAliases = <String, String>{
+      'MONDAY': 'MONDAY',
+      'MON': 'MONDAY',
+      'LUNDI': 'MONDAY',
+      'LUN': 'MONDAY',
+      'TUESDAY': 'TUESDAY',
+      'TUE': 'TUESDAY',
+      'MARDI': 'TUESDAY',
+      'MAR': 'TUESDAY',
+      'WEDNESDAY': 'WEDNESDAY',
+      'WED': 'WEDNESDAY',
+      'MERCREDI': 'WEDNESDAY',
+      'MER': 'WEDNESDAY',
+      'THURSDAY': 'THURSDAY',
+      'THU': 'THURSDAY',
+      'JEUDI': 'THURSDAY',
+      'JEU': 'THURSDAY',
+      'FRIDAY': 'FRIDAY',
+      'FRI': 'FRIDAY',
+      'VENDREDI': 'FRIDAY',
+      'VEN': 'FRIDAY',
+      'SATURDAY': 'SATURDAY',
+      'SAT': 'SATURDAY',
+      'SAMEDI': 'SATURDAY',
+      'SAM': 'SATURDAY',
+      'SUNDAY': 'SUNDAY',
+      'SUN': 'SUNDAY',
+      'DIMANCHE': 'SUNDAY',
+      'DIM': 'SUNDAY',
+    };
+
+    final normalizedDay = (raw is int && raw >= 1 && raw <= 7)
         ? dayNames[raw - 1]
-        : (raw?.toString() ?? '');
+        : dayAliases[(raw?.toString() ?? '').trim().toUpperCase()] ?? '';
+
+    String? openTime = json['openTime']?.toString();
+    String? closeTime = json['closeTime']?.toString();
+
+    if ((openTime == null || closeTime == null) && json['slots'] is List) {
+      final slots = (json['slots'] as List)
+          .whereType<Map<String, dynamic>>()
+          .toList();
+      if (slots.isNotEmpty) {
+        final first = slots.first;
+        openTime = openTime ?? first['open']?.toString() ?? first['openTime']?.toString();
+        closeTime = closeTime ?? first['close']?.toString() ?? first['closeTime']?.toString();
+      }
+    }
+
+    final is24Hours = json['is24Hours'] as bool? ?? false;
 
     return OpeningHourDto(
-      dayOfWeek: dayOfWeek,
-      openTime: json['openTime'] as String?,
-      closeTime: json['closeTime'] as String?,
+      dayOfWeek: normalizedDay,
+      openTime: openTime,
+      closeTime: closeTime,
       isClosed: json['isClosed'] as bool? ?? false,
+      is24Hours: is24Hours,
     );
   }
 }
@@ -136,8 +188,8 @@ class PartnerNearbyDto {
       type: json['type'] as String?,
       description: json['description'] as String?,
       shortDescription: json['shortDescription'] as String?,
-      logo: json['logo'] as String?,
-      coverImage: json['coverImage'] as String?,
+      logo: resolveMediaUrl(json['logo'] as String?),
+      coverImage: resolveMediaUrl(json['coverImage'] as String?),
       phoneNumber: json['phoneNumber'] as String?,
       email: json['email'] as String?,
       address: json['address'] as String?,
@@ -198,9 +250,10 @@ class PartnerNearbyDto {
     final todayHours =
         openingHours.where((h) => h.dayOfWeek.toUpperCase() == todayName).toList();
 
-    if (todayHours.isEmpty) return true;
+    if (todayHours.isEmpty) return false;
     final h = todayHours.first;
     if (h.isClosed) return false;
+    if (h.is24Hours) return true;
     if (h.openTime == null || h.closeTime == null) return true;
 
     try {
@@ -209,7 +262,14 @@ class PartnerNearbyDto {
       final currentMinutes = now.hour * 60 + now.minute;
       final openMinutes = open.hour * 60 + open.minute;
       final closeMinutes = close.hour * 60 + close.minute;
-      return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+
+      if (closeMinutes > openMinutes) {
+        return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+      }
+
+      // Defensive behavior for malformed ranges like 16:00 -> 12:00:
+      // consider open only after openTime on the same day.
+      return currentMinutes >= openMinutes;
     } catch (_) {
       return true;
     }
@@ -258,6 +318,9 @@ class PartnerNearbyDto {
     }
 
     if (today != null && !today.isClosed && today.openTime != null) {
+      if (today.is24Hours) {
+        return null;
+      }
       try {
         final open = _parseTime(today.openTime!);
         final openMinutes = open.hour * 60 + open.minute;

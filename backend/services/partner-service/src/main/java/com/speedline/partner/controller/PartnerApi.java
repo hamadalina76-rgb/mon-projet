@@ -4,6 +4,8 @@ import com.speedline.partner.dto.CompletePartnerProfileRequest;
 import com.speedline.partner.dto.CreatePartnerRequest;
 import com.speedline.partner.dto.PartnerDTO;
 import com.speedline.partner.dto.UpdatePartnerStatusRequest;
+import com.speedline.partner.dto.request.FavoriteCreateRequest;
+import com.speedline.partner.dto.response.FavoriteResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -11,6 +13,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
@@ -366,6 +369,59 @@ public interface PartnerApi {
 
             @Parameter(description = "Nombre maximum de termes", example = "5")
             @RequestParam(defaultValue = "5") @Min(1) @Max(20) int limit
+    );
+
+    // ===================== FAVORIS =====================
+
+    @GetMapping("/favorites")
+    @Operation(
+            summary = "Lister les favoris du client",
+            description = "Retourne les favoris du client authentifie. Le userId doit correspondre au JWT."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Favoris retournes"),
+            @ApiResponse(responseCode = "401", description = "JWT absent ou invalide")
+    })
+        ResponseEntity<?> getFavorites(
+            @Parameter(description = "ID du client authentifie", required = true, example = "42")
+            @RequestParam("userId") Long userId,
+            @Parameter(hidden = true)
+            @RequestHeader(value = "X-User-Id", required = false) String authenticatedUserId
+    );
+
+    @PostMapping(path = "/favorites", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(
+            summary = "Ajouter un partenaire aux favoris",
+            description = "Ajoute un favori. Idempotent: retourne 200 si le favori existe deja, 201 sinon."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Favori cree"),
+            @ApiResponse(responseCode = "200", description = "Favori deja existant"),
+            @ApiResponse(responseCode = "401", description = "JWT absent ou invalide"),
+            @ApiResponse(responseCode = "404", description = "Partenaire introuvable")
+    })
+    ResponseEntity<?> addFavorite(
+            @Parameter(description = "Payload d'ajout favori", required = true)
+            @Valid @RequestBody FavoriteCreateRequest request,
+            @Parameter(hidden = true)
+            @RequestHeader(value = "X-User-Id", required = false) String authenticatedUserId
+    );
+
+    @DeleteMapping("/favorites/{partnerId}")
+    @Operation(
+            summary = "Retirer un favori",
+            description = "Retire le partenaire des favoris du client authentifie."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Favori supprime"),
+            @ApiResponse(responseCode = "401", description = "JWT absent ou invalide"),
+            @ApiResponse(responseCode = "404", description = "Favori introuvable")
+    })
+    ResponseEntity<?> removeFavorite(
+            @Parameter(description = "ID du partenaire", required = true, example = "12")
+            @PathVariable String partnerId,
+            @Parameter(hidden = true)
+            @RequestHeader(value = "X-User-Id", required = false) String authenticatedUserId
     );
 
     // ===================== SANTÉ =====================

@@ -175,6 +175,18 @@ spring:
             - StripPrefix=1
             - RoleAuthorizationFilter
 
+        # Route favoris client:
+        # /api/favorites/** -> /partners/favorites/**
+        - id: partner-service-favorites
+          uri: https://partner-service-392205979525.europe-west1.run.app
+          predicates:
+            - Path=/api/favorites, /api/favorites/**
+          filters:
+            - AuthenticationFilter
+            - RoleAuthorizationFilter
+            - StripPrefix=1
+            - PrefixPath=/partners
+
         # --------------------------------------------------------------------
         # PARTNER SERVICE — V1 CATEGORY COMPAT (ADMIN PANEL DEV)
         # --------------------------------------------------------------------
