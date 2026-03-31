@@ -33,6 +33,8 @@ import {
   ZoneUpdateRequest,
 } from '../models/zone.model';
 import { Subject, takeUntil } from 'rxjs';
+import mapboxgl from 'mapbox-gl';
+import * as turf from '@turf/turf';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 @Component({
@@ -71,6 +73,7 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   drawingMode = signal(false);
   selectedZone = signal<Zone | null>(null);
   zones = signal<Zone[]>([]);
+
   zoneSearch = '';
   zoneActiveFilter: 'all' | 'active' | 'inactive' = 'all';
   private searchDebounceRef: ReturnType<typeof setTimeout> | null = null;
@@ -80,9 +83,12 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   rightSidebarCollapsed = signal(false);
   geocodeLoading = signal(false);
   polygonCoordinates = signal<[number, number][]>([]);
+  private onMapMouseMoveBound: ((e: any) => void) | null = null;
   private destroy$ = new Subject<void>();
   validationError = signal<string | null>(null);
   overlapWarning = signal<string | null>(null);
+  selfIntersectWarning = signal(false);  // live: preview line would cross an edge
+  polygonHasKinks = signal(false);        // persistent: placed polygon has actual kinks
   nameExistsError = signal(false);
 
   zoneForm: FormGroup = this.fb.group({
@@ -90,10 +96,10 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     city: ['Tunis', Validators.required],
     type: [ZoneType.DELIVERY, Validators.required],
     description: [''],
-    deliveryFee: [0, [Validators.required, Validators.min(0)]],
+    deliveryFee: [0, [Validators.required, Validators.min(0), Validators.max(999.999)]],
     minDeliveryTime: [30],
     maxDeliveryTime: [60],
-    radiusKm: [null, [Validators.min(0)]],
+    radiusKm: [null, [Validators.min(0.1), Validators.max(500)]],
     isActive: [true],
   });
 
@@ -195,11 +201,22 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     const map = this.mapboxService.getMap();
     if (!map) return;
     if (this.drawingMode()) {
-      map.on('click', this.onMapClick.bind(this));
+      this.onMapMouseMoveBound = this.onMapMouseMove.bind(this);
+      map.on('click',     this.onMapClick.bind(this));
+      map.on('dblclick',  this.onMapDoubleClick.bind(this));
+      map.on('mousemove', this.onMapMouseMoveBound);
+      map.doubleClickZoom.disable();
       map.getCanvas().style.cursor = 'crosshair';
     } else {
-      map.off('click', this.onMapClick);
+      map.off('click',    this.onMapClick.bind(this));
+      map.off('dblclick', this.onMapDoubleClick.bind(this));
+      if (this.onMapMouseMoveBound) {
+        map.off('mousemove', this.onMapMouseMoveBound);
+        this.onMapMouseMoveBound = null;
+      }
+      map.doubleClickZoom.enable();
       map.getCanvas().style.cursor = '';
+      this.clearPreviewLine();
     }
   }
 
@@ -439,17 +456,119 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
 
   onMapClick(event: any): void {
     if (!this.drawingMode()) return;
+
     // Backend format: [lat, lon]
     const point: [number, number] = [event.lngLat.lat, event.lngLat.lng];
     const currentCoords = this.polygonCoordinates();
     currentCoords.push(point);
     this.polygonCoordinates.set([...currentCoords]);
+
     if (currentCoords.length >= 3) {
       const v = this.geometryService.validatePolygon(currentCoords);
       this.validationError.set(v.valid ? null : (v.error || ''));
       this.checkOverlaps(currentCoords);
+      this.polygonHasKinks.set(this.checkKinks(currentCoords));
     }
     this.updatePolygonOnMap();
+  }
+
+  /**
+   * Vérifie si le polygone placé contient des auto-intersections réelles via turf.kinks().
+   * Contrairement à selfIntersectWarning (live preview), cette vérification est persistante.
+   */
+  private checkKinks(coords: [number, number][]): boolean {
+    if (coords.length < 3) return false;
+    const mapboxCoords = this.geometryService.convertToMapboxCoordinates(coords);
+    const closed =
+      mapboxCoords[0][0] !== mapboxCoords[mapboxCoords.length - 1][0] ||
+      mapboxCoords[0][1] !== mapboxCoords[mapboxCoords.length - 1][1]
+        ? [...mapboxCoords, mapboxCoords[0]]
+        : [...mapboxCoords];
+    if (closed.length < 4) return false;
+    try {
+      return turf.kinks(turf.polygon([closed])).features.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Mouvement souris : met à jour la ligne de prévisualisation + détection intersection en temps réel */
+  onMapMouseMove(event: any): void {
+    if (!this.drawingMode()) return;
+    const coords = this.polygonCoordinates();
+    if (coords.length === 0) return;
+    const last = coords[coords.length - 1];
+    // last is [lat, lon] → Mapbox needs [lon, lat]
+    const from: [number, number] = [last[1], last[0]];
+    const to: [number, number] = [event.lngLat.lng, event.lngLat.lat];
+    const intersects = coords.length >= 2 && this.wouldSelfIntersect(coords, to);
+    this.selfIntersectWarning.set(intersects);
+    this.updatePreviewLine(from, to, intersects);
+  }
+
+  /**
+   * Vérifie si le segment (dernier point → curseur) couperait
+   * l'un des segments existants du polygone en cours de dessin.
+   */
+  private wouldSelfIntersect(coords: [number, number][], cursor: [number, number]): boolean {
+    // coords are [lat, lon] ; cursor is [lon, lat] (Mapbox)
+    const last = coords[coords.length - 1];
+    const newSeg = turf.lineString([[last[1], last[0]], cursor]);
+    // Check all edges except the one that ends at 'last' (index coords.length-2 → coords.length-1)
+    for (let i = 0; i < coords.length - 2; i++) {
+      const edge = turf.lineString([[coords[i][1], coords[i][0]], [coords[i + 1][1], coords[i + 1][0]]]);
+      if (turf.lineIntersect(newSeg, edge).features.length > 0) return true;
+    }
+    return false;
+  }
+
+  private updatePreviewLine(from: [number, number], to: [number, number], intersects = false): void {
+    const map = this.mapboxService.getMap();
+    if (!map) return;
+    const lineColor = intersects ? '#f97316' : '#E31E24';
+    const geojson: any = {
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: [from, to] },
+    };
+    if (map.getSource('preview-line')) {
+      (map.getSource('preview-line') as mapboxgl.GeoJSONSource).setData(geojson);
+      if (map.getLayer('preview-line-layer')) {
+        map.setPaintProperty('preview-line-layer', 'line-color', lineColor);
+      }
+    } else {
+      map.addSource('preview-line', { type: 'geojson', data: geojson });
+      map.addLayer({
+        id: 'preview-line-layer',
+        type: 'line',
+        source: 'preview-line',
+        paint: {
+          'line-color': lineColor,
+          'line-width': 1.5,
+          'line-dasharray': [4, 3],
+        },
+      });
+    }
+  }
+
+  private clearPreviewLine(): void {
+    const map = this.mapboxService.getMap();
+    if (!map) return;
+    if (map.getLayer('preview-line-layer')) map.removeLayer('preview-line-layer');
+    if (map.getSource('preview-line')) map.removeSource('preview-line');
+    this.selfIntersectWarning.set(false);
+  }
+
+  /** Double-clic : ferme le polygone et désactive le mode dessin */
+  onMapDoubleClick(event: any): void {
+    event.preventDefault?.();
+    const coords = this.polygonCoordinates();
+    if (coords.length < 3) {
+      this.toastr.warning(this.translate.instant('zones.editor.minPolygon'));
+      return;
+    }
+    this.drawingMode.set(false);
+    this.setupDrawingListeners();
+    this.toastr.success(this.translate.instant('zones.editor.polygonClosed', { count: coords.length }));
   }
 
   private updatePolygonOnMap(): void {
@@ -487,9 +606,12 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     this.polygonCoordinates.set([]);
     this.validationError.set(null);
     this.overlapWarning.set(null);
+    this.selfIntersectWarning.set(false);
+    this.polygonHasKinks.set(false);
     this.mapboxService.removeLayer('current-polygon-line');
     this.mapboxService.removeLayer('current-polygon-layer');
     this.mapboxService.removeSource('current-polygon');
+    this.clearPreviewLine();
   }
 
   removeLastPoint(): void {
@@ -500,10 +622,12 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     if (next.length < 3) {
       this.validationError.set(null);
       this.overlapWarning.set(null);
+      this.polygonHasKinks.set(false);
     } else {
       const v = this.geometryService.validatePolygon(next);
       this.validationError.set(v.valid ? null : (v.error || ''));
       this.checkOverlaps(next);
+      this.polygonHasKinks.set(this.checkKinks(next));
     }
     if (next.length === 0) {
       this.mapboxService.removeLayer('current-polygon-line');
@@ -516,7 +640,9 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
 
   onSubmit(): void {
     this.nameExistsError.set(false);
+    this.validationError.set(null);
     if (this.zoneForm.invalid) {
+      this.zoneForm.markAllAsTouched();
       this.toastr.error(this.translate.instant('zones.editor.requiredFields'));
       return;
     }
@@ -535,9 +661,22 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       this.toastr.error(this.translate.instant('zones.editor.minPolygon'));
       return;
     }
+    // Bloquer si le polygone placé contient des intersections
+    if (this.polygonHasKinks() || this.checkKinks(coordinates)) {
+      const msg = this.translate.instant('zones.editor.selfIntersectError');
+      this.validationError.set(msg);
+      this.toastr.error(msg);
+      return;
+    }
     const validation = this.geometryService.validatePolygon(coordinates);
     if (!validation.valid) {
-      this.toastr.error(validation.error || this.translate.instant('zones.editor.invalidPolygon'));
+      const isSelfIntersect = validation.error?.toLowerCase().includes('auto-intersection')
+        || validation.error?.toLowerCase().includes('self-intersect');
+      const msg = isSelfIntersect
+        ? this.translate.instant('zones.editor.selfIntersectError')
+        : (validation.error || this.translate.instant('zones.editor.invalidPolygon'));
+      this.validationError.set(msg);
+      this.toastr.error(msg);
       return;
     }
     this.saving.set(true);
@@ -563,8 +702,30 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       },
       error: (err) => {
         this.saving.set(false);
-        const msg = err.error?.message || err.message || 'Erreur lors de la sauvegarde';
-        this.toastr.error(msg);
+        const body = err.error;
+        // Erreurs de validation par champ renvoyées par le backend
+        if (body?.fieldErrors) {
+          const fields: Record<string, string> = body.fieldErrors;
+          Object.entries(fields).forEach(([field, msg]) => {
+            const ctrl = this.zoneForm.get(field);
+            if (ctrl) {
+              ctrl.setErrors({ serverError: msg });
+              ctrl.markAsTouched();
+            }
+          });
+          const summary = Object.values(fields).join(' • ');
+          this.validationError.set(summary);
+          this.toastr.error(summary, undefined, { timeOut: 6000 });
+        } else {
+          const errorCode = body?.error as string | undefined;
+          const isSelfIntersect = errorCode === 'SELF_INTERSECTION'
+            || body?.message?.toLowerCase().includes('intersection');
+          const msg = isSelfIntersect
+            ? this.translate.instant('zones.editor.selfIntersectError')
+            : (body?.message || err.message || this.translate.instant('zones.editor.saveError'));
+          this.validationError.set(msg);
+          this.toastr.error(msg);
+        }
       },
     });
   }

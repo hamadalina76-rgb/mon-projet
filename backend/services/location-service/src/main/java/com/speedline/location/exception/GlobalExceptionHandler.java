@@ -33,10 +33,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidBoundaryException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidBoundary(InvalidBoundaryException ex) {
         log.warn("Polygone invalide: {}", ex.getMessage());
+        String msg = ex.getMessage() != null ? ex.getMessage() : "";
+        boolean isSelfIntersection = msg.toLowerCase().contains("auto-intersection")
+                || msg.toLowerCase().contains("self-intersection")
+                || msg.toLowerCase().contains("n'est pas valide");
         Map<String, Object> error = new HashMap<>();
         error.put("timestamp", LocalDateTime.now());
         error.put("status", HttpStatus.BAD_REQUEST.value());
-        error.put("error", "INVALID_BOUNDARY");
+        error.put("error", isSelfIntersection ? "SELF_INTERSECTION" : "INVALID_BOUNDARY");
         error.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
@@ -58,15 +62,23 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
-        String message = ex.getBindingResult().getFieldErrors().stream()
-                .map(err -> err.getField() + ": " + err.getDefaultMessage())
+        // Erreurs par champ (map fieldName → message)
+        Map<String, String> fieldErrors = ex.getBindingResult().getFieldErrors().stream()
+                .collect(Collectors.toMap(
+                        err -> err.getField(),
+                        err -> err.getDefaultMessage(),
+                        (existing, replacement) -> existing   // garder le 1er message si doublon
+                ));
+        String summary = fieldErrors.entrySet().stream()
+                .map(e -> e.getKey() + ": " + e.getValue())
                 .collect(Collectors.joining("; "));
-        log.warn("Erreur de validation: {}", message);
+        log.warn("Erreur de validation: {}", summary);
         Map<String, Object> error = new HashMap<>();
         error.put("timestamp", LocalDateTime.now());
         error.put("status", HttpStatus.BAD_REQUEST.value());
         error.put("error", "VALIDATION_ERROR");
-        error.put("message", message);
+        error.put("message", summary);
+        error.put("fieldErrors", fieldErrors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 

@@ -12,26 +12,46 @@ $glass-bg: rgba(255, 255, 255, 0.9);
   width: 100%;
   min-width: 280px;
   height: 100vh;
-  min-height: 400px;
+  height: 100dvh;
   overflow: hidden;
   display: flex;
   flex-wrap: nowrap;
   background: v.$background-default;
 
-  @media (max-width: 900px) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  @media (max-width: 600px) { flex-wrap: wrap; overflow-y: auto; min-height: 100dvh; overflow-x: hidden; }
-  @media (max-width: 480px) { min-height: 100dvh; }
+  // Tablet: sidebars get minimum width, map gets rest
+  @media (max-width: 900px) and (min-width: 601px) {
+    overflow: hidden;
+  }
+
+  // Mobile: stack vertically, allow scrolling
+  @media (max-width: 600px) {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
 }
 
 // ─── Map Area ─────────────────────────────────────────
 .map-area {
   flex: 1;
-  min-width: 200px;
+  min-width: 0;
   position: relative;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 
-  @media (max-width: 600px) { min-width: 100%; min-height: 50vh; order: 1; }
+  @media (max-width: 600px) {
+    width: 100%;
+    min-width: 100%;
+    height: 55dvh;
+    height: 55svh; // svh better avoids browser chrome resize jumps
+    flex: 0 0 55dvh;
+    order: 1;
+    // map-backdrop is position: absolute; inset: 0, so it fills this exactly
+  }
 
   .map-backdrop {
     position: absolute;
@@ -40,11 +60,10 @@ $glass-bg: rgba(255, 255, 255, 0.9);
     background: v.$gray-200;
 
     .map-container {
-      width: 100%;
-      height: 100%;
-      min-height: 300px;
-      @media (max-width: 600px) { min-height: 250px; }
-    }
+        width: 100%;
+        height: 100%;
+        min-height: 200px;
+      }
 
     .map-overlay {
       position: absolute;
@@ -53,38 +72,8 @@ $glass-bg: rgba(255, 255, 255, 0.9);
       pointer-events: none;
     }
 
-    .drawing-hint {
-      position: absolute;
-      bottom: v.$spacing-lg;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      gap: v.$spacing-sm;
-      padding: v.$spacing-md v.$spacing-lg;
-      background: $glass-bg;
-      border: 2px solid $primary;
-      border-radius: v.$border-radius-lg;
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: $primary;
-      box-shadow: v.$shadow-lg;
-      z-index: 5;
-      pointer-events: none;
-      max-width: calc(100% - 2rem);
-
-      .material-symbols-outlined { font-size: 24px; flex-shrink: 0; }
-
-      @media (max-width: 600px) {
-        padding: v.$spacing-sm v.$spacing-md;
-        font-size: 0.75rem;
-        bottom: v.$spacing-md;
-        inset-inline: v.$spacing-md;
-        transform: none;
-        max-width: none;
-        .material-symbols-outlined { font-size: 20px; }
-      }
-    }
+    // drawing-hint is now rendered inside .floating-ui in the HTML template.
+    // The .drawing-hint CSS is defined as a child of .floating-ui below.
   }
 
   // Floating UI
@@ -96,6 +85,7 @@ $glass-bg: rgba(255, 255, 255, 0.9);
     display: flex;
     flex-direction: column;
     padding: v.$spacing-lg;
+    overflow: hidden;
 
     @media (max-width: 600px) { padding: v.$spacing-sm; }
 
@@ -228,7 +218,131 @@ $glass-bg: rgba(255, 255, 255, 0.9);
     .btn-search-submit {
       @media (max-width: 480px) { min-width: 44px; min-height: 44px; }
     }
+
+    // ─── Drawing hint (inside floating-ui so it has z-index 20, above map canvas) ───
+    .drawing-hint {
+      position: absolute;
+      bottom: v.$spacing-lg;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-sm;
+      padding: v.$spacing-md v.$spacing-lg;
+      background: $glass-bg;
+      border: 2px solid $primary;
+      border-radius: v.$border-radius-lg;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: $primary;
+      box-shadow: v.$shadow-lg;
+      pointer-events: none;
+      max-width: calc(100% - 2rem);
+      white-space: nowrap;
+
+      .material-symbols-outlined { font-size: 24px; flex-shrink: 0; }
+
+      @media (max-width: 600px) {
+        padding: v.$spacing-sm v.$spacing-md;
+        font-size: 0.75rem;
+        bottom: v.$spacing-md;
+        left: v.$spacing-md;
+        right: v.$spacing-md;
+        transform: none;
+        max-width: none;
+        white-space: normal;
+        .material-symbols-outlined { font-size: 20px; }
+      }
+
+      &--limit {
+        border-color: #f97316;
+        color: #f97316;
+        background: rgba(249, 115, 22, 0.08);
+      }
+
+      .points-counter {
+        margin-left: auto;
+        padding: 2px 10px;
+        border-radius: 20px;
+        background: rgba($primary, 0.12);
+        color: $primary;
+        font-size: 0.78rem;
+        font-weight: 700;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .dblclick-hint {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding-left: v.$spacing-sm;
+        border-left: 1.5px solid rgba($primary, 0.25);
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #64748b;
+        white-space: nowrap;
+        flex-shrink: 0;
+
+        .material-symbols-outlined { font-size: 15px; }
+
+        @media (max-width: 600px) { display: none; }
+      }
+    }
+
+    // ─── Intersection warning badge ─────────────────────────────────────────────
+    // Positioned at top-center (below search bar) to avoid overlapping drawing-hint at bottom
+    .intersection-warning {
+      position: absolute;
+      top: calc(v.$spacing-lg + 52px + v.$spacing-sm); // below search bar
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-sm;
+      padding: 8px 18px;
+      background: rgba(249, 115, 22, 0.95);
+      border: 1.5px solid #f97316;
+      border-radius: v.$border-radius-lg;
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 700;
+      box-shadow: 0 4px 16px rgba(249, 115, 22, 0.35);
+      pointer-events: none;
+      white-space: nowrap;
+      max-width: calc(100% - 2rem);
+      animation: pulse-warn 1.4s ease-in-out infinite;
+
+      &--kink {
+        background: rgba(220, 38, 38, 0.95);
+        border-color: #b91c1c;
+        animation: none;
+      }
+
+      .material-symbols-outlined { font-size: 20px; flex-shrink: 0; }
+
+      @media (max-width: 768px) {
+        white-space: normal;
+        text-align: center;
+        font-size: 0.8rem;
+        padding: 7px 14px;
+        max-width: calc(100% - 120px); // leave room for tools-panel on the right
+      }
+
+      @media (max-width: 600px) {
+        top: calc(v.$spacing-sm + 48px + v.$spacing-xs);
+        font-size: 0.72rem;
+        padding: 6px 10px;
+        max-width: calc(100% - 80px);
+      }
+    }
   }
+}
+
+// ─── Animations ───────────────────────────────────────
+@keyframes pulse-warn {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.75; }
 }
 
 // ─── Glass Panel ──────────────────────────────────────
@@ -242,11 +356,15 @@ $glass-bg: rgba(255, 255, 255, 0.9);
 %sidebar-base {
   position: relative;
   z-index: 10;
-  height: 100%;
+  // height is set explicitly in .sidebar-left and .sidebar-right
+  // NOT 100% here, to avoid overriding mobile height:auto
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition: width v.$transition-normal, min-width v.$transition-normal;
+
+  // On desktop/tablet: fill the full height of the flex row
+  @media (min-width: 601px) { height: 100dvh; }
 }
 
 %sidebar-toggle-btn {
@@ -272,7 +390,7 @@ $glass-bg: rgba(255, 255, 255, 0.9);
 // ─── Left Sidebar ─────────────────────────────────────
 .sidebar-left {
   @extend %sidebar-base;
-  width: 320px;
+  width: 300px;
   min-width: 260px;
   border-right: 1px solid v.$gray-200;
 
@@ -287,10 +405,25 @@ $glass-bg: rgba(255, 255, 255, 0.9);
 
   .btn-toggle-sidebar { @extend %sidebar-toggle-btn; right: v.$spacing-md; }
 
-  @media (max-width: 1024px) { width: 280px; min-width: 240px; }
-  @media (max-width: 768px) { width: 260px; min-width: 220px; flex-shrink: 0; }
-  @media (max-width: 600px) { width: 100%; min-width: 100%; max-height: 45vh; order: 2; border-right: none; border-bottom: 1px solid v.$gray-200; }
-  @media (max-width: 480px) { min-width: 0; max-height: 50vh; }
+  @media (max-width: 1024px) { width: 260px; min-width: 220px; }
+  // Tablet: collapse automatically to save space
+  @media (max-width: 900px) and (min-width: 601px) {
+    width: 56px;
+    min-width: 56px;
+    .sidebar-header, .zones-scroll { display: none; }
+    .btn-toggle-sidebar { position: static; margin: v.$spacing-md; }
+  }
+  @media (max-width: 600px) {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    max-height: none;
+    order: 3;
+    flex: 0 0 auto;
+    border-right: none;
+    border-top: 1px solid v.$gray-200;
+    overflow-y: auto;
+  }
   &.collapsed { @media (max-width: 1024px) { width: 48px; min-width: 48px; } }
 
   .sidebar-header {
@@ -413,7 +546,7 @@ $glass-bg: rgba(255, 255, 255, 0.9);
     flex-direction: column;
     gap: v.$spacing-md;
 
-    @media (max-width: 600px) { padding: v.$spacing-sm; min-height: 0; max-height: 30vh; }
+    @media (max-width: 600px) { padding: v.$spacing-sm; }
   }
 
   .zone-card {
@@ -513,7 +646,7 @@ $glass-bg: rgba(255, 255, 255, 0.9);
 // ─── Right Sidebar ────────────────────────────────────
 .sidebar-right {
   @extend %sidebar-base;
-  width: 384px;
+  width: 360px;
   min-width: 300px;
   border-left: 1px solid v.$gray-200;
 
@@ -535,10 +668,20 @@ $glass-bg: rgba(255, 255, 255, 0.9);
     .material-symbols-outlined { font-size: 24px; }
   }
 
-  @media (max-width: 1200px) { width: 340px; min-width: 280px; }
-  @media (max-width: 768px) { width: 300px; min-width: 260px; flex-shrink: 0; }
-  @media (max-width: 600px) { width: 100%; min-width: 100%; max-height: 45vh; order: 3; border-left: none; border-top: 1px solid v.$gray-200; }
-  @media (max-width: 480px) { min-width: 0; max-height: 50vh; }
+  @media (max-width: 1200px) { width: 320px; min-width: 280px; }
+  // Tablet: slightly narrower right panel
+  @media (max-width: 900px) and (min-width: 601px) { width: 280px; min-width: 260px; }
+  @media (max-width: 600px) {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    max-height: none;
+    flex: 0 0 auto;
+    overflow-y: auto;
+    order: 2;
+    border-left: none;
+    border-top: 1px solid v.$gray-200;
+  }
   &.collapsed { @media (max-width: 1200px) { width: 48px; min-width: 48px; } }
 
   .panel-header {
@@ -581,6 +724,34 @@ $glass-bg: rgba(255, 255, 255, 0.9);
     .warning-text { margin: 0; font-size: 10px; color: #92400e; }
   }
 
+  // Bannière d'erreur auto-intersection persistante dans le panneau latéral
+  .kink-error {
+    display: flex;
+    gap: v.$spacing-md;
+    align-items: flex-start;
+    background: #fef2f2;
+    border: 1.5px solid #fca5a5;
+    border-left: 4px solid #dc2626;
+    border-radius: v.$border-radius-md;
+    padding: v.$spacing-md;
+    margin-bottom: v.$spacing-lg;
+
+    .material-symbols-outlined { color: #dc2626; flex-shrink: 0; font-size: 22px; }
+
+    &__title {
+      margin: 0 0 2px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #991b1b;
+    }
+
+    &__text {
+      margin: 0;
+      font-size: 0.75rem;
+      color: #b91c1c;
+    }
+  }
+
   .validation-error {
     display: flex;
     align-items: center;
@@ -598,7 +769,16 @@ $glass-bg: rgba(255, 255, 255, 0.9);
 
       label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; color: v.$gray-400; letter-spacing: 0.05em; margin-bottom: v.$spacing-xs; }
 
-      .field-error { display: block; font-size: 0.75rem; color: v.$error-color; margin-top: v.$spacing-xs; }
+      .field-error {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.72rem;
+        color: v.$error-color;
+        margin-top: v.$spacing-xs;
+        font-weight: 500;
+        .material-symbols-outlined { font-size: 14px; }
+      }
 
       .form-input,
       .form-select {
@@ -615,6 +795,10 @@ $glass-bg: rgba(255, 255, 255, 0.9);
 
       .fee-input-wrap {
         position: relative;
+        &.input-error .fee-input {
+          border-color: v.$error-color;
+          box-shadow: 0 0 0 2px rgba(v.$error-color, 0.15);
+        }
         .fee-input { font-size: 1.125rem; font-weight: 700; padding-right: 3rem; }
         .fee-suffix { position: absolute; right: v.$spacing-md; top: 50%; transform: translateY(-50%); font-weight: 700; color: v.$gray-400; }
       }
@@ -763,7 +947,10 @@ $glass-bg: rgba(255, 255, 255, 0.9);
 // ─── RTL Support ──────────────────────────────────────
 :host-context([dir='rtl']),
 :host([dir='rtl']) {
-  .zone-map-editor-layout { flex-direction: row-reverse; }
+  .zone-map-editor-layout {
+    flex-direction: row-reverse;
+    @media (max-width: 600px) { flex-direction: column; }
+  }
 
   .sidebar-left {
     border-right: none;
@@ -784,7 +971,8 @@ $glass-bg: rgba(255, 255, 255, 0.9);
 
     &.collapsed { border-left: none; border-right: 1px solid v.$gray-200; }
 
-    @media (max-width: 600px) { border-right: none; border-left: none; border-bottom: 1px solid v.$gray-200; }
+    // On mobile RTL: just top border, no side borders
+    @media (max-width: 600px) { border-right: none; border-left: none; border-top: 1px solid v.$gray-200; }
   }
 
   .sidebar-right {
@@ -803,9 +991,16 @@ $glass-bg: rgba(255, 255, 255, 0.9);
     @media (max-width: 600px) { border-right: none; border-left: none; border-top: 1px solid v.$gray-200; }
   }
 
+  // RTL mobile layout: column direction, no need to reverse
+  @media (max-width: 600px) {
+    .zone-map-editor-layout { flex-direction: column; }
+  }
+
   .map-area .floating-ui {
     .tools-panel { right: auto; left: v.$spacing-lg; @media (max-width: 480px) { right: auto; left: v.$spacing-sm; } }
     .legend-panel { align-self: flex-end; }
+    .drawing-hint { left: auto; right: 50%; transform: translateX(50%); }
+    .intersection-warning { left: auto; right: 50%; transform: translateX(50%); }
   }
 
   .top-search-bar { flex-direction: row; direction: ltr; }
