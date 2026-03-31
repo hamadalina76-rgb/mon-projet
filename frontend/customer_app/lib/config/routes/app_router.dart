@@ -195,7 +195,7 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: RouteNames.orders,
-          pageBuilder: (context, state) => NoTransitionPage(
+          pageBuilder: (context, state) => const NoTransitionPage(
             child: const OrdersScreen(),
           ),
         ),

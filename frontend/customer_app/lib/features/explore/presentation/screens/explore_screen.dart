@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:math' as math;
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../config/dependency_injection/injection.dart';
 import '../../../../config/routes/route_names.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/responsive_utils.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/utils/media_url.dart';
 import '../../../location/data/models/saved_location.dart';
 import '../../../location/presentation/providers/location_provider.dart';
 import '../../../profile/data/models/address_model.dart';
@@ -272,12 +274,12 @@ class _LocationHeader extends ConsumerWidget {
                     ...addresses.map((address) {
                       final label = address.displayLabel;
                       final isActive = label == activeLabel;
-                      final subtitle =
+                      final String subtitle =
                           address.formattedAddress ??
                           [
                             address.street,
                             address.city,
-                          ].where((s) => s != null && s!.isNotEmpty).join(', ');
+                          ].whereType<String>().where((s) => s.isNotEmpty).join(', ');
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: Container(
@@ -306,7 +308,7 @@ class _LocationHeader extends ConsumerWidget {
                         ),
                         subtitle: subtitle.isNotEmpty
                             ? Text(
-                                subtitle!,
+                                subtitle,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -436,14 +438,7 @@ class _LocationHeader extends ConsumerWidget {
             : null) ??
         l10n.translate('default_location');
     return GestureDetector(
-      onTap: () => context.push(
-        RouteNames.confirmLocation,
-        extra: {
-          'latitude': loc?.latitude ?? 36.8065,
-          'longitude': loc?.longitude ?? 10.1815,
-          'initialAddress': loc?.formattedAddress ?? '',
-        },
-      ),
+      onTap: () => _showPicker(context, ref),
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: ResponsiveUtils.getResponsiveSpacing(context, 16),
@@ -664,9 +659,28 @@ class _CategoriesSectionState extends ConsumerState<_CategoriesSection> {
     return value != null ? Color(value) : AppColors.primaryDark;
   }
 
+  static bool _looksLikeImageRef(String? value) {
+    if (value == null || value.trim().isEmpty) return false;
+    final v = value.trim().toLowerCase();
+    return v.startsWith('http://') ||
+        v.startsWith('https://') ||
+        v.startsWith('/uploads/') ||
+        v.startsWith('uploads/') ||
+        v.contains('/uploads/');
+  }
+
+  String _extractImageUrl(CategoryDto category) {
+    if (_looksLikeImageRef(category.image)) {
+      return resolveMediaUrl(category.image);
+    }
+    if (_looksLikeImageRef(category.icon)) {
+      return resolveMediaUrl(category.icon);
+    }
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final l10n = widget.l10n;
     final categoriesAsync = ref.watch(categoriesProvider);
     final nearbyState = ref.watch(nearbyPartnersNotifierProvider);
 
@@ -758,6 +772,7 @@ class _CategoriesSectionState extends ConsumerState<_CategoriesSection> {
                 final icon = _iconForName(cat.icon);
                 final color = _parseHex(cat.backgroundColor);
                 final label = cat.localizedName(locale);
+                final imageUrl = _extractImageUrl(cat);
                 return Padding(
                   padding: EdgeInsets.only(
                     right: item.key == rowItems.length - 1 ? 0 : itemSpacing,
@@ -772,6 +787,7 @@ class _CategoriesSectionState extends ConsumerState<_CategoriesSection> {
                           : _BubbleMotionPreset.lively,
                       child: _CircularCategoryCard(
                         iconData: icon,
+                        imageUrl: imageUrl,
                         label: label,
                         borderColor: color,
                       ),
@@ -791,11 +807,13 @@ class _CategoriesSectionState extends ConsumerState<_CategoriesSection> {
 /// Created once per category returned by /api/v1/categories.
 class _CircularCategoryCard extends StatelessWidget {
   final IconData iconData;
+  final String imageUrl;
   final String label;
   final Color borderColor;
 
   const _CircularCategoryCard({
     required this.iconData,
+    required this.imageUrl,
     required this.label,
     required this.borderColor,
   });
@@ -833,11 +851,28 @@ class _CircularCategoryCard extends StatelessWidget {
                   padding: EdgeInsets.all(
                     ResponsiveUtils.getResponsiveSpacing(context, 12),
                   ),
-                  child: Icon(
-                    iconData,
-                    size: ResponsiveUtils.getResponsiveSize(context, 24),
-                    color: borderColor,
-                  ),
+                  child: imageUrl.isNotEmpty
+                      ? ClipOval(
+                          child: CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Icon(
+                              iconData,
+                              size: ResponsiveUtils.getResponsiveSize(context, 24),
+                              color: borderColor,
+                            ),
+                            errorWidget: (_, __, ___) => Icon(
+                              iconData,
+                              size: ResponsiveUtils.getResponsiveSize(context, 24),
+                              color: borderColor,
+                            ),
+                          ),
+                        )
+                      : Icon(
+                          iconData,
+                          size: ResponsiveUtils.getResponsiveSize(context, 24),
+                          color: borderColor,
+                        ),
                 ),
               ),
             ),

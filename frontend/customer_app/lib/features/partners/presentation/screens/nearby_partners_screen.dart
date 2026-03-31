@@ -1,14 +1,16 @@
+import 'dart:math' as math;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../config/routes/route_names.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/utils/media_url.dart';
 import '../../../../core/utils/responsive_utils.dart';
 import '../../../home/presentation/screens/filter_screen.dart';
 import '../../../location/presentation/providers/location_provider.dart';
@@ -16,6 +18,9 @@ import '../../../main/presentation/screens/main_scaffold.dart';
 import '../../../profile/data/models/address_model.dart';
 import '../../../profile/presentation/providers/address_provider.dart';
 import '../../../search/presentation/screens/search_screen.dart';
+import 'partner_details_screen.dart';
+import 'partner_favorites_screen.dart';
+import '../providers/favorite_partners_provider.dart';
 import '../providers/nearby_partners_provider.dart';
 import '../../data/models/category_dto.dart';
 import '../../data/models/partner_nearby_dto.dart';
@@ -39,11 +44,7 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
   bool _isOpeningSearch = false;
   String? _lastAllClosedSnackKey;
 
-  /// Resolve coordinates: prefer selected/default address, fall back to GPS.
   ({double lat, double lng, String? label}) _resolveCoordinates() {
-    // 1. User-selected address from the explore screen picker (stored in
-    //    locationNotifierProvider by selectAddress()). This always reflects the
-    //    most-recent explicit selection.
     final selectedLoc = ref.read(locationNotifierProvider).location;
     if (selectedLoc != null) {
       return (
@@ -55,7 +56,6 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
       );
     }
 
-    // 2. Default delivery address from the backend profile
     final addresses = ref.read(addressNotifierProvider).valueOrNull ?? [];
     AddressModel? target;
     for (final a in addresses) {
@@ -64,7 +64,6 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
         break;
       }
     }
-    // 3. Any profile address with coordinates as fallback
     if (target == null) {
       for (final a in addresses) {
         if (a.latitude != null && a.longitude != null) {
@@ -80,7 +79,6 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
       return (lat: target.latitude!, lng: target.longitude!, label: label);
     }
 
-    // 4. No coordinates available
     return (lat: 0.0, lng: 0.0, label: null);
   }
 
@@ -114,7 +112,10 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
       },
     );
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initialLoad());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initialLoad();
+      ref.read(favoritePartnersNotifierProvider.notifier).loadFavorites();
+    });
   }
 
   @override
@@ -145,8 +146,7 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
     }
 
     final isNearBottom = pos.pixels >= pos.maxScrollExtent - 220;
-    final isScrollingDown =
-        pos.userScrollDirection == ScrollDirection.reverse;
+    final isScrollingDown = pos.userScrollDirection == ScrollDirection.reverse;
 
     if (isNearBottom && isScrollingDown) {
       final now = DateTime.now();
@@ -276,8 +276,8 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
     }
 
     final message = nearest == null
-      ? l10n.translate('all_closed_now_notice')
-      : '${l10n.translate('all_closed_now_notice')} ${_nextOpeningLabel(nearest, l10n)}';
+        ? l10n.translate('all_closed_now_notice')
+        : '${l10n.translate('all_closed_now_notice')} ${_nextOpeningLabel(nearest, l10n)}';
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -307,10 +307,7 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return PartnerFiltersBottomSheet(
-          l10n: l10n,
-          searchQuery: _searchQuery,
-        );
+        return PartnerFiltersBottomSheet(l10n: l10n, searchQuery: _searchQuery);
       },
     );
   }
@@ -335,26 +332,67 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
     }
   }
 
+  Future<void> _openFavoritesScreen() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const PartnerFavoritesScreen()),
+    );
+
+    if (!mounted) return;
+    await ref.read(favoritePartnersNotifierProvider.notifier).loadFavorites();
+  }
+
+  Future<void> _handleFavoriteToggle(PartnerNearbyDto partner) async {
+    final result = await ref
+        .read(favoritePartnersNotifierProvider.notifier)
+        .toggleFavorite(partnerId: partner.id, partnerSnapshot: partner);
+
+    if (!mounted) return;
+
+    if (!result.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erreur, veuillez reessayer'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final message = result.action == FavoriteToggleAction.added
+        ? 'Ajoute aux favoris'
+        : 'Retire des favoris';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   Future<void> _onRefresh() async {
     final coords = _resolveCoordinates();
     if (coords.lat == 0.0 && coords.lng == 0.0) return;
-    await ref
-        .read(nearbyPartnersNotifierProvider.notifier)
-        .refresh(lat: coords.lat, lng: coords.lng);
+    await Future.wait([
+      ref
+          .read(nearbyPartnersNotifierProvider.notifier)
+          .refresh(lat: coords.lat, lng: coords.lng),
+      ref.read(favoritePartnersNotifierProvider.notifier).refresh(),
+    ]);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(nearbyPartnersNotifierProvider);
+    final favoritesState = ref.watch(favoritePartnersNotifierProvider);
     final categories = ref.watch(categoriesProvider).valueOrNull ?? [];
     final locale = Localizations.localeOf(context).languageCode;
-    // Watch both providers so the UI rebuilds when either changes.
     ref.watch(addressNotifierProvider);
     ref.watch(locationNotifierProvider);
 
-    // addressLabel and coordinates are both derived from _resolveCoordinates()
-    // so they stay in sync: user-selected address first, then backend default.
     final coords = _resolveCoordinates();
     final addressLabel = coords.label?.isNotEmpty == true
         ? coords.label!
@@ -391,13 +429,15 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
       final type = (p.type ?? '').toLowerCase();
       return name.contains(query) || type.contains(query);
     }).toList();
+    final favoriteCount = favoritesState.favoritePartners.length;
 
     _maybeShowAllClosedNotice(visiblePartners, l10n);
 
+    // Status bar: dark icons on white app bar
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
       ),
     );
 
@@ -414,97 +454,112 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
-              // ── App Bar ───────────────────────────────────────────────────
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _NearbyAppBar(
-                  topPadding: MediaQuery.paddingOf(context).top,
-                  addressLabel: addressLabel,
-                  categoryLabel: selectedCategoryLabel,
-                  l10n: l10n,
-                ),
-              ),
-
-              // ── Category label + search (under app bar) ───────────────────
-              SliverToBoxAdapter(
-                child: _CategoryHeaderAndSearch(
-                  categoryLabel: selectedCategoryLabel,
-                  l10n: l10n,
-                  activeFilterCount: state.activeFilterCount,
-                  onFilterTap: () => _openFiltersBottomSheet(l10n),
-                  onSearchTap: _openDedicatedSearch,
-                ),
-              ),
-
-              // ── Sub-categories ────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: _SubCategoriesRow(l10n: l10n, state: state),
-              ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 4)),
-
-              // ── All partners header ───────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: ResponsiveUtils.getResponsiveSpacing(
-                      context,
-                      AppConstants.horizontalPadding,
+                  // ── App Bar (white, collapsible) ──────────────────────────
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _NearbyAppBar(
+                      topPadding: MediaQuery.paddingOf(context).top,
+                      addressLabel: addressLabel,
+                      categoryLabel: selectedCategoryLabel,
+                      activeFilterCount: state.activeFilterCount,
+                      l10n: l10n,
+                      onSearchTap: _openDedicatedSearch,
+                      onFilterTap: () => _openFiltersBottomSheet(l10n),
+                      onFavoritesTap: _openFavoritesScreen,
+                      favoritesCount: favoriteCount,
+                      onBackTap: () => Navigator.of(context).pop(),
                     ),
-                    vertical: ResponsiveUtils.getResponsiveSpacing(context, 12),
                   ),
-                  child: Text(
-                    l10n.translate('all_partners'),
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: ResponsiveUtils.getResponsiveFontSize(
-                        context,
-                        18,
+
+                  // ── Sub-categories ────────────────────────────────────────
+                  SliverToBoxAdapter(
+                    child: _SubCategoriesRow(l10n: l10n, state: state),
+                  ),
+
+                  const SliverToBoxAdapter(child: SizedBox(height: 4)),
+
+                  // ── All partners header ───────────────────────────────────
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: ResponsiveUtils.getResponsiveSpacing(
+                          context,
+                          AppConstants.horizontalPadding,
+                        ),
+                        vertical: ResponsiveUtils.getResponsiveSpacing(
+                          context,
+                          12,
+                        ),
                       ),
-                      fontWeight: FontWeight.w700,
+                      child: Text(
+                        l10n.translate('all_partners'),
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: ResponsiveUtils.getResponsiveFontSize(
+                            context,
+                            18,
+                          ),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
 
-              // ── Partner list ──────────────────────────────────────────────
-              if (state.isLoading)
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (_, i) => const _PartnerCardShimmer(),
-                    childCount: 5,
-                  ),
-                )
-              else if (visiblePartners.isEmpty)
-                SliverToBoxAdapter(child: _EmptyState(l10n: l10n))
-              else
-                SliverList(
-                  delegate: SliverChildBuilderDelegate((_, i) {
-                    final partners = visiblePartners;
-                    if (i < partners.length) {
-                      return _PartnerCard(partner: partners[i]);
-                    }
-                    return null;
-                  }, childCount: visiblePartners.length),
-                ),
+                  // ── Partner list ──────────────────────────────────────────
+                  if (state.isLoading)
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (_, i) => const _PartnerCardShimmer(),
+                        childCount: 5,
+                      ),
+                    )
+                  else if (visiblePartners.isEmpty)
+                    SliverToBoxAdapter(child: _EmptyState(l10n: l10n))
+                  else
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate((_, i) {
+                        if (i < visiblePartners.length) {
+                          final partner = visiblePartners[i];
+                          return _PartnerCard(
+                            partner: partner,
+                            isFavorite: favoritesState.favoriteIds.contains(
+                              partner.id,
+                            ),
+                            onToggleFavorite: () =>
+                                _handleFavoriteToggle(partner),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => PartnerDetailsScreen(
+                                    partnerId: partner.id,
+                                    initialPartner: partner,
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        }
+                        return null;
+                      }, childCount: visiblePartners.length),
+                    ),
 
-              // ── Load more indicator ───────────────────────────────────────
-              SliverToBoxAdapter(child: _LoadMoreIndicator(state: state)),
+                  // ── Load more indicator ───────────────────────────────────
+                  SliverToBoxAdapter(child: _LoadMoreIndicator(state: state)),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 90)),
-            ],
+                  const SliverToBoxAdapter(child: SizedBox(height: 90)),
+                ],
               ),
             ),
           ),
+
+          // ── Scroll to top FAB ─────────────────────────────────────────────
           Positioned(
             right: 16,
             bottom: 22,
             child: AnimatedSlide(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOut,
-              offset: _showScrollToTop
-                  ? Offset.zero
-                  : const Offset(0, 1.5),
+              offset: _showScrollToTop ? Offset.zero : const Offset(0, 1.5),
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 220),
                 opacity: _showScrollToTop ? 1 : 0,
@@ -534,32 +589,48 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
   }
 }
 
-// ─── App Bar ────────────────────────────────────────────────────────────────
+// ─── App Bar (SliverPersistentHeaderDelegate) ─────────────────────────────────
 
 class _NearbyAppBar extends SliverPersistentHeaderDelegate {
   final double topPadding;
   final String addressLabel;
   final String categoryLabel;
+  final int activeFilterCount;
+  final int favoritesCount;
   final AppLocalizations l10n;
+  final VoidCallback onSearchTap;
+  final VoidCallback onFilterTap;
+  final VoidCallback onFavoritesTap;
+  final VoidCallback onBackTap;
 
-  _NearbyAppBar({
+  const _NearbyAppBar({
     required this.topPadding,
     required this.addressLabel,
     required this.categoryLabel,
+    required this.activeFilterCount,
+    required this.favoritesCount,
     required this.l10n,
+    required this.onSearchTap,
+    required this.onFilterTap,
+    required this.onFavoritesTap,
+    required this.onBackTap,
   });
 
+  // Expanded: top padding + address row (56) + category label (28) + search row (54) + gaps
+  @override
+  double get maxExtent => topPadding + 152.0;
+
+  // Collapsed: top padding + standard toolbar height
   @override
   double get minExtent => topPadding + kToolbarHeight + 8;
 
   @override
-  double get maxExtent => topPadding + 120.0;
-
-  @override
-  bool shouldRebuild(_NearbyAppBar oldDelegate) =>
-      oldDelegate.topPadding != topPadding ||
-      oldDelegate.addressLabel != addressLabel ||
-      oldDelegate.categoryLabel != categoryLabel;
+  bool shouldRebuild(_NearbyAppBar old) =>
+      old.topPadding != topPadding ||
+      old.addressLabel != addressLabel ||
+      old.categoryLabel != categoryLabel ||
+      old.activeFilterCount != activeFilterCount ||
+      old.favoritesCount != favoritesCount;
 
   @override
   Widget build(
@@ -567,216 +638,383 @@ class _NearbyAppBar extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    final progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+    final scrollRange = maxExtent - minExtent;
+    final progress = (shrinkOffset / scrollRange).clamp(0.0, 1.0);
+
+    // Expanded elements fade out in the first 50% of scroll
+    final expandedOpacity = (1.0 - progress * 2.2).clamp(0.0, 1.0);
+    // Collapsed search bar fades in after 55% scroll
+    final collapsedOpacity = ((progress - 0.55) / 0.45).clamp(0.0, 1.0);
+
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            AppColors.secondary3,
-            Color.lerp(AppColors.secondary3, AppColors.primary, 1 - progress)!,
-          ],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(18 * (1 - progress)),
-          bottomRight: Radius.circular(18 * (1 - progress)),
+      color: Colors.white,
+      // Subtle bottom border appears as we scroll
+      foregroundDecoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.border.withValues(alpha: progress.clamp(0.0, 1.0)),
+            width: 0.5,
+          ),
         ),
       ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, topPadding + 8, 16, 8),
-        child: Row(
-          children: [
-            // Back button
-            GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
+      padding: EdgeInsets.fromLTRB(16, topPadding + 8, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Row 1: Back | Address (expanded) ↔ Search (collapsed) | Filter ─
+          SizedBox(
+            height: kToolbarHeight - 8,
+            child: Row(
+              children: [
+                // Back button — always visible
+                GestureDetector(
+                  onTap: onBackTap,
+                  child: Container( 
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new,
+                      color: AppColors.textPrimary,
+                      size: 16,
+                    ),
+                  ),
                 ),
-                child: const Icon(
-                  Icons.arrow_back_ios_new,
-                  color: Colors.white,
-                  size: 18,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                const SizedBox(width: 10),
+
+                // Center area: address pill ↔ inline search bar
+                Expanded(
+                  child: Stack(
+                    alignment: Alignment.center,
                     children: [
-                      const Icon(
-                        Icons.location_on,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          addressLabel,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+                      // Address label — visible when expanded
+                      Opacity(
+                        opacity: expandedOpacity,
+                        child: IgnorePointer(
+                          ignoring: progress > 0.25,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                color: AppColors.primary,
+                                size: 15,
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  addressLabel,
+                                  style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
+                        ),
+                      ),
+
+                      // Inline search bar — visible when collapsed
+                      Opacity(
+                        opacity: collapsedOpacity,
+                        child: IgnorePointer(
+                          ignoring: progress < 0.7,
+                          child: GestureDetector(
+                            onTap: onSearchTap,
+                            child: Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.search_rounded,
+                                    color: AppColors.textSecondary,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      l10n.translate('search_partners_hint'),
+                                      style: const TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 13,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 50),
-          ],
-        ),
-      ),
-    );
-  }
-}
+                ),
 
-class _CategoryHeaderAndSearch extends StatelessWidget {
-  final String categoryLabel;
-  final AppLocalizations l10n;
-  final VoidCallback onSearchTap;
-  final int activeFilterCount;
-  final VoidCallback onFilterTap;
+                const SizedBox(width: 10),
 
-  const _CategoryHeaderAndSearch({
-    required this.categoryLabel,
-    required this.l10n,
-    required this.onSearchTap,
-    required this.activeFilterCount,
-    required this.onFilterTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            categoryLabel,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: onSearchTap,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.search_rounded,
-                            color: AppColors.textSecondary,
+                // Filter icon button — visible only when collapsed search is visible.
+                Opacity(
+                  opacity: collapsedOpacity,
+                  child: IgnorePointer(
+                    ignoring: progress < 0.7,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        GestureDetector(
+                          onTap: onFilterTap,
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: const Icon(
+                              Icons.tune_rounded,
+                              color: AppColors.textPrimary,
+                              size: 18,
+                            ),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              l10n.translate('search_partners_hint'),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 14,
+                        ),
+                        if (activeFilterCount > 0)
+                          Positioned(
+                            top: -4,
+                            right: -4,
+                            child: Container(
+                              width: 18,
+                              height: 18,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFE1062C),
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '$activeFilterCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                           ),
-                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Favorites icon button — always visible.
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    GestureDetector(
+                      onTap: onFavoritesTap,
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: const Icon(
+                          Icons.favorite_rounded,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
                       ),
+                    ),
+                    if (favoritesCount > 0)
+                      Positioned(
+                        top: -5,
+                        right: -5,
+                        child: Container(
+                          constraints: const BoxConstraints(minWidth: 18),
+                          height: 18,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFE1062C),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            favoritesCount > 99 ? '99+' : '$favoritesCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // ── Row 2: Category label — shrinks away on collapse ──────────────
+          ClipRect(
+            child: SizedBox(
+              height: 30.0 * (1.0 - progress),
+              child: Opacity(
+                opacity: expandedOpacity,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4, left: 2),
+                  child: Text(
+                    categoryLabel,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ── Row 3: Search bar + Filter button — shrinks away on collapse ───
+          ClipRect(
+            child: SizedBox(
+              height: 62.0 * (1.0 - progress),
+              child: Opacity(
+                opacity: expandedOpacity,
+                child: IgnorePointer(
+                  ignoring: progress > 0.2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10, bottom: 8),
+                    child: Row(
+                      children: [
+                        // Search bar
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: onSearchTap,
+                            child: Container(
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                              ),
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.search_rounded,
+                                    color: AppColors.textSecondary,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      l10n.translate('search_partners_hint'),
+                                      style: const TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 14,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+
+                        // Filter button next to expanded search bar (before scrolling)
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            GestureDetector(
+                              onTap: onFilterTap,
+                              child: Container(
+                                height: 44,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.softGrey,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.tune_rounded,
+                                      color: AppColors.black,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      l10n.translate('filters'),
+                                      style: const TextStyle(
+                                        color: AppColors.black,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (activeFilterCount > 0)
+                              Positioned(
+                                top: -6,
+                                right: -6,
+                                child: Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFE1062C),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    '$activeFilterCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  InkWell(
-                    onTap: onFilterTap,
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      height: 52,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: AppColors.softGrey,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.tune_rounded,
-                            color: AppColors.black,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            l10n.translate('filters'),
-                            style: const TextStyle(
-                              color: AppColors.black,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (activeFilterCount > 0)
-                    Positioned(
-                      top: -6,
-                      right: -6,
-                      child: Container(
-                        width: 22,
-                        height: 22,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFE1062C),
-                          shape: BoxShape.circle,
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          '$activeFilterCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -786,9 +1024,6 @@ class _CategoryHeaderAndSearch extends StatelessWidget {
 
 // ─── Sub-categories Row ──────────────────────────────────────────────────────
 
-/// Big-icon category row built from the real /v1/categories API.
-/// Shows only sub-categories where parentId equals the category selected
-/// from Explore (no "All" button).
 class _SubCategoriesRow extends ConsumerWidget {
   final AppLocalizations l10n;
   final NearbyPartnersState state;
@@ -843,6 +1078,52 @@ class _SubCategoriesRow extends ConsumerWidget {
     return Color(0xFF000000 | value);
   }
 
+  static bool _looksLikeImageRef(String? value) {
+    if (value == null || value.trim().isEmpty) return false;
+    final v = value.trim().toLowerCase();
+    return v.startsWith('http://') ||
+        v.startsWith('https://') ||
+        v.startsWith('/uploads/') ||
+        v.startsWith('uploads/') ||
+        v.contains('/uploads/');
+  }
+
+  Widget _buildCategoryVisual(CategoryDto cat, bool isSelected, Color accent) {
+    final candidate = cat.image?.trim().isNotEmpty == true
+        ? cat.image
+        : cat.icon;
+    final imageUrl = _looksLikeImageRef(candidate)
+        ? resolveMediaUrl(candidate)
+        : '';
+
+    if (imageUrl.isNotEmpty) {
+      return ClipOval(
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
+          width: 56,
+          height: 56,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => Icon(
+            _iconFor(cat),
+            size: 26,
+            color: isSelected ? accent : AppColors.textSecondary,
+          ),
+          errorWidget: (_, __, ___) => Icon(
+            _iconFor(cat),
+            size: 26,
+            color: isSelected ? accent : AppColors.textSecondary,
+          ),
+        ),
+      );
+    }
+
+    return Icon(
+      _iconFor(cat),
+      size: 26,
+      color: isSelected ? accent : AppColors.textSecondary,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categories = ref.watch(categoriesProvider).valueOrNull ?? [];
@@ -889,7 +1170,6 @@ class _SubCategoriesRow extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            // ─ One item per sub-category under selected explore category ───
             ...subCategories.map((cat) {
               final isSelected = state.selectedSubCategoryIds.contains(cat.id);
               final accent = _colorFromHex(
@@ -918,11 +1198,7 @@ class _SubCategoriesRow extends ConsumerWidget {
                             width: isSelected ? 2 : 1,
                           ),
                         ),
-                        child: Icon(
-                          _iconFor(cat),
-                          size: 26,
-                          color: isSelected ? accent : AppColors.textSecondary,
-                        ),
+                        child: _buildCategoryVisual(cat, isSelected, accent),
                       ),
                       const SizedBox(height: 6),
                       Text(
@@ -952,19 +1228,95 @@ class _SubCategoriesRow extends ConsumerWidget {
   }
 }
 
-// ─── Partner Card (vertical list) ────────────────────────────────────────────
+class _FavoritePulseButton extends StatefulWidget {
+  final bool isFavorite;
+  final VoidCallback? onTap;
+
+  const _FavoritePulseButton({required this.isFavorite, required this.onTap});
+
+  @override
+  State<_FavoritePulseButton> createState() => _FavoritePulseButtonState();
+}
+
+class _FavoritePulseButtonState extends State<_FavoritePulseButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 240),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    _controller.forward(from: 0);
+    widget.onTap?.call();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final t = Curves.easeOut.transform(_controller.value);
+        final scale = 1 + math.sin(t * math.pi) * 0.18;
+        return Transform.scale(scale: scale, child: child);
+      },
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.93),
+        shape: const CircleBorder(),
+        elevation: 2,
+        child: InkWell(
+          onTap: widget.onTap == null ? null : _handleTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: 34,
+            height: 34,
+            child: Icon(
+              widget.isFavorite
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
+              size: 18,
+              color: widget.isFavorite
+                  ? AppColors.primary
+                  : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Partner Card ─────────────────────────────────────────────────────────────
 
 class _PartnerCard extends StatelessWidget {
   final PartnerNearbyDto partner;
+  final bool isFavorite;
+  final VoidCallback? onToggleFavorite;
+  final VoidCallback? onTap;
 
-  const _PartnerCard({required this.partner});
+  const _PartnerCard({
+    required this.partner,
+    this.isFavorite = false,
+    this.onToggleFavorite,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final closed = !partner.isOpen;
 
-    // Build the "opens at…" label when closed
     String? opensLabel;
     if (closed) {
       final info = partner.nextOpenInfo;
@@ -982,201 +1334,211 @@ class _PartnerCard extends StatelessWidget {
         ),
         vertical: 6,
       ),
-      child: Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: closed ? const Color(0xFFF7F7F7) : Colors.white,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.shadow.withValues(alpha: closed ? 0.04 : 0.07),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Cover image ────────────────────────────────────────────────
-            Stack(
-              children: [
-                _PartnerCoverImage(
-                  coverUrl: partner.coverImage,
-                  height: 140,
+          onTap: onTap,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),
+            child: Ink(
+              decoration: BoxDecoration(
+                color: closed ? const Color(0xFFF7F7F7) : Colors.white,
+                borderRadius: BorderRadius.circular(
+                  AppConstants.borderRadiusLarge,
                 ),
-                if (closed)
-                  Positioned.fill(
-                    child: Container(
-                      color: Colors.black.withValues(alpha: 0.42),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.shadow.withValues(
+                      alpha: closed ? 0.04 : 0.07,
                     ),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                // Gradient overlay bottom
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    height: 50,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.5),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // Badges top-left (NEW, PREMIUM) — outside greyscale, full colour
-                Positioned(
-                  top: 10,
-                  left: 10,
-                  child: Row(
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
                     children: [
-                      if (partner.isNew && !closed)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: _Badge(
-                            label: l10n.translate('new_badge'),
-                            color: AppColors.success,
+                      _PartnerCoverImage(
+                        coverUrl: partner.coverImage,
+                        height: 140,
+                      ),
+                      if (closed)
+                        Positioned.fill(
+                          child: Container(
+                            color: Colors.black.withValues(alpha: 0.42),
                           ),
                         ),
-                      if (partner.isPremium)
-                        _Badge(
-                          label: 'PREMIUM',
-                          color: const Color(0xFFFFC107),
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.5),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: Row(
+                          children: [
+                            if (partner.isNew && !closed)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: _Badge(
+                                  label: l10n.translate('new_badge'),
+                                  color: AppColors.success,
+                                ),
+                              ),
+                            if (partner.isPremium)
+                              _Badge(
+                                label: 'PREMIUM',
+                                color: const Color(0xFFFFC107),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: _FavoritePulseButton(
+                          isFavorite: isFavorite,
+                          onTap: onToggleFavorite,
+                        ),
+                      ),
+                      if (closed)
+                        Positioned.fill(
+                          child: Center(
+                            child: _Badge(
+                              label: l10n.translate('closed_badge'),
+                              color: AppColors.error,
+                            ),
+                          ),
                         ),
                     ],
                   ),
-                ),
-                // CLOSED badge center
-                if (closed)
-                  Positioned.fill(
-                    child: Center(
-                      child: _Badge(
-                        label: l10n.translate('closed_badge'),
-                        color: AppColors.error,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            // ── Details row — slightly dimmed when closed ─────────────────
-            Opacity(
-              opacity: closed ? 0.65 : 1.0,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Logo
-                    _PartnerLogo(logoUrl: partner.logo, size: 50),
-                    const SizedBox(width: 12),
-                    // Info
-                    Expanded(
-                      child: Column(
+                  Opacity(
+                    opacity: closed ? 0.65 : 1.0,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            partner.displayName,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
+                          _PartnerLogo(logoUrl: partner.logo, size: 50),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  partner.displayName,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (partner.type != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Text(
+                                      _formatType(partner.type!),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 12,
+                                  runSpacing: 4,
+                                  children: [
+                                    _InfoChip(
+                                      icon: Icons.star_rounded,
+                                      label: partner.rating.toStringAsFixed(1),
+                                      iconColor: AppColors.starYellow,
+                                    ),
+                                    if (partner.preparationTime != null)
+                                      _InfoChip(
+                                        icon: Icons.access_time,
+                                        label: '${partner.preparationTime} min',
+                                        iconColor: AppColors.primary,
+                                      ),
+                                    if (partner.deliveryFee != null)
+                                      _InfoChip(
+                                        icon: Icons.delivery_dining,
+                                        label: partner.deliveryFee == 0
+                                            ? l10n.translate('free')
+                                            : '${partner.deliveryFee!.toStringAsFixed(partner.deliveryFee! % 1 == 0 ? 0 : 1)} DT',
+                                        iconColor: partner.deliveryFee == 0
+                                            ? AppColors.success
+                                            : AppColors.textSecondary,
+                                      ),
+                                  ],
+                                ),
+                              ],
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (partner.type != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Text(
-                                _formatType(partner.type!),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          const SizedBox(height: 6),
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 4,
-                            children: [
-                              // Rating
-                              _InfoChip(
-                                icon: Icons.star_rounded,
-                                label: partner.rating.toStringAsFixed(1),
-                                iconColor: AppColors.warning,
-                              ),
-                              // Prep time
-                              if (partner.preparationTime != null)
-                                _InfoChip(
-                                  icon: Icons.access_time,
-                                  label: '${partner.preparationTime} min',
-                                  iconColor: AppColors.primary,
-                                ),
-                              // Delivery fee
-                              if (partner.deliveryFee != null)
-                                _InfoChip(
-                                  icon: Icons.delivery_dining,
-                                  label: partner.deliveryFee == 0
-                                      ? l10n.translate('free')
-                                      : '${partner.deliveryFee!.toStringAsFixed(partner.deliveryFee! % 1 == 0 ? 0 : 1)} DT',
-                                  iconColor: partner.deliveryFee == 0
-                                      ? AppColors.success
-                                      : AppColors.textSecondary,
-                                ),
-                            ],
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            // ── Closed info bar — always full colour ──────────────────────
-            if (closed)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.06),
-                  border: Border(
-                    top: BorderSide(
-                      color: AppColors.error.withValues(alpha: 0.18),
-                    ),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.access_time_rounded,
-                      size: 14,
-                      color: AppColors.error,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      opensLabel ?? l10n.translate('closed_badge'),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.error,
-                        fontWeight: FontWeight.w600,
+                  if (closed)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withValues(alpha: 0.06),
+                        border: Border(
+                          top: BorderSide(
+                            color: AppColors.error.withValues(alpha: 0.18),
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: 14,
+                            color: AppColors.error,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            opensLabel ?? l10n.translate('closed_badge'),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                ],
               ),
-          ],
+            ),
+          ),
         ),
       ),
     );
@@ -1195,7 +1557,7 @@ class _PartnerCard extends StatelessWidget {
   }
 }
 
-// ─── Shimmer for partner card ────────────────────────────────────────────────
+// ─── Shimmer ─────────────────────────────────────────────────────────────────
 
 class _PartnerCardShimmer extends StatelessWidget {
   const _PartnerCardShimmer();
@@ -1279,9 +1641,6 @@ class _LoadMoreIndicator extends StatelessWidget {
         ),
       );
     }
-    if (state.hasReachedEnd && state.allPartners.isNotEmpty) {
-      return const SizedBox.shrink();
-    }
     return const SizedBox.shrink();
   }
 }
@@ -1297,17 +1656,14 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
-        style: TextStyle(
+        style: const TextStyle(
           color: Colors.white,
           fontSize: 11,
           fontWeight: FontWeight.w700,
@@ -1357,9 +1713,10 @@ class _PartnerCoverImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (coverUrl != null && coverUrl!.isNotEmpty) {
+    final resolved = resolveMediaUrl(coverUrl);
+    if (resolved.isNotEmpty) {
       return CachedNetworkImage(
-        imageUrl: coverUrl!,
+        imageUrl: resolved,
         height: height,
         width: double.infinity,
         fit: BoxFit.cover,
@@ -1393,6 +1750,7 @@ class _PartnerLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final resolved = resolveMediaUrl(logoUrl);
     return Container(
       width: size,
       height: size,
@@ -1412,9 +1770,9 @@ class _PartnerLogo extends StatelessWidget {
         borderRadius: BorderRadius.circular(
           AppConstants.borderRadiusMedium - 1,
         ),
-        child: logoUrl != null && logoUrl!.isNotEmpty
+        child: resolved.isNotEmpty
             ? CachedNetworkImage(
-                imageUrl: logoUrl!,
+                imageUrl: resolved,
                 fit: BoxFit.cover,
                 placeholder: (_, __) => _logoPlaceholder(),
                 errorWidget: (_, __, ___) => _logoPlaceholder(),

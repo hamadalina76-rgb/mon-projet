@@ -12,10 +12,8 @@ class AppColors {
   static const Color secondaryDark = Color.fromARGB(255, 222, 86, 86);
   static const Color secondaryDark2 = Color.fromARGB(212,212, 35, 41);
 
-
   static const Color secondary = Color.fromARGB(255, 225, 98, 98); 
-  static const Color secondary2 = Color.fromARGB(112, 233, 185, 133); 
-  static const Color secondary3 =Color.fromARGB(255, 230, 134, 134); 
+  static const Color secondary3 =Color.fromARGB(255, 230, 134, 134);
 
 
   // Backgrounds
@@ -33,6 +31,9 @@ class AppColors {
   static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFF59E0B);
   static const Color info = Color(0xFF3B82F6);
+ 
+  // Rating
+  static const Color starYellow = Color(0xFFFFC107);
   
   // Bordures et séparateurs
   static const Color border = Color(0xFFE5E7EB);

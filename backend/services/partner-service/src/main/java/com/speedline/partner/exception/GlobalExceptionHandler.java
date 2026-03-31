@@ -7,13 +7,13 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import jakarta.validation.ConstraintViolationException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.time.LocalDateTime;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
@@ -51,6 +51,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleResourceNotFound(ResourceNotFoundException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
+
+        Map<String, Object> error = new HashMap<>();
+        error.put("error", "NOT_FOUND");
+        error.put("message", ex.getMessage());
+        error.put("timestamp", LocalDateTime.now().toString());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(PartnerNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handlePartnerNotFound(PartnerNotFoundException ex) {
+        log.warn("Partner not found: {}", ex.getMessage());
 
         Map<String, Object> error = new HashMap<>();
         error.put("error", "NOT_FOUND");
@@ -103,6 +115,21 @@ public class GlobalExceptionHandler {
                 .map(v -> v.getPropertyPath() + ": " + v.getMessage())
                 .collect(Collectors.joining(", ")));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResourceFound(NoResourceFoundException ex) {
+        // Missing static media files are expected sometimes (stale DB URLs, deleted files).
+        // Return a clean 404 instead of logging this as an unexpected server error.
+        log.warn("Static resource not found: {}", ex.getResourcePath());
+
+        Map<String, Object> error = new HashMap<>();
+        error.put("error", "NOT_FOUND");
+        error.put("message", "Resource not found");
+        error.put("path", ex.getResourcePath());
+        error.put("timestamp", LocalDateTime.now().toString());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
     @ExceptionHandler(RuntimeException.class)

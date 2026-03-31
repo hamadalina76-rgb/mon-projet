@@ -2,6 +2,8 @@ package com.speedline.partner.dto.response;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 import java.util.List;
 
@@ -28,6 +30,8 @@ import java.util.List;
  */
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class FullMenuResponse {
 
     private Long partnerId;
@@ -43,6 +47,8 @@ public class FullMenuResponse {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CategorySection {
 
         /** Métadonnées de la catégorie. */

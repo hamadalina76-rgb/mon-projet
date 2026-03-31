@@ -1,3 +1,5 @@
+import '../../../../core/utils/media_url.dart';
+
 class CategoryDto {
   final int id;
   final Map<String, String> nameI18n;
@@ -40,8 +42,8 @@ class CategoryDto {
       id: (json['id'] as num).toInt(),
       nameI18n: names,
       slug: json['slug'] as String?,
-      icon: json['icon'] as String?,
-      image: json['image'] as String?,
+      icon: resolveMediaUrl(json['icon'] as String?),
+      image: resolveMediaUrl(json['image'] as String?),
       parentId: (json['parentId'] as num?)?.toInt(),
       displayOrder: (json['displayOrder'] as num?)?.toInt() ?? 0,
       isActive: json['isActive'] as bool? ?? true,

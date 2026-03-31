@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../core/api/api_endpoints.dart';
+import '../../../../config/runtime_config.dart';
 import '../models/address_model.dart';
 
 /// Service API bas-niveau pour les adresses de livraison.
@@ -8,12 +9,10 @@ import '../models/address_model.dart';
 class AddressApiService {
   final Dio _dio;
 
-  static const String _baseUrl = 'http://10.0.2.2:8080';
-
   AddressApiService({Dio? dio})
       : _dio = dio ??
             Dio(BaseOptions(
-              baseUrl: _baseUrl,
+              baseUrl: RuntimeConfig.apiBaseUrl,
               connectTimeout: const Duration(seconds: 10),
               receiveTimeout: const Duration(seconds: 15),
               headers: {

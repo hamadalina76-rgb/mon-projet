@@ -339,6 +339,31 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           message: 'Pas de connexion internet',
         );
 
+      case DioExceptionType.unknown:
+        final details = _extractTransportError(error);
+        final lower = details.toLowerCase();
+
+        if (lower.contains('cleartext')) {
+          return NetworkException(
+            message:
+                'Connexion HTTP bloquee par Android (cleartext non autorise).',
+          );
+        }
+
+        if (lower.contains('failed host lookup') ||
+            lower.contains('connection refused') ||
+            lower.contains('network is unreachable') ||
+            lower.contains('no route to host')) {
+          return NetworkException(
+            message:
+                'Serveur API inaccessible depuis cet appareil. Verifiez que le backend est joignable.',
+          );
+        }
+
+        return NetworkException(
+          message: details,
+        );
+
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode;
         final data = error.response?.data;
@@ -404,8 +429,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       default:
         return NetworkException(
-          message: error.message ?? 'Erreur réseau inconnue',
+          message: _extractTransportError(error),
         );
     }
+  }
+
+  String _extractTransportError(DioException error) {
+    final message = error.message;
+    if (message != null && message.trim().isNotEmpty) {
+      return message;
+    }
+
+    final transport = error.error?.toString();
+    if (transport != null && transport.trim().isNotEmpty) {
+      return transport;
+    }
+
+    return 'Erreur reseau inconnue';
   }
 }
