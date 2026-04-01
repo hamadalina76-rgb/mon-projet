@@ -45,6 +45,10 @@ const EXCEPTION_COLORS: Record<ExceptionType, string> = {
   CONGE:             '#10B981',
   FERMETURE:         '#EF4444',
   FORMATION:         '#8B5CF6',
+  PANNE:             '#DC2626',
+  ABSENT:            '#9CA3AF',
+  RETARD:            '#F97316',
+  NE_TRAVAILLE_PAS:  '#6B7280',
 };
 
 function toIsoDate(d: Date | string | null): string {

@@ -4,6 +4,7 @@ import com.speedline.delivery.dto.DeliveryDTO;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Service pour le matching livreur-commande
@@ -84,4 +85,13 @@ public interface CourierMatchingService {
      * @return Nombre de livraisons actives
      */
     int getCourierWorkload(Long courierId);
+
+    /**
+     * Reassigne automatiquement les livraisons ASSIGNED/ACCEPTED d'un livreur
+     * devenu indisponible (cas panne/indisponibilite simultanee).
+     *
+     * @param courierId ID du livreur indisponible
+     * @return resume des livraisons re-assignees et remises en attente
+     */
+    Map<String, Object> reassignOnCourierUnavailability(Long courierId);
 }

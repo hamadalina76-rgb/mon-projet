@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -107,37 +108,71 @@ public class CourierScheduleServiceImpl implements CourierScheduleService {
 
     @Override
     @Transactional
-    public CourierScheduleDTO.Response applyTemplate(Long courierId, Long templateId) {
+    public CourierScheduleDTO.Response applyTemplate(Long courierId, Long templateId, LocalDate effectiveFrom) {
         validateCourierIsInternal(courierId);
         ScheduleTemplate template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new IllegalArgumentException("Template introuvable: " + templateId));
 
-        CourierSchedule schedule = scheduleRepository.findByCourierIdAndWeekStartDateIsNull(courierId)
+        LocalDate effectiveDate = effectiveFrom != null ? effectiveFrom : LocalDate.now().plusDays(1);
+        LocalDate weekMonday = effectiveDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+
+        Optional<CourierSchedule> existingWeekSchedule =
+                scheduleRepository.findByCourierIdAndWeekStartDate(courierId, weekMonday);
+        Optional<CourierSchedule> existingPermanentSchedule =
+                scheduleRepository.findByCourierIdAndWeekStartDateIsNull(courierId);
+
+        Map<DayOfWeek, List<ScheduleTemplateDTO.ShiftInput>> previousWeekDays =
+                existingWeekSchedule
+                        .map(ws -> shiftsToInputMap(ws.getShifts()))
+                        .orElseGet(() -> existingPermanentSchedule
+                                .map(ps -> shiftsToInputMap(ps.getShifts()))
+                                .orElseGet(this::emptyInputMap));
+
+        Map<DayOfWeek, List<ScheduleTemplateDTO.ShiftInput>> templateDays =
+                templateShiftsToInputMap(template);
+
+        CourierSchedule schedule = existingPermanentSchedule
                 .orElse(CourierSchedule.builder().courierId(courierId).isPermanent(true).isActive(true).build());
 
         schedule.setTemplateId(templateId);
         schedule.getShifts().clear();
+        addShiftsFromMap(schedule, templateDays);
 
-        // Copy template shifts to courier schedule
-        template.getShifts().forEach(ts -> {
-            CourierScheduleShift shift = CourierScheduleShift.builder()
-                    .schedule(schedule)
-                    .dayOfWeek(ts.getDayOfWeek())
-                    .shiftOrder(ts.getShiftOrder())
-                    .startTime(ts.getStartTime())
-                    .endTime(ts.getEndTime())
-                    .breakStart(ts.getBreakStart())
-                    .breakEnd(ts.getBreakEnd())
-                    .build();
-            schedule.getShifts().add(shift);
-        });
-
-        log.info("Template {} appliqué au livreur {}", templateId, courierId);
+        log.info("Template {} appliqué au livreur {} à partir du {}", templateId, courierId, effectiveDate);
         CourierSchedule saved = scheduleRepository.save(schedule);
+
+        boolean hasDaysBeforeEffectiveDate = effectiveDate.isAfter(weekMonday);
+        if (existingWeekSchedule.isPresent() || hasDaysBeforeEffectiveDate) {
+            Map<DayOfWeek, List<ScheduleTemplateDTO.ShiftInput>> transitionWeek = new LinkedHashMap<>();
+            for (DayOfWeek day : DayOfWeek.values()) {
+                LocalDate dateOfDay = weekMonday.plusDays(day.getValue() - 1L);
+                boolean keepOld = dateOfDay.isBefore(effectiveDate);
+                transitionWeek.put(
+                        day,
+                        cloneShiftInputs((keepOld ? previousWeekDays : templateDays).getOrDefault(day, List.of())));
+            }
+
+            CourierSchedule weekOverride = existingWeekSchedule.orElse(
+                    CourierSchedule.builder()
+                            .courierId(courierId)
+                            .weekStartDate(weekMonday)
+                            .isPermanent(false)
+                            .isActive(true)
+                            .build());
+
+            weekOverride.setTemplateId(templateId);
+            weekOverride.getShifts().clear();
+            addShiftsFromMap(weekOverride, transitionWeek);
+            scheduleRepository.save(weekOverride);
+        }
+
         auditLogService.log(courierId, "TEMPLATE_APPLIED",
-                "Template '" + template.getName() + "' appliqué",
+                "Template '" + template.getName() + "' appliqué (effectiveFrom=" + effectiveDate + ")",
                 saved.getId(), templateId, template.getName());
-        return toResponse(saved, loadTemplateNames(List.of(saved)));
+
+        CourierScheduleDTO.Response response = toResponse(saved, loadTemplateNames(List.of(saved)));
+        response.setTemplateEffectiveFrom(effectiveDate);
+        return response;
     }
 
     @Override
@@ -191,8 +226,34 @@ public class CourierScheduleServiceImpl implements CourierScheduleService {
     @Transactional(readOnly = true)
     public CourierScheduleDTO.EffectiveScheduleResponse getEffectiveSchedule(Long courierId, LocalDate date) {
         DayOfWeek dow = date.getDayOfWeek();
+        LocalDate weekMonday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
 
-        // 1. Vérifier s'il existe une exception active qui couvre cette date
+        // 1. Chercher d'abord un planning spécifique pour cette semaine
+        Optional<CourierSchedule> weeklySchedule = scheduleRepository
+                .findByCourierIdAndWeekStartDate(courierId, weekMonday);
+
+        // 2. Sinon, utiliser le planning permanent
+        Optional<CourierSchedule> mainSchedule = weeklySchedule.isPresent() 
+                ? weeklySchedule 
+                : scheduleRepository.findByCourierIdAndWeekStartDateIsNull(courierId);
+
+        // 3. Extraire les shifts réguliers (du planning hebdo ou permanent)
+        List<ShiftDTO> dayShifts = mainSchedule
+                .map(schedule -> schedule.getShifts().stream()
+                        .filter(s -> s.getDayOfWeek() == dow)
+                        .sorted(Comparator.comparing(CourierScheduleShift::getShiftOrder))
+                        .map(s -> ShiftDTO.builder()
+                                .id(s.getId())
+                                .shiftOrder(s.getShiftOrder())
+                                .startTime(s.getStartTime())
+                                .endTime(s.getEndTime())
+                                .breakStart(s.getBreakStart())
+                                .breakEnd(s.getBreakEnd())
+                                .build())
+                        .collect(Collectors.toList()))
+                .orElse(new ArrayList<>());
+
+        // 4. Vérifier s'il existe une exception active qui couvre cette date
         List<CourierExceptionalSchedule> exceptions =
                 exceptionalScheduleRepository.findActiveOnDate(courierId, date);
 
@@ -200,12 +261,13 @@ public class CourierScheduleServiceImpl implements CourierScheduleService {
             CourierExceptionalSchedule ex = exceptions.get(0);
             String status = Boolean.TRUE.equals(ex.getIsRestPeriod())
                     ? "EXCEPTION_REST" : "EXCEPTION_SPECIAL";
+            
             return CourierScheduleDTO.EffectiveScheduleResponse.builder()
                     .status(status)
                     .date(date)
                     .dayOfWeek(dow)
                     .isRestDay(ex.getIsRestPeriod())
-                    .shifts(List.of())
+                    .shifts(dayShifts)
                     .exception(CourierScheduleDTO.ExceptionInfo.builder()
                             .id(ex.getId())
                             .exceptionType(ex.getExceptionType())
@@ -218,22 +280,7 @@ public class CourierScheduleServiceImpl implements CourierScheduleService {
                     .build();
         }
 
-        // 2. Pas d'exception → chercher le planning hebdomadaire permanent
-        List<ShiftDTO> dayShifts = scheduleRepository
-                .findByCourierIdAndWeekStartDateIsNull(courierId)
-                .map(schedule -> schedule.getShifts().stream()
-                        .filter(s -> s.getDayOfWeek() == dow)
-                        .map(s -> ShiftDTO.builder()
-                                .id(s.getId())
-                                .shiftOrder(s.getShiftOrder())
-                                .startTime(s.getStartTime())
-                                .endTime(s.getEndTime())
-                                .breakStart(s.getBreakStart())
-                                .breakEnd(s.getBreakEnd())
-                                .build())
-                        .collect(Collectors.toList()))
-                .orElse(List.of());
-
+        // 5. Pas d'exception → status REGULAR
         boolean isRest = dayShifts.isEmpty();
         return CourierScheduleDTO.EffectiveScheduleResponse.builder()
                 .status("REGULAR")
@@ -306,6 +353,55 @@ public class CourierScheduleServiceImpl implements CourierScheduleService {
                 schedule.getShifts().add(shift);
             });
         });
+    }
+
+    private Map<DayOfWeek, List<ScheduleTemplateDTO.ShiftInput>> emptyInputMap() {
+        Map<DayOfWeek, List<ScheduleTemplateDTO.ShiftInput>> map = new LinkedHashMap<>();
+        for (DayOfWeek day : DayOfWeek.values()) {
+            map.put(day, new ArrayList<>());
+        }
+        return map;
+    }
+
+    private Map<DayOfWeek, List<ScheduleTemplateDTO.ShiftInput>> templateShiftsToInputMap(ScheduleTemplate template) {
+        Map<DayOfWeek, List<ScheduleTemplateDTO.ShiftInput>> map = emptyInputMap();
+        template.getShifts().stream()
+                .sorted(Comparator.comparing(ScheduleTemplateShift::getDayOfWeek)
+                        .thenComparing(ScheduleTemplateShift::getShiftOrder))
+                .forEach(ts -> map.get(ts.getDayOfWeek()).add(
+                        ScheduleTemplateDTO.ShiftInput.builder()
+                                .startTime(ts.getStartTime())
+                                .endTime(ts.getEndTime())
+                                .breakStart(ts.getBreakStart())
+                                .breakEnd(ts.getBreakEnd())
+                                .build()));
+        return map;
+    }
+
+    private Map<DayOfWeek, List<ScheduleTemplateDTO.ShiftInput>> shiftsToInputMap(List<CourierScheduleShift> shifts) {
+        Map<DayOfWeek, List<ScheduleTemplateDTO.ShiftInput>> map = emptyInputMap();
+        shifts.stream()
+                .sorted(Comparator.comparing(CourierScheduleShift::getDayOfWeek)
+                        .thenComparing(CourierScheduleShift::getShiftOrder))
+                .forEach(s -> map.get(s.getDayOfWeek()).add(
+                        ScheduleTemplateDTO.ShiftInput.builder()
+                                .startTime(s.getStartTime())
+                                .endTime(s.getEndTime())
+                                .breakStart(s.getBreakStart())
+                                .breakEnd(s.getBreakEnd())
+                                .build()));
+        return map;
+    }
+
+    private List<ScheduleTemplateDTO.ShiftInput> cloneShiftInputs(List<ScheduleTemplateDTO.ShiftInput> shifts) {
+        return shifts.stream()
+                .map(s -> ScheduleTemplateDTO.ShiftInput.builder()
+                        .startTime(s.getStartTime())
+                        .endTime(s.getEndTime())
+                        .breakStart(s.getBreakStart())
+                        .breakEnd(s.getBreakEnd())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private CourierScheduleDTO.Response toResponse(CourierSchedule cs, Map<Long, String> templateNames) {

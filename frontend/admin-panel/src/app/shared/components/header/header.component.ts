@@ -142,14 +142,102 @@ export class HeaderComponent implements OnInit, OnDestroy {
     });
   }
 
+  getNotificationAction(notif: WebSocketNotification): string {
+    return String(notif.data?.['action'] ?? '');
+  }
+
+  getNotificationType(notif: WebSocketNotification): string {
+    return String(notif.type ?? notif.data?.['type'] ?? '').toUpperCase();
+  }
+
+  isSignalementNotification(notif: WebSocketNotification): boolean {
+    const action = this.getNotificationAction(notif);
+    const type = this.getNotificationType(notif);
+    return action === 'COURIER_UNAVAILABILITY_DECLARED'
+      || action === 'UNAVAILABILITY_DECLARATION_CREATED'
+      || action === 'COURIER_REPORT_SUBMITTED'
+      || type === 'INTERNAL_COURIER_PROBLEM_REPORTED'
+      || type === 'COURIER_UNAVAILABILITY_DECLARED'
+      || !!notif.data?.['exceptionType']
+      || !!notif.data?.['unavailabilityReason']
+      || !!notif.data?.['reason'];
+  }
+
+  getNotificationIcon(notif: WebSocketNotification): string {
+    const action = this.getNotificationAction(notif);
+    if (this.isSignalementNotification(notif)) return 'event_busy';
+    if (action === 'REVIEW_COURIER') return 'local_shipping';
+    if (action === 'REVIEW_PARTNER') return 'store';
+    if (action === 'REVIEW_PRODUCT' || action === 'PRODUCT_REQUEST_SUBMITTED') return 'inventory_2';
+    return 'notifications';
+  }
+
+  getSignalementType(notif: WebSocketNotification): string {
+    const rawType = String(
+      notif.data?.['exceptionType']
+      ?? notif.data?.['unavailabilityReason']
+      ?? notif.data?.['reason']
+      ?? notif.data?.['declarationType']
+      ?? ''
+    );
+    if (!rawType) return this.translate.instant('header.unknownReportType');
+
+    if (rawType in {
+      JOUR_FERIE: true,
+      EVENEMENT_SPECIAL: true,
+      CONGE: true,
+      FERMETURE: true,
+      FORMATION: true,
+      UNAVAILABILITY_DECLARATION: true,
+    }) {
+      return this.translate.instant(`exceptional.type_${rawType}`);
+    }
+
+    if (rawType in {
+      PANNE: true,
+      CONGE: true,
+      ABSENT: true,
+      RETARD: true,
+      NE_TRAVAILLE_PAS: true,
+    }) {
+      return this.translate.instant(`exceptional.reason_${rawType}`);
+    }
+
+    return rawType;
+  }
+
+  getSignalementCourierName(notif: WebSocketNotification): string {
+    const rawName = String(
+      notif.data?.['courierName']
+      ?? notif.data?.['courierFullName']
+      ?? notif.data?.['courierDisplayName']
+      ?? ''
+    ).trim();
+
+    if (rawName) return rawName;
+
+    const courierId = notif.data?.['courierId'];
+    if (courierId != null) return `#${courierId}`;
+    return this.translate.instant('header.unknownCourier');
+  }
+
+  getNotificationMeta(notif: WebSocketNotification): string {
+    if (!this.isSignalementNotification(notif)) return '';
+    const courier = this.getSignalementCourierName(notif);
+    const signalementType = this.getSignalementType(notif);
+    return `${courier} • ${signalementType}`;
+  }
+
   navigateToPartner(notif: WebSocketNotification): void {
     this.markNotificationRead(notif);
-    const action = notif.data?.['action'];
+    const action = this.getNotificationAction(notif);
     if (action === 'REVIEW_COURIER') {
       const courierId = notif.data?.['courierId'];
       if (courierId != null) {
         this.router.navigate(['/users/couriers', courierId, 'approval']);
       }
+    } else if (this.isSignalementNotification(notif)) {
+      this.router.navigate(['/users/couriers/exceptional-schedules']);
     } else if (action === 'REVIEW_PARTNER') {
       const partnerId = notif.data?.['partnerId'];
       if (partnerId) {

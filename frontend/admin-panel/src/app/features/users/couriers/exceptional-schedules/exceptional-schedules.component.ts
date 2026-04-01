@@ -32,6 +32,7 @@ import { CouriersService } from '../services/couriers.service';
 import {
   CourierExceptionalSchedule,
   ExceptionalScheduleCreateRequest,
+  ManagerDecisionRequest,
   ExceptionType,
   EXCEPTION_TYPES,
 } from '../models/courier-schedule.model';
@@ -40,12 +41,27 @@ import {
 
 interface CourierOption { id: number; name: string; }
 
+interface SignalementLogRow {
+  id: number;
+  courierName: string;
+  declarationTypeLabel: string;
+  reason: string;
+  statusLabel: string;
+  adminName: string;
+  actionAt: string;
+  comment: string;
+}
+
 const EXCEPTION_COLORS: Record<ExceptionType, string> = {
   JOUR_FERIE:        '#F59E0B',
   EVENEMENT_SPECIAL: '#3B82F6',
   CONGE:             '#10B981',
   FERMETURE:         '#EF4444',
   FORMATION:         '#8B5CF6',
+  PANNE:             '#DC2626',
+  ABSENT:            '#9CA3AF',
+  RETARD:            '#F97316',
+  NE_TRAVAILLE_PAS:  '#6B7280',
 };
 
 function toIsoDate(d: Date | string | null): string {
@@ -82,7 +98,9 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
 
   // ── Table state ───────────────────────────────────────────────────────
   items        = signal<CourierExceptionalSchedule[]>([]);
+  recentSignalements = signal<CourierExceptionalSchedule[]>([]);
   loading      = signal(true);
+  logsLoading  = signal(true);
   currentPage  = 0;
   totalItems   = 0;
   itemsPerPage = 20;
@@ -91,6 +109,7 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
   saving         = signal(false);
   showForm       = signal(false);
   editId         = signal<number | null>(null);
+  approvalItem   = signal<CourierExceptionalSchedule | null>(null);
   overlapWarning = signal<string[]>([]);
 
   // ── Courier selection ─────────────────────────────────────────────────
@@ -120,8 +139,41 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
   filterDateFrom  = '';
   filterDateTo    = '';
   filterCourierId = 0;
+  filterValidationStatus = '';
+  filterCourierType: '' | 'INTERNAL' | 'EXTERNAL' = '';
+  filterUnavailabilityReason = '';
+
+  readonly validationStatuses = [
+    'PENDING_VALIDATION',
+    'APPROVED_ACTIVE',
+    'REJECTED',
+    'RESOLVED_AVAILABLE',
+  ] as const;
+
+  readonly courierTypes = ['INTERNAL', 'EXTERNAL'] as const;
+
+  readonly unavailabilityReasons = [
+    'PANNE',
+    'CONGE',
+    'ABSENT',
+    'RETARD',
+    'NE_TRAVAILLE_PAS',
+  ] as const;
 
   readonly exceptionTypes = EXCEPTION_TYPES;
+
+  readonly signalementLogRows = computed<SignalementLogRow[]>(() =>
+    this.recentSignalements().map((item) => ({
+      id: item.id,
+      courierName: item.courierName ?? `#${item.courierId}`,
+      declarationTypeLabel: this.translate.instant(`exceptional.type_${item.exceptionType}`),
+      reason: this.reasonLabel(item),
+      statusLabel: this.validationLabel(item),
+      adminName: item.validatorAdminName ?? item.adminName ?? '—',
+      actionAt: item.validatedAt ?? item.createdAt ?? item.startDate,
+      comment: item.validationComment ?? '—',
+    }))
+  );
 
   form!: FormGroup;
 
@@ -135,6 +187,7 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
       .pipe(debounceTime(350), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe(() => { this.currentPage = 0; this.load(); });
     this.load();
+    this.loadRecentSignalements();
     this.loadAllCouriers();
   }
 
@@ -153,6 +206,9 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
       this.filterDateFrom  || undefined,
       this.filterDateTo    || undefined,
       this.filterCourierId || undefined,
+      this.filterUnavailabilityReason || undefined,
+      this.filterValidationStatus || undefined,
+      this.filterCourierType || undefined,
     ).subscribe({
       next: (res: { content: CourierExceptionalSchedule[]; totalElements: number }) => {
         this.items.set(res.content ?? []);
@@ -166,7 +222,7 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
 
   loadAllCouriers(): void {
     this.loadingCouriers.set(true);
-    this.couriersS.getCouriers(0, 200, undefined, undefined, 'INTERNAL').subscribe({
+    this.couriersS.getCouriers(0, 200).subscribe({
       next: (res: any) => {
         const raw: any[] = res?.content ?? (Array.isArray(res) ? res : []);
         this.allCouriers.set(raw.map((c: any): CourierOption => ({
@@ -180,6 +236,34 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadRecentSignalements(): void {
+    this.logsLoading.set(true);
+    // Charger les 10 derniers signalements (livreurs internes)
+    this.svc.getAllExceptionalSchedules(
+      0,
+      10,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'INTERNAL',
+    ).subscribe({
+      next: (res: { content: CourierExceptionalSchedule[]; totalElements: number }) => {
+        this.recentSignalements.set(res.content ?? []);
+        this.logsLoading.set(false);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.recentSignalements.set([]);
+        this.logsLoading.set(false);
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
   // ── Form ──────────────────────────────────────────────────────────────
   buildForm(): void {
     this.form = this.fb.group({
@@ -188,13 +272,17 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
       label:         ['',   [Validators.required, Validators.maxLength(200)]],
       startDate:     ['',   Validators.required],
       endDate:       ['',   Validators.required],
+      startTime:     [''],
+      endTime:       [''],
       reason:        [''],
       isRestPeriod:  [true],
+      comment:       [''],
     });
   }
 
   openNew(): void {
     this.editId.set(null);
+    this.approvalItem.set(null);
     this.allSelected.set(false);
     this.form.reset({ isRestPeriod: true });
     this.overlapWarning.set([]);
@@ -204,15 +292,23 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
 
   openEdit(item: CourierExceptionalSchedule): void {
     this.editId.set(item.id);
+    this.approvalItem.set(null);
     this.allSelected.set(false);
+
+    const startTime = item.startsAt ? item.startsAt.substring(11, 16) : '';
+    const endTime   = item.endsAt   ? item.endsAt.substring(11, 16)   : '';
+
     this.form.patchValue({
       courierId:     item.courierId,
       exceptionType: item.exceptionType,
       label:         item.label,
       startDate:     item.startDate ?? '',
       endDate:       item.endDate   ?? '',
+      startTime,
+      endTime,
       reason:        item.reason ?? '',
       isRestPeriod:  item.isRestPeriod ?? true,
+      comment:       '',
     });
     this.overlapWarning.set([]);
     this.courierFilterText.set('');
@@ -222,6 +318,7 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
   closeForm(): void {
     this.showForm.set(false);
     this.editId.set(null);
+    this.approvalItem.set(null);
     this.overlapWarning.set([]);
   }
 
@@ -276,12 +373,16 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
     // Single courier or all couriers?
     if (!this.allSelected()) {
       if (!f.courierId) { this.form.get('courierId')?.markAsTouched(); this.cdr.markForCheck(); return; }
+      const startDate = toIsoDate(f.startDate);
+      const endDate   = toIsoDate(f.endDate);
       const req: ExceptionalScheduleCreateRequest = {
         courierId:     f.courierId,
         exceptionType: f.exceptionType,
         label:         f.label.trim(),
-        startDate:     toIsoDate(f.startDate),
-        endDate:       toIsoDate(f.endDate),
+        startDate,
+        endDate,
+        startsAt:      startDate && f.startTime ? `${startDate}T${f.startTime}:00` : undefined,
+        endsAt:        (endDate || startDate) && f.endTime ? `${endDate || startDate}T${f.endTime}:00` : undefined,
         reason:        f.reason?.trim() || undefined,
         isRestPeriod:  f.isRestPeriod ?? true,
       };
@@ -297,6 +398,7 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
           this.saving.set(false);
           this.closeForm();
           this.load();
+          this.loadRecentSignalements();
         },
         error: (err: any) => {
           this.toastr.error(err?.error?.message ?? this.translate.instant('common.error'));
@@ -307,12 +409,16 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
       // Bulk creation for all internal couriers
       const couriers = this.allCouriers();
       if (!couriers.length) return;
+      const bStartDate = toIsoDate(f.startDate);
+      const bEndDate   = toIsoDate(f.endDate);
       const reqs = couriers.map(c => this.svc.createExceptionalSchedule({
         courierId:     c.id,
         exceptionType: f.exceptionType,
         label:         f.label.trim(),
-        startDate:     toIsoDate(f.startDate),
-        endDate:       toIsoDate(f.endDate),
+        startDate:     bStartDate,
+        endDate:       bEndDate,
+        startsAt:      bStartDate && f.startTime ? `${bStartDate}T${f.startTime}:00` : undefined,
+        endsAt:        (bEndDate || bStartDate) && f.endTime ? `${bEndDate || bStartDate}T${f.endTime}:00` : undefined,
         reason:        f.reason?.trim() || undefined,
         isRestPeriod:  f.isRestPeriod ?? true,
       }));
@@ -323,6 +429,7 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
           this.saving.set(false);
           this.closeForm();
           this.load();
+          this.loadRecentSignalements();
         },
         error: (err: any) => {
           this.toastr.error(err?.error?.message ?? this.translate.instant('common.error'));
@@ -337,11 +444,17 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
   onTypeChange():    void { this.currentPage = 0; this.load(); }
   onDateChange():    void { this.currentPage = 0; this.load(); }
   onCourierChange(): void { this.currentPage = 0; this.load(); }
+  onValidationStatusChange(): void { this.currentPage = 0; this.load(); }
+  onCourierTypeChange(): void { this.currentPage = 0; this.load(); }
+  onReasonChange(): void { this.currentPage = 0; this.load(); }
 
   resetFilters(): void {
     this.searchText = ''; this.filterType = '';
     this.filterDateFrom = ''; this.filterDateTo = '';
     this.filterCourierId = 0;
+    this.filterValidationStatus = '';
+    this.filterCourierType = '';
+    this.filterUnavailabilityReason = '';
     this.currentPage = 0;
     this.load();
   }
@@ -364,5 +477,119 @@ export class ExceptionalSchedulesComponent implements OnInit, OnDestroy {
   // ── Utils ─────────────────────────────────────────────────────────────
   exColor(type: string): string {
     return EXCEPTION_COLORS[type as ExceptionType] ?? '#6B7280';
+  }
+
+  canValidate(item: CourierExceptionalSchedule): boolean {
+    return item.courierType === 'INTERNAL' && item.validationStatus === 'PENDING_VALIDATION';
+  }
+
+  reasonLabel(item: CourierExceptionalSchedule): string {
+    if (item.unavailabilityReason) {
+      return this.translate.instant(`exceptional.reason_${item.unavailabilityReason}`);
+    }
+    return item.reason || '—';
+  }
+
+  validationLabel(item: CourierExceptionalSchedule): string {
+    if (!item.validationStatus) return '—';
+    return this.translate.instant(`exceptional.validation_${item.validationStatus}`);
+  }
+
+  courierTypeLabel(item: CourierExceptionalSchedule): string {
+    if (!item.courierType) return '—';
+    return this.translate.instant(`exceptional.courierType_${item.courierType}`);
+  }
+
+  approve(item: CourierExceptionalSchedule): void {
+    this.approvalItem.set(item);
+    this.editId.set(null);
+    this.allSelected.set(false);
+
+    // Auto-remplir le formulaire avec les données de la déclaration du livreur
+    const startTime = item.startsAt ? item.startsAt.substring(11, 16) : '';
+    const endTime   = item.endsAt   ? item.endsAt.substring(11, 16)   : '';
+
+    this.form.reset({ isRestPeriod: true });
+    this.form.patchValue({
+      courierId:     item.courierId,
+      exceptionType: item.exceptionType,
+      label:         item.label ?? '',
+      startDate:     item.startDate ?? '',
+      endDate:       item.endDate ?? '',
+      startTime,
+      endTime,
+      reason:        item.reason ?? '',
+      isRestPeriod:  item.isRestPeriod ?? true,
+      comment:       '',
+    });
+
+    this.overlapWarning.set([]);
+    this.courierFilterText.set('');
+    this.showForm.set(true);
+  }
+
+  submitApproval(): void {
+    const item = this.approvalItem();
+    if (!item) return;
+
+    const f = this.form.value;
+    const startDate = toIsoDate(f.startDate);
+    const endDate   = toIsoDate(f.endDate);
+
+    // Construire startsAt/endsAt à partir de date + heure
+    let startsAt: string | undefined;
+    let endsAt:   string | undefined;
+    if (startDate && f.startTime) {
+      startsAt = `${startDate}T${f.startTime}:00`;
+    }
+    if (endDate && f.endTime) {
+      endsAt = `${endDate}T${f.endTime}:00`;
+    } else if (startDate && f.endTime) {
+      endsAt = `${startDate}T${f.endTime}:00`;
+    }
+
+    const req: ManagerDecisionRequest = {
+      comment:       f.comment?.trim() || undefined,
+      exceptionType: f.exceptionType,
+      label:         f.label?.trim(),
+      startDate,
+      endDate,
+      startsAt,
+      endsAt,
+      reason:        f.reason?.trim() || undefined,
+      isRestPeriod:  f.isRestPeriod ?? true,
+    };
+
+    this.saving.set(true);
+    this.svc.approveExceptionalSchedule(item.id, req).subscribe({
+      next: () => {
+        this.toastr.success(this.translate.instant('exceptional.approveSuccess'));
+        this.saving.set(false);
+        this.closeForm();
+        this.load();
+        this.loadRecentSignalements();
+      },
+      error: (err: any) => {
+        this.toastr.error(err?.error?.message ?? this.translate.instant('common.error'));
+        this.saving.set(false);
+      },
+    });
+  }
+
+  reject(item: CourierExceptionalSchedule): void {
+    const comment = window.prompt(
+      this.translate.instant('exceptional.validationCommentPrompt'),
+      ''
+    ) ?? undefined;
+    this.svc.rejectExceptionalSchedule(item.id, comment).subscribe({
+      next: () => {
+        this.toastr.success(this.translate.instant('exceptional.rejectSuccess'));
+        this.load();
+        this.loadRecentSignalements();
+      },
+      error: (err: any) => {
+        this.toastr.error(err?.error?.message ?? this.translate.instant('common.error'));
+      },
+    });
   }
 }

@@ -186,6 +186,51 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> declareUnavailability({
+    required String reason,
+    int? estimatedDurationMinutes,
+    String? comment,
+    DateTime? startsAt,
+    DateTime? endsAt,
+  }) {
+    return remoteDataSource.declareUnavailability(
+      reason: reason,
+      estimatedDurationMinutes: estimatedDurationMinutes,
+      comment: comment,
+      startsAt: startsAt,
+      endsAt: endsAt,
+    );
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getMyUnavailabilityDeclarations({String? state}) {
+    return remoteDataSource.getMyUnavailabilityDeclarations(state: state);
+  }
+
+  @override
+  Future<Map<String, dynamic>> markAsAvailableNow() {
+    return remoteDataSource.markAsAvailableNow();
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getMyFixedSchedule() {
+    return remoteDataSource.getMyFixedSchedule();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getMyExceptionalSchedules({
+    required String from,
+    required String to,
+  }) {
+    return remoteDataSource.getMyExceptionalSchedules(from: from, to: to);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getMyEffectiveWeek({required String from}) {
+    return remoteDataSource.getMyEffectiveWeek(from: from);
+  }
+
+  @override
   Future<bool> hasActiveDelivery({required String courierId}) {
     return remoteDataSource.hasActiveDelivery(courierId: courierId);
   }

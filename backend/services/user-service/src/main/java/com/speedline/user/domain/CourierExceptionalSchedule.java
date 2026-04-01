@@ -54,6 +54,42 @@ public class CourierExceptionalSchedule {
     @Column(name = "reason", columnDefinition = "TEXT")
     private String reason;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "unavailability_reason", length = 40)
+    private UnavailabilityReason unavailabilityReason;
+
+    @Column(name = "estimated_duration_minutes")
+    private Integer estimatedDurationMinutes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "validation_status", length = 40)
+    private UnavailabilityValidationStatus validationStatus;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "courier_type", length = 20)
+    private CourierType courierType;
+
+    @Column(name = "validator_admin_id")
+    private Long validatorAdminId;
+
+    @Column(name = "validator_admin_name", length = 150)
+    private String validatorAdminName;
+
+    @Column(name = "validation_comment", columnDefinition = "TEXT")
+    private String validationComment;
+
+    @Column(name = "validated_at")
+    private LocalDateTime validatedAt;
+
+    @Column(name = "resolved_at")
+    private LocalDateTime resolvedAt;
+
+    @Column(name = "starts_at")
+    private LocalDateTime startsAt;
+
+    @Column(name = "ends_at")
+    private LocalDateTime endsAt;
+
     /**
      * true  = le livreur ne travaille PAS pendant cette période (on affiche REST)
      * false = des shifts spéciaux s'appliquent (version future)

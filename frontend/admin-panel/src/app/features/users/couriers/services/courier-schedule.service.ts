@@ -65,8 +65,12 @@ export class CourierScheduleService {
     return this.api.post(`admin/couriers/${courierId}/schedule`, req);
   }
 
-  applyTemplate(courierId: string, templateId: number): Observable<CourierScheduleResponse> {
-    return this.api.post(`admin/couriers/${courierId}/schedule/apply-template/${templateId}`, {});
+  applyTemplate(courierId: string, templateId: number, effectiveFrom?: string): Observable<CourierScheduleResponse> {
+    let url = `admin/couriers/${courierId}/schedule/apply-template/${templateId}`;
+    if (effectiveFrom) {
+      url += `?effectiveFrom=${encodeURIComponent(effectiveFrom)}`;
+    }
+    return this.api.post(url, {});
   }
 
   copyDay(courierId: string, req: CopyDayRequest): Observable<CourierScheduleResponse> {
@@ -110,7 +114,10 @@ export class CourierScheduleService {
     exceptionType?: string,
     from?: string,
     to?: string,
-    courierId?: number
+    courierId?: number,
+    unavailabilityReason?: string,
+    validationStatus?: string,
+    courierType?: 'INTERNAL' | 'EXTERNAL'
   ): Observable<{ content: CourierExceptionalSchedule[]; totalElements: number }> {
     let url = `admin/exceptional-schedules?page=${page}&size=${size}`;
     if (q)             url += `&search=${encodeURIComponent(q)}`;
@@ -118,6 +125,9 @@ export class CourierScheduleService {
     if (from)          url += `&dateFrom=${from}`;
     if (to)            url += `&dateTo=${to}`;
     if (courierId)     url += `&courierId=${courierId}`;
+    if (unavailabilityReason) url += `&unavailabilityReason=${unavailabilityReason}`;
+    if (validationStatus)     url += `&validationStatus=${validationStatus}`;
+    if (courierType)          url += `&courierType=${courierType}`;
     return this.api.get(url);
   }
 
@@ -143,6 +153,20 @@ export class CourierScheduleService {
     req: ExceptionalScheduleCreateRequest
   ): Observable<CourierExceptionalSchedule> {
     return this.api.put(`admin/exceptional-schedules/${id}`, req);
+  }
+
+  approveExceptionalSchedule(
+    id: number,
+    req: { comment?: string; exceptionType?: string; label?: string; startDate?: string; endDate?: string; startsAt?: string; endsAt?: string; reason?: string; isRestPeriod?: boolean }
+  ): Observable<CourierExceptionalSchedule> {
+    return this.api.post(`admin/exceptional-schedules/${id}/approve`, req);
+  }
+
+  rejectExceptionalSchedule(
+    id: number,
+    comment?: string
+  ): Observable<CourierExceptionalSchedule> {
+    return this.api.post(`admin/exceptional-schedules/${id}/reject`, { comment });
   }
 
   deleteExceptionalSchedule(id: number): Observable<void> {

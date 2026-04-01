@@ -1,6 +1,8 @@
 package com.speedline.user.repository;
 
 import com.speedline.user.domain.CourierExceptionalSchedule;
+import com.speedline.user.domain.CourierType;
+import com.speedline.user.domain.UnavailabilityValidationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -8,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface CourierExceptionalScheduleRepository
         extends JpaRepository<CourierExceptionalSchedule, Long>,
@@ -63,4 +66,20 @@ public interface CourierExceptionalScheduleRepository
     List<CourierExceptionalSchedule> findActiveOnDate(
             @Param("courierId") Long      courierId,
             @Param("date")      LocalDate date);
+
+    List<CourierExceptionalSchedule> findByCourierIdOrderByCreatedAtDesc(Long courierId);
+
+    Optional<CourierExceptionalSchedule> findFirstByCourierIdAndValidationStatusOrderByCreatedAtDesc(
+            Long courierId,
+            UnavailabilityValidationStatus validationStatus);
+
+    @Query("""
+            SELECT e FROM CourierExceptionalSchedule e
+            WHERE (:validationStatus IS NULL OR e.validationStatus = :validationStatus)
+              AND (:courierType IS NULL OR e.courierType = :courierType)
+            ORDER BY e.createdAt DESC
+            """)
+    List<CourierExceptionalSchedule> findByValidationStatusAndCourierType(
+            @Param("validationStatus") UnavailabilityValidationStatus validationStatus,
+            @Param("courierType") CourierType courierType);
 }

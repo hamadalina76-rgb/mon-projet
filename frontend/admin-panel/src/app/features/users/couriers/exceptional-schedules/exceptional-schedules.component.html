@@ -20,11 +20,35 @@
     <div class="ex-drawer-overlay" (click)="closeForm()"></div>
     <aside class="ex-drawer">
       <div class="ex-drawer__head">
-        <h2>{{ (editId() ? 'exceptional.editTitle' : 'exceptional.createTitle') | translate }}</h2>
+        <h2>
+          @if (approvalItem()) {
+            {{ 'exceptional.approveTitle' | translate }}
+          } @else {
+            {{ (editId() ? 'exceptional.editTitle' : 'exceptional.createTitle') | translate }}
+          }
+        </h2>
         <button mat-icon-button (click)="closeForm()">
           <mat-icon>close</mat-icon>
         </button>
       </div>
+
+      <!-- Info déclaration livreur (mode approbation) -->
+      @if (approvalItem(); as decl) {
+        <div class="ex-approval-info">
+          <mat-icon>person</mat-icon>
+          <div>
+            <strong>{{ decl.courierName ?? ('Livreur #' + decl.courierId) }}</strong>
+            <p>{{ 'exceptional.reason_' + decl.unavailabilityReason | translate }}
+              @if (decl.estimatedDurationMinutes) {
+                — {{ decl.estimatedDurationMinutes }} min
+              }
+            </p>
+            @if (decl.reason) {
+              <p class="ex-approval-comment">{{ decl.reason }}</p>
+            }
+          </div>
+        </div>
+      }
 
       <!-- Overlap warning -->
       @if (overlapWarning().length) {
@@ -41,8 +65,8 @@
 
       <form [formGroup]="form" (ngSubmit)="save()" class="ex-form">
 
-        <!-- ── Courier picker ── -->
-        <div class="ex-form-group">
+        <!-- ── Courier picker (masqué en mode approbation) ── -->
+        <div class="ex-form-group" [style.display]="approvalItem() ? 'none' : ''">
           <label class="ex-label">
             {{ 'exceptional.courier' | translate }}
             @if (!allSelected()) { <span class="ex-required">*</span> }
@@ -181,6 +205,18 @@
           </div>
         </div>
 
+        <!-- Heures (optionnel — demi-journée / heures précises) -->
+        <div class="ex-row">
+          <div class="ex-form-group ex-field">
+            <label class="ex-label">{{ 'exceptional.startTime' | translate }}</label>
+            <input type="time" class="ex-date-native" formControlName="startTime" />
+          </div>
+          <div class="ex-form-group ex-field">
+            <label class="ex-label">{{ 'exceptional.endTime' | translate }}</label>
+            <input type="time" class="ex-date-native" formControlName="endTime" />
+          </div>
+        </div>
+
         <!-- Reason -->
         <mat-form-field appearance="outline" class="ex-field">
           <mat-label>{{ 'exceptional.reason' | translate }}</mat-label>
@@ -213,20 +249,50 @@
           </div>
         }
 
+        <!-- Commentaire admin (mode approbation) -->
+        @if (approvalItem()) {
+          <mat-form-field appearance="outline" class="ex-field">
+            <mat-label>{{ 'exceptional.validationComment' | translate }}</mat-label>
+            <textarea matInput formControlName="comment" rows="2"
+                      [placeholder]="'exceptional.validationCommentPlaceholder' | translate"></textarea>
+          </mat-form-field>
+        }
+
         <!-- Actions -->
         <div class="ex-form-actions">
           <button type="button" class="ex-btn-cancel" (click)="closeForm()">
             {{ 'common.cancel' | translate }}
           </button>
-          <button type="submit" class="ex-btn-save"
-                  [disabled]="form.invalid || saving() || (!allSelected() && !form.get('courierId')?.value)">
-            @if (saving()) {
-              <span class="spinning">⟳</span>
-            } @else {
-              <mat-icon>save</mat-icon>
-            }
-            {{ (editId() ? 'exceptional.update' : 'exceptional.save') | translate }}
-          </button>
+
+          @if (approvalItem()) {
+            <!-- Mode approbation: boutons Rejeter + Approuver -->
+            <button type="button" class="ex-btn-reject"
+                    [disabled]="saving()"
+                    (click)="reject(approvalItem()!)">
+              <mat-icon>cancel</mat-icon>
+              {{ 'exceptional.reject' | translate }}
+            </button>
+            <button type="button" class="ex-btn-approve"
+                    [disabled]="form.invalid || saving()"
+                    (click)="submitApproval()">
+              @if (saving()) {
+                <span class="spinning">⟳</span>
+              } @else {
+                <mat-icon>check_circle</mat-icon>
+              }
+              {{ 'exceptional.approve' | translate }}
+            </button>
+          } @else {
+            <button type="submit" class="ex-btn-save"
+                    [disabled]="form.invalid || saving() || (!allSelected() && !form.get('courierId')?.value)">
+              @if (saving()) {
+                <span class="spinning">⟳</span>
+              } @else {
+                <mat-icon>save</mat-icon>
+              }
+              {{ (editId() ? 'exceptional.update' : 'exceptional.save') | translate }}
+            </button>
+          }
         </div>
       </form>
     </aside>
@@ -256,6 +322,28 @@
       <option value="">{{ 'exceptional.allTypes' | translate }}</option>
       @for (t of exceptionTypes; track t) {
         <option [value]="t">{{ ('exceptional.type_' + t) | translate }}</option>
+      }
+      <option value="UNAVAILABILITY_DECLARATION">{{ 'exceptional.type_UNAVAILABILITY_DECLARATION' | translate }}</option>
+    </select>
+
+    <select class="ex-select" [(ngModel)]="filterCourierType" (change)="onCourierTypeChange()">
+      <option value="">{{ 'exceptional.allCourierTypes' | translate }}</option>
+      @for (ct of courierTypes; track ct) {
+        <option [value]="ct">{{ ('exceptional.courierType_' + ct) | translate }}</option>
+      }
+    </select>
+
+    <select class="ex-select" [(ngModel)]="filterValidationStatus" (change)="onValidationStatusChange()">
+      <option value="">{{ 'exceptional.allValidationStatuses' | translate }}</option>
+      @for (vs of validationStatuses; track vs) {
+        <option [value]="vs">{{ ('exceptional.validation_' + vs) | translate }}</option>
+      }
+    </select>
+
+    <select class="ex-select" [(ngModel)]="filterUnavailabilityReason" (change)="onReasonChange()">
+      <option value="">{{ 'exceptional.allReasons' | translate }}</option>
+      @for (r of unavailabilityReasons; track r) {
+        <option [value]="r">{{ ('exceptional.reason_' + r) | translate }}</option>
       }
     </select>
 
@@ -293,10 +381,12 @@
         <thead>
           <tr>
             <th>{{ 'exceptional.colType'    | translate }}</th>
+            <th>{{ 'exceptional.colCourierType' | translate }}</th>
             <th>{{ 'exceptional.colCourier' | translate }}</th>
             <th>{{ 'exceptional.colLabel'   | translate }}</th>
             <th>{{ 'exceptional.colStart'   | translate }}</th>
             <th>{{ 'exceptional.colEnd'     | translate }}</th>
+            <th>{{ 'exceptional.colValidationStatus' | translate }}</th>
             <th>{{ 'exceptional.colReason'  | translate }}</th>
             <th>{{ 'exceptional.colAdmin'   | translate }}</th>
             <th>{{ 'exceptional.colActions' | translate }}</th>
@@ -310,18 +400,42 @@
                   {{ ('exceptional.type_' + item.exceptionType) | translate }}
                 </span>
               </td>
+              <td>
+                {{ courierTypeLabel(item) }}
+              </td>
               <td class="ex-courier-name">{{ item.courierName ?? '—' }}</td>
               <td>{{ item.label }}</td>
-              <td>{{ item.startDate }}</td>
-              <td>{{ item.endDate }}</td>
-              <td class="ex-reason-cell" [title]="item.reason ?? ''">
-                {{ item.reason
-                    ? (item.reason.length > 60 ? (item.reason.slice(0, 60) + '…') : item.reason)
-                    : '—' }}
+              <td>
+                {{ item.startDate }}
+                @if (item.startsAt) {
+                  <br><small class="ex-time-hint">{{ item.startsAt.substring(11, 16) }}</small>
+                }
+              </td>
+              <td>
+                {{ item.endDate }}
+                @if (item.endsAt) {
+                  <br><small class="ex-time-hint">{{ item.endsAt.substring(11, 16) }}</small>
+                }
+              </td>
+              <td>
+                {{ validationLabel(item) }}
+              </td>
+              <td class="ex-reason-cell" [title]="reasonLabel(item)">
+                {{ reasonLabel(item).length > 60 ? (reasonLabel(item).slice(0, 60) + '…') : reasonLabel(item) }}
               </td>
               <td>{{ item.adminName ?? '—' }}</td>
               <td>
                 <div class="ex-row-actions">
+                  @if (canValidate(item)) {
+                    <button mat-icon-button class="ex-approve-btn" [title]="'exceptional.approve' | translate"
+                            (click)="approve(item)">
+                      <mat-icon>check_circle</mat-icon>
+                    </button>
+                    <button mat-icon-button class="ex-reject-btn" [title]="'exceptional.reject' | translate"
+                            (click)="reject(item)">
+                      <mat-icon>cancel</mat-icon>
+                    </button>
+                  }
                   <button mat-icon-button [title]="'common.edit' | translate"
                           (click)="openEdit(item)">
                     <mat-icon>edit</mat-icon>
@@ -350,6 +464,50 @@
         </div>
       </div>
     }
+
+    <section class="ex-logs-card">
+      <div class="ex-logs-head">
+        <h3>{{ 'exceptional.recentReportsTitle' | translate }}</h3>
+        <p>{{ 'exceptional.recentReportsSubtitle' | translate }}</p>
+      </div>
+
+      @if (logsLoading()) {
+        <div class="ex-logs-loading">
+          <mat-icon class="spinning">sync</mat-icon>
+        </div>
+      } @else if (signalementLogRows().length === 0) {
+        <p class="ex-logs-empty">{{ 'exceptional.recentReportsEmpty' | translate }}</p>
+      } @else {
+        <div class="ex-table-wrap">
+          <table class="ex-table ex-table--logs">
+            <thead>
+              <tr>
+                <th>{{ 'exceptional.logsCourier' | translate }}</th>
+                <th>{{ 'exceptional.logsType' | translate }}</th>
+                <th>{{ 'exceptional.logsReason' | translate }}</th>
+                <th>{{ 'exceptional.logsStatus' | translate }}</th>
+                <th>{{ 'exceptional.logsAdmin' | translate }}</th>
+                <th>{{ 'exceptional.logsComment' | translate }}</th>
+                <th>{{ 'exceptional.logsDate' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of signalementLogRows(); track row.id) {
+                <tr>
+                  <td class="ex-courier-name">{{ row.courierName }}</td>
+                  <td>{{ row.declarationTypeLabel }}</td>
+                  <td class="ex-reason-cell" [title]="row.reason">{{ row.reason }}</td>
+                  <td>{{ row.statusLabel }}</td>
+                  <td>{{ row.adminName }}</td>
+                  <td class="ex-reason-cell" [title]="row.comment">{{ row.comment }}</td>
+                  <td>{{ row.actionAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
   }
 </div>
 

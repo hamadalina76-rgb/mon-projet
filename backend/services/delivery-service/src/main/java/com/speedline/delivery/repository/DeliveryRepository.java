@@ -51,6 +51,15 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
     @Query("SELECT d FROM Delivery d WHERE d.courierId = :courierId AND d.status NOT IN ('DELIVERED', 'CANCELLED', 'FAILED')")
     List<Delivery> findActiveDeliveriesByCourier(@Param("courierId") Long courierId);
 
+        @Query("""
+                        SELECT DISTINCT d.courierId FROM Delivery d
+                        WHERE d.courierId IS NOT NULL
+                            AND d.courierId <> :excludedCourierId
+                            AND d.status = 'DELIVERED'
+                        ORDER BY d.courierId ASC
+                        """)
+        List<Long> findReassignmentCandidateCourierIds(@Param("excludedCourierId") Long excludedCourierId);
+
     // ==================== LIVRAISONS EN ATTENTE ====================
 
     @Query("SELECT d FROM Delivery d WHERE d.status = 'PENDING' ORDER BY d.createdAt ASC")

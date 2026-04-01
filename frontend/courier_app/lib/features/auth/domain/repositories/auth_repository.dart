@@ -22,5 +22,17 @@ abstract class AuthRepository {
     required bool isOnline,
     required bool isAvailable,
   });
+  Future<Map<String, dynamic>> declareUnavailability({
+    required String reason,
+    int? estimatedDurationMinutes,
+    String? comment,
+    DateTime? startsAt,
+    DateTime? endsAt,
+  });
+  Future<List<Map<String, dynamic>>> getMyUnavailabilityDeclarations({String? state});
+  Future<Map<String, dynamic>> markAsAvailableNow();
+  Future<Map<String, dynamic>?> getMyFixedSchedule();
+  Future<List<Map<String, dynamic>>> getMyExceptionalSchedules({required String from, required String to});
+  Future<List<Map<String, dynamic>>> getMyEffectiveWeek({required String from});
   Future<bool> hasActiveDelivery({required String courierId});
 }

@@ -55,7 +55,7 @@ spring:
         - id: user-service-couriers-direct
           uri: lb://user-service
           predicates:
-            - Path=/couriers/**
+            - Path=/couriers/**, /v1/courier/schedule/**
           filters:
             - AuthenticationFilter
 
@@ -131,6 +131,14 @@ spring:
               args:
                 name: deliveryServiceBreaker
                 fallbackUri: forward:/fallback/delivery
+
+        # Delivery Service - Direct endpoints (without /api prefix)
+        - id: delivery-service-direct
+          uri: lb://delivery-service
+          predicates:
+            - Path=/deliveries/**
+          filters:
+            - AuthenticationFilter
 
         # Delivery Service - WebSocket (tracking courier position)
         - id: delivery-service-ws

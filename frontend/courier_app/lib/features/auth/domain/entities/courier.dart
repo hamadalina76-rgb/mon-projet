@@ -28,6 +28,7 @@ class Courier {
   final bool activeDeliverySoundEnabled;
   /// Backend status: PENDING_APPROVAL, ACTIVE, REJECTED, SUSPENDED, AVAILABLE, BUSY, OFFLINE, DEACTIVATED
   final String? status;
+  final String? courierType;
   final String? rejectionReason;
   final String? suspensionReason;
 
@@ -59,6 +60,7 @@ class Courier {
     this.documentsVerified = false,
     this.activeDeliverySoundEnabled = false,
     this.status,
+    this.courierType,
     this.rejectionReason,
     this.suspensionReason,
   });
@@ -80,4 +82,7 @@ class Courier {
 
   /// True if account is blocked (cannot use app): suspended, deactivated, or rejected.
   bool get isBlocked => isSuspended || isDeactivated || isRejected;
+
+  bool get isInternal => (courierType ?? '').toUpperCase() == 'INTERNAL';
+  bool get isExternal => (courierType ?? '').toUpperCase() == 'EXTERNAL';
 }

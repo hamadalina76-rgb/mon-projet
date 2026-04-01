@@ -58,12 +58,17 @@ public class CourierScheduleController {
     /** Appliquer un template existant */
     @PostMapping("/apply-template/{templateId}")
     public ResponseEntity<CourierScheduleDTO.Response> applyTemplate(@PathVariable Long courierId,
-                                                                       @PathVariable Long templateId) {
-        log.info("Apply template {} to courier {}", templateId, courierId);
-        CourierScheduleDTO.Response result = scheduleService.applyTemplate(courierId, templateId);
+                                           @PathVariable Long templateId,
+                                           @RequestParam(required = false)
+                                           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate effectiveFrom) {
+        LocalDate effectiveDate = effectiveFrom != null ? effectiveFrom : LocalDate.now().plusDays(1);
+        log.info("Apply template {} to courier {} from {}", templateId, courierId, effectiveDate);
+        CourierScheduleDTO.Response result = scheduleService.applyTemplate(courierId, templateId, effectiveDate);
         changeLogService.log("SCHEDULE_TEMPLATE_APPLIED", courierId,
                 null, null, null, null, null, null,
-                result.getTemplateName() != null ? result.getTemplateName() : "Template #" + templateId, null);
+            (result.getTemplateName() != null ? result.getTemplateName() : "Template #" + templateId)
+                + " (effectiveFrom=" + effectiveDate + ")",
+            null);
         return ResponseEntity.ok(result);
     }
 
