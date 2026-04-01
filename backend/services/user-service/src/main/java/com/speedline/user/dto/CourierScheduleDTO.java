@@ -20,6 +20,8 @@ public class CourierScheduleDTO {
         private Long templateId;
         private String templateName;
         @JsonFormat(pattern = "yyyy-MM-dd")
+        private LocalDate templateEffectiveFrom;
+        @JsonFormat(pattern = "yyyy-MM-dd")
         private LocalDate weekStartDate;
         private Boolean isPermanent;
         private Boolean isActive;

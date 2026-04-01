@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../config/di/injection_container.dart';
@@ -12,6 +13,9 @@ const String kActionCourierSuspended = 'COURIER_SUSPENDED';
 const String kActionCourierRejected = 'COURIER_REJECTED';
 const String kActionCourierDeactivated = 'COURIER_DEACTIVATED';
 const String kActionCourierReactivated = 'COURIER_REACTIVATED';
+const String kActionUnavailabilitySubmitted = 'UNAVAILABILITY_DECLARATION_SUBMITTED';
+const String kActionUnavailabilityApproved = 'UNAVAILABILITY_DECLARATION_APPROVED';
+const String kActionUnavailabilityRejected = 'UNAVAILABILITY_DECLARATION_REJECTED';
 
 /// Handles FCM push notifications and registration with backend.
 /// Call [initialize] early (e.g. from main), then [registerWithBackend] after login.
@@ -21,10 +25,10 @@ class NotificationService {
 
   NotificationService._();
 
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   final StreamController<void> _profileRefreshedController = StreamController<void>.broadcast();
   Future<void> Function(String action)? _onCourierAction;
+  bool _initialized = false;
 
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'speedline_courier_channel',
@@ -35,12 +39,31 @@ class NotificationService {
     enableVibration: true,
   );
 
-  Future<void> initialize() async {
-    await _fcm.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+  FirebaseMessaging? get _fcm {
+    if (Firebase.apps.isEmpty) {
+      return null;
+    }
+    return FirebaseMessaging.instance;
+  }
+
+  Future<void> initialize({bool requestPermissionOnStart = false}) async {
+    if (_initialized) {
+      return;
+    }
+
+    final fcm = _fcm;
+    if (fcm == null) {
+      AppLogger.warning('NotificationService.initialize skipped: Firebase not initialized');
+      return;
+    }
+
+    if (requestPermissionOnStart) {
+      await fcm.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    }
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
@@ -67,9 +90,10 @@ class NotificationService {
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
 
-    final token = await _fcm.getToken();
+    final token = await fcm.getToken();
     AppLogger.info('FCM Token obtained: ${token != null ? "yes" : "no"}');
 
+    _initialized = true;
     AppLogger.info('Notification service initialized');
   }
 
@@ -129,7 +153,9 @@ class NotificationService {
 
   void _handleActionFromData(Map<String, dynamic> data) {
     final action = data['action']?.toString();
-    if (action != null && action.isNotEmpty) _handleActionFromPayload(action);
+    if (action != null && action.isNotEmpty) {
+      _handleActionFromPayload(action);
+    }
   }
 
   void _handleActionFromPayload(String payload) {
@@ -138,7 +164,12 @@ class NotificationService {
         action != kActionCourierSuspended &&
         action != kActionCourierRejected &&
         action != kActionCourierDeactivated &&
-        action != kActionCourierReactivated) return;
+        action != kActionCourierReactivated &&
+        action != kActionUnavailabilitySubmitted &&
+        action != kActionUnavailabilityApproved &&
+        action != kActionUnavailabilityRejected) {
+      return;
+    }
     AppLogger.info('Courier status action received: $action');
     _onCourierAction?.call(action).then((_) {
       notifyProfileRefreshed();
@@ -146,7 +177,11 @@ class NotificationService {
   }
 
   Future<String?> getToken() async {
-    return await _fcm.getToken();
+    final fcm = _fcm;
+    if (fcm == null) {
+      return null;
+    }
+    return await fcm.getToken();
   }
 
   /// Register the current FCM token with the backend so the user receives push (e.g. account approved/blocked).

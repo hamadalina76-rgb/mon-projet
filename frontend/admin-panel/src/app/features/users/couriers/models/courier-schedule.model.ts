@@ -77,21 +77,35 @@ export interface AuditLogPageResponse {
 
 // ── Exceptional Schedules ───────────────────────────────────────────────────
 
-export type ExceptionType = 'JOUR_FERIE' | 'EVENEMENT_SPECIAL' | 'CONGE' | 'FERMETURE' | 'FORMATION';
+export type ExceptionType =
+  | 'JOUR_FERIE' | 'EVENEMENT_SPECIAL' | 'CONGE' | 'FERMETURE' | 'FORMATION'
+  | 'PANNE' | 'ABSENT' | 'RETARD' | 'NE_TRAVAILLE_PAS';
 
 export const EXCEPTION_TYPES: ExceptionType[] = [
-  'JOUR_FERIE', 'EVENEMENT_SPECIAL', 'CONGE', 'FERMETURE', 'FORMATION'
+  'JOUR_FERIE', 'EVENEMENT_SPECIAL', 'CONGE', 'FERMETURE', 'FORMATION',
+  'PANNE', 'ABSENT', 'RETARD', 'NE_TRAVAILLE_PAS',
 ];
 
 export interface CourierExceptionalSchedule {
   id: number;
   courierId: number;
   courierName?: string;
-  exceptionType: ExceptionType;
+  exceptionType: ExceptionType | 'UNAVAILABILITY_DECLARATION';
   label: string;
   startDate: string;
   endDate: string;
   reason?: string;
+  unavailabilityReason?: 'PANNE' | 'CONGE' | 'ABSENT' | 'RETARD' | 'NE_TRAVAILLE_PAS';
+  estimatedDurationMinutes?: number;
+  courierType?: 'INTERNAL' | 'EXTERNAL';
+  validationStatus?: 'PENDING_VALIDATION' | 'APPROVED_ACTIVE' | 'REJECTED' | 'RESOLVED_AVAILABLE';
+  validatorAdminId?: number;
+  validatorAdminName?: string;
+  validationComment?: string;
+  validatedAt?: string;
+  resolvedAt?: string;
+  startsAt?: string;
+  endsAt?: string;
   isRestPeriod: boolean;
   adminId?: number;
   adminName?: string;
@@ -104,8 +118,22 @@ export interface ExceptionalScheduleCreateRequest {
   label: string;
   startDate: string;
   endDate: string;
+  startsAt?: string;
+  endsAt?: string;
   reason?: string;
   isRestPeriod: boolean;
+}
+
+export interface ManagerDecisionRequest {
+  comment?: string;
+  exceptionType?: string;
+  label?: string;
+  startDate?: string;
+  endDate?: string;
+  startsAt?: string;
+  endsAt?: string;
+  reason?: string;
+  isRestPeriod?: boolean;
 }
 
 export interface OverlapCheckResult {

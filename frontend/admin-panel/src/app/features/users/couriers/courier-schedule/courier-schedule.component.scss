@@ -254,6 +254,33 @@ $transition: .2s cubic-bezier(.4,0,.2,1);
       border: 1.5px dashed #CBD5E1 !important;
       background: repeating-linear-gradient(135deg, #F8FAFC, #F8FAFC 4px, #F1F5F9 4px, #F1F5F9 8px) !important;
       font-style: italic; font-weight: 500; opacity: .85;
+      width: 100% !important;
+      margin: 0 !important;
+      display: flex;
+      align-items: flex-start;
+    }
+    .fc-event.cs-break-event .fc-event-main {
+      width: 100%;
+      display: flex;
+      justify-content: flex-start;
+      align-items: flex-start;
+      text-align: left;
+    }
+    .fc-event.cs-exception-block {
+      width: 100% !important;
+      margin: 0 !important;
+      display: flex;
+      align-items: flex-start;
+      white-space: pre-line;
+    }
+    .fc-event.cs-exception-block .fc-event-time {
+      display: none;
+    }
+    .fc-event.cs-exception-block .fc-event-main {
+      width: 100%;
+      text-align: left;
+      line-height: 1.2;
+      font-weight: 700;
     }
     .fc-scrollgrid-sync-inner { padding: 6px 0; }
     .fc-view-harness          { padding: 0 8px 8px; }
@@ -571,6 +598,27 @@ $transition: .2s cubic-bezier(.4,0,.2,1);
   font-size: .75rem;
   color: #94a3b8;
   font-weight: 500;
+}
+
+.cs-day-card__exception-partial {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #FFF7ED;
+  border: 1px solid #FED7AA;
+  border-radius: 8px;
+  margin: 0 12px 8px;
+  font-size: .82rem;
+  color: #9A3412;
+  font-weight: 500;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #F97316;
+  }
 }
 
 // ── Exception legend notice (above calendar) ────────────────────────────────

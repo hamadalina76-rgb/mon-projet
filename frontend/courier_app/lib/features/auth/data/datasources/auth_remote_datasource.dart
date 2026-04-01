@@ -24,6 +24,19 @@ abstract class AuthRemoteDataSource {
     required bool isOnline,
     required bool isAvailable,
   });
+  Future<Map<String, dynamic>> declareUnavailability({
+    required String reason,
+    int? estimatedDurationMinutes,
+    String? comment,
+    DateTime? startsAt,
+    DateTime? endsAt,
+  });
+  Future<List<Map<String, dynamic>>> getMyUnavailabilityDeclarations({String? state});
+  Future<Map<String, dynamic>> markAsAvailableNow();
+  Future<Map<String, dynamic>?> getMyFixedSchedule();
+  Future<List<Map<String, dynamic>>> getMyExceptionalSchedules({required String from, required String to});
+  /// Returns 7 EffectiveScheduleResponse objects (fixed schedule merged with exceptions).
+  Future<List<Map<String, dynamic>>> getMyEffectiveWeek({required String from});
   Future<bool> hasActiveDelivery({required String courierId});
   Future<void> uploadDocumentation({
     required Map<String, dynamic> documentData,
@@ -357,17 +370,177 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
+  Future<Map<String, dynamic>> declareUnavailability({
+    required String reason,
+    int? estimatedDurationMinutes,
+    String? comment,
+    DateTime? startsAt,
+    DateTime? endsAt,
+  }) async {
+    final payload = {
+      'unavailabilityReason': reason,
+      'estimatedDurationMinutes': estimatedDurationMinutes,
+      'comment': comment,
+      'startsAt': startsAt?.toIso8601String(),
+      'endsAt': endsAt?.toIso8601String(),
+    };
+
+    Future<Map<String, dynamic>> postTo(String path) async {
+      final response = await dio.post(
+        path,
+        data: payload,
+        options: Options(responseType: ResponseType.plain),
+      );
+      final parsed = _tryParseJson(response.data);
+      if (parsed is Map<String, dynamic>) return parsed;
+      return <String, dynamic>{};
+    }
+
+    try {
+      return await postTo('/couriers/current_user/unavailability');
+    } on DioException {
+      return postTo('/v1/courier/unavailability');
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getMyUnavailabilityDeclarations({String? state}) async {
+    Future<List<Map<String, dynamic>>> fetchFrom(String path) async {
+      final stateQuery = (state == null || state.trim().isEmpty)
+          ? ''
+          : '?state=${Uri.encodeQueryComponent(state.trim())}';
+      final response = await dio.get(
+        '$path$stateQuery',
+        options: Options(responseType: ResponseType.plain),
+      );
+      final data = _tryParseJson(response.data) ?? response.data;
+      if (data is List) {
+        return data
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList(growable: false);
+      }
+      return <Map<String, dynamic>>[];
+    }
+
+    try {
+      return await fetchFrom('/couriers/current_user/unavailability');
+    } on DioException {
+      return fetchFrom('/v1/courier/unavailability/me');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> markAsAvailableNow() async {
+    Future<Map<String, dynamic>> postTo(String path) async {
+      final response = await dio.post(
+        path,
+        options: Options(responseType: ResponseType.plain),
+      );
+      final parsed = _tryParseJson(response.data);
+      if (parsed is Map<String, dynamic>) return parsed;
+      return <String, dynamic>{};
+    }
+
+    try {
+      return await postTo('/couriers/current_user/unavailability/available');
+    } on DioException {
+      return postTo('/v1/courier/unavailability/available');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getMyFixedSchedule() async {
+    Future<Map<String, dynamic>?> fetch(String path) async {
+      final response = await dio.get(
+        path,
+        options: Options(responseType: ResponseType.plain),
+      );
+      if (response.statusCode == 204) return null;
+      final parsed = _tryParseJson(response.data);
+      if (parsed is Map<String, dynamic>) return parsed;
+      return null;
+    }
+
+    try {
+      return await fetch('/couriers/current_user/schedule');
+    } on DioException {
+      // Continue fallback chain.
+    }
+
+    try {
+      return await fetch('/v1/courier/schedule/me');
+    } on DioException {
+      // Continue fallback chain.
+    }
+
+    try {
+      final profile = await getCourierProfile();
+      final courierId = profile['id']?.toString();
+      if (courierId != null && courierId.isNotEmpty) {
+        return await fetch('/api/v1/admin/couriers/$courierId/schedule');
+      }
+    } on DioException {
+      // Fallback exhausted.
+    }
+
+    return null;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getMyExceptionalSchedules({
+    required String from,
+    required String to,
+  }) async {
+    try {
+      final response = await dio.get(
+        '/v1/courier/schedule/me/exceptions',
+        queryParameters: {'from': from, 'to': to},
+        options: Options(responseType: ResponseType.plain),
+      );
+      final parsed = _tryParseJson(response.data);
+      if (parsed is List) {
+        return parsed.whereType<Map<String, dynamic>>().toList();
+      }
+    } on DioException {
+      // Silently return empty list if endpoint unreachable.
+    }
+    return const [];
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getMyEffectiveWeek({required String from}) async {
+    try {
+      final response = await dio.get(
+        '/v1/courier/schedule/me/week',
+        queryParameters: {'from': from},
+        options: Options(responseType: ResponseType.plain),
+      );
+      final parsed = _tryParseJson(response.data);
+      if (parsed is List) {
+        return parsed.whereType<Map<String, dynamic>>().toList();
+      }
+    } on DioException {
+      // Silently return empty list if endpoint unreachable.
+    }
+    return const [];
+  }
+
+  @override
   Future<bool> hasActiveDelivery({required String courierId}) async {
     try {
-      final response = await dio.get('/deliveries/couriers/$courierId/active-status');
-      final data = response.data;
+      final response = await dio.get(
+        '/deliveries/couriers/$courierId/active-status',
+        options: Options(responseType: ResponseType.plain),
+      );
+      final data = _tryParseJson(response.data) ?? response.data;
       if (data is Map<String, dynamic>) {
         final raw = data['hasActiveDelivery'];
         if (raw is bool) {
           return raw;
         }
       }
-    } on DioException {
+    } catch (_) {
       // Fallback for environments where the dedicated endpoint is not deployed yet.
     }
 

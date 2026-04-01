@@ -9,6 +9,7 @@ import '../../../../config/di/injection_container.dart';
 import '../../../../services/notification_service.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import 'courier_home_screen.dart';
+import 'courier_status_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -21,6 +22,7 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
   bool _canAccessApp = true;
+  bool _isInternalCourier = true;
   StreamSubscription<void>? _profileRefreshedSub;
 
   @override
@@ -55,6 +57,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       }
       setState(() {
         _canAccessApp = canAccess;
+        _isInternalCourier = c?.isInternal ?? false;
+        if (!_isInternalCourier && _currentIndex == 2) {
+          _currentIndex = 0;
+        }
         if (!canAccess) _currentIndex = 3;
       });
     } catch (_) {}
@@ -63,12 +69,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final screens = [
+    final screens = <Widget>[
       CourierHomeScreen(canAccessApp: _canAccessApp),
       Center(child: Text(l10n.translate('orders'))), // TODO: Implement OrdersScreen
-      Center(child: Text(l10n.translate('earnings'))), // TODO: Implement EarningsScreen
+      if (_isInternalCourier) const CourierStatusScreen(),
       const ProfileScreen(),
     ];
+
+    if (_currentIndex >= screens.length) {
+      _currentIndex = screens.length - 1;
+    }
 
     return Scaffold(
       body: screens[_currentIndex],
@@ -99,15 +109,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   activeIcon: Icons.receipt_long,
                   index: 1,
                 ),
-                _buildNavItem(
-                  icon: Icons.attach_money_outlined,
-                  activeIcon: Icons.attach_money,
-                  index: 2,
-                ),
+                if (_isInternalCourier)
+                  _buildNavItem(
+                    icon: Icons.event_busy_outlined,
+                    activeIcon: Icons.event_busy,
+                    index: 2,
+                  ),
                 _buildNavItem(
                   icon: Icons.person_outline,
                   activeIcon: Icons.person,
-                  index: 3,
+                  index: _isInternalCourier ? 3 : 2,
                 ),
               ],
             ),

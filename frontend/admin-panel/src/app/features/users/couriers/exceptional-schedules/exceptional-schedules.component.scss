@@ -79,6 +79,38 @@
   &:disabled { opacity: .5; cursor: not-allowed; }
 }
 
+.ex-btn-approve {
+  display: flex; align-items: center; gap: 6px;
+  background: #10B981; color: #fff;
+  border: none; border-radius: 8px;
+  padding: 9px 20px;
+  font-weight: 600; cursor: pointer;
+  transition: background .2s;
+  &:hover:not(:disabled) { background: #059669; }
+  &:disabled { opacity: .5; cursor: not-allowed; }
+}
+
+.ex-btn-reject {
+  display: flex; align-items: center; gap: 6px;
+  background: #EF4444; color: #fff;
+  border: none; border-radius: 8px;
+  padding: 9px 20px;
+  font-weight: 600; cursor: pointer;
+  transition: background .2s;
+  &:hover:not(:disabled) { background: #DC2626; }
+  &:disabled { opacity: .5; cursor: not-allowed; }
+}
+
+.ex-approval-info {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: #F0FDF4; border: 1px solid #BBF7D0;
+  border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
+  mat-icon { color: #10B981; margin-top: 2px; }
+  strong { font-size: 15px; }
+  p { margin: 4px 0 0; font-size: 13px; color: #374151; }
+  .ex-approval-comment { font-style: italic; color: #6B7280; }
+}
+
 .ex-btn-reset {
   background: transparent;
   border: 1px solid #e2e8f0;
@@ -521,6 +553,7 @@
 
 /* ── Row cells ────────────────────────────────────── */
 .ex-courier-name { font-weight: 600; color: #1e293b; }
+.ex-time-hint { color: #6B7280; font-size: 0.75rem; }
 
 .ex-reason-cell {
   max-width: 220px;
@@ -536,7 +569,18 @@
   gap: 2px;
 }
 
+.ex-approve-btn {
+  color: #16a34a !important;
+}
+
+.ex-reject-btn {
+  color: #dc2626 !important;
+}
+
 .ex-del-btn { color: #ef4444 !important; }
+
+.ex-approve-btn { color: #16a34a !important; }
+.ex-reject-btn { color: #dc2626 !important; }
 
 /* ── States ───────────────────────────────────────── */
 .ex-loading {
@@ -590,6 +634,49 @@
     &:disabled { opacity: .4; cursor: not-allowed; }
     &.active { background: #E31E24; color: #fff; border-color: #E31E24; }
   }
+}
+
+.ex-logs-card {
+  margin-top: 18px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.07);
+  padding: 14px;
+}
+
+.ex-logs-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+
+  h3 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.8rem;
+  }
+}
+
+.ex-logs-loading {
+  display: flex;
+  justify-content: center;
+  padding: 18px;
+  color: #94a3b8;
+}
+
+.ex-logs-empty {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.88rem;
+  padding: 12px 2px;
 }
 
 /* ── Spinner ──────────────────────────────────────── */

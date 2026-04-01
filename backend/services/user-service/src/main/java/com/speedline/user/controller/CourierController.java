@@ -1,6 +1,9 @@
 package com.speedline.user.controller;
 
 import com.speedline.user.dto.*;
+import com.speedline.user.domain.UnavailabilityValidationStatus;
+import com.speedline.user.service.CourierExceptionalScheduleService;
+import com.speedline.user.service.CourierScheduleService;
 import com.speedline.user.service.impl.CourierServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * Contrôleur REST pour la gestion des livreurs
@@ -26,6 +31,8 @@ import org.springframework.web.bind.annotation.*;
 public class CourierController implements ICourierController {
 
     private final CourierServiceImpl courierService;
+    private final CourierScheduleService courierScheduleService;
+    private final CourierExceptionalScheduleService courierExceptionalScheduleService;
 
     // ==================== CONSULTATION ====================
 
@@ -110,6 +117,64 @@ public class CourierController implements ICourierController {
         log.info("GET /couriers/profile - Récupération du profil pour userId: {}", userId);
         CourierDTO courier = courierService.getCourierByUserId(userId);
         return ResponseEntity.ok(courier);
+    }
+
+    /**
+     * Retourne le planning fixe du livreur connecté (INTERNAL).
+     * Endpoint aligné avec les routes courier déjà exposées par la gateway.
+     */
+    @GetMapping("/current_user/schedule")
+    public ResponseEntity<CourierScheduleDTO.Response> getMySchedule(
+            @RequestHeader(value = "X-User-Id", required = true) Long userId) {
+        log.info("GET /couriers/current_user/schedule - Récupération planning pour userId: {}", userId);
+        CourierDTO courier = courierService.getCourierByUserId(userId);
+        CourierScheduleDTO.Response response = courierScheduleService.getSchedule(courier.getId());
+        return response != null ? ResponseEntity.ok(response) : ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Déclare une indisponibilité pour le livreur connecté.
+     */
+    @PostMapping("/current_user/unavailability")
+    public ResponseEntity<CourierExceptionalScheduleDTO> declareMyUnavailability(
+            @RequestHeader(value = "X-User-Id", required = true) Long userId,
+            @Valid @RequestBody CourierExceptionalScheduleDTO.CourierDeclarationRequest req) {
+        log.info("POST /couriers/current_user/unavailability - Déclaration indisponibilité pour userId: {}", userId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(courierExceptionalScheduleService.declareUnavailability(userId, req));
+    }
+
+    /**
+     * Liste des déclarations d'indisponibilité du livreur connecté.
+     */
+    @GetMapping("/current_user/unavailability")
+    public ResponseEntity<List<CourierExceptionalScheduleDTO>> getMyUnavailabilityDeclarations(
+            @RequestHeader(value = "X-User-Id", required = true) Long userId,
+            @RequestParam(required = false) UnavailabilityValidationStatus validationStatus,
+            @RequestParam(required = false, name = "state") String state) {
+        log.info("GET /couriers/current_user/unavailability - Liste des déclarations pour userId: {}", userId);
+        UnavailabilityValidationStatus resolvedStatus = validationStatus;
+        if (resolvedStatus == null && state != null && !state.isBlank()) {
+            String normalized = state.trim().toUpperCase();
+            resolvedStatus = switch (normalized) {
+                case "SUBMITTED", "SOUMIS", "EN_ATTENTE" -> UnavailabilityValidationStatus.PENDING_VALIDATION;
+                case "IN_PROGRESS", "EN_COURS", "EN-COURS", "ACTIVE" -> UnavailabilityValidationStatus.APPROVED_ACTIVE;
+                case "REJECTED", "REFUSED" -> UnavailabilityValidationStatus.REJECTED;
+                case "RESOLVED", "DONE", "TERMINE" -> UnavailabilityValidationStatus.RESOLVED_AVAILABLE;
+                default -> null;
+            };
+        }
+        return ResponseEntity.ok(courierExceptionalScheduleService.getMyDeclarations(userId, resolvedStatus));
+    }
+
+    /**
+     * Marque le livreur connecté comme disponible immédiatement.
+     */
+    @PostMapping("/current_user/unavailability/available")
+    public ResponseEntity<CourierExceptionalScheduleDTO> markMyAvailabilityNow(
+            @RequestHeader(value = "X-User-Id", required = true) Long userId) {
+        log.info("POST /couriers/current_user/unavailability/available - Disponible immédiatement pour userId: {}", userId);
+        return ResponseEntity.ok(courierExceptionalScheduleService.markAsAvailable(userId));
     }
 
     /**

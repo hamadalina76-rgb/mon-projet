@@ -29,6 +29,7 @@ class CourierModel extends Courier {
     bool documentsVerified = false,
     bool activeDeliverySoundEnabled = false,
     String? status,
+    String? courierType,
     String? rejectionReason,
     String? suspensionReason,
   }) : super(
@@ -59,6 +60,7 @@ class CourierModel extends Courier {
           documentsVerified: documentsVerified,
           activeDeliverySoundEnabled: activeDeliverySoundEnabled,
           status: status,
+          courierType: courierType,
           rejectionReason: rejectionReason,
           suspensionReason: suspensionReason,
         );
@@ -115,6 +117,7 @@ class CourierModel extends Courier {
       documentsVerified: json['documentsVerified'] as bool? ?? false,
       activeDeliverySoundEnabled: _resolveActiveDeliverySoundEnabled(json),
       status: json['status']?.toString(),
+      courierType: json['courierType']?.toString(),
       rejectionReason: json['rejectionReason'] as String?,
       suspensionReason: json['suspensionReason'] as String?,
     );
@@ -149,6 +152,7 @@ class CourierModel extends Courier {
       'documentsVerified': documentsVerified,
       'activeDeliverySoundEnabled': activeDeliverySoundEnabled,
       'status': status,
+      'courierType': courierType,
       'rejectionReason': rejectionReason,
       'suspensionReason': suspensionReason,
     };
@@ -182,6 +186,7 @@ class CourierModel extends Courier {
     bool? documentsVerified,
     bool? activeDeliverySoundEnabledValue,
     String? status,
+    String? courierType,
     String? rejectionReason,
     String? suspensionReason,
   }) {
@@ -214,6 +219,7 @@ class CourierModel extends Courier {
         activeDeliverySoundEnabled:
           activeDeliverySoundEnabledValue ?? activeDeliverySoundEnabled,
       status: status ?? this.status,
+        courierType: courierType ?? this.courierType,
       rejectionReason: rejectionReason ?? this.rejectionReason,
         suspensionReason: suspensionReason ?? this.suspensionReason,
     );

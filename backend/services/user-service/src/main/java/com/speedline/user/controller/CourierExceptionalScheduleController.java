@@ -1,5 +1,8 @@
 package com.speedline.user.controller;
 
+import com.speedline.user.domain.CourierType;
+import com.speedline.user.domain.UnavailabilityReason;
+import com.speedline.user.domain.UnavailabilityValidationStatus;
 import com.speedline.user.dto.CourierExceptionalScheduleDTO;
 import com.speedline.user.service.CourierExceptionalScheduleService;
 import jakarta.validation.Valid;
@@ -41,9 +44,26 @@ public class CourierExceptionalScheduleController {
             @RequestParam(required = false)    String exceptionType,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
-            @RequestParam(required = false)    Long   courierId) {
+            @RequestParam(required = false)    Long   courierId,
+            @RequestParam(required = false)    UnavailabilityReason unavailabilityReason,
+            @RequestParam(required = false)    UnavailabilityValidationStatus validationStatus,
+            @RequestParam(required = false)    CourierType courierType,
+            @RequestParam(required = false, name = "state") String state) {
 
-        return ResponseEntity.ok(service.getAll(page, size, search, exceptionType, dateFrom, dateTo, courierId));
+        UnavailabilityValidationStatus resolvedStatus =
+                validationStatus != null ? validationStatus : mapStateAlias(state);
+
+        return ResponseEntity.ok(service.getDeclarationsForAdmin(
+                page,
+                size,
+                search,
+                exceptionType,
+                dateFrom,
+                dateTo,
+                courierId,
+                unavailabilityReason,
+                resolvedStatus,
+                courierType));
     }
 
     // ── Par livreur + plage (calendrier) ────────────────────────────────────
@@ -99,6 +119,32 @@ public class CourierExceptionalScheduleController {
             @PathVariable Long id,
             @Valid @RequestBody CourierExceptionalScheduleDTO.CreateRequest req) {
         return ResponseEntity.ok(service.update(id, req));
+    }
+
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<CourierExceptionalScheduleDTO> approve(
+            @PathVariable Long id,
+            @RequestBody(required = false) CourierExceptionalScheduleDTO.ManagerDecisionRequest req) {
+        return ResponseEntity.ok(service.approveDeclaration(id, req));
+    }
+
+    @PostMapping("/{id}/reject")
+    public ResponseEntity<CourierExceptionalScheduleDTO> reject(
+            @PathVariable Long id,
+            @RequestBody(required = false) CourierExceptionalScheduleDTO.ManagerDecisionRequest req) {
+        return ResponseEntity.ok(service.rejectDeclaration(id, req == null ? null : req.getComment()));
+    }
+
+    private UnavailabilityValidationStatus mapStateAlias(String state) {
+        if (state == null || state.isBlank()) return null;
+        String normalized = state.trim().toUpperCase();
+        return switch (normalized) {
+            case "SUBMITTED", "SOUMIS", "EN_ATTENTE" -> UnavailabilityValidationStatus.PENDING_VALIDATION;
+            case "IN_PROGRESS", "EN_COURS", "EN-COURS", "ACTIVE" -> UnavailabilityValidationStatus.APPROVED_ACTIVE;
+            case "REJECTED", "REFUSED" -> UnavailabilityValidationStatus.REJECTED;
+            case "RESOLVED", "DONE", "TERMINE" -> UnavailabilityValidationStatus.RESOLVED_AVAILABLE;
+            default -> null;
+        };
     }
 
 }

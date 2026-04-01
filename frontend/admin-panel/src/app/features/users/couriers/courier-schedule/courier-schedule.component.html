@@ -26,7 +26,7 @@
           <mat-label>{{ 'schedule.selectTemplate' | translate }}</mat-label>
           <mat-select [value]="selectedTemplateId()"
                       (selectionChange)="selectedTemplateId.set($event.value)">
-            <mat-option *ngFor="let t of templates()" [value]="t.id">{{ t.name }}</mat-option>
+            <mat-option *ngFor="let t of templateOptions()" [value]="t.id">{{ t.name }}</mat-option>
           </mat-select>
         </mat-form-field>
         <button mat-flat-button color="primary"
@@ -184,21 +184,24 @@
                 <mat-icon class="cs-exception-badge__icon">event_busy</mat-icon>
                 {{ ('exceptional.type_' + exceptionForDay(day)!.exceptionType) | translate }}
                 — {{ exceptionForDay(day)!.label }}
+                <ng-container *ngIf="exceptionForDay(day)!.startsAt && exceptionForDay(day)!.endsAt">
+                  ({{ exceptionForDay(day)!.startsAt!.substring(11, 16) }} - {{ exceptionForDay(day)!.endsAt!.substring(11, 16) }})
+                </ng-container>
               </span>
 
-              <span class="cs-day-count" *ngIf="!exceptionForDay(day) && shiftsFor(day).length > 0">
+              <span class="cs-day-count" *ngIf="(!exceptionForDay(day) || isPartialException(day)) && shiftsFor(day).length > 0">
                 {{ shiftsFor(day).length }} {{ 'schedule.shifts' | translate }}
               </span>
               <button mat-icon-button type="button" class="cs-copy-btn"
-                      *ngIf="!exceptionForDay(day)"
+                      *ngIf="!exceptionForDay(day) || isPartialException(day)"
                       [matTooltip]="'schedule.copyDayTip' | translate"
                       (click)="copyDaySource.set(day); editMode.set(false)">
                 <mat-icon>content_copy</mat-icon>
               </button>
             </div>
 
-            <!-- Exception overlay: greyed out, no editing -->
-            <div class="cs-day-card__exception-overlay" *ngIf="exceptionForDay(day)">
+            <!-- Exception overlay: greyed out, no editing (full-day exceptions only) -->
+            <div class="cs-day-card__exception-overlay" *ngIf="exceptionForDay(day) && !isPartialException(day)">
               <mat-icon>block</mat-icon>
               <span>{{ 'exceptional.overrideWeekly' | translate }}</span>
               <span class="cs-exception-period">
@@ -206,7 +209,15 @@
               </span>
             </div>
 
-            <div class="cs-day-card__body" [formArrayName]="day" *ngIf="!exceptionForDay(day)">
+            <!-- Partial exception info (time-based) — editing still allowed -->
+            <div class="cs-day-card__exception-partial" *ngIf="exceptionForDay(day) && isPartialException(day)">
+              <mat-icon>schedule</mat-icon>
+              <span>{{ ('exceptional.type_' + exceptionForDay(day)!.exceptionType) | translate }}
+                {{ exceptionForDay(day)!.startsAt!.substring(11, 16) }} → {{ exceptionForDay(day)!.endsAt!.substring(11, 16) }}
+              </span>
+            </div>
+
+            <div class="cs-day-card__body" [formArrayName]="day" *ngIf="!exceptionForDay(day) || isPartialException(day)">
 
               <div class="cs-shift-row"
                    *ngFor="let ctrl of shiftsFor(day).controls; let i = index"

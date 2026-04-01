@@ -9,7 +9,7 @@ public interface CourierScheduleService {
     CourierScheduleDTO.Response getSchedule(Long courierId);
     List<CourierScheduleDTO.Response> getAllSchedules(Long courierId);
     CourierScheduleDTO.Response saveSchedule(Long courierId, CourierScheduleDTO.SaveRequest request);
-    CourierScheduleDTO.Response applyTemplate(Long courierId, Long templateId);
+    CourierScheduleDTO.Response applyTemplate(Long courierId, Long templateId, LocalDate effectiveFrom);
     CourierScheduleDTO.Response copyDay(Long courierId, CourierScheduleDTO.CopyDayRequest request);
     void deleteSchedule(Long courierId, Long scheduleId);
 
