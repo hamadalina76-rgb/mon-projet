@@ -102,10 +102,11 @@ export class ScheduleTemplatesComponent implements OnInit, OnDestroy {
   }
 
   openForm(template?: ScheduleTemplateResponse): void {
+    const mobile = window.innerWidth <= 600;
     const ref = this.dialog.open(ScheduleTemplateFormComponent, {
-      width: '860px',
-      maxWidth: '96vw',
-      maxHeight: '92vh',
+      width: mobile ? '100vw' : '860px',
+      maxWidth: '100vw',
+      maxHeight: mobile ? '95dvh' : '92vh',
       data: template ?? null,
       panelClass: 'schedule-form-panel',
     });
