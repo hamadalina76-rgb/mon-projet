@@ -2,7 +2,7 @@
 -- Un planning exceptionnel (ponctuel) écrase le planning normal
 -- sur une période définie (jours fériés, événements spéciaux, congé…)
 
-CREATE TABLE courier_exceptional_schedules
+CREATE TABLE IF NOT EXISTS courier_exceptional_schedules
 (
     id             BIGSERIAL    PRIMARY KEY,
     courier_id     BIGINT       NOT NULL,
@@ -28,6 +28,6 @@ CREATE TABLE courier_exceptional_schedules
     updated_at     TIMESTAMP
 );
 
-CREATE INDEX idx_ces_courier_id ON courier_exceptional_schedules (courier_id);
-CREATE INDEX idx_ces_dates      ON courier_exceptional_schedules (start_date, end_date);
-CREATE INDEX idx_ces_active     ON courier_exceptional_schedules (is_active);
+CREATE INDEX IF NOT EXISTS idx_ces_courier_id ON courier_exceptional_schedules (courier_id);
+CREATE INDEX IF NOT EXISTS idx_ces_dates      ON courier_exceptional_schedules (start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_ces_active     ON courier_exceptional_schedules (is_active);

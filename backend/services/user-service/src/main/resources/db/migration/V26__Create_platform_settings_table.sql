@@ -1,5 +1,5 @@
 -- ============================================================================
--- V24 : Table des paramètres globaux de la plateforme
+-- V26 : Table des paramètres globaux de la plateforme
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS platform_settings (

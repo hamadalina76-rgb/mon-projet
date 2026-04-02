@@ -1,5 +1,5 @@
 -- ============================================================================
--- V25 : Horaires de travail globaux de l'application
+-- V27 : Horaires de travail globaux de l'application
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS app_working_hours (
