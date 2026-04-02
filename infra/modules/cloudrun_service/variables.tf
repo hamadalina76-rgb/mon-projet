@@ -131,7 +131,8 @@ variable "cloudsql_instances" {
 variable "vpc_connector_id" {
   description = "ID du VPC Connector"
   type        = string
-  default     = ""
+  default     = null
+  nullable    = true
 }
 
 variable "vpc_egress" {
@@ -143,6 +144,12 @@ variable "vpc_egress" {
     condition     = contains(["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"], var.vpc_egress)
     error_message = "vpc_egress invalide."
   }
+}
+
+variable "redis_enabled" {
+  description = "Indique si le service dépend de Redis et doit donc conserver un VPC connector."
+  type        = bool
+  default     = false
 }
 
 # ✅ Startup probe timeout étendu pour services lents (DB + Config Server)

@@ -44,9 +44,11 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:${SPRING_DATA_REDIS_HOST:localhost}}
-      port: ${REDIS_PORT:${SPRING_DATA_REDIS_PORT:6379}}
-      password: ${REDIS_PASSWORD:}
+      # En Cloud Run DEV, Redis doit venir de Memorystore via env vars Terraform.
+      # Pas de fallback localhost pour éviter les erreurs silencieuses en production-like.
+      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:}}
+      port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:6379}}
+      password: ${SPRING_DATA_REDIS_PASSWORD:${REDIS_PASSWORD:}}
       lettuce:
         pool:
           max-active: 16

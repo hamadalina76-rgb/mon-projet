@@ -1,0 +1,272 @@
+---
+- name: Provision data-services VM and deploy Redis + ClickHouse with Docker Compose
+  hosts: dev:staging:prod
+  become: true
+  gather_facts: false
+
+  pre_tasks:
+    - name: Load environment-specific variables
+      ansible.builtin.include_vars:
+        file: "../group_vars/{{ (group_names | intersect(['dev', 'staging', 'prod']) | first) }}.yml"
+
+    # Attend que la VM nouvellement créée accepte les connexions SSH avant de lancer
+    # l'installation Docker. Cela évite un échec transitoire juste après le apply Terraform.
+    - name: Wait for SSH connectivity
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+        sleep: 5
+
+    - name: Gather facts after SSH is readydocker-compose-plugin
+      ansible.builtin.setup:
+
+    - name: Check whether cloud-init is installed
+      ansible.builtin.shell: command -v cloud-init
+      args:
+        executable: /bin/bash
+      register: cloud_init_check
+      changed_when: false
+      failed_when: false
+
+    - name: Wait for cloud-init to finish when available
+      ansible.builtin.command: cloud-init status --wait
+      register: cloud_init_wait
+      changed_when: false
+      failed_when: cloud_init_wait.rc not in [0, 2]
+      when: cloud_init_check.rc == 0
+
+    - name: Wait until apt and dpkg locks are released
+      ansible.builtin.shell: |
+        set -eu
+        if command -v fuser >/dev/null 2>&1; then
+          ! fuser /var/lib/dpkg/lock-frontend \
+                  /var/lib/dpkg/lock \
+                  /var/lib/apt/lists/lock \
+                  /var/cache/apt/archives/lock >/dev/null 2>&1
+        else
+          exit 0
+        fi
+      args:
+        executable: /bin/bash
+      register: apt_locks_check
+      changed_when: false
+      retries: 30
+      delay: 10
+      until: apt_locks_check.rc == 0
+
+    - name: Check DNS resolution for deb.debian.org
+      ansible.builtin.command: getent hosts deb.debian.org
+      register: apt_dns_check
+      changed_when: false
+      retries: 12
+      delay: 10
+      until: apt_dns_check.rc == 0
+
+    - name: Check outbound HTTPS connectivity for apt repositories
+      ansible.builtin.command: curl -fsSI --connect-timeout 10 https://deb.debian.org
+      register: apt_egress_check
+      changed_when: false
+      retries: 12
+      delay: 10
+      until: apt_egress_check.rc == 0
+
+  tasks:
+    # Prépare l'hôte avec Docker et les dépendances minimales.
+    # On reste sur des paquets Debian standards pour éviter une logique d'installation
+    # trop spécifique à un provider ou à une image custom.
+    - name: Install Docker dependencies with robust retry handling
+      block:
+        - name: Clean apt cache directories before update
+          ansible.builtin.shell: |
+            set -eu
+            rm -rf /var/lib/apt/lists/partial
+            mkdir -p /var/lib/apt/lists/partial
+            apt-get clean
+          args:
+            executable: /bin/bash
+          changed_when: false
+
+        - name: Force release stale apt and dpkg locks if no process owns them
+          ansible.builtin.shell: |
+            set -eu
+            for lock_file in \
+              /var/lib/dpkg/lock-frontend \
+              /var/lib/dpkg/lock \
+              /var/lib/apt/lists/lock \
+              /var/cache/apt/archives/lock
+            do
+              if [ -e "${lock_file}" ] && ! fuser "${lock_file}" >/dev/null 2>&1; then
+                rm -f "${lock_file}"
+              fi
+            done
+            dpkg --configure -a
+          args:
+            executable: /bin/bash
+          changed_when: false
+
+        - name: Refresh apt cache with retries
+          ansible.builtin.apt:
+            update_cache: true
+            cache_valid_time: 3600
+            lock_timeout: 300
+          register: apt_update_result
+          retries: 6
+          delay: 20
+          until: apt_update_result is succeeded
+
+        - name: Ensure Docker APT keyrings directory exists
+          ansible.builtin.file:
+            path: /etc/apt/keyrings
+            state: directory
+            owner: root
+            group: root
+            mode: "0755"
+
+        - name: Detect dpkg architecture
+          ansible.builtin.command: dpkg --print-architecture
+          register: docker_dpkg_arch
+          changed_when: false
+
+        - name: Install Docker repository bootstrap packages
+          ansible.builtin.apt:
+            name:
+              - ca-certificates
+              - curl
+              - gnupg
+              - lsb-release
+            state: present
+            lock_timeout: 300
+          register: docker_bootstrap_packages_result
+          retries: 5
+          delay: 15
+          until: docker_bootstrap_packages_result is succeeded
+
+        - name: Install Docker official GPG key
+          ansible.builtin.get_url:
+            url: https://download.docker.com/linux/debian/gpg
+            dest: /etc/apt/keyrings/docker.asc
+            mode: "0644"
+            owner: root
+            group: root
+
+        - name: Configure Docker official APT repository for Debian
+          ansible.builtin.apt_repository:
+            repo: "deb [arch={{ docker_dpkg_arch.stdout }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+            filename: docker
+            state: present
+
+        - name: Refresh apt cache after adding Docker repository
+          ansible.builtin.apt:
+            update_cache: true
+            lock_timeout: 300
+          register: docker_repo_update_result
+          retries: 5
+          delay: 15
+          until: docker_repo_update_result is succeeded
+
+        - name: Ensure Docker engine and compose plugin are present
+          ansible.builtin.apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+              - docker-buildx-plugin
+              - docker-compose-plugin
+              - python3-docker
+            state: present
+            lock_timeout: 300
+          register: apt_dependencies_result
+          retries: 5
+          delay: 15
+          until: apt_dependencies_result is succeeded
+      rescue:
+        - name: Collect DNS configuration for apt failure debug
+          ansible.builtin.command: cat /etc/resolv.conf
+          register: apt_debug_resolv
+          changed_when: false
+          failed_when: false
+
+        - name: Collect default route for apt failure debug
+          ansible.builtin.command: ip route
+          register: apt_debug_route
+          changed_when: false
+          failed_when: false
+
+        - name: Collect apt sources for apt failure debug
+          ansible.builtin.shell: |
+            set -eu
+            cat /etc/apt/sources.list 2>/dev/null || true
+            find /etc/apt/sources.list.d -maxdepth 1 -type f -print -exec cat {} \; 2>/dev/null || true
+          args:
+            executable: /bin/bash
+          register: apt_debug_sources
+          changed_when: false
+          failed_when: false
+
+        - name: Show apt debug information
+          ansible.builtin.debug:
+            msg:
+              - "apt_dns_check={{ apt_dns_check.rc | default('n/a') }} stdout={{ apt_dns_check.stdout | default('') }}"
+              - "apt_egress_check={{ apt_egress_check.rc | default('n/a') }} stdout={{ apt_egress_check.stdout | default('') }} stderr={{ apt_egress_check.stderr | default('') }}"
+              - "apt_update_result={{ apt_update_result | default({}) }}"
+              - "apt_dependencies_result={{ apt_dependencies_result | default({}) }}"
+              - "resolv_conf={{ apt_debug_resolv.stdout_lines | default([]) }}"
+              - "ip_route={{ apt_debug_route.stdout_lines | default([]) }}"
+              - "apt_sources={{ apt_debug_sources.stdout_lines | default([]) }}"
+
+        - name: Fail explicitly after apt diagnostics
+          ansible.builtin.fail:
+            msg: "Apt bootstrap failed after DNS, egress, cache cleanup, lock handling, and retries. Check Cloud NAT/default route and apt source reachability."
+
+    # S'assure que Docker est démarré avant de rendre et lancer le compose.
+    - name: Ensure docker service is enabled and started
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
+
+    # Crée le dossier racine du projet compose ainsi que les volumes persistants
+    # montés dans les conteneurs Redis et ClickHouse.
+    - name: Create compose project directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - "{{ compose_project_dir }}"
+        - "{{ compose_project_dir }}/redis"
+        - "{{ compose_project_dir }}/clickhouse"
+
+    # Génère le fichier docker-compose final à partir des variables d'environnement.
+    # Cela permet de garder un template unique et des valeurs par env dans group_vars/.
+    - name: Render docker-compose file
+      ansible.builtin.template:
+        src: ../templates/docker-compose.data-services.yml.j2
+        dest: "{{ compose_project_dir }}/docker-compose.yml"
+        owner: root
+        group: root
+        mode: "0644"
+
+    # Lance ou met à jour le stack. Cette commande n'est pas parfaitement idempotente
+    # au sens Ansible, d'où le changed_when explicite.
+    - name: Deploy Redis and ClickHouse stack
+      ansible.builtin.command: docker compose up -d
+      args:
+        chdir: "{{ compose_project_dir }}"
+      changed_when: true
+
+    # Vérification simple pour rendre le résultat visible en sortie de playbook/CI.
+    - name: Show running containers
+      ansible.builtin.command:
+        argv:
+          - docker
+          - ps
+          - --format
+          - !unsafe 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+      register: docker_ps
+      changed_when: false
+
+    - name: Print running containers
+      ansible.builtin.debug:
+        var: docker_ps.stdout_lines

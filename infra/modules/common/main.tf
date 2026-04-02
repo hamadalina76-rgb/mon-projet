@@ -29,6 +29,7 @@ locals {
     "cloudresourcemanager.googleapis.com", # Gestion des ressources
     "iam.googleapis.com",                  # IAM & Service Accounts
     "compute.googleapis.com",              # Compute Engine (pour VPC)
+    "iap.googleapis.com",                  # Identity-Aware Proxy (SSH via IAP)
     "run.googleapis.com",                  # Cloud Run
     "cloudbuild.googleapis.com",           # Cloud Build (frontend image builds)
     "artifactregistry.googleapis.com",     # Artifact Registry
@@ -68,6 +69,5 @@ resource "google_project_service" "apis" {
 resource "time_sleep" "wait_for_apis" {
   depends_on = [google_project_service.apis]
 
-  create_duration = "60s" # Attend 60 secondes après activation
+  create_duration = "120s" # Attend 120 secondes après activation
 }
-

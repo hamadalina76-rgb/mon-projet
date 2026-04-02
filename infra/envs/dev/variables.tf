@@ -116,6 +116,87 @@ variable "vpc_connector_cidr" {
   default     = "10.8.0.0/28"
 }
 
+# ------------------------------------------------------------------------------
+# Data Services VM (Redis + ClickHouse via Docker) - préparation DEV
+# ------------------------------------------------------------------------------
+variable "enable_data_services_vm" {
+  description = "Active la VM data-services (Redis + ClickHouse) en DEV. Laisser false tant que la migration n'est pas validée."
+  type        = bool
+  default     = false
+}
+
+variable "data_services_vm_name" {
+  description = "Nom de la VM data-services"
+  type        = string
+  default     = "data-services-dev"
+}
+
+variable "data_services_vm_zone" {
+  description = "Zone Compute Engine pour la VM data-services"
+  type        = string
+  default     = "europe-west1-b"
+}
+
+variable "data_services_vm_machine_type" {
+  description = "Type machine Compute Engine pour Redis + ClickHouse"
+  type        = string
+  default     = "e2-medium"
+}
+
+variable "data_services_vm_disk_size_gb" {
+  description = "Taille disque boot de la VM data-services en Go"
+  type        = number
+  default     = 40
+}
+
+variable "data_services_vm_disk_type" {
+  description = "Type de disque boot de la VM data-services"
+  type        = string
+  default     = "pd-balanced"
+}
+
+variable "data_services_vm_network" {
+  description = "Réseau VPC de la VM data-services"
+  type        = string
+  default     = "default"
+}
+
+variable "data_services_vm_subnetwork" {
+  description = "Sous-réseau VPC de la VM data-services (optionnel). Laisser vide pour auto dans le réseau par défaut."
+  type        = string
+  default     = ""
+}
+
+variable "data_services_vm_boot_image" {
+  description = "Image OS de la VM data-services"
+  type        = string
+  default     = "debian-cloud/debian-12"
+}
+
+variable "data_services_vm_service_account_email" {
+  description = "Service account attaché à la VM data-services (optionnel)."
+  type        = string
+  default     = ""
+}
+
+variable "data_services_vm_allowed_source_ranges" {
+  description = "CIDR autorisés à accéder aux ports data (Redis/ClickHouse)."
+  type        = list(string)
+  default     = []
+}
+
+variable "data_services_vm_enable_iap_ssh" {
+  description = "Active une règle firewall SSH via IAP (35.235.240.0/20)."
+  type        = bool
+  default     = true
+}
+
+variable "data_services_vm_admin_ssh_source_ranges" {
+  description = "CIDR admin autorisés en SSH direct (laisser vide recommandé)."
+  type        = list(string)
+  default     = []
+}
+
 
 # ------------------------------------------------------------------------------
 # JWT (OBLIGATOIRE POUR AUTH-SERVICE)

@@ -317,30 +317,6 @@ spring:
           filters:
             - AuthenticationFilter
 
-        # ====================================================================
-        # DELIVERY SERVICE (LOCAL DEV)
-        # ====================================================================
-        - id: delivery-service
-          uri: ${DELIVERY_SERVICE_URL:http://localhost:8085}
-          predicates:
-            - Path=/api/deliveries/**
-          filters:
-            - StripPrefix=1
-            - AuthenticationFilter
-
-        - id: delivery-service-tracking
-          uri: ${DELIVERY_SERVICE_URL:http://localhost:8085}
-          predicates:
-            - Path=/api/v1/tracking/**,/api/v1/docs/tracking-websocket
-          filters:
-            - AuthenticationFilter
-
-        # WebSocket tracking courier via gateway
-        - id: delivery-service-ws
-          uri: ${DELIVERY_SERVICE_WS_URL:ws://localhost:8085}
-          predicates:
-            - Path=/ws/location,/ws/tracking/**
-
         # - id: payment-service
         #   uri: https://payment-service-392205979525.europe-west1.run.app
         #   predicates:

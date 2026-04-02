@@ -1,0 +1,27 @@
+services:
+  redis:
+    image: {{ redis_image }}
+    container_name: redis
+{% if redis_password is defined and redis_password | length > 0 %}
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "{{ redis_password }}"]
+{% else %}
+    command: ["redis-server", "--appendonly", "yes"]
+{% endif %}
+    restart: unless-stopped
+    ports:
+      - "{{ redis_host_port }}:6379"
+    volumes:
+      - ./redis:/data
+
+  clickhouse:
+    image: {{ clickhouse_image }}
+    container_name: clickhouse
+    restart: unless-stopped
+    ports:
+      - "{{ clickhouse_http_port }}:8123"
+      - "{{ clickhouse_native_port }}:9000"
+    environment:
+      CLICKHOUSE_USER: "{{ clickhouse_user }}"
+      CLICKHOUSE_PASSWORD: "{{ clickhouse_password }}"
+    volumes:
+      - ./clickhouse:/var/lib/clickhouse

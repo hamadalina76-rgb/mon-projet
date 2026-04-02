@@ -59,9 +59,11 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:${SPRING_DATA_REDIS_HOST:localhost}}
-      port: ${REDIS_PORT:${SPRING_DATA_REDIS_PORT:6379}}
-      password: ${REDIS_PASSWORD:}
+      # En Cloud Run DEV, Redis doit toujours être injecté par Terraform/Memorystore.
+      # On évite explicitement tout fallback silencieux vers localhost.
+      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:}}
+      port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:6379}}
+      password: ${SPRING_DATA_REDIS_PASSWORD:${REDIS_PASSWORD:}}
       connect-timeout: 2000
       timeout: 2000
 

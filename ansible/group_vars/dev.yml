@@ -1,0 +1,18 @@
+# Répertoire racine du projet compose sur la VM.,
+# Les sous-dossiers redis/ et clickhouse/ y servent de volumes persistants.
+compose_project_dir: /opt/data-services
+
+# Images alignées avec la stack locale pour limiter les écarts entre environnements.
+redis_image: redis:7-alpine
+clickhouse_image: clickhouse/clickhouse-server:23.8
+
+# Ports exposés sur la VM privée. Ils doivent rester cohérents avec les règles firewall
+# créées côté Terraform.
+redis_host_port: 6379
+clickhouse_http_port: 8123
+clickhouse_native_port: 9000
+
+# Valeurs de démo à remplacer via Vault/CI dans un vrai environnement.
+redis_password: ""
+clickhouse_user: default
+clickhouse_password: click123

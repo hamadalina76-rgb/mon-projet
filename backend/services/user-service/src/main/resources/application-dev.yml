@@ -1,6 +1,6 @@
 ﻿# ============================================================================
 # USER-SERVICE - application-dev.yml (Cloud Run DEV)
-# AlignÃ© sur le pattern auth-service pour un dÃ©ploiement Terraform + Cloud Run.
+# AlignÃ© sur le pattern auth-service pour un dÃ©ploiement Terraform + Cloud Run.,
 # ============================================================================
 server:
   port: ${PORT:8080}

@@ -1,0 +1,9 @@
+compose_project_dir: /opt/data-services
+redis_image: redis:7-alpine
+clickhouse_image: clickhouse/clickhouse-server:23.8
+redis_host_port: 6379
+clickhouse_http_port: 8123
+clickhouse_native_port: 9000
+redis_password: ""
+clickhouse_user: default
+clickhouse_password: change-me-prod

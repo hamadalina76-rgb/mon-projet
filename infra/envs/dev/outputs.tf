@@ -90,3 +90,38 @@ output "notification_push_subscription_name" {
   description = "Name of optional Pub/Sub push prep subscription in DEV (empty when disabled)"
   value       = var.notification_push_subscription_enabled ? google_pubsub_subscription.notification_push_prep_dev[0].name : ""
 }
+
+output "data_services_vm_enabled" {
+  description = "Whether data-services VM is enabled in DEV"
+  value       = var.enable_data_services_vm
+}
+
+output "data_services_vm_name" {
+  description = "Name of the optional data-services VM in DEV"
+  value       = var.enable_data_services_vm ? module.data_services_vm[0].name : ""
+}
+
+output "data_services_vm_zone" {
+  description = "Zone of the optional data-services VM in DEV"
+  value       = var.enable_data_services_vm ? module.data_services_vm[0].zone : ""
+}
+
+output "data_services_vm_project_id" {
+  description = "Project ID hosting the optional data-services VM in DEV"
+  value       = var.enable_data_services_vm ? var.project_id : ""
+}
+
+output "data_services_vm_private_ip" {
+  description = "Private IP of optional data-services VM in DEV"
+  value       = var.enable_data_services_vm ? module.data_services_vm[0].private_ip : ""
+}
+
+output "data_services_redis_endpoint" {
+  description = "Redis endpoint for the data-services VM (host:port)"
+  value       = var.enable_data_services_vm ? "${module.data_services_vm[0].private_ip}:6379" : ""
+}
+
+output "data_services_clickhouse_http_endpoint" {
+  description = "ClickHouse HTTP endpoint for the data-services VM"
+  value       = var.enable_data_services_vm ? "http://${module.data_services_vm[0].private_ip}:8123" : ""
+}

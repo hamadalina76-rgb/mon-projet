@@ -24,14 +24,21 @@
 # ------------------------------------------------------------------------------
 resource "terraform_data" "validate_scaling" {
   input = {
-    min_instances = var.min_instances
-    max_instances = var.max_instances
+    min_instances    = var.min_instances
+    max_instances    = var.max_instances
+    redis_enabled    = var.redis_enabled
+    vpc_connector_id = var.vpc_connector_id
   }
 
   lifecycle {
     precondition {
       condition     = var.max_instances >= var.min_instances
       error_message = "Configuration invalide: max_instances (${var.max_instances}) doit être >= min_instances (${var.min_instances})."
+    }
+
+    precondition {
+      condition     = !var.redis_enabled || try(trimspace(var.vpc_connector_id) != "", false)
+      error_message = "Configuration invalide: redis_enabled=true exige un vpc_connector_id non nul pour conserver l'accès Redis via le VPC connector."
     }
   }
 }
@@ -50,6 +57,7 @@ locals {
 
   # Merge : tes env vars custom + base env vars
   final_env_vars = merge(local.base_env_vars, var.env_vars)
+  has_vpc_connector = try(trimspace(var.vpc_connector_id) != "", false)
 }
 
 resource "google_cloud_run_v2_service" "this" {
@@ -83,9 +91,9 @@ resource "google_cloud_run_v2_service" "this" {
     # (OPTIONNEL) VPC Access Connector
     # --------------------------------------------------------------------------
     dynamic "vpc_access" {
-      for_each = var.vpc_connector_id != "" ? [1] : []
+      for_each = local.has_vpc_connector ? [var.vpc_connector_id] : []
       content {
-        connector = var.vpc_connector_id
+        connector = vpc_access.value
         egress    = var.vpc_egress
       }
     }
