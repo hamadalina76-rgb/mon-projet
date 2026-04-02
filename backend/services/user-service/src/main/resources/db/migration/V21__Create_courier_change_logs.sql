@@ -2,7 +2,7 @@
 -- V21 : Table d'audit des modifications admin sur un livreur
 -- ============================================================
 
-CREATE TABLE courier_change_logs (
+CREATE TABLE IF NOT EXISTS courier_change_logs (
     id                  BIGSERIAL       PRIMARY KEY,
     courier_id          BIGINT          NOT NULL,
     admin_id            BIGINT,
@@ -18,4 +18,4 @@ CREATE TABLE courier_change_logs (
     changed_at          TIMESTAMP       NOT NULL
 );
 
-CREATE INDEX idx_ccl_courier_id ON courier_change_logs (courier_id, changed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ccl_courier_id ON courier_change_logs (courier_id, changed_at DESC);

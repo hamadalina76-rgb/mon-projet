@@ -1,5 +1,5 @@
 -- ============================================================
---  V26 : Table d'audit des paramètres globaux
+--  V28 : Table d'audit des paramètres globaux
 --  Enregistre les modifications des horaires d'ouverture,
 --  l'activation / désactivation de l'application.
 -- ============================================================
