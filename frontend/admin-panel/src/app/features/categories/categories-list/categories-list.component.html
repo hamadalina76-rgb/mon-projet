@@ -177,7 +177,7 @@
                 @if (cat.icon) {
                   <img [src]="cat.icon" [alt]="getDisplayName(cat)" class="icon-img">
                 } @else {
-                  <mat-icon [style.color]="cat.backgroundColor || '#EC131E'">category</mat-icon>
+                  <span class="cat-initial" [style.color]="cat.backgroundColor || '#EC131E'">{{ getDisplayName(cat).charAt(0).toUpperCase() }}</span>
                 }
               </div>
 

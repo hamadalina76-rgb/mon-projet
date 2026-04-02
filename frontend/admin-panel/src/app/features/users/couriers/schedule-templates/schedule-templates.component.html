@@ -103,10 +103,7 @@
                     [matTooltip]="(t.isActive ? 'common.deactivate' : 'common.activate') | translate">
               <mat-icon>{{ t.isActive ? 'toggle_on' : 'toggle_off' }}</mat-icon>
             </button>
-            <button mat-icon-button class="st-btn st-btn--delete"
-                    (click)="delete(t)" [matTooltip]="'common.delete' | translate">
-              <mat-icon>delete_outline</mat-icon>
-            </button>
+
           </div>
         </mat-card>
       }
