@@ -40,6 +40,23 @@ vpc_connector_cidr = "10.8.0.0/28"
 redis_instance_name = "speedline-redis-shared"
 
 # ------------------------------------------------------------------------------
+# Data services VM (préparation migration Redis/ClickHouse) - désactivé par défaut
+# ------------------------------------------------------------------------------
+enable_data_services_vm                  = false
+data_services_vm_name                    = "data-services-dev"
+data_services_vm_zone                    = "europe-west1-b"
+data_services_vm_machine_type            = "e2-medium"
+data_services_vm_disk_size_gb            = 40
+data_services_vm_disk_type               = "pd-balanced"
+data_services_vm_network                 = "default"
+data_services_vm_subnetwork              = ""
+data_services_vm_boot_image              = "debian-cloud/debian-12"
+data_services_vm_service_account_email   = ""
+data_services_vm_allowed_source_ranges   = []
+data_services_vm_enable_iap_ssh          = true
+data_services_vm_admin_ssh_source_ranges = []
+
+# ------------------------------------------------------------------------------
 # Notification service runtime cost tuning (DEV)
 # ------------------------------------------------------------------------------
 notification_warmup_schedule = "*/10 * * * *"
@@ -49,13 +66,13 @@ notification_warmup_schedule = "*/10 * * * *"
 # Ne pas modifier manuellement en pipeline
 # ------------------------------------------------------------------------------
 images = {
-  api-gateway      = "placeholder"
-  config-server    = "placeholder"
-  eureka-server    = "placeholder"
-  auth-service     = "placeholder"
-  user-service     = "placeholder"
-  partner-service  = "placeholder"
-  location-service = "placeholder"
-  delivery-service = "placeholder"
+  api-gateway          = "placeholder"
+  config-server        = "placeholder"
+  eureka-server        = "placeholder"
+  auth-service         = "placeholder"
+  user-service         = "placeholder"
+  partner-service      = "placeholder"
+  location-service     = "placeholder"
+  delivery-service     = "placeholder"
   notification-service = "placeholder"
 }

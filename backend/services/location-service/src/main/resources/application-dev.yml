@@ -16,6 +16,11 @@ spring:
   main:
     lazy-initialization: true  # âœ… RÃ©duit le cold start
 
+  # Le service utilise Spring Cache + Redis en DEV Cloud.
+  # Le mode local continue de passer par application.yml (localhost / Docker Compose).
+  cache:
+    type: redis
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:5432/speedline_locations}
     username: ${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:postgres}}
@@ -42,6 +47,19 @@ spring:
     table: flyway_schema_history_location
     validate-on-migrate: false
     ignore-missing-migrations: true
+
+  data:
+    redis:
+      # En Cloud Run DEV, Redis doit être injecté par Terraform/Memorystore.
+      # Aucune valeur localhost n'est autorisée ici.
+      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:}}
+      port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:6379}}
+      password: ${SPRING_DATA_REDIS_PASSWORD:${REDIS_PASSWORD:}}
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
 
   cloud:
     config:
@@ -75,4 +93,3 @@ logging:
   level:
     root: INFO
     com.speedline: DEBUG
-

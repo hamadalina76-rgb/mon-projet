@@ -26,11 +26,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Implémentation du service de gestion des zones
+ * Implémentation du service de gestion des zones 
  */
 @Service
 @RequiredArgsConstructor
@@ -166,7 +167,8 @@ public class ZoneServiceImpl implements ZoneService {
     public List<ZoneDTO> getActiveZones() {
         log.debug("Récupération de toutes les zones actives");
         return zoneRepository.findByIsActiveTrue().stream()
-                .map(this::mapToDTO)
+                .map(this::safeMapToActiveListDTO)
+                .flatMap(Optional::stream)
                 .collect(Collectors.toList());
     }
 
@@ -359,6 +361,37 @@ public class ZoneServiceImpl implements ZoneService {
                 .center(geometry.getCenter())
                 .partnersCount(0L) // Sera calculé via une requête séparée si nécessaire
                 .build();
+    }
+
+    /**
+     * Mapping allégé pour /zones/active.
+     * Le dialogue d'approbation n'a pas besoin des calculs géométriques complets,
+     * et on évite ainsi qu'une zone mal formée fasse tomber tout l'endpoint.
+     */
+    private Optional<ZoneDTO> safeMapToActiveListDTO(Zone zone) {
+        try {
+            return Optional.of(
+                    ZoneDTO.builder()
+                            .id(zone.getId())
+                            .name(zone.getName())
+                            .description(zone.getDescription())
+                            .city(zone.getCity())
+                            .type(zone.getType())
+                            .boundaryJson(zone.getBoundaryJson())
+                            .deliveryFee(zone.getDeliveryFee())
+                            .minDeliveryTime(zone.getMinDeliveryTime())
+                            .maxDeliveryTime(zone.getMaxDeliveryTime())
+                            .radiusKm(zone.getRadiusKm())
+                            .isActive(Boolean.TRUE.equals(zone.getIsActive()))
+                            .createdAt(zone.getCreatedAt())
+                            .updatedAt(zone.getUpdatedAt())
+                            .partnersCount(0L)
+                            .build()
+            );
+        } catch (Exception e) {
+            log.warn("Zone active ignorée dans /zones/active (zoneId={}): {}", zone != null ? zone.getId() : null, e.getMessage());
+            return Optional.empty();
+        }
     }
 
     @Override

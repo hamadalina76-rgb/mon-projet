@@ -1,40 +1,40 @@
 # ==============================================================================
-# CI/CD - SPEEDLINE (DEV) - VERSION CIBLÉE SANS PIPELINE_GUARD
+# CI/CD - SPEEDLINE (DEV)
 # ==============================================================================
 # Objectif :
 # - Build uniquement les services/apps modifiés
 # - Déployer uniquement les services/apps modifiés
-# - Lancer Terraform uniquement pour les changements d'infrastructure
-# - Éviter un terraform apply global pour un simple changement applicatif
+# - Lancer terraform_apply_dev uniquement pour l'infra DEV générale
+# - Lancer le flux data-services uniquement pour l'infra data-services
+# - Lancer Ansible data-services pour :
+#     * un changement dans les fichiers ansible data-services
+#     * ou après un changement d'infra data-services
+# - Éviter les conflits entre terraform_apply_dev et terraform_apply_data_services
 #
-# Important :
-# - Cette version NE contient PAS de pipeline_guard
-# - Donc GitLab ne créera un pipeline que si au moins un job match ses rules
-# - Si tu modifies seulement .gitlab-ci.yml ou un fichier hors scope, aucun pipeline
-#   ne sera créé, et c'est normal avec cette approche
+# Hypothèse de travail :
+# - La branche utilisée est : devops-devlop-add-env-staging-1
+# - Le flux data-services est DEV uniquement
 # ==============================================================================
 
 stages:
   - build
-  - terraform
+  - validate
+  - terraform_plan
+  - terraform_apply
+  - ansible
   - deploy
 
 # ==============================================================================
 # WORKFLOW GLOBAL
 # ==============================================================================
-# Ce bloc autorise la création du pipeline uniquement pour :
-# - les tags infra-*
-# - les tags dev-*
-# - la branche de travail ciblée
-# - les tags staging-*
-# - les tags prod-*
-# Si aucune règle ne match, aucun pipeline n'est créé.
+# Ce bloc contrôle uniquement la création du pipeline.
+# Les jobs eux-mêmes sont ensuite filtrés avec rules:changes.
 # ==============================================================================
 workflow:
   rules:
     - if: '$CI_COMMIT_TAG =~ /^infra-.*$/'
     - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
-    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
     - if: '$CI_COMMIT_TAG =~ /^staging-.*$/'
     - if: '$CI_COMMIT_TAG =~ /^prod-.*$/'
     - when: never
@@ -47,6 +47,67 @@ variables:
   GIT_DEPTH: "100"
   MAVEN_CLI_OPTS: "--batch-mode --no-transfer-progress"
   TF_DIR: "infra/envs/dev"
+
+  # Flux data-services DEV
+  DATA_SERVICES_ENV_TARGET: "dev"
+  ENABLE_DATA_SERVICES_VM: "true"
+  ENABLE_DATA_SERVICES_ANSIBLE_DEPLOY: "true"
+  DATA_SERVICES_VM_NAME: "data-services-dev"
+  DATA_SERVICES_VM_ZONE: "europe-west1-b"
+  DATA_SERVICES_VM_ANSIBLE_USER: "debian"
+
+# ==============================================================================
+# GROUPES DE FICHIERS PILOTANT LES JOBS
+# ==============================================================================
+# IMPORTANT :
+# 1) Le flux data-services est volontairement ciblé sur des chemins dédiés.
+# 2) Le flux infra général ne doit PAS se lancer si un changement data-services
+#    est détecté, pour éviter un double terraform apply sur DEV.
+# 3) Idéalement, les déclarations Terraform data-services dans infra/envs/dev
+#    doivent vivre dans des fichiers dédiés (ex: data-services.tf, outputs-data-services.tf).
+#    Tant que ce n'est pas le cas, les changements de envs/dev/main.tf resteront
+#    ambigus entre infra générale et data-services.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Infra data-services uniquement
+# ------------------------------------------------------------------------------
+.changes_data_services_infra: &changes_data_services_infra
+  - infra/modules/data_services_vm/**/*
+  - infra/envs/dev/data-services*.tf
+  - infra/envs/dev/*data-services*.tf
+  - infra/envs/dev/outputs-data-services*.tf
+  - infra/envs/dev/variables-data-services*.tf
+
+# ------------------------------------------------------------------------------
+# Ansible data-services uniquement
+# ------------------------------------------------------------------------------
+.changes_data_services_ansible: &changes_data_services_ansible
+  - ansible/playbooks/data-services.yml
+  - ansible/templates/data-services/**/*
+  - ansible/files/data-services/**/*
+  - ansible/group_vars/data-services*.yml
+  - ansible/host_vars/data-services*.yml
+
+# ------------------------------------------------------------------------------
+# Infra DEV générale
+# ------------------------------------------------------------------------------
+# On met ici les modules d'infra générale.
+# On n'y met PAS data_services_vm.
+# ------------------------------------------------------------------------------
+.changes_general_dev_infra: &changes_general_dev_infra
+  - infra/envs/dev/**/*
+  - infra/modules/artifact_registry/**/*
+  - infra/modules/cloudrun_service/**/*
+  - infra/modules/cloudsql/**/*
+  - infra/modules/common/**/*
+  - infra/modules/envoy_gateway/**/*
+  - infra/modules/iam/**/*
+  - infra/modules/mongo_atlas/**/*
+  - infra/modules/pubsub/**/*
+  - infra/modules/redis/**/*
+  - infra/modules/vpc_connector/**/*
+  - infra/modules/wif_gitlab/**/*
 
 # ==============================================================================
 # CACHE MAVEN
@@ -100,11 +161,6 @@ default:
 # ==============================================================================
 # TEMPLATE BUILD BACKEND
 # ==============================================================================
-# Chaque job backend :
-# - compile un seul microservice
-# - build et push une seule image avec Jib
-# - exporte IMAGE_URI dans un fichier .env pour le job deploy
-# ==============================================================================
 .backend_build_template:
   stage: build
   image: maven:3.9.6-eclipse-temurin-17
@@ -146,11 +202,6 @@ default:
 
 # ==============================================================================
 # TEMPLATE BUILD FRONTEND
-# ==============================================================================
-# Chaque job frontend :
-# - build une seule application frontend
-# - push une seule image Docker
-# - exporte IMAGE_URI dans un fichier .env pour le job deploy
 # ==============================================================================
 .frontend_build_template:
   stage: build
@@ -195,10 +246,6 @@ default:
 # ==============================================================================
 # TEMPLATE DEPLOY CLOUD RUN
 # ==============================================================================
-# Chaque job deploy :
-# - récupère IMAGE_URI depuis l'artifact dotenv du job build
-# - déploie uniquement le service ciblé sur Cloud Run
-# ==============================================================================
 .cloudrun_deploy_template:
   stage: deploy
   image: google/cloud-sdk:slim
@@ -211,70 +258,402 @@ default:
   before_script:
     - !reference [.gcp_auth_wif, before_script]
   script:
-    - test -n "$SERVICE_NAME"
-    - test -n "$IMAGE_URI"
-    - export READY_REVISION="$(gcloud run services describe "$SERVICE_NAME" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" --format='value(status.latestReadyRevisionName)' || true)"
-    - export SERVICE_EXISTS="false"
     - |
-      if gcloud run services describe "$SERVICE_NAME" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" >/dev/null 2>&1; then
-        SERVICE_EXISTS="true"
+      set -euo pipefail
+
+      test -n "${SERVICE_NAME}"
+      test -n "${IMAGE_URI}"
+
+      READY_REVISION="$(gcloud run services describe "${SERVICE_NAME}" \
+        --region "${GCP_REGION}" \
+        --project "${GCP_PROJECT_ID}" \
+        --format='value(status.latestReadyRevisionName)' || true)"
+
+      if [ -z "${READY_REVISION}" ]; then
+        echo "ERROR: Cloud Run service '${SERVICE_NAME}' does not exist yet."
+        echo "Bootstrap it first with Terraform."
+        exit 1
       fi
-    - |
+
       PUBSUB_EMULATOR_EXCLUDE="com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
       CLOUDRUN_REMOVE_ENV_VARS="PUBSUB_EMULATOR_HOST,SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST"
-      if [ "$SERVICE_NAME" = "partner-service" ] || [ "$SERVICE_NAME" = "notification-service" ]; then
+
+      if [ "${SERVICE_NAME}" = "partner-service" ] || [ "${SERVICE_NAME}" = "notification-service" ]; then
         CLOUDRUN_UPDATE_ENV_VARS="SPRING_PROFILES_ACTIVE=dev,SPRING_AUTOCONFIGURE_EXCLUDE=${PUBSUB_EMULATOR_EXCLUDE}"
       else
         CLOUDRUN_UPDATE_ENV_VARS="SPRING_PROFILES_ACTIVE=dev"
       fi
-      if [ "$SERVICE_NAME" = "notification-service" ]; then
+
+      if [ "${SERVICE_NAME}" = "notification-service" ]; then
         CLOUDRUN_REMOVE_ENV_VARS="${CLOUDRUN_REMOVE_ENV_VARS},SPRING_MAIN_LAZY_INITIALIZATION"
       fi
+
+      # Preserve all existing Cloud Run settings and env vars.
+      # Only mutate the small set of env overrides needed by CI deploys.
+      # Reconstructing env vars from revision JSON is brittle and can drop
+      # required runtime config such as datasource, Cloud SQL, GCS, or service URLs.
+      gcloud run deploy "${SERVICE_NAME}" \
+        --image "${IMAGE_URI}" \
+        --region "${GCP_REGION}" \
+        --project "${GCP_PROJECT_ID}" \
+        --update-env-vars "${CLOUDRUN_UPDATE_ENV_VARS}" \
+        --remove-env-vars "${CLOUDRUN_REMOVE_ENV_VARS}" \
+        --quiet
+
+# ==============================================================================
+# TEMPLATES DATA-SERVICES
+# ==============================================================================
+.terraform_data_services_common:
+  image: google/cloud-sdk:slim
+  tags:
+    - terraform
+  interruptible: true
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: "//iam.googleapis.com/${WIF_PROVIDER}"
+  before_script:
+    - !reference [.gcp_auth_wif, before_script]
+    - curl -fsSL "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip" -o /tmp/terraform.zip
+    - unzip -o /tmp/terraform.zip -d /usr/local/bin
+    - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/wif_cred.json
+
+.ansible_data_services_common:
+  image: google/cloud-sdk:slim
+  interruptible: true
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: "//iam.googleapis.com/${WIF_PROVIDER}"
+
+# ==============================================================================
+# DATA-SERVICES - TERRAFORM
+# ==============================================================================
+terraform_validate_data_services:
+  extends: .terraform_data_services_common
+  stage: validate
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
+      changes: *changes_data_services_infra
+      when: on_success
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes: *changes_data_services_infra
+      when: on_success
+    - if: '$CI_COMMIT_TAG =~ /^infra-.*$/'
+      changes: *changes_data_services_infra
+      when: on_success
+    - when: never
+  script:
     - |
-      if [ -n "$READY_REVISION" ]; then
-        gcloud run revisions describe "$READY_REVISION" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" --format=json > /tmp/ready-revision.json
-        HAS_SECRET_ENV="$(jq -r '[.spec.containers[0].env[]? | has("valueSource")] | any' /tmp/ready-revision.json)"
+      set -euo pipefail
 
-        if [ "$HAS_SECRET_ENV" = "true" ]; then
-          gcloud run deploy "$SERVICE_NAME" \
-            --image "$IMAGE_URI" \
-            --region "$GCP_REGION" \
-            --project "$GCP_PROJECT_ID" \
-            --update-env-vars "$CLOUDRUN_UPDATE_ENV_VARS" \
-            --remove-env-vars "$CLOUDRUN_REMOVE_ENV_VARS" \
-            --quiet
-        else
-          jq '
-            ([.spec.containers[0].env[]? | select(has("value")) | {(.name): .value}] | add) // {}
-            | .SPRING_PROFILES_ACTIVE = "dev"
-            | del(.PUBSUB_EMULATOR_HOST, .SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST)
-            | if env.SERVICE_NAME == "partner-service" or env.SERVICE_NAME == "notification-service" then
-                .SPRING_AUTOCONFIGURE_EXCLUDE = "com.google.cloud.spring.autoconfigure.pubsub.GcpPubSubEmulatorAutoConfiguration"
-              else
-                .
-              end
-            | if env.SERVICE_NAME == "notification-service" then
-                del(.SPRING_MAIN_LAZY_INITIALIZATION)
-              else
-                .
-              end
-          ' /tmp/ready-revision.json > /tmp/cloudrun-env-vars.json
+      TF_ENV_DIR="infra/envs/${DATA_SERVICES_ENV_TARGET}"
+      TF_OVERRIDE_FILE="${TF_ENV_DIR}/override.auto.tfvars"
 
-          gcloud run deploy "$SERVICE_NAME" \
-            --image "$IMAGE_URI" \
-            --region "$GCP_REGION" \
-            --project "$GCP_PROJECT_ID" \
-            --env-vars-file /tmp/cloudrun-env-vars.json \
-            --quiet
-        fi
+      test "${DATA_SERVICES_ENV_TARGET}" = "dev"
+      test "${ENABLE_DATA_SERVICES_VM}" = "true"
+      test -d "${TF_ENV_DIR}"
+
+      cat > "${TF_OVERRIDE_FILE}" <<EOF
+      enable_data_services_vm = true
+      data_services_vm_name   = "${DATA_SERVICES_VM_NAME}"
+      data_services_vm_zone   = "${DATA_SERVICES_VM_ZONE}"
+      EOF
+
+      echo "INFO - override Terraform généré pour data-services"
+      cat "${TF_OVERRIDE_FILE}"
+
+      cd "${TF_ENV_DIR}"
+      terraform fmt -check -recursive
+      terraform init -input=false
+      terraform validate
+
+terraform_plan_data_services:
+  extends: .terraform_data_services_common
+  stage: terraform_plan
+  needs:
+    - job: terraform_validate_data_services
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
+      changes: *changes_data_services_infra
+      when: on_success
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes: *changes_data_services_infra
+      when: on_success
+    - if: '$CI_COMMIT_TAG =~ /^infra-.*$/'
+      changes: *changes_data_services_infra
+      when: on_success
+    - when: never
+  script:
+    - |
+      set -euo pipefail
+
+      TF_ENV_DIR="infra/envs/${DATA_SERVICES_ENV_TARGET}"
+      TF_OVERRIDE_FILE="${TF_ENV_DIR}/override.auto.tfvars"
+      PLAN_DIR="${CI_PROJECT_DIR}/terraform-plans/${DATA_SERVICES_ENV_TARGET}"
+      PLAN_BIN="${PLAN_DIR}/data-services.tfplan"
+      PLAN_TXT="${PLAN_DIR}/data-services.plan.txt"
+      PLAN_JSON="${PLAN_DIR}/data-services.plan.json"
+
+      mkdir -p "${PLAN_DIR}"
+      test -d "${TF_ENV_DIR}"
+      test "${ENABLE_DATA_SERVICES_VM}" = "true"
+
+      cat > "${TF_OVERRIDE_FILE}" <<EOF
+      enable_data_services_vm = true
+      data_services_vm_name   = "${DATA_SERVICES_VM_NAME}"
+      data_services_vm_zone   = "${DATA_SERVICES_VM_ZONE}"
+      EOF
+
+      RAW_CONFIG_SERVER_GIT_URI="${SPRING_CLOUD_CONFIG_SERVER_GIT_URI:-${CONFIG_SERVER_GIT_URI:-${CONFIG_GIT_URI:-${GIT_REPO_URI:-}}}}"
+      if echo "${RAW_CONFIG_SERVER_GIT_URI}" | grep -q '/-/tree/'; then
+        export TF_VAR_config_server_git_uri="${RAW_CONFIG_SERVER_GIT_URI%%/-/tree/*}.git"
       else
-        echo "ERROR: Cloud Run service '$SERVICE_NAME' does not exist yet."
-        echo "Bootstrap it first with Terraform (stage terraform) so the service is created with the full DEV runtime configuration."
+        export TF_VAR_config_server_git_uri="${RAW_CONFIG_SERVER_GIT_URI}"
+      fi
+      test -n "${TF_VAR_config_server_git_uri}"
+
+      EFFECTIVE_MONGODB_URI="${MONGODB_URI:-${MONGO_URI:-}}"
+      test -n "${EFFECTIVE_MONGODB_URI}"
+      export TF_VAR_mongodb_uri="${EFFECTIVE_MONGODB_URI}"
+
+      export TF_VAR_atlas_public_key="${ATLAS_PUBLIC_KEY:-}"
+      export TF_VAR_atlas_private_key="${ATLAS_PRIVATE_KEY:-}"
+      export TF_VAR_atlas_project_id="${ATLAS_PROJECT_ID:-}"
+      export TF_VAR_enable_project_iam_bindings="false"
+
+      cd "${TF_ENV_DIR}"
+      terraform init -input=false
+      terraform plan -input=false -lock-timeout=5m -out "${PLAN_BIN}"
+      terraform show "${PLAN_BIN}" > "${PLAN_TXT}"
+      terraform show -json "${PLAN_BIN}" > "${PLAN_JSON}"
+  artifacts:
+    paths:
+      - terraform-plans/
+    expire_in: 7 days
+
+terraform_apply_data_services:
+  extends: .terraform_data_services_common
+  stage: terraform_apply
+  resource_group: terraform-data-services
+  allow_failure: false
+  needs:
+    - job: terraform_plan_data_services
+      artifacts: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
+      changes: *changes_data_services_infra
+      when: on_success
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes: *changes_data_services_infra
+      when: on_success
+    - if: '$CI_COMMIT_TAG =~ /^infra-.*$/'
+      changes: *changes_data_services_infra
+      when: on_success
+    - when: never
+  script:
+    - |
+      set -euo pipefail
+
+      TF_ENV_DIR="infra/envs/${DATA_SERVICES_ENV_TARGET}"
+      TF_OVERRIDE_FILE="${TF_ENV_DIR}/override.auto.tfvars"
+      PLAN_BIN="${CI_PROJECT_DIR}/terraform-plans/${DATA_SERVICES_ENV_TARGET}/data-services.tfplan"
+
+      test "${DATA_SERVICES_ENV_TARGET}" = "dev"
+      test "${ENABLE_DATA_SERVICES_VM}" = "true"
+      test -d "${TF_ENV_DIR}"
+      test -f "${PLAN_BIN}"
+
+      cat > "${TF_OVERRIDE_FILE}" <<EOF
+      enable_data_services_vm = true
+      data_services_vm_name   = "${DATA_SERVICES_VM_NAME}"
+      data_services_vm_zone   = "${DATA_SERVICES_VM_ZONE}"
+      EOF
+
+      cd "${TF_ENV_DIR}"
+      terraform init -input=false
+      terraform apply -input=false -lock-timeout=5m "${PLAN_BIN}"
+      terraform output
+
+# ==============================================================================
+# DATA-SERVICES - ANSIBLE
+# ==============================================================================
+# Le flux Ansible peut partir :
+# - si les fichiers Ansible data-services changent
+# - OU si l'infra data-services change
+# car une nouvelle VM ou une VM mise à jour doit ensuite être provisionnée.
+# ==============================================================================
+ansible_syntax_check_data_services:
+  extends: .ansible_data_services_common
+  stage: validate
+  tags:
+    - ci-utils
+  rules:
+    - if: '$ENABLE_DATA_SERVICES_ANSIBLE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
+      changes: *changes_data_services_ansible
+      when: on_success
+    - if: '$ENABLE_DATA_SERVICES_ANSIBLE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
+      changes: *changes_data_services_infra
+      when: on_success
+    - when: never
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends python3 python3-pip python3-venv
+    - rm -rf /var/lib/apt/lists/*
+    - python3 -m venv /tmp/ansible-venv
+    - /tmp/ansible-venv/bin/pip install --no-cache-dir --upgrade pip
+    - /tmp/ansible-venv/bin/pip install --no-cache-dir ansible-core==2.16.8
+  script:
+    - |
+      set -euo pipefail
+      test "${DATA_SERVICES_ENV_TARGET}" = "dev"
+      /tmp/ansible-venv/bin/ansible-playbook --syntax-check \
+        -i ansible/inventory/hosts.yml \
+        ansible/playbooks/data-services.yml
+
+ansible_deploy_data_services:
+  extends: .ansible_data_services_common
+  stage: ansible
+  tags:
+    - terraform
+  allow_failure: false
+  needs:
+    - job: ansible_syntax_check_data_services
+    - job: terraform_apply_data_services
+      optional: true
+  rules:
+    - if: '$ENABLE_DATA_SERVICES_ANSIBLE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
+      changes: *changes_data_services_ansible
+      when: on_success
+    - if: '$ENABLE_DATA_SERVICES_ANSIBLE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
+      changes: *changes_data_services_infra
+      when: on_success
+    - when: never
+  before_script:
+    - !reference [.gcp_auth_wif, before_script]
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends python3 python3-pip python3-venv openssh-client
+    - rm -rf /var/lib/apt/lists/*
+    - curl -fsSL "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip" -o /tmp/terraform.zip
+    - unzip -o /tmp/terraform.zip -d /usr/local/bin
+    - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/wif_cred.json
+    - python3 -m venv /tmp/ansible-venv
+    - /tmp/ansible-venv/bin/pip install --no-cache-dir --upgrade pip
+    - /tmp/ansible-venv/bin/pip install --no-cache-dir ansible-core==2.16.8
+  script:
+    - |
+      set -euo pipefail
+
+      test "${DATA_SERVICES_ENV_TARGET}" = "dev"
+      test "${ENABLE_DATA_SERVICES_VM}" = "true"
+      test -f ansible/inventory/hosts.yml
+      test -f ansible/playbooks/data-services.yml
+
+      TF_ENV_DIR="infra/envs/${DATA_SERVICES_ENV_TARGET}"
+      TF_OVERRIDE_FILE="${TF_ENV_DIR}/override.auto.tfvars"
+
+      cat > "${TF_OVERRIDE_FILE}" <<EOF
+      enable_data_services_vm = true
+      data_services_vm_name   = "${DATA_SERVICES_VM_NAME}"
+      data_services_vm_zone   = "${DATA_SERVICES_VM_ZONE}"
+      EOF
+
+      cd "${TF_ENV_DIR}"
+      terraform init -input=false
+
+      DATA_SERVICES_VM_NAME_FROM_TF="$(terraform output -raw data_services_vm_name)"
+      DATA_SERVICES_VM_ZONE_FROM_TF="$(terraform output -raw data_services_vm_zone)"
+      DATA_SERVICES_VM_PROJECT_FROM_TF="$(terraform output -raw data_services_vm_project_id)"
+      DATA_SERVICES_VM_PRIVATE_IP="$(terraform output -raw data_services_vm_private_ip)"
+
+      test -n "${DATA_SERVICES_VM_NAME_FROM_TF}"
+      test -n "${DATA_SERVICES_VM_ZONE_FROM_TF}"
+      test -n "${DATA_SERVICES_VM_PROJECT_FROM_TF}"
+      test -n "${DATA_SERVICES_VM_PRIVATE_IP}"
+
+      gcloud compute instances describe "${DATA_SERVICES_VM_NAME_FROM_TF}" \
+        --zone "${DATA_SERVICES_VM_ZONE_FROM_TF}" \
+        --project "${DATA_SERVICES_VM_PROJECT_FROM_TF}" >/dev/null
+
+      SSH_USER="ansible"
+      ssh-keygen -t ed25519 -f /tmp/ansible_iap_key -N ""
+      printf '%s:%s\n' "${SSH_USER}" "$(cat /tmp/ansible_iap_key.pub)" > /tmp/instance_ssh_keys
+
+      gcloud compute instances add-metadata "${DATA_SERVICES_VM_NAME_FROM_TF}" \
+        --zone "${DATA_SERVICES_VM_ZONE_FROM_TF}" \
+        --project "${DATA_SERVICES_VM_PROJECT_FROM_TF}" \
+        --metadata enable-oslogin=FALSE \
+        --metadata-from-file ssh-keys=/tmp/instance_ssh_keys >/dev/null
+
+      IAP_LOCAL_PORT="2200"
+      gcloud compute start-iap-tunnel "${DATA_SERVICES_VM_NAME_FROM_TF}" 22 \
+        --local-host-port="localhost:${IAP_LOCAL_PORT}" \
+        --zone "${DATA_SERVICES_VM_ZONE_FROM_TF}" \
+        --project "${DATA_SERVICES_VM_PROJECT_FROM_TF}" \
+        --verbosity=warning >/tmp/iap-tunnel.log 2>&1 &
+      IAP_TUNNEL_PID="$!"
+      trap 'kill "${IAP_TUNNEL_PID}" >/dev/null 2>&1 || true' EXIT
+
+      sleep 5
+      if ! kill -0 "${IAP_TUNNEL_PID}" >/dev/null 2>&1; then
+        cat /tmp/iap-tunnel.log
         exit 1
       fi
 
+      SSH_READY="false"
+      for attempt in $(seq 1 30); do
+        if ssh -i /tmp/ansible_iap_key \
+          -p "${IAP_LOCAL_PORT}" \
+          -o StrictHostKeyChecking=no \
+          -o UserKnownHostsFile=/dev/null \
+          -o ConnectTimeout=10 \
+          "${SSH_USER}@127.0.0.1" 'sudo -n true && true' >/tmp/ansible-ssh-check.log 2>&1; then
+          SSH_READY="true"
+          break
+        fi
+        sleep 10
+      done
+
+      if [ "${SSH_READY}" != "true" ]; then
+        echo "ERROR: SSH over IAP is not ready after waiting."
+        cat /tmp/iap-tunnel.log || true
+        cat /tmp/ansible-ssh-check.log || true
+        exit 1
+      fi
+
+      cd "${CI_PROJECT_DIR}"
+
+      cat > ansible/inventory/generated-data-services.yml <<EOF
+      all:
+        children:
+          ${DATA_SERVICES_ENV_TARGET}:
+            hosts:
+              ${DATA_SERVICES_VM_NAME_FROM_TF}:
+                ansible_host: 127.0.0.1
+                ansible_port: ${IAP_LOCAL_PORT}
+                ansible_user: ${SSH_USER}
+                ansible_ssh_private_key_file: /tmp/ansible_iap_key
+                ansible_ssh_common_args: >-
+                  -o StrictHostKeyChecking=no
+                  -o UserKnownHostsFile=/dev/null
+                gcp_zone: ${DATA_SERVICES_VM_ZONE_FROM_TF}
+                gcp_project: ${DATA_SERVICES_VM_PROJECT_FROM_TF}
+      EOF
+
+      ANSIBLE_HOST_KEY_CHECKING=False /tmp/ansible-venv/bin/ansible-inventory \
+        -i ansible/inventory/generated-data-services.yml --list >/dev/null
+
+      ANSIBLE_HOST_KEY_CHECKING=False /tmp/ansible-venv/bin/ansible-playbook \
+        -i ansible/inventory/generated-data-services.yml \
+        ansible/playbooks/data-services.yml \
+        --limit "${DATA_SERVICES_ENV_TARGET}"
+
 # ==============================================================================
-# BACKEND - API GATEWAY
+# JOBS APPLICATIFS - COUVERTURE COMPLÈTE MONOREPO
+# ------------------------------------------------------------------------------
+# Chaque service/app garde un déclenchement sélectif via rules:changes.
+# On préserve ainsi :
+# - les builds/déploiements uniquement pour les composants modifiés
+# - la compatibilité avec la branche de travail devops-devlop-add-env-staging-1
+# - l'indépendance vis-à-vis du flux Terraform/Ansible data-services
 # ==============================================================================
 build_api_gateway:
   extends: .backend_build_template
@@ -282,7 +661,7 @@ build_api_gateway:
     SERVICE_NAME: "api-gateway"
     MODULE_PATH: "api-gateway"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/api-gateway/**/*
         - backend/pom.xml
@@ -295,21 +674,18 @@ deploy_api_gateway:
   variables:
     SERVICE_NAME: "api-gateway"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/api-gateway/**/*
         - backend/pom.xml
 
-# ==============================================================================
-# BACKEND - CONFIG SERVER
-# ==============================================================================
 build_config_server:
   extends: .backend_build_template
   variables:
     SERVICE_NAME: "config-server"
     MODULE_PATH: "config-server"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/config-server/**/*
         - backend/pom.xml
@@ -322,21 +698,18 @@ deploy_config_server:
   variables:
     SERVICE_NAME: "config-server"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/config-server/**/*
         - backend/pom.xml
 
-# ==============================================================================
-# BACKEND - EUREKA SERVER
-# ==============================================================================
 build_eureka_server:
   extends: .backend_build_template
   variables:
     SERVICE_NAME: "eureka-server"
     MODULE_PATH: "eureka-server"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/eureka-server/**/*
         - backend/pom.xml
@@ -349,21 +722,18 @@ deploy_eureka_server:
   variables:
     SERVICE_NAME: "eureka-server"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/eureka-server/**/*
         - backend/pom.xml
 
-# ==============================================================================
-# BACKEND - AUTH SERVICE
-# ==============================================================================
 build_auth_service:
   extends: .backend_build_template
   variables:
     SERVICE_NAME: "auth-service"
     MODULE_PATH: "services/auth-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/services/auth-service/**/*
         - backend/pom.xml
@@ -376,21 +746,18 @@ deploy_auth_service:
   variables:
     SERVICE_NAME: "auth-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/services/auth-service/**/*
         - backend/pom.xml
 
-# ==============================================================================
-# BACKEND - USER SERVICE
-# ==============================================================================
 build_user_service:
   extends: .backend_build_template
   variables:
     SERVICE_NAME: "user-service"
     MODULE_PATH: "services/user-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/services/user-service/**/*
         - backend/pom.xml
@@ -403,21 +770,18 @@ deploy_user_service:
   variables:
     SERVICE_NAME: "user-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/services/user-service/**/*
         - backend/pom.xml
 
-# ==============================================================================
-# BACKEND - PARTNER SERVICE
-# ==============================================================================
 build_partner_service:
   extends: .backend_build_template
   variables:
     SERVICE_NAME: "partner-service"
     MODULE_PATH: "services/partner-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/services/partner-service/**/*
         - backend/pom.xml
@@ -430,21 +794,18 @@ deploy_partner_service:
   variables:
     SERVICE_NAME: "partner-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/services/partner-service/**/*
         - backend/pom.xml
 
-# ==============================================================================
-# BACKEND - LOCATION SERVICE
-# ==============================================================================
 build_location_service:
   extends: .backend_build_template
   variables:
     SERVICE_NAME: "location-service"
     MODULE_PATH: "services/location-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/services/location-service/**/*
         - backend/pom.xml
@@ -457,21 +818,18 @@ deploy_location_service:
   variables:
     SERVICE_NAME: "location-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/services/location-service/**/*
         - backend/pom.xml
 
-# ==============================================================================
-# BACKEND - DELIVERY SERVICE
-# ==============================================================================
 build_delivery_service:
   extends: .backend_build_template
   variables:
     SERVICE_NAME: "delivery-service"
     MODULE_PATH: "services/delivery-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/services/delivery-service/**/*
         - backend/pom.xml
@@ -486,21 +844,18 @@ deploy_delivery_service:
   variables:
     SERVICE_NAME: "delivery-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/services/delivery-service/**/*
         - backend/pom.xml
 
-# ==============================================================================
-# BACKEND - NOTIFICATION SERVICE
-# ==============================================================================
 build_notification_service:
   extends: .backend_build_template
   variables:
     SERVICE_NAME: "notification-service"
     MODULE_PATH: "services/notification-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/services/notification-service/**/*
         - backend/pom.xml
@@ -513,14 +868,11 @@ deploy_notification_service:
   variables:
     SERVICE_NAME: "notification-service"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - backend/services/notification-service/**/*
         - backend/pom.xml
 
-# ==============================================================================
-# FRONTEND - PARTNER DASHBOARD
-# ==============================================================================
 build_partner_dashboard:
   extends: .frontend_build_template
   variables:
@@ -528,7 +880,7 @@ build_partner_dashboard:
     CONTEXT_PATH: "frontend/partner-dashboard"
     DOCKERFILE_PATH: "frontend/partner-dashboard/Dockerfile.dev"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - frontend/partner-dashboard/**/*
 
@@ -540,13 +892,10 @@ deploy_partner_dashboard:
   variables:
     SERVICE_NAME: "partner-dashboard"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - frontend/partner-dashboard/**/*
 
-# ==============================================================================
-# FRONTEND - ADMIN PANEL
-# ==============================================================================
 build_admin_panel:
   extends: .frontend_build_template
   variables:
@@ -554,7 +903,7 @@ build_admin_panel:
     CONTEXT_PATH: "frontend/admin-panel"
     DOCKERFILE_PATH: "frontend/admin-panel/Dockerfile.dev"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - frontend/admin-panel/**/*
 
@@ -566,19 +915,21 @@ deploy_admin_panel:
   variables:
     SERVICE_NAME: "admin-panel"
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/ || $CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
       changes:
         - frontend/admin-panel/**/*
 
 # ==============================================================================
-# TERRAFORM DEV
+# TERRAFORM DEV GÉNÉRAL
 # ==============================================================================
-# Ce job :
-# - ne sert qu'aux changements d'infrastructure
-# - ne doit pas partir pour un simple changement backend/frontend
+# Règle importante :
+# - Si un changement data-services est présent, on NE lance PAS terraform_apply_dev
+#   pour éviter un double apply concurrent sur le même environnement DEV.
+# - Donc, en cas de commit mixte (infra générale + data-services), priorité au flux
+#   data-services. Il vaut mieux séparer ces commits si possible.
 # ==============================================================================
 terraform_apply_dev:
-  stage: terraform
+  stage: terraform_apply
   image: google/cloud-sdk:slim
   tags:
     - terraform
@@ -596,14 +947,43 @@ terraform_apply_dev:
     - curl -fsSL "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip" -o /tmp/terraform.zip
     - unzip -o /tmp/terraform.zip -d /usr/local/bin
     - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/wif_cred.json
-  script:
-    - cd "$TF_DIR"
+  rules:
+    # --------------------------------------------------------------------------
+    # PRIORITÉ AU FLUX DATA-SERVICES POUR ÉVITER LES CONFLITS
+    # --------------------------------------------------------------------------
+    - if: '$CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
+      changes: *changes_data_services_infra
+      when: never
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes: *changes_data_services_infra
+      when: never
+    - if: '$CI_COMMIT_TAG =~ /^infra-.*$/'
+      changes: *changes_data_services_infra
+      when: never
 
     # --------------------------------------------------------------------------
-    # Préparer l'URI Git du Config Server pour Terraform
+    # INFRA DEV GÉNÉRALE
     # --------------------------------------------------------------------------
-    - export RAW_CONFIG_SERVER_GIT_URI="${SPRING_CLOUD_CONFIG_SERVER_GIT_URI:-${CONFIG_SERVER_GIT_URI:-${CONFIG_GIT_URI:-${GIT_REPO_URI:-}}}}"
+    - if: '$CI_COMMIT_BRANCH == "devops-devlop-add-env-staging-1"'
+      changes: *changes_general_dev_infra
+      when: on_success
+    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
+      changes: *changes_general_dev_infra
+      when: on_success
+    - if: '$CI_COMMIT_TAG =~ /^infra-.*$/'
+      changes: *changes_general_dev_infra
+      when: on_success
+    - when: never
+  script:
     - |
+      set -euo pipefail
+
+      cd "$TF_DIR"
+
+      # ------------------------------------------------------------------------
+      # Préparer l'URI Git du Config Server
+      # ------------------------------------------------------------------------
+      RAW_CONFIG_SERVER_GIT_URI="${SPRING_CLOUD_CONFIG_SERVER_GIT_URI:-${CONFIG_SERVER_GIT_URI:-${CONFIG_GIT_URI:-${GIT_REPO_URI:-}}}}"
       if echo "$RAW_CONFIG_SERVER_GIT_URI" | grep -q '/-/tree/'; then
         TF_VAR_config_server_git_uri="${RAW_CONFIG_SERVER_GIT_URI%%/-/tree/*}.git"
       else
@@ -611,44 +991,48 @@ terraform_apply_dev:
       fi
       export TF_VAR_config_server_git_uri
 
-    - |
       if [ -z "$TF_VAR_config_server_git_uri" ]; then
         echo "ERROR: Missing config_server_git_uri"
         exit 1
       fi
 
-    # --------------------------------------------------------------------------
-    # Préparer l'URI MongoDB pour Terraform
-    # --------------------------------------------------------------------------
-    - export EFFECTIVE_MONGODB_URI="${MONGODB_URI:-${MONGO_URI:-}}"
-    - |
+      # ------------------------------------------------------------------------
+      # Préparer l'URI MongoDB
+      # ------------------------------------------------------------------------
+      EFFECTIVE_MONGODB_URI="${MONGODB_URI:-${MONGO_URI:-}}"
       if [ -z "$EFFECTIVE_MONGODB_URI" ]; then
         echo "ERROR: Missing mongodb_uri"
         exit 1
       fi
-    - export TF_VAR_mongodb_uri="$EFFECTIVE_MONGODB_URI"
+      export TF_VAR_mongodb_uri="$EFFECTIVE_MONGODB_URI"
 
-    # --------------------------------------------------------------------------
-    # Variables optionnelles Mongo Atlas
-    # --------------------------------------------------------------------------
-    - export TF_VAR_atlas_public_key="${ATLAS_PUBLIC_KEY:-}"
-    - export TF_VAR_atlas_private_key="${ATLAS_PRIVATE_KEY:-}"
-    - export TF_VAR_atlas_project_id="${ATLAS_PROJECT_ID:-}"
+      # ------------------------------------------------------------------------
+      # Variables Atlas optionnelles
+      # ------------------------------------------------------------------------
+      export TF_VAR_atlas_public_key="${ATLAS_PUBLIC_KEY:-}"
+      export TF_VAR_atlas_private_key="${ATLAS_PRIVATE_KEY:-}"
+      export TF_VAR_atlas_project_id="${ATLAS_PROJECT_ID:-}"
 
-    # --------------------------------------------------------------------------
-    # IAM projet (désactivé en CI standard)
-    # --------------------------------------------------------------------------
-    - export TF_VAR_enable_project_iam_bindings="false"
+      # ------------------------------------------------------------------------
+      # IAM projet désactivé dans le flux standard
+      # ------------------------------------------------------------------------
+      export TF_VAR_enable_project_iam_bindings="false"
 
-    # --------------------------------------------------------------------------
-    # Exécution Terraform
-    # --------------------------------------------------------------------------
-    - terraform init -input=false
-    - terraform validate
-    - |
+      # ------------------------------------------------------------------------
+      # Terraform init / validate
+      # ------------------------------------------------------------------------
+      terraform init -input=false
+      terraform validate
+
+      # ------------------------------------------------------------------------
+      # Gestion de l'image delivery-service pour le bootstrap Terraform
+      # ------------------------------------------------------------------------
       DELIVERY_TF_IMAGE_URI=""
       DELIVERY_SERVICE_EXISTS="false"
-      if gcloud run services describe "delivery-service" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" >/dev/null 2>&1; then
+
+      if gcloud run services describe "delivery-service" \
+        --region "$GCP_REGION" \
+        --project "$GCP_PROJECT_ID" >/dev/null 2>&1; then
         DELIVERY_SERVICE_EXISTS="true"
       fi
 
@@ -681,11 +1065,17 @@ terraform_apply_dev:
         echo "Run build_delivery_service first so Terraform can use a real Artifact Registry image."
         exit 1
       fi
-    - |
+
+      # ------------------------------------------------------------------------
+      # Import éventuel du service delivery-service dans le state Terraform
+      # ------------------------------------------------------------------------
       DELIVERY_TF_ADDR="module.delivery_service.google_cloud_run_v2_service.this"
+
       if terraform state show "$DELIVERY_TF_ADDR" >/dev/null 2>&1; then
-        echo "Skipping import: '$DELIVERY_TF_ADDR' is already managed in Terraform state."
-      elif gcloud run services describe "delivery-service" --region "$GCP_REGION" --project "$GCP_PROJECT_ID" >/dev/null 2>&1; then
+        echo "Skipping import: '$DELIVERY_TF_ADDR' already in state."
+      elif gcloud run services describe "delivery-service" \
+        --region "$GCP_REGION" \
+        --project "$GCP_PROJECT_ID" >/dev/null 2>&1; then
         echo "Importing existing Cloud Run service 'delivery-service' into Terraform state..."
         terraform import \
           "$DELIVERY_TF_ADDR" \
@@ -693,28 +1083,14 @@ terraform_apply_dev:
       else
         echo "Skipping import: Cloud Run service 'delivery-service' does not exist yet."
       fi
-    - terraform apply -auto-approve -input=false -lock-timeout=5m
 
-  rules:
-    # Un tag infra-* doit lancer Terraform
-    - if: '$CI_COMMIT_TAG =~ /^infra-.*$/'
-
-    # Un tag dev-* ne lance Terraform que si infra a changé
-    - if: '$CI_COMMIT_TAG =~ /^dev-.*$/'
-      changes:
-        - infra/**/*
-        - backend/services/delivery-service/**/*
-        - backend/pom.xml
-
-    # Sur la branche ciblée, Terraform ne part que si infra a changé
-    - if: '$CI_COMMIT_BRANCH == "develop"'
-      changes:
-        - infra/**/*
-        - backend/services/delivery-service/**/*
-        - backend/pom.xml
+      # ------------------------------------------------------------------------
+      # Terraform apply DEV général
+      # ------------------------------------------------------------------------
+      terraform apply -auto-approve -input=false -lock-timeout=5m
 
 # ==============================================================================
-# STAGING - SQUELETTE MANUEL
+# STAGING / PROD - SQUELETTES
 # ==============================================================================
 build_frontend_staging_images:
   stage: build
@@ -727,12 +1103,12 @@ build_frontend_staging_images:
     GITLAB_OIDC_TOKEN:
       aud: "//iam.googleapis.com/${WIF_PROVIDER}"
   script:
-    - echo "Staging frontend build scaffold ready. Configure staging variables et tags avant activation."
+    - echo "Staging frontend build scaffold ready."
   rules:
     - if: '$CI_COMMIT_TAG =~ /^staging-.*$/'
 
 terraform_apply_staging:
-  stage: terraform
+  stage: terraform_apply
   image: google/cloud-sdk:slim
   tags:
     - terraform
@@ -742,13 +1118,10 @@ terraform_apply_staging:
     GITLAB_OIDC_TOKEN:
       aud: "//iam.googleapis.com/${WIF_PROVIDER}"
   script:
-    - echo "Staging terraform scaffold ready. Définir TF_DIR sur infra/envs/staging et les variables staging."
+    - echo "Staging terraform scaffold ready."
   rules:
     - if: '$CI_COMMIT_TAG =~ /^staging-.*$/'
 
-# ==============================================================================
-# PROD - SQUELETTE MANUEL
-# ==============================================================================
 build_frontend_prod_images:
   stage: build
   image: google/cloud-sdk:slim
@@ -760,12 +1133,12 @@ build_frontend_prod_images:
     GITLAB_OIDC_TOKEN:
       aud: "//iam.googleapis.com/${WIF_PROVIDER}"
   script:
-    - echo "Production frontend build scaffold ready. Configurer variables prod et validations avant activation."
+    - echo "Production frontend build scaffold ready."
   rules:
     - if: '$CI_COMMIT_TAG =~ /^prod-.*$/'
 
 terraform_apply_prod:
-  stage: terraform
+  stage: terraform_apply
   image: google/cloud-sdk:slim
   tags:
     - terraform
@@ -775,6 +1148,6 @@ terraform_apply_prod:
     GITLAB_OIDC_TOKEN:
       aud: "//iam.googleapis.com/${WIF_PROVIDER}"
   script:
-    - echo "Production terraform scaffold ready. Définir TF_DIR sur infra/envs/prod et les variables prod."
+    - echo "Production terraform scaffold ready."
   rules:
     - if: '$CI_COMMIT_TAG =~ /^prod-.*$/'

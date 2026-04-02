@@ -39,7 +39,7 @@ data "google_project" "current" {
 }
 
 # ==============================================================================
-# ACTIVATION DES APIs (EN PREMIER !)
+# ACTIVATION DES APIs (EN PREMIER !),
 # ==============================================================================
 module "common" {
   source     = "../../modules/common"
@@ -47,7 +47,7 @@ module "common" {
 }
 
 # ==============================================================================
-# ARTIFACT REGISTRY,
+# ARTIFACT REGISTRY
 # ==============================================================================
 module "artifact_registry" {
   source        = "../../modules/artifact_registry"
@@ -183,6 +183,95 @@ module "redis" {
   }
 
   depends_on = [module.common]
+}
+
+# ==============================================================================
+# DATA SERVICES VM (Redis + ClickHouse via Docker) - préparation DEV
+# ------------------------------------------------------------------------------
+# Important:
+# - Cette VM est optionnelle et désactivée par défaut.
+# - Memorystore reste actif tant que la bascule applicative n'est pas faite.
+# - Les ports data ne sont accessibles qu'en IP privée (via CIDR autorisés).
+# - Terraform s'arrête volontairement à la préparation de l'infra.
+#   L'installation Docker et le déploiement applicatif sur la VM sont gérés par Ansible.
+# ==============================================================================
+module "data_services_vm" {
+  count = var.enable_data_services_vm ? 1 : 0
+
+  source     = "../../modules/data_services_vm"
+  project_id = var.project_id
+  region     = var.region
+
+  name         = var.data_services_vm_name
+  zone         = var.data_services_vm_zone
+  machine_type = var.data_services_vm_machine_type
+
+  network    = var.data_services_vm_network
+  subnetwork = var.data_services_vm_subnetwork
+
+  boot_image        = var.data_services_vm_boot_image
+  boot_disk_size_gb = var.data_services_vm_disk_size_gb
+  boot_disk_type    = var.data_services_vm_disk_type
+  startup_script    = <<-EOT
+    #!/bin/bash
+    set -euxo pipefail
+
+    if ! id -u ansible >/dev/null 2>&1; then
+      useradd -m -s /bin/bash ansible
+    fi
+
+    install -d -m 700 -o ansible -g ansible /home/ansible/.ssh
+    echo 'ansible ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/90-ansible
+    chmod 440 /etc/sudoers.d/90-ansible
+
+    systemctl enable ssh || true
+    systemctl restart ssh || true
+    systemctl enable google-guest-agent || true
+    systemctl restart google-guest-agent || true
+  EOT
+
+  service_account_email = var.data_services_vm_service_account_email
+
+  allowed_source_ranges = length(var.data_services_vm_allowed_source_ranges) > 0 ? var.data_services_vm_allowed_source_ranges : [var.vpc_connector_cidr]
+
+  enable_iap_ssh          = var.data_services_vm_enable_iap_ssh
+  admin_ssh_source_ranges = var.data_services_vm_admin_ssh_source_ranges
+
+  labels = {
+    env        = var.environment
+    managed-by = "terraform"
+    project    = "speedline"
+    role       = "data-services"
+  }
+
+  depends_on = [module.common]
+}
+
+resource "google_compute_router" "data_services_nat" {
+  count = var.enable_data_services_vm ? 1 : 0
+
+  name    = "${var.environment}-data-services-nat-router"
+  project = var.project_id
+  region  = var.region
+  network = var.data_services_vm_network
+
+  depends_on = [module.common]
+}
+
+resource "google_compute_router_nat" "data_services_nat" {
+  count = var.enable_data_services_vm ? 1 : 0
+
+  name                               = "${var.environment}-data-services-nat"
+  project                            = var.project_id
+  region                             = var.region
+  router                             = google_compute_router.data_services_nat[0].name
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+
+  log_config {
+    enable = true
+    filter = "ERRORS_ONLY"
+  }
 }
 
 # ==============================================================================
@@ -479,6 +568,7 @@ module "auth_service" {
 
   vpc_connector_id = module.vpc_connector.id
   vpc_egress       = "PRIVATE_RANGES_ONLY"
+  redis_enabled    = true
 
   env_vars = {
     # Spring
@@ -577,9 +667,9 @@ module "user_service" {
     SPRING_CLOUD_GCP_CORE_ENABLED = "false"
 
     # Cloud SQL socket factory (même approche que auth-service)
-    SPRING_DATASOURCE_URL      = "jdbc:postgresql:///speedline_dev?cloudSqlInstance=${module.cloudsql.instance_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
-    SPRING_DATASOURCE_USERNAME = "auth_dev"
-    SPRING_DATASOURCE_PASSWORD = var.db_dev_password
+    SPRING_DATASOURCE_URL       = "jdbc:postgresql:///speedline_dev?cloudSqlInstance=${module.cloudsql.instance_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
+    SPRING_DATASOURCE_USERNAME  = "auth_dev"
+    SPRING_DATASOURCE_PASSWORD  = var.db_dev_password
     SPRING_CLOUD_GCP_PROJECT_ID = var.project_id
 
     FILE_STORAGE_TYPE = "gcs"
@@ -617,6 +707,10 @@ module "partner_service" {
   cpu    = "1"
 
   cloudsql_instances = [module.cloudsql.instance_connection_name]
+
+  vpc_connector_id = module.vpc_connector.id
+  vpc_egress       = "PRIVATE_RANGES_ONLY"
+  redis_enabled    = true
 
   env_vars = {
     SPRING_PROFILES_ACTIVE       = "dev"
@@ -681,6 +775,10 @@ module "location_service" {
 
   cloudsql_instances = [module.cloudsql.instance_connection_name]
 
+  vpc_connector_id = module.vpc_connector.id
+  vpc_egress       = "PRIVATE_RANGES_ONLY"
+  redis_enabled    = true
+
   env_vars = {
     SPRING_PROFILES_ACTIVE  = "dev"
     SPRING_APPLICATION_NAME = "location-service"
@@ -693,6 +791,10 @@ module "location_service" {
     SPRING_DATASOURCE_URL      = "jdbc:postgresql:///speedline_dev?cloudSqlInstance=${module.cloudsql.instance_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
     SPRING_DATASOURCE_USERNAME = "auth_dev"
     SPRING_DATASOURCE_PASSWORD = var.db_dev_password
+
+    # Redis - Memorystore DEV (override explicite du localhost défini en local)
+    SPRING_DATA_REDIS_HOST = module.redis.host
+    SPRING_DATA_REDIS_PORT = tostring(module.redis.port)
 
     SPRING_MAIN_LAZY_INITIALIZATION = "true"
     SPRING_CLOUD_DISCOVERY_ENABLED  = "false"
@@ -729,14 +831,15 @@ module "delivery_service" {
 
   vpc_connector_id = module.vpc_connector.id
   vpc_egress       = "PRIVATE_RANGES_ONLY"
+  redis_enabled    = true
 
   env_vars = {
-    SPRING_PROFILES_ACTIVE       = "dev"
-    SPRING_APPLICATION_NAME      = "delivery-service"
-    EUREKA_ENABLED               = "false"
-    GCP_PROJECT_ID               = var.project_id
-    SPRING_CLOUD_GCP_PROJECT_ID  = var.project_id
-    JAVA_TOOL_OPTIONS            = "-Dserver.port=8080 -Dspring.cloud.bootstrap.enabled=false -Dspring.cloud.config.enabled=false -Dspring.cloud.gcp.sql.enabled=false -Dspring.cloud.gcp.core.enabled=false"
+    SPRING_PROFILES_ACTIVE      = "dev"
+    SPRING_APPLICATION_NAME     = "delivery-service"
+    EUREKA_ENABLED              = "false"
+    GCP_PROJECT_ID              = var.project_id
+    SPRING_CLOUD_GCP_PROJECT_ID = var.project_id
+    JAVA_TOOL_OPTIONS           = "-Dserver.port=8080 -Dspring.cloud.bootstrap.enabled=false -Dspring.cloud.config.enabled=false -Dspring.cloud.gcp.sql.enabled=false -Dspring.cloud.gcp.core.enabled=false"
 
     SPRING_CLOUD_GCP_SQL_ENABLED  = "false"
     SPRING_CLOUD_GCP_CORE_ENABLED = "false"
