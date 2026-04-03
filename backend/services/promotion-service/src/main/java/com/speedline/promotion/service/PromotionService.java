@@ -1,88 +1,49 @@
 package com.speedline.promotion.service;
 
-import com.speedline.promotion.domain.Promotion.PromotionType;
+import com.speedline.promotion.dto.*;
+import org.springframework.data.domain.Pageable;
 
-import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Service pour la gestion des promotions
- */
 public interface PromotionService {
 
-    /**
-     * Valider un code promo
-     */
-    ValidationResult validatePromoCode(String code, Long userId, Long partnerId, BigDecimal orderAmount);
+    /** CRUD ---------------------------------------------------------------- */
+    PromotionPageResponse getPromotions(String search, String status, String type,
+                                        LocalDateTime startFrom, LocalDateTime startTo,
+                                        String partnerId, Pageable pageable);
 
-    /**
-     * Appliquer un code promo et calculer la réduction
-     */
-    BigDecimal calculateDiscount(String code, BigDecimal orderAmount);
+    List<PromotionDto> getActivePromotions();
 
-    /**
-     * Incrémenter l'utilisation d'un code promo
-     */
-    void incrementUsage(String code, Long userId);
+    PromotionDetailDto getById(Long id);
 
-    /**
-     * Obtenir les promotions actives
-     */
-    List<PromotionDTO> getActivePromotions();
+    PromotionDto getByCode(String code);
 
-    /**
-     * Obtenir les promotions disponibles pour un utilisateur
-     */
-    List<PromotionDTO> getAvailablePromotions(Long userId, Long partnerId);
+    PromotionDto create(CreatePromotionRequest request);
 
-    /**
-     * Créer une promotion (admin)
-     */
-    PromotionDTO createPromotion(CreatePromotionRequest request);
+    PromotionDto update(Long id, UpdatePromotionRequest request);
 
-    /**
-     * Désactiver une promotion
-     */
-    void deactivatePromotion(Long promotionId);
+    void delete(Long id);
 
-    /**
-     * DTO de résultat de validation
-     */
-    record ValidationResult(boolean isValid, String message, BigDecimal discount, PromotionType type) {}
+    void toggleActive(Long id);
 
-    /**
-     * DTO de promotion
-     */
-    record PromotionDTO(
-            Long id,
-            String code,
-            String name,
-            String description,
-            PromotionType type,
-            BigDecimal value,
-            BigDecimal minimumOrder,
-            BigDecimal maximumDiscount,
-            java.time.LocalDateTime startDate,
-            java.time.LocalDateTime endDate,
-            Boolean isActive
-    ) {}
+    void activate(Long id);
 
-    /**
-     * DTO de création de promotion
-     */
-    record CreatePromotionRequest(
-            String code,
-            String name,
-            String description,
-            PromotionType type,
-            BigDecimal value,
-            BigDecimal minimumOrder,
-            BigDecimal maximumDiscount,
-            Integer usageLimit,
-            Integer usageLimitPerUser,
-            java.time.LocalDateTime startDate,
-            java.time.LocalDateTime endDate,
-            List<Long> applicablePartnerIds,
-            Boolean firstOrderOnly
-    ) {}
+    void deactivate(Long id);
+
+    PromotionDto duplicate(Long id);
+
+    PromotionStatisticsDto getStatistics();
+
+    /** Validation (before order confirmation) ------------------------------ */
+    ValidatePromotionResponse validate(ValidatePromotionRequest request);
+
+    /** Apply  (at payment — re-validates + increments counters atomically) - */
+    ValidatePromotionResponse apply(ApplyPromotionRequest request);
+
+    /** Revoke (on order cancellation) -------------------------------------- */
+    void revoke(RevokePromotionRequest request);
+
+    /** Analytics ----------------------------------------------------------- */
+    PromotionAnalyticsDto getAnalytics(Long promotionId);
 }

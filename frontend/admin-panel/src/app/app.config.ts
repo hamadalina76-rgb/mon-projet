@@ -7,6 +7,8 @@ import { provideToastr } from 'ngx-toastr';
 import { TranslateModule, TranslateService, TranslateLoader } from '@ngx-translate/core';
 import { TranslateHttpLoader, TRANSLATE_HTTP_LOADER_CONFIG } from '@ngx-translate/http-loader';
 import { firstValueFrom } from 'rxjs';
+import { MAT_DATE_LOCALE, MAT_DATE_FORMATS, DateAdapter } from '@angular/material/core';
+import { NativeDateAdapter } from '@angular/material/core';
 // import { SocketIoModule, SocketIoConfig } from 'ngx-socket-io';
 
 import { routes } from './app.routes';
@@ -15,6 +17,16 @@ import { errorInterceptor } from '@core/interceptors/error.interceptor';
 import { loadingInterceptor } from '@core/interceptors/loading.interceptor';
 import { RuntimeConfigService } from '@core/services/runtime-config.service';
 import { environment } from '@environments/environment';
+
+const CUSTOM_DATE_FORMATS = {
+  parse: { dateInput: 'dd/MM/yyyy' },
+  display: {
+    dateInput: { day: '2-digit', month: '2-digit', year: 'numeric' } as Intl.DateTimeFormatOptions,
+    monthYearLabel: { month: 'long', year: 'numeric' } as Intl.DateTimeFormatOptions,
+    dateA11yLabel: { day: 'numeric', month: 'long', year: 'numeric' } as Intl.DateTimeFormatOptions,
+    monthYearA11yLabel: { month: 'long', year: 'numeric' } as Intl.DateTimeFormatOptions,
+  },
+};
 
 // const socketConfig: SocketIoConfig = {
 //   url: environment.wsUrl,
@@ -86,5 +98,8 @@ export const appConfig: ApplicationConfig = {
       deps: [TranslateService],
       multi: true,
     },
+    { provide: MAT_DATE_LOCALE, useValue: 'fr-FR' },
+    { provide: MAT_DATE_FORMATS, useValue: CUSTOM_DATE_FORMATS },
+    { provide: DateAdapter, useClass: NativeDateAdapter },
   ],
 };

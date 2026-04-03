@@ -35,4 +35,8 @@ export class CampaignsComponent implements OnInit {
   loadCampaigns(): void {
     // TODO: Implement
   }
+
+  deleteCampaign(id: number): void {
+    // TODO: Implement
+  }
 }
