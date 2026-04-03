@@ -46,15 +46,15 @@ export class HeaderComponent implements OnInit, OnDestroy {
   currentLang = signal<string>(localStorage.getItem('partnerLang') || 'fr');
 
   availableLanguages = [
-    { code: 'fr', name: 'Français', flag: '🇫🇷' },
-    { code: 'en', name: 'English', flag: '🇬🇧' },
-    { code: 'ar', name: 'العربية', flag: '🇹🇳' },
+    { code: 'fr', name: 'Français', flagIcon: 'assets/image/flags/fr.svg' },
+    { code: 'en', name: 'English', flagIcon: 'assets/image/flags/gb.svg' },
+    { code: 'ar', name: 'العربية', flagIcon: 'assets/image/flags/tn.svg' },
   ];
 
   currentLangFlag = computed(() => {
     const code = this.currentLang();
     const found = this.availableLanguages.find((l) => l.code === code);
-    return found?.flag ?? '🇫🇷';
+    return found?.flagIcon ?? 'assets/image/flags/fr.svg';
   });
 
   ngOnInit(): void {

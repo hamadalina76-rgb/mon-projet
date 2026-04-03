@@ -69,9 +69,9 @@ export class LoginComponent {
   private resendTimer: any;
 
   availableLanguages = [
-    { code: 'fr', name: 'Français', flag: '🇫🇷' },
-    { code: 'en', name: 'English', flag: '🇬🇧' },
-    { code: 'ar', name: 'العربية', flag: '🇹🇳' },
+    { code: 'fr', name: 'Français', flagIcon: 'assets/image/flags/fr.svg' },
+    { code: 'en', name: 'English', flagIcon: 'assets/image/flags/gb.svg' },
+    { code: 'ar', name: 'العربية', flagIcon: 'assets/image/flags/tn.svg' },
   ];
 
   constructor() {
@@ -90,6 +90,10 @@ export class LoginComponent {
     this.translate.use(lang);
     localStorage.setItem('partnerLang', lang);
     this.updateDirection(lang);
+  }
+
+  getCurrentLangFlagIcon(): string {
+    return this.availableLanguages.find((lang) => lang.code === this.currentLang())?.flagIcon ?? 'assets/image/flags/fr.svg';
   }
 
   updateDirection(lang: string): void {

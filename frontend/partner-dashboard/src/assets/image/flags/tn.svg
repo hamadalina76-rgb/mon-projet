@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-label="Tunisia flag">
+  <defs>
+    <clipPath id="clip-tn">
+      <circle cx="12" cy="12" r="12"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#clip-tn)">
+    <rect width="24" height="24" fill="#E70013"/>
+    <circle cx="12" cy="12" r="6" fill="#FFFFFF"/>
+    <circle cx="12.7" cy="12" r="2.6" fill="#E70013"/>
+    <circle cx="13.4" cy="12" r="2.1" fill="#FFFFFF"/>
+    <path d="M12 8.5 L12.9 11.1 L15.7 11.1 L13.4 12.8 L14.3 15.5 L12 13.8 L9.7 15.5 L10.6 12.8 L8.3 11.1 L11.1 11.1 Z" fill="#E70013"/>
+  </g>
+</svg>

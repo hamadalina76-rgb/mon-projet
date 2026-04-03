@@ -53,6 +53,9 @@
                   @if (businessForm.get('businessName')?.hasError('required') && businessForm.get('businessName')?.touched) {
                     <span class="field-error">{{ 'profilePages.requiredField' | translate }}</span>
                   }
+                  @if (businessForm.get('businessName')?.hasError('meaningfulText') && businessForm.get('businessName')?.touched) {
+                    <span class="field-error">{{ 'profilePages.meaningfulTextRequired' | translate }}</span>
+                  }
                 </div>
                 <div class="field">
                   <label>{{ 'profilePages.establishmentType' | translate }} <span class="req">*</span></label>
@@ -66,10 +69,16 @@
               <div class="field">
                 <label>{{ 'profilePages.brandLabel' | translate }}</label>
                 <input type="text" formControlName="brandName" [placeholder]="'profilePages.brandPlaceholder' | translate" />
+                @if (businessForm.get('brandName')?.hasError('meaningfulText') && businessForm.get('brandName')?.touched) {
+                  <span class="field-error">{{ 'profilePages.meaningfulTextRequired' | translate }}</span>
+                }
               </div>
               <div class="field">
                 <label>{{ 'profilePages.shortDescLabel' | translate }}</label>
                 <textarea formControlName="shortDescription" rows="3" [placeholder]="'profilePages.shortDescPlaceholder' | translate" maxlength="100"></textarea>
+                @if (businessForm.get('shortDescription')?.hasError('meaningfulText') && businessForm.get('shortDescription')?.touched) {
+                  <span class="field-error">{{ 'profilePages.meaningfulTextRequired' | translate }}</span>
+                }
                 <div class="field-hint">{{ businessForm.get('shortDescription')?.value?.length || 0 }} / 100</div>
               </div>
               <div class="field">
@@ -267,14 +276,29 @@
                 <div class="field">
                   <label>{{ 'profilePages.accountHolder' | translate }}</label>
                   <input type="text" formControlName="accountHolderName" />
+                  @if (businessForm.get('accountHolderName')?.hasError('minTrimmedLength') && businessForm.get('accountHolderName')?.touched) {
+                    <span class="field-error">{{ 'profilePages.minTwoCharsRequired' | translate }}</span>
+                  }
+                  @if (businessForm.get('accountHolderName')?.hasError('meaningfulText') && businessForm.get('accountHolderName')?.touched) {
+                    <span class="field-error">{{ 'profilePages.meaningfulTextRequired' | translate }}</span>
+                  }
                 </div>
                 <div class="field">
                   <label>{{ 'profilePages.bankName' | translate }}</label>
                   <input type="text" formControlName="bankName" />
+                  @if (businessForm.get('bankName')?.hasError('minTrimmedLength') && businessForm.get('bankName')?.touched) {
+                    <span class="field-error">{{ 'profilePages.minTwoCharsRequired' | translate }}</span>
+                  }
+                  @if (businessForm.get('bankName')?.hasError('meaningfulText') && businessForm.get('bankName')?.touched) {
+                    <span class="field-error">{{ 'profilePages.meaningfulTextRequired' | translate }}</span>
+                  }
                 </div>
                 <div class="field">
                   <label>{{ 'profilePages.ibanLabel' | translate }}</label>
                   <input type="text" formControlName="iban" [placeholder]="'profilePages.ibanPlaceholder' | translate" />
+                  @if (businessForm.get('iban')?.hasError('ibanInvalid') && businessForm.get('iban')?.touched) {
+                    <span class="field-error">{{ 'profilePages.invalidIban' | translate }}</span>
+                  }
                 </div>
                 <div class="field">
                   <label>{{ 'profilePages.currencyLabel' | translate }}</label>
