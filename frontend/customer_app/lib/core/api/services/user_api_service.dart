@@ -1,5 +1,6 @@
- import 'dart:io';
+import 'dart:io';
 import 'package:dio/dio.dart';
+import '../api_endpoints.dart';
 import '../api_client.dart';
 
 /// Service API pour les opérations utilisateur
@@ -7,7 +8,7 @@ class UserApiService {
   final ApiClient _apiClient;
 
   UserApiService({ApiClient? apiClient})
-      : _apiClient = apiClient ?? ApiClient();
+    : _apiClient = apiClient ?? ApiClient();
 
   /// Met à jour le profil utilisateur
   Future<Map<String, dynamic>> updateUserProfile({
@@ -19,14 +20,14 @@ class UserApiService {
   }) async {
     try {
       final Map<String, dynamic> data = {};
-      
+
       if (firstName != null) data['firstName'] = firstName;
       if (lastName != null) data['lastName'] = lastName;
       if (email != null) data['email'] = email;
       if (phoneNumber != null) data['phoneNumber'] = phoneNumber;
 
       final response = await _apiClient.dio.put(
-        '/users/$userId',
+        '${ApiEndpoints.USER_BASE}/$userId',
         data: data,
       );
 
@@ -47,7 +48,7 @@ class UserApiService {
   }) async {
     try {
       String fileName = imageFile.path.split('/').last;
-      
+
       FormData formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(
           imageFile.path,
@@ -56,11 +57,9 @@ class UserApiService {
       });
 
       final response = await _apiClient.dio.post(
-        '/users/$userId/profile-picture',
+        '${ApiEndpoints.USER_BASE}/$userId/profile-picture',
         data: formData,
-        options: Options(
-          contentType: 'multipart/form-data',
-        ),
+        options: Options(contentType: 'multipart/form-data'),
       );
 
       if (response.statusCode == 200) {
@@ -76,7 +75,9 @@ class UserApiService {
   /// Récupère les informations utilisateur
   Future<Map<String, dynamic>> getUserInfo(String userId) async {
     try {
-      final response = await _apiClient.dio.get('/users/$userId');
+      final response = await _apiClient.dio.get(
+        '${ApiEndpoints.USER_BASE}/$userId',
+      );
 
       if (response.statusCode == 200) {
         return response.data as Map<String, dynamic>;

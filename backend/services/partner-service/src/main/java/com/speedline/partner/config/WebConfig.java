@@ -23,13 +23,36 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        if ("gcs".equalsIgnoreCase(storageType)) {
-            return;
-        }
+        Path configuredUploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+        Path workspaceUploadPath = Paths.get("uploads").toAbsolutePath().normalize();
+        Path backendUploadPath = Paths.get("backend", "uploads").toAbsolutePath().normalize();
 
-        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-        
+        // Primary media path used by current APIs
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + uploadPath.toString() + "/");
+                .addResourceLocations(
+                        toFileLocation(configuredUploadPath),
+                        toFileLocation(workspaceUploadPath),
+                        toFileLocation(backendUploadPath)
+                );
+
+        // Backward-compatibility for legacy URLs stored without /uploads prefix
+        registry.addResourceHandler("/partners/**")
+                .addResourceLocations(
+                        toFileLocation(configuredUploadPath.resolve("partners")),
+                        toFileLocation(workspaceUploadPath.resolve("partners")),
+                        toFileLocation(backendUploadPath.resolve("partners"))
+                );
+
+        registry.addResourceHandler("/categories/**")
+                .addResourceLocations(
+                        toFileLocation(configuredUploadPath.resolve("categories")),
+                        toFileLocation(workspaceUploadPath.resolve("categories")),
+                        toFileLocation(backendUploadPath.resolve("categories"))
+                );
+    }
+
+    private String toFileLocation(Path directory) {
+        // Uri form is cross-platform safe (Windows/Linux) and preserves absolute paths.
+        return directory.toUri().toString();
     }
 }

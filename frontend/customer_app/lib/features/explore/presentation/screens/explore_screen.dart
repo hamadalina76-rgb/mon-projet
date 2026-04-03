@@ -438,7 +438,14 @@ class _LocationHeader extends ConsumerWidget {
             : null) ??
         l10n.translate('default_location');
     return GestureDetector(
-      onTap: () => _showPicker(context, ref),
+      onTap: () => context.push(
+        RouteNames.confirmLocation,
+        extra: {
+          'latitude': loc?.latitude ?? 36.8065,
+          'longitude': loc?.longitude ?? 10.1815,
+          'initialAddress': loc?.formattedAddress ?? '',
+        },
+      ),
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: ResponsiveUtils.getResponsiveSpacing(context, 16),

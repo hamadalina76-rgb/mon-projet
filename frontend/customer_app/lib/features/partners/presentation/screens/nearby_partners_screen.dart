@@ -669,7 +669,7 @@ class _NearbyAppBar extends SliverPersistentHeaderDelegate {
                 // Back button — always visible
                 GestureDetector(
                   onTap: onBackTap,
-                  child: Container( 
+                  child: Container(
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
