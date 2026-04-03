@@ -6,8 +6,9 @@ import 'dart:io';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../config/dependency_injection/injection.dart';
+import 'package:customer_app/features/auth/domain/entities/user.dart';
 import '../../../../core/api/services/user_api_service.dart';
-import '../../../../core/localization/app_localizations.dart';
+import '../../../auth/presentation/providers/auth_notifier.dart';
 
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -62,7 +63,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -70,7 +70,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_camera, color: AppColors.primary),
-              title: Text(l10n.translate('take_photo')),
+              title: const Text('Take Photo'),
               onTap: () async {
                 Navigator.pop(context);
                 final XFile? photo = await _picker.pickImage(
@@ -86,7 +86,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library, color: AppColors.primary),
-              title: Text(l10n.translate('choose_from_gallery')),
+              title: const Text('Choose from Gallery'),
               onTap: () async {
                 Navigator.pop(context);
                 final XFile? image = await _picker.pickImage(
@@ -103,7 +103,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             if (_selectedImage != null)
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
-                title: Text(l10n.translate('remove_photo')),
+                title: const Text('Remove Photo'),
                 onTap: () {
                   Navigator.pop(context);
                   setState(() {
@@ -158,8 +158,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.translate('profile_updated_success')),
+          const SnackBar(
+            content: Text('Profile updated successfully!'),
             backgroundColor: AppColors.success,
           ),
         );
@@ -169,10 +169,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       debugPrint('Error saving profile: $e');
       if (mounted) {
         setState(() => _isLoading = false);
-        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${l10n.translate('profile_update_error')}: ${e.toString()}'),
+            content: Text('Failed to update profile: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -183,12 +182,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authNotifierProvider.notifier).currentUser;
-    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(l10n.translate('edit_profile')),
+        title: const Text('Edit Profile'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -250,9 +248,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: _pickImage,
-                  child: Text(
-                    l10n.translate('choose_photo_source'),
-                    style: const TextStyle(
+                  child: const Text(
+                    'Change Profile Photo',
+                    style: TextStyle(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
@@ -264,11 +262,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 // First Name Field
                 _buildTextField(
                   controller: _firstNameController,
-                  label: l10n.translate('first_name'),
+                  label: 'First Name',
                   icon: Icons.person_outline,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return l10n.translate('please_enter_first_name');
+                      return 'Please enter your first name';
                     }
                     return null;
                   },
@@ -279,11 +277,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 // Last Name Field
                 _buildTextField(
                   controller: _lastNameController,
-                  label: l10n.translate('last_name'),
+                  label: 'Last Name',
                   icon: Icons.person_outline,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return l10n.translate('please_enter_last_name');
+                      return 'Please enter your last name';
                     }
                     return null;
                   },
@@ -294,15 +292,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 // Email Field
                 _buildTextField(
                   controller: _emailController,
-                  label: l10n.translate('email'),
+                  label: 'Email',
                   icon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return l10n.translate('please_enter_email');
+                      return 'Please enter your email';
                     }
                     if (!value.contains('@')) {
-                      return l10n.translate('invalid_email');
+                      return 'Please enter a valid email';
                     }
                     return null;
                   },
@@ -313,15 +311,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 // Phone Field
                 _buildTextField(
                   controller: _phoneController,
-                  label: l10n.translate('phone_number'),
+                  label: 'Phone Number',
                   icon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return l10n.translate('please_enter_phone');
+                      return 'Please enter your phone number';
                     }
                     if (value.length < 8) {
-                      return l10n.translate('phone_min_length');
+                      return 'Phone number must be at least 8 digits';
                     }
                     return null;
                   },
@@ -352,9 +350,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                               strokeWidth: 2,
                             ),
                           )
-                        : Text(
-                            l10n.translate('save_changes'),
-                            style: const TextStyle(
+                        : const Text(
+                            'Save Changes',
+                            style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
@@ -377,9 +375,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
                       ),
                     ),
-                    child: Text(
-                      l10n.translate('cancel'),
-                      style: const TextStyle(
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),

@@ -73,9 +73,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ref.read(authNotifierProvider.notifier).logout();
               context.go('/login');
             },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: Text(l10n.translate('logout')),
           ),
         ],
@@ -86,14 +84,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
-    
+
     return authState.maybeWhen(
       authenticated: (user) => _buildProfileContent(user),
-      orElse: () => const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      ),
+      orElse: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
     );
   }
 
@@ -127,10 +122,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       CircleAvatar(
                         radius: 50,
                         backgroundColor: AppColors.primary.withOpacity(0.1),
-                        backgroundImage: user.profilePicture != null && user.profilePicture!.isNotEmpty
+                        backgroundImage:
+                            user.profilePicture != null &&
+                                user.profilePicture!.isNotEmpty
                             ? NetworkImage(user.profilePicture!)
                             : null,
-                        child: user.profilePicture == null || user.profilePicture!.isEmpty
+                        child:
+                            user.profilePicture == null ||
+                                user.profilePicture!.isEmpty
                             ? Text(
                                 user.firstName.substring(0, 1).toUpperCase(),
                                 style: const TextStyle(
@@ -149,7 +148,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             context.push('/edit-profile');
                           },
                           child: Container(
-                            padding: const EdgeInsets.all(AppConstants.borderRadiusSmall),
+                            padding: const EdgeInsets.all(
+                              AppConstants.borderRadiusSmall,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.primary,
                               shape: BoxShape.circle,
@@ -166,7 +167,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // User Name
                   Text(
                     '${user.firstName} ${user.lastName}',
@@ -177,42 +178,58 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  
+
                   // Email
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.email_outlined, size: 14, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
-                      Text(
-                        user.email,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                      Icon(
+                        Icons.email_outlined,
+                        size: 14,
+                        color: Colors.grey[600],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  
-                  // Phone Number
-                  if (user.phone.isNotEmpty)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.phone_outlined, size: 14, color: Colors.grey[600]),
-                        const SizedBox(width: 4),
-                        Text(
-                          user.phone,
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          user.email,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600],
                           ),
                         ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Phone Number
+                  if (user.phone.isNotEmpty)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.phone_outlined,
+                          size: 14,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            user.phone,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   const SizedBox(height: 12),
-                  
+
                   // Premium Member Badge
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -221,7 +238,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(AppConstants.cardPadding),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.cardPadding,
+                      ),
                     ),
                     child: Text(
                       l10n.translate('premium_member'),
@@ -236,9 +255,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Delivery Locations Section
             _buildSection(
               l10n: l10n,
@@ -247,9 +266,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               onAction: () => context.push(RouteNames.addresses),
               child: _buildAddressSection(l10n),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Payment Methods Section
             _buildSection(
               l10n: l10n,
@@ -260,9 +279,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               },
               child: _buildPaymentCard(),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Order History Section
             _buildSection(
               l10n: l10n,
@@ -272,15 +291,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 // TODO: Navigate to full order history
               },
               child: Column(
-                children: _mockOrders.map((order) => _buildOrderItem(order, l10n)).toList(),
+                children: _mockOrders
+                    .map((order) => _buildOrderItem(order, l10n))
+                    .toList(),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Logout Button
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppConstants.horizontalPadding),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.horizontalPadding,
+              ),
               child: SizedBox(
                 width: double.infinity,
                 height: AppConstants.buttonHeightSmall,
@@ -303,7 +326,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 100), // Space for bottom nav
           ],
         ),
@@ -337,9 +360,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildFallbackSection(AppLocalizations l10n) {
-    final loc = ref.watch(
-      locationNotifierProvider.select((s) => s.location),
-    );
+    final loc = ref.watch(locationNotifierProvider.select((s) => s.location));
     return Column(
       children: [
         _buildSavedAddressTile(l10n, loc),
@@ -371,10 +392,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final title = address.label?.isNotEmpty == true
         ? address.label!
         : _addressTypeLabel(l10n, address.type);
-    final subtitle = address.formattedAddress ??
-        [address.street, address.city]
-            .where((s) => s != null && s!.isNotEmpty)
-            .join(', ');
+    final subtitle =
+        address.formattedAddress ??
+        [
+          address.street,
+          address.city,
+        ].where((s) => s != null && s!.isNotEmpty).join(', ');
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Container(
@@ -384,7 +407,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           color: AppColors.primary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
         ),
-        child: Icon(icon, color: AppColors.primary, size: AppConstants.iconSizeMedium),
+        child: Icon(
+          icon,
+          color: AppColors.primary,
+          size: AppConstants.iconSizeMedium,
+        ),
       ),
       title: Text(
         title,
@@ -449,7 +476,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
 
     final subtitle = loc != null
-        ? (loc.shortAddress.isNotEmpty ? loc.shortAddress : loc.formattedAddress)
+        ? (loc.shortAddress.isNotEmpty
+              ? loc.shortAddress
+              : loc.formattedAddress)
         : l10n.translate('use_current_location');
 
     return ListTile(
@@ -461,7 +490,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           color: AppColors.primary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
         ),
-        child: Icon(icon, color: AppColors.primary, size: AppConstants.iconSizeMedium),
+        child: Icon(
+          icon,
+          color: AppColors.primary,
+          size: AppConstants.iconSizeMedium,
+        ),
       ),
       title: Row(
         children: [
@@ -486,7 +519,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               child: Text(
                 l10n.translate('live_badge'),
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
@@ -606,7 +643,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: AppColors.secondaryDark,
-                borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall / 2),
+                borderRadius: BorderRadius.circular(
+                  AppConstants.borderRadiusSmall / 2,
+                ),
               ),
               child: Text(
                 l10n.translate('live_badge'),
@@ -624,18 +663,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         padding: const EdgeInsets.only(top: 4),
         child: Text(
           subtitle,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
-          ),
+          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
       ),
-      trailing: const Icon(
-        Icons.chevron_right,
-        color: Colors.grey,
-      ),
+      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
     );
   }
 
@@ -650,7 +683,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!, width: 2, style: BorderStyle.solid),
+          border: Border.all(
+            color: Colors.grey[300]!,
+            width: 2,
+            style: BorderStyle.solid,
+          ),
           borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
         ),
         child: Icon(
@@ -704,10 +741,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppConstants.borderRadiusMedium, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppConstants.borderRadiusMedium,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.borderRadiusMedium,
+                  ),
                 ),
                 child: const Text(
                   'Primary',
@@ -826,7 +868,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 height: 56,
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.borderRadiusMedium,
+                  ),
                 ),
                 child: Center(
                   child: Text(
@@ -836,7 +880,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               const SizedBox(width: 16),
-              
+
               // Order Info
               Expanded(
                 child: Column(
@@ -861,12 +905,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          '•',
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                          ),
-                        ),
+                        Text('•', style: TextStyle(color: Colors.grey[400])),
                         const SizedBox(width: 8),
                         Text(
                           order['amount'],
@@ -881,10 +920,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
               ),
-              
+
               // Status Badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppConstants.borderRadiusMedium, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppConstants.borderRadiusMedium,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.green[50],
                   borderRadius: BorderRadius.circular(AppConstants.cardPadding),
@@ -900,34 +942,41 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Action Buttons
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 40,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // TODO: Reorder
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 360;
+
+              Widget reorderButton = SizedBox(
+                height: 40,
+                child: ElevatedButton(
+                  onPressed: () {
+                    // TODO: Reorder
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.borderRadiusSmall,
                       ),
-                      elevation: 0,
                     ),
+                    elevation: 0,
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.refresh, size: 18),
                         const SizedBox(width: 6),
                         Text(
                           l10n.translate('reorder'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -937,9 +986,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
+              );
+
+              Widget detailsButton = SizedBox(
                 height: 40,
                 child: OutlinedButton(
                   onPressed: () {
@@ -949,19 +998,41 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     foregroundColor: Colors.grey[700],
                     side: BorderSide(color: Colors.grey[300]!),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.borderRadiusSmall,
+                      ),
                     ),
                   ),
                   child: Text(
                     l10n.translate('view_details'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-              ),
-            ],
+              );
+
+              if (isCompact) {
+                return Column(
+                  children: [
+                    SizedBox(width: double.infinity, child: reorderButton),
+                    const SizedBox(height: 8),
+                    SizedBox(width: double.infinity, child: detailsButton),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: reorderButton),
+                  const SizedBox(width: 12),
+                  Expanded(child: detailsButton),
+                ],
+              );
+            },
           ),
         ],
       ),
