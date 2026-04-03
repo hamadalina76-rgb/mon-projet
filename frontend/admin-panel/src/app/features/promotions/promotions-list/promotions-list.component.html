@@ -1,0 +1,196 @@
+<!-- Statistics Cards -->
+@if (stats()) {
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="material-icons-round stat-icon active">check_circle</span>
+      <div class="stat-body">
+        <div class="stat-value">{{ stats()!.activeCount }}</div>
+        <div class="stat-label">{{ 'promotions.stats.active' | translate }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="material-icons-round stat-icon inactive">pause_circle</span>
+      <div class="stat-body">
+        <div class="stat-value">{{ stats()!.inactiveCount }}</div>
+        <div class="stat-label">{{ 'promotions.stats.inactive' | translate }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="material-icons-round stat-icon expired">schedule</span>
+      <div class="stat-body">
+        <div class="stat-value">{{ stats()!.expiredCount }}</div>
+        <div class="stat-label">{{ 'promotions.stats.expired' | translate }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="material-icons-round stat-icon usages">confirmation_number</span>
+      <div class="stat-body">
+        <div class="stat-value">{{ stats()!.totalUsages }}</div>
+        <div class="stat-label">{{ 'promotions.stats.totalUsages' | translate }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="material-icons-round stat-icon discount">savings</span>
+      <div class="stat-body">
+        <div class="stat-value">{{ stats()!.totalDiscount | number:'1.0-0' }} TND</div>
+        <div class="stat-label">{{ 'promotions.stats.totalDiscount' | translate }}</div>
+      </div>
+    </div>
+  </div>
+}
+
+<app-list-page
+  [title]="'promotions.title'"
+  [showBackButton]="true"
+  backLink="/dashboard"
+  [loading]="loading()"
+  [empty]="paginatedPromotions.length === 0"
+  [emptyMessage]="'promotions.noPromotions'"
+  emptyIcon="local_offer"
+  [totalItems]="totalItems"
+  [currentPage]="currentPage"
+  [itemsPerPage]="itemsPerPage"
+  [itemsPerPageOptions]="[20, 50, 100]"
+  [showPagination]="totalItems > 0"
+  [itemsPerPageLabel]="'promotions.itemsPerPage'"
+  [ofLabel]="'promotions.of'"
+  (pageChange)="onPageChange($event)"
+>
+  <!-- Header Action -->
+  <a headerAction class="btn-add-promotion" routerLink="/promotions/new">
+    <span class="material-icons-round">add</span>
+    {{ 'promotions.addPromotion' | translate }}
+  </a>
+
+  <!-- Filters -->
+  <div filters class="filters-bar">
+    <div class="search-box">
+      <span class="material-icons-round search-icon">search</span>
+      <input
+        type="text"
+        class="search-input"
+        [placeholder]="'promotions.searchPlaceholder' | translate"
+        [(ngModel)]="searchText"
+        (ngModelChange)="onSearchChange()"
+      />
+    </div>
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange()">
+        <mat-option value="all">{{ 'promotions.filters.allStatuses' | translate }}</mat-option>
+        <mat-option value="ACTIVE">{{ 'promotions.statuses.ACTIVE' | translate }}</mat-option>
+        <mat-option value="INACTIVE">{{ 'promotions.statuses.INACTIVE' | translate }}</mat-option>
+        <mat-option value="SCHEDULED">{{ 'promotions.statuses.SCHEDULED' | translate }}</mat-option>
+        <mat-option value="EXPIRED">{{ 'promotions.statuses.EXPIRED' | translate }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-select [(ngModel)]="selectedType" (selectionChange)="onTypeChange()">
+        <mat-option value="all">{{ 'promotions.filters.allTypes' | translate }}</mat-option>
+        <mat-option value="PERCENTAGE">{{ 'promotions.types.PERCENTAGE' | translate }}</mat-option>
+        <mat-option value="FIXED_AMOUNT">{{ 'promotions.types.FIXED_AMOUNT' | translate }}</mat-option>
+        <mat-option value="FREE_DELIVERY">{{ 'promotions.types.FREE_DELIVERY' | translate }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Table -->
+  <table table class="data-table">
+    <thead>
+      <tr>
+        <th class="col-code">{{ 'promotions.code' | translate | uppercase }}</th>
+        <th class="col-type">{{ 'promotions.type' | translate | uppercase }}</th>
+        <th class="col-value">{{ 'promotions.value' | translate | uppercase }}</th>
+        <th class="col-usage">{{ 'promotions.usages' | translate | uppercase }}</th>
+        <th class="col-dates">{{ 'promotions.validFrom' | translate | uppercase }}</th>
+        <th class="col-status">{{ 'promotions.status' | translate | uppercase }}</th>
+        <th class="col-actions">{{ 'promotions.actions.title' | translate | uppercase }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (promo of paginatedPromotions; track promo.id) {
+        <tr class="table-row">
+          <!-- Code + Name -->
+          <td class="col-code">
+            <div class="promo-info">
+              <div class="promo-code">{{ promo.code }}</div>
+              @if (promo.name) {
+                <div class="promo-name">{{ promo.name }}</div>
+              }
+            </div>
+          </td>
+
+          <!-- Type -->
+          <td class="col-type">
+            <span class="type-badge type-badge--{{ promo.type | lowercase }}">
+              {{ getTypeLabel(promo.type) }}
+            </span>
+          </td>
+
+          <!-- Value -->
+          <td class="col-value">{{ formatValue(promo) }}</td>
+
+          <!-- Usage -->
+          <td class="col-usage">
+            {{ promo.usageCount || 0 }} / {{ promo.usageLimitTotal || '∞' }}
+          </td>
+
+          <!-- Dates -->
+          <td class="col-dates">
+            {{ promo.startDate | date:'dd/MM/yyyy' }} — {{ promo.endDate | date:'dd/MM/yyyy' }}
+          </td>
+
+          <!-- Status -->
+          <td class="col-status">
+            <span class="status-badge" [ngClass]="'status-' + (promo.status || '').toLowerCase()">
+              {{ getStatusLabel(promo.status) }}
+            </span>
+          </td>
+
+          <!-- Actions -->
+          <td class="col-actions">
+            <div class="action-buttons">
+              <a
+                class="action-btn action-btn--edit"
+                [routerLink]="['/promotions', promo.id, 'edit']"
+                [matTooltip]="'promotions.actions.edit' | translate"
+              >
+                <span class="material-icons-round">edit</span>
+              </a>
+              <a
+                class="action-btn"
+                [routerLink]="['/promotions', promo.id, 'analytics']"
+                [matTooltip]="'promotions.actions.analytics' | translate"
+              >
+                <span class="material-icons-round">bar_chart</span>
+              </a>
+              <button
+                class="action-btn"
+                [matMenuTriggerFor]="promoMenu"
+                [matTooltip]="'promotions.actions.more' | translate"
+              >
+                <span class="material-icons-round">more_vert</span>
+              </button>
+              <mat-menu #promoMenu="matMenu">
+                @if (promo.isActive) {
+                  <button mat-menu-item (click)="togglePromotion(promo)">
+                    <span class="material-icons-round" style="color: #EF4444">pause_circle</span>
+                    <span>{{ 'promotions.actions.deactivate' | translate }}</span>
+                  </button>
+                } @else {
+                  <button mat-menu-item (click)="togglePromotion(promo)">
+                    <span class="material-icons-round" style="color: #10B981">play_circle</span>
+                    <span>{{ 'promotions.actions.activate' | translate }}</span>
+                  </button>
+                }
+                <button mat-menu-item (click)="deletePromotion(promo)">
+                  <span class="material-icons-round" style="color: #EF4444">delete</span>
+                  <span>{{ 'promotions.actions.delete' | translate }}</span>
+                </button>
+              </mat-menu>
+            </div>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</app-list-page>
