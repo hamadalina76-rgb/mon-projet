@@ -1,5 +1,6 @@
 // src/app/features/reviews/services/reviews.service.ts
 import { Injectable, inject } from '@angular/core';
+import { HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ApiService } from '@core/services/api.service';
 
@@ -10,11 +11,13 @@ export class ReviewsService {
   private api = inject(ApiService);
 
   getPartnerReviews(page: number, pageSize: number): Observable<any> {
-    return this.api.get('admin/reviews/partners', { page, size: pageSize });
+    const params = new HttpParams().set('page', String(page)).set('size', String(pageSize));
+    return this.api.get('admin/reviews/partners', params);
   }
 
   getCourierReviews(page: number, pageSize: number): Observable<any> {
-    return this.api.get('admin/reviews/couriers', { page, size: pageSize });
+    const params = new HttpParams().set('page', String(page)).set('size', String(pageSize));
+    return this.api.get('admin/reviews/couriers', params);
   }
 
   moderateReview(id: string, action: 'approve' | 'reject'): Observable<any> {

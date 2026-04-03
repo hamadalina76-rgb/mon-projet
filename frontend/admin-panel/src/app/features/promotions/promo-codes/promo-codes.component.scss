@@ -1,5 +1,107 @@
 // Promo Codes Component Styles
-@import 'variables';
+
+.promo-codes-page {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .header-icon { font-size: 36px; width: 36px; height: 36px; color: var(--primary, #6c3f8d); }
+    h1 { margin: 0; font-size: 1.6rem; font-weight: 600; }
+    .subtitle { margin: 0; color: #666; font-size: 0.85rem; }
+  }
+}
+
+.filters-card {
+  margin-bottom: 16px;
+  .filters-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 8px 0;
+    .search-field { flex: 1; min-width: 220px; }
+    mat-form-field { margin-bottom: 0; }
+  }
+}
+
+.table-card {
+  .table-container {
+    position: relative;
+    min-height: 200px;
+    &.loading { opacity: 0.5; pointer-events: none; }
+  }
+
+  .loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    background: rgba(255,255,255,0.6);
+  }
+}
+
+.promotions-table {
+  width: 100%;
+  .table-row { cursor: pointer; &:hover { background: #faf5ff; } }
+}
+
+.code-chip {
+  font-family: monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #f3e8ff;
+  color: #6c3f8d;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.type-chip {
+  font-size: 0.78rem !important;
+  height: 24px !important;
+  &.type-percentage    { background: #e8f5e9; color: #2e7d32; }
+  &.type-fixed_amount  { background: #e3f2fd; color: #1565c0; }
+  &.type-free_delivery { background: #fff3e0; color: #e65100; }
+}
+
+.status-chip {
+  font-size: 0.78rem !important;
+  height: 24px !important;
+  &.chip-active    { background: #e8f5e9; color: #2e7d32; }
+  &.chip-inactive  { background: #f5f5f5; color: #757575; }
+  &.chip-scheduled { background: #e3f2fd; color: #1565c0; }
+  &.chip-expired   { background: #fce4ec; color: #c62828; }
+}
+
+.date-range { font-size: 0.82rem; color: #555; }
+.no-limit   { font-size: 0.82rem; color: #aaa; }
+
+.action-btn { opacity: 0; transition: opacity 0.15s; }
+.table-row:hover .action-btn { opacity: 1; }
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 64px 24px;
+  color: #bbb;
+  mat-icon { font-size: 64px; width: 64px; height: 64px; }
+  p { font-size: 1.1rem; margin: 0; }
+}
+
 
 .promo-codes-page {
   padding: 1.5rem;

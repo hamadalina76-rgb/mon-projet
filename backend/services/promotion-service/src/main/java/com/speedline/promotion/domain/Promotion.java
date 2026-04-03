@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
@@ -24,6 +25,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@SQLRestriction("deleted = false")
 public class Promotion {
 
     @Id
@@ -42,6 +44,11 @@ public class Promotion {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PromotionType type;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private PromotionStatus status = PromotionStatus.ACTIVE;
 
     @Column(precision = 10, scale = 2)
     private BigDecimal value;
@@ -84,6 +91,12 @@ public class Promotion {
     @Column(name = "applicable_category_ids", columnDefinition = "TEXT")
     private String applicableCategoryIds;
 
+    /**
+     * IDs des zones éligibles pour FREE_DELIVERY (comma-separated, null = toutes)
+     */
+    @Column(name = "applicable_zone_ids", columnDefinition = "TEXT")
+    private String applicableZoneIds;
+
     @Column(name = "first_order_only")
     @Builder.Default
     private Boolean firstOrderOnly = false;
@@ -96,11 +109,12 @@ public class Promotion {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public enum PromotionType {
-        PERCENTAGE,
-        FIXED_AMOUNT,
-        FREE_DELIVERY
-    }
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     public boolean isValid() {
         LocalDateTime now = LocalDateTime.now();

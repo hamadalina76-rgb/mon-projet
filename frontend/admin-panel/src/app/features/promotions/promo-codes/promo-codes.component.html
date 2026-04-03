@@ -1,25 +1,131 @@
-<!-- Promo Codes Component Template -->
 <div class="promo-codes-page">
-  <header class="page-header">
-    <h1>{{ 'promotions.promoCodes' | translate }}</h1>
-    <div class="header-actions">
-      <button mat-flat-button color="primary" (click)="openCreateDialog()">
-        <mat-icon>add</mat-icon>
-        Nouveau code promo
-      </button>
+  <div class="page-header">
+    <div class="header-title">
+      <mat-icon class="header-icon">confirmation_number</mat-icon>
+      <div>
+        <h1>Codes Promo</h1>
+        <p class="subtitle">Tous les codes de réduction</p>
+      </div>
     </div>
-  </header>
-
-  <!-- Stats -->
-  <div class="stats-row">
-    <!-- Promo code stats -->
+    <button mat-flat-button color="primary" (click)="create()">
+      <mat-icon>add</mat-icon> Nouveau code
+    </button>
   </div>
 
-  <!-- Data Table -->
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <div class="filters-row">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Rechercher un code</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input matInput [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+               placeholder="RAMADAN2026…">
+        <button *ngIf="searchTerm" matSuffix mat-icon-button (click)="searchTerm=''; onFilterChange()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Statut</mat-label>
+        <mat-select [(ngModel)]="selectedStatus" (ngModelChange)="onFilterChange()">
+          <mat-option *ngFor="let s of statuses" [value]="s.value">{{ s.label }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card>
+
+  <!-- Table -->
   <mat-card class="table-card">
-    <app-data-table
-      [data]="promoCodes"
-      [loading]="loading">
-    </app-data-table>
+    <div class="table-container" [class.loading]="loading">
+      <div *ngIf="loading" class="loading-overlay">
+        <mat-spinner diameter="40"></mat-spinner>
+      </div>
+
+      <table mat-table [dataSource]="promotions" class="promotions-table">
+
+        <ng-container matColumnDef="code">
+          <th mat-header-cell *matHeaderCellDef>Code</th>
+          <td mat-cell *matCellDef="let p"><span class="code-chip">{{ p.code }}</span></td>
+        </ng-container>
+
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Nom</th>
+          <td mat-cell *matCellDef="let p">{{ p.name }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="type">
+          <th mat-header-cell *matHeaderCellDef>Type</th>
+          <td mat-cell *matCellDef="let p">
+            <mat-chip class="type-chip type-{{ p.type | lowercase }}">
+              {{ p.type === 'PERCENTAGE' ? 'Pourcentage' :
+                 p.type === 'FIXED_AMOUNT' ? 'Montant fixe' : 'Livraison' }}
+            </mat-chip>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="value">
+          <th mat-header-cell *matHeaderCellDef>Réduction</th>
+          <td mat-cell *matCellDef="let p"><strong>{{ formatDiscount(p) }}</strong></td>
+        </ng-container>
+
+        <ng-container matColumnDef="usage">
+          <th mat-header-cell *matHeaderCellDef>Utilisations</th>
+          <td mat-cell *matCellDef="let p">
+            {{ p.usageCount }}{{ p.usageLimitTotal ? ' / ' + p.usageLimitTotal : '' }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="dates">
+          <th mat-header-cell *matHeaderCellDef>Validité</th>
+          <td mat-cell *matCellDef="let p">
+            <span *ngIf="p.endDate" class="date-range">
+              {{ p.startDate | date:'dd/MM/yy' }} → {{ p.endDate | date:'dd/MM/yy' }}
+            </span>
+            <span *ngIf="!p.endDate" class="no-limit">Sans limite</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Statut</th>
+          <td mat-cell *matCellDef="let p">
+            <mat-chip class="status-chip {{ statusClass(p.status) }}">{{ statusLabel(p.status) }}</mat-chip>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let p">
+            <button mat-icon-button [matMenuTriggerFor]="menu" class="action-btn">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #menu="matMenu">
+              <button mat-menu-item (click)="edit(p)"><mat-icon>edit</mat-icon><span>Modifier</span></button>
+              <button mat-menu-item (click)="analytics(p)"><mat-icon>bar_chart</mat-icon><span>Statistiques</span></button>
+              <mat-divider></mat-divider>
+              <button mat-menu-item (click)="toggle(p)">
+                <mat-icon>{{ p.isActive ? 'pause_circle' : 'play_circle' }}</mat-icon>
+                <span>{{ p.isActive ? 'Désactiver' : 'Activer' }}</span>
+              </button>
+            </mat-menu>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+            class="table-row" (click)="edit(row)"></tr>
+      </table>
+
+      <div *ngIf="!loading && promotions.length === 0" class="empty-state">
+        <mat-icon>confirmation_number</mat-icon>
+        <p>Aucun code promo</p>
+        <button mat-stroked-button (click)="create()">Créer un code promo</button>
+      </div>
+    </div>
+
+    <mat-paginator [length]="totalElements" [pageSize]="pageSize"
+                   [pageSizeOptions]="[10,20,50]" [pageIndex]="page"
+                   (page)="onPageChange($event)" showFirstLastButtons>
+    </mat-paginator>
   </mat-card>
 </div>
+

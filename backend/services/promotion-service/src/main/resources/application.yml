@@ -34,6 +34,11 @@ spring:
           max-active: 16
           max-idle: 8
           min-idle: 2
+  cloud:
+    gcp:
+      project-id: ${GCP_PROJECT_ID:speedline-local}
+      pubsub:
+        emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8090}
 
 eureka:
   client:

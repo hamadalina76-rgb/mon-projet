@@ -236,6 +236,20 @@ spring:
                 name: promotionServiceBreaker
                 fallbackUri: forward:/fallback/promotion
 
+        # Promotion Service (v1 API - admin panel)
+        - id: promotion-service-v1
+          uri: lb://promotion-service
+          predicates:
+            - Path=/api/v1/promotions/**
+          filters:
+            - StripPrefix=2
+            - AuthenticationFilter
+            - RoleAuthorizationFilter
+            - name: CircuitBreaker
+              args:
+                name: promotionServiceBreaker
+                fallbackUri: forward:/fallback/promotion
+
         # Review Service
         - id: review-service
           uri: lb://review-service
