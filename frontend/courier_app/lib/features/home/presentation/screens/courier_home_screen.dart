@@ -18,6 +18,7 @@ import '../../../../providers/tracking_provider.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../providers/current_courier_provider.dart';
+import '../../../notifications/presentation/providers/notifications_provider.dart';
 import '../../../../config/runtime_config.dart';
 
 class CourierHomeScreen extends ConsumerStatefulWidget {
@@ -276,6 +277,8 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
     final courierAsync = ref.watch(currentCourierProvider);
     final courier = courierAsync is AsyncData ? courierAsync.value : null;
     final profileUrl = _resolveProfileImageUrl(courier?.photoUrl);
+    final notificationsState = ref.watch(notificationsProvider);
+    final unreadCount = notificationsState.unreadCount;
 
     final statusText = _statusLabel(trackingState, _currentPosition, l10n);
     final wsBadgeText = _wsLabel(trackingState, wsState, l10n);
@@ -444,10 +447,60 @@ class _CourierHomeScreenState extends ConsumerState<CourierHomeScreen> {
                         ),
                       ),
                       SizedBox(width: 10.w),
-                      CircleAvatar(
-                        radius: 20.r,
-                        backgroundColor: Colors.white,
-                        child: Icon(Icons.notifications, color: AppColors.primary, size: 20.sp),
+                      GestureDetector(
+                        onTap: () async {
+                          await context.push('/notifications');
+                          if (!mounted) {
+                            return;
+                          }
+                          ref.read(notificationsProvider.notifier).loadUnreadCount();
+                        },
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            CircleAvatar(
+                              radius: 20.r,
+                              backgroundColor: Colors.white,
+                              child: Icon(
+                                Icons.notifications,
+                                color: AppColors.primary,
+                                size: 20.sp,
+                              ),
+                            ),
+                            if (unreadCount > 0)
+                              Positioned(
+                                right: -2.w,
+                                top: -2.h,
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    minWidth: 16.w,
+                                    minHeight: 16.w,
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 4.w,
+                                    vertical: 1.h,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 1.3,
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    unreadCount > 99 ? '99+' : '$unreadCount',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9.sp,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ],
                   )

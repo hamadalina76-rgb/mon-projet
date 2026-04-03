@@ -107,14 +107,17 @@
   align-items: center;
   gap: 4px;
 
-  .lang-flag {
-    font-size: 1.25rem;
-    line-height: 1;
-  }
-
   .material-icons {
     font-size: 18px;
   }
+}
+
+.lang-flag-img {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: 0 0 18px;
 }
 
 .lang-dropdown {

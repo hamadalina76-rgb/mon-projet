@@ -1,7 +1,15 @@
 // src/app/features/profile/business-info/business-info.component.ts - Angular 19
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  FormBuilder,
+  FormGroup,
+  Validators,
+  AbstractControl,
+  ValidationErrors,
+  ValidatorFn,
+} from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -65,10 +73,72 @@ export class BusinessInfoComponent implements OnInit {
   private selectedLogoFile: File | null = null;
   private selectedCoverFile: File | null = null;
 
+  private meaningfulTextValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const raw = control.value;
+      if (raw == null) return null;
+
+      const value = String(raw).trim();
+      if (!value) return null;
+
+      // Require at least one unicode letter to avoid numeric-only or meaningless symbols.
+      const hasLetter = /\p{L}/u.test(value);
+      return hasLetter ? null : { meaningfulText: true };
+    };
+  }
+
+  private minTrimmedLengthValidator(min: number): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const raw = control.value;
+      if (raw == null) return null;
+
+      const value = String(raw).trim();
+      if (!value) return null;
+
+      return value.length >= min
+        ? null
+        : { minTrimmedLength: { requiredLength: min, actualLength: value.length } };
+    };
+  }
+
+  private ibanValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const raw = control.value;
+      if (raw == null) return null;
+
+      const value = String(raw).toUpperCase().replace(/\s+/g, '');
+      if (!value) return null;
+
+      // Generic IBAN structure: 2 letters + 2 digits + BBAN
+      if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(value)) {
+        return { ibanInvalid: true };
+      }
+
+      const rearranged = `${value.substring(4)}${value.substring(0, 4)}`;
+      let numeric = '';
+
+      for (const ch of rearranged) {
+        const code = ch.charCodeAt(0);
+        if (code >= 65 && code <= 90) {
+          numeric += String(code - 55);
+        } else {
+          numeric += ch;
+        }
+      }
+
+      let mod = 0;
+      for (const ch of numeric) {
+        mod = (mod * 10 + Number(ch)) % 97;
+      }
+
+      return mod === 1 ? null : { ibanInvalid: true };
+    };
+  }
+
   businessForm: FormGroup = this.fb.group({
-    businessName: ['', Validators.required],
-    brandName: [''],
-    shortDescription: ['', Validators.maxLength(100)],
+    businessName: ['', [Validators.required, this.meaningfulTextValidator()]],
+    brandName: ['', [this.meaningfulTextValidator()]],
+    shortDescription: ['', [Validators.maxLength(100), this.meaningfulTextValidator()]],
     description: ['', Validators.maxLength(500)],
     type: ['', Validators.required],
     address: [''],
@@ -90,9 +160,9 @@ export class BusinessInfoComponent implements OnInit {
     legalRepFirstName: [''],
     legalRepLastName: [''],
     position: [''],
-    accountHolderName: [''],
-    iban: [''],
-    bankName: [''],
+    accountHolderName: ['', [this.minTrimmedLengthValidator(2), this.meaningfulTextValidator()]],
+    iban: ['', [this.ibanValidator()]],
+    bankName: ['', [this.minTrimmedLengthValidator(2), this.meaningfulTextValidator()]],
     currency: ['TND'],
   });
 

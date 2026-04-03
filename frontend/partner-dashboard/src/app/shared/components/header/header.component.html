@@ -13,14 +13,14 @@
     <!-- Language -->
     <div class="header-action lang-action">
       <button type="button" class="icon-btn lang-btn" (click)="toggleLangMenu()" [title]="'sidebar.language' | translate">
-        <span class="lang-flag">{{ currentLangFlag() }}</span>
+        <img class="lang-flag-img" [src]="currentLangFlag()" alt="Current language" width="18" height="18" />
         <span class="material-icons">expand_more</span>
       </button>
       @if (showLangMenu()) {
         <div class="dropdown lang-dropdown">
           @for (lang of availableLanguages; track lang.code) {
             <button type="button" class="dropdown-item" [class.active]="currentLang() === lang.code" (click)="selectLanguage(lang.code)">
-              <span class="lang-flag">{{ lang.flag }}</span>
+              <img class="lang-flag-img" [src]="lang.flagIcon" [alt]="lang.name" width="18" height="18" />
               <span>{{ lang.name }}</span>
             </button>
           }

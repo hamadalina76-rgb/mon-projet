@@ -51,9 +51,9 @@ export class RegisterComponent {
   currentYear = new Date().getFullYear();
 
   availableLanguages = [
-    { code: 'fr', name: 'Français', flag: '🇫🇷' },
-    { code: 'en', name: 'English', flag: '🇬🇧' },
-    { code: 'ar', name: 'العربية', flag: '🇹🇳' },
+    { code: 'fr', name: 'Français', flagIcon: 'assets/image/flags/fr.svg' },
+    { code: 'en', name: 'English', flagIcon: 'assets/image/flags/gb.svg' },
+    { code: 'ar', name: 'العربية', flagIcon: 'assets/image/flags/tn.svg' },
   ];
 
   // Simple registration form - only fields needed by auth-service

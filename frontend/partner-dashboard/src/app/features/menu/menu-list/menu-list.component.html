@@ -6,12 +6,6 @@
       <p class="page-subtitle">{{ 'MENU.LIST.SUBTITLE' | translate }}</p>
     </div>
     <div class="header-actions">
-      @if (activeTab() === 0) {
-        <button mat-flat-button class="btn-primary" (click)="openCreatePanel()">
-          <mat-icon>add</mat-icon>
-          {{ 'MENU.ADD_CATEGORY' | translate }}
-        </button>
-      }
       @if (activeTab() === 1) {
         <button mat-flat-button class="btn-primary" routerLink="products/new">
           <mat-icon>add</mat-icon>

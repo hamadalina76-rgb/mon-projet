@@ -12,6 +12,7 @@ import '../../features/auth/presentation/screens/pending_approval_screen.dart';
 import '../../features/auth/presentation/screens/rejected_screen.dart';
 import '../../features/home/presentation/screens/main_navigation_screen.dart';
 import '../../features/deliveries/presentation/screens/active_delivery_screen.dart';
+import '../../features/notifications/presentation/screens/notifications_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -66,6 +67,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/active-delivery',
         builder: (context, state) => const ActiveDeliveryScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationsScreen(),
       ),
     ],
   );
