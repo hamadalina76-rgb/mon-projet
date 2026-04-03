@@ -1,0 +1,241 @@
+.analytics-container {
+  padding: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Header */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .header-text {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .page-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+
+  .promo-code-badge {
+    background: #e3f2fd;
+    color: #1565c0;
+    font-family: monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+}
+
+/* Loading */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 60px;
+  color: #666;
+}
+
+/* Error */
+.error-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background: #fff3f3;
+  border-left: 4px solid #f44336;
+  color: #c62828;
+}
+
+/* KPI Row */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: 12px;
+
+  .kpi-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    mat-icon {
+      color: white;
+      font-size: 24px;
+    }
+
+    &.usage   { background: linear-gradient(135deg, #667eea, #764ba2); }
+    &.savings { background: linear-gradient(135deg, #11998e, #38ef7d); }
+    &.users   { background: linear-gradient(135deg, #f093fb, #f5576c); }
+    &.avg     { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+  }
+
+  .kpi-body {
+    .kpi-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      line-height: 1;
+    }
+    .kpi-label {
+      font-size: 0.78rem;
+      color: #888;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  }
+}
+
+/* Usage rate */
+.usage-rate-card {
+  border-radius: 12px;
+
+  mat-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .quota-info {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 12px;
+
+    .quota-used  { font-size: 1.2rem; font-weight: 700; color: #1a1a1a; }
+    .quota-sep   { color: #ccc; }
+    .quota-total { color: #888; }
+    .quota-pct   { margin-left: auto; font-size: 1.4rem; font-weight: 800; }
+  }
+
+  .progress-track {
+    height: 12px;
+    background: #f0f0f0;
+    border-radius: 100px;
+    overflow: hidden;
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 100px;
+      transition: width 0.6s ease;
+    }
+  }
+}
+
+/* Details */
+.details-card {
+  border-radius: 12px;
+
+  mat-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    margin-top: 8px;
+  }
+
+  .detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    .detail-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #999;
+    }
+
+    .detail-value {
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+  }
+}
+
+/* Chips */
+mat-chip {
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+
+  &.chip-type-percentage { background: #e8f5e9 !important; color: #2e7d32 !important; }
+  &.chip-type-fixed_amount { background: #e3f2fd !important; color: #1565c0 !important; }
+  &.chip-type-free_delivery { background: #f3e5f5 !important; color: #6a1b9a !important; }
+
+  &.chip-status-active   { background: #e8f5e9 !important; color: #2e7d32 !important; }
+  &.chip-status-inactive { background: #f5f5f5 !important; color: #757575 !important; }
+  &.chip-status-expired  { background: #fce4ec !important; color: #c62828 !important; }
+  &.chip-status-scheduled { background: #fff3e0 !important; color: #e65100 !important; }
+
+  &.chip-applied { background: #e8f5e9 !important; color: #2e7d32 !important; }
+  &.chip-revoked { background: #fce4ec !important; color: #c62828 !important; }
+}
+
+/* Log table */
+.log-card {
+  border-radius: 12px;
+
+  mat-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .log-table {
+    width: 100%;
+    margin-top: 8px;
+
+    th { font-weight: 700; color: #555; background: #fafafa; }
+    td { color: #333; }
+  }
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 60px;
+  text-align: center;
+  border-radius: 12px;
+
+  mat-icon { font-size: 56px; width: 56px; height: 56px; color: #bbb; }
+  h3 { margin: 0; color: #666; }
+}

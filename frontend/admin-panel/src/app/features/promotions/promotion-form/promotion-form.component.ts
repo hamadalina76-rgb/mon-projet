@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
-  ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl,
+  ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, AbstractControl,
 } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -33,7 +33,7 @@ import { Zone } from '@core/models/zone.model';
   selector: 'app-promotion-form',
   standalone: true,
   imports: [
-    CommonModule, ReactiveFormsModule,
+    CommonModule, ReactiveFormsModule, FormsModule,
     MatCardModule, MatButtonModule, MatIconModule, MatInputModule,
     MatFormFieldModule, MatSelectModule, MatCheckboxModule,
     MatDatepickerModule, MatNativeDateModule, MatProgressSpinnerModule,
@@ -62,6 +62,8 @@ export class PromotionFormComponent implements OnInit, OnDestroy {
   filteredPartners: { id: number; name: string; logo?: string }[] = [];
   partnerSearch = '';
   zones: Zone[] = [];
+  filteredZones: Zone[] = [];
+  zoneSearch = '';
   allPartners = true; // radio: all or specific
 
   readonly types: { value: PromotionType; icon: string }[] = [
@@ -179,9 +181,16 @@ export class PromotionFormComponent implements OnInit, OnDestroy {
     return name?.charAt(0)?.toUpperCase() || '?';
   }
 
+  filterZones(): void {
+    const q = this.zoneSearch.toLowerCase().trim();
+    this.filteredZones = q
+      ? this.zones.filter(z => z.name.toLowerCase().includes(q))
+      : [...this.zones];
+  }
+
   private loadZones(): void {
     this.partnersService.getAllZones().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (zones) => { this.zones = zones; },
+      next: (zones) => { this.zones = zones; this.filteredZones = zones; },
     });
   }
 
