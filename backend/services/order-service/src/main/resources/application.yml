@@ -58,3 +58,8 @@ resilience4j:
     configs:
       default:
         timeoutDuration: 5s
+
+cart:
+  redis:
+    # Configurable cart TTL in hours. Effective value is clamped between 24h and 72h.
+    ttl-hours: ${CART_REDIS_TTL_HOURS:24}
