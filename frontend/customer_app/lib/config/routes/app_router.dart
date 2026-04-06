@@ -21,6 +21,7 @@ import '../../features/profile/presentation/screens/addresses_screen.dart';
 import '../../features/location/data/models/saved_location.dart';
 import '../../features/profile/data/models/address_model.dart';
 import '../../features/partners/presentation/screens/nearby_partners_screen.dart';
+import '../../features/cart/presentation/cart_screen.dart';
 import 'route_names.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -50,15 +51,18 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final extra = state.extra;
         String email = '';
-        OtpVerificationType verificationType = OtpVerificationType.forgotPassword;
-        
+        OtpVerificationType verificationType =
+            OtpVerificationType.forgotPassword;
+
         if (extra is Map) {
           email = extra['email'] as String? ?? '';
-          verificationType = extra['type'] as OtpVerificationType? ?? OtpVerificationType.forgotPassword;
+          verificationType =
+              extra['type'] as OtpVerificationType? ??
+              OtpVerificationType.forgotPassword;
         } else if (extra is String) {
           email = extra;
         }
-        
+
         return VerifyOtpScreen(
           email: email,
           verificationType: verificationType,
@@ -71,19 +75,16 @@ final appRouter = GoRouter(
         final extra = state.extra;
         String email = '';
         String otp = '';
-        
+
         if (extra is Map) {
           email = extra['email'] as String? ?? '';
           otp = extra['otp'] as String? ?? '';
         }
-        
-        return ResetPasswordScreen(
-          email: email,
-          otp: otp,
-        );
+
+        return ResetPasswordScreen(email: email, otp: otp);
       },
     ),
-    
+
     // Post-login - Location Permission
     GoRoute(
       path: RouteNames.enableLocation,
@@ -102,7 +103,7 @@ final appRouter = GoRouter(
         );
       },
     ),
-    
+
     // Settings & Profile Management (outside bottom nav)
     GoRoute(
       path: RouteNames.settings,
@@ -153,21 +154,22 @@ final appRouter = GoRouter(
       builder: (context, state) => const NearbyPartnersScreen(),
     ),
 
+    GoRoute(
+      path: RouteNames.cart,
+      builder: (context, state) => const CartScreen(),
+    ),
+
     // Main App Screens with Bottom Navigation
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
       builder: (context, state, child) {
-        return MainScaffold(
-          currentPath: state.uri.path,
-          child: child,
-        );
+        return MainScaffold(currentPath: state.uri.path, child: child);
       },
       routes: [
         GoRoute(
           path: RouteNames.explore,
-          pageBuilder: (context, state) => NoTransitionPage(
-            child: const ExploreScreen(),
-          ),
+          pageBuilder: (context, state) =>
+              NoTransitionPage(child: const ExploreScreen()),
         ),
         GoRoute(
           path: RouteNames.search,
@@ -195,15 +197,13 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: RouteNames.orders,
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: const OrdersScreen(),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: const OrdersScreen()),
         ),
         GoRoute(
           path: RouteNames.profile,
-          pageBuilder: (context, state) => NoTransitionPage(
-            child: const ProfileScreen(),
-          ),
+          pageBuilder: (context, state) =>
+              NoTransitionPage(child: const ProfileScreen()),
         ),
       ],
     ),

@@ -10,6 +10,7 @@ import '../../../../config/routes/route_names.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/utils/delivery_zone_utils.dart';
 import '../../../../core/utils/media_url.dart';
 import '../../../../core/utils/responsive_utils.dart';
 import '../../../home/presentation/screens/filter_screen.dart';
@@ -394,6 +395,12 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
     ref.watch(locationNotifierProvider);
 
     final coords = _resolveCoordinates();
+    final zoneUserLat = (coords.lat == 0.0 && coords.lng == 0.0)
+        ? null
+        : coords.lat;
+    final zoneUserLng = (coords.lat == 0.0 && coords.lng == 0.0)
+        ? null
+        : coords.lng;
     final addressLabel = coords.label?.isNotEmpty == true
         ? coords.label!
         : l10n.translate('default_location');
@@ -520,8 +527,17 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
                       delegate: SliverChildBuilderDelegate((_, i) {
                         if (i < visiblePartners.length) {
                           final partner = visiblePartners[i];
+                          final isOutOfZone = isOutsideDeliveryZone(
+                            deliveryRadius: partner.deliveryRadius,
+                            distanceKm: partner.distanceKm,
+                            userLat: zoneUserLat,
+                            userLng: zoneUserLng,
+                            partnerLat: partner.latitude,
+                            partnerLng: partner.longitude,
+                          );
                           return _PartnerCard(
                             partner: partner,
+                            isOutOfZone: isOutOfZone,
                             isFavorite: favoritesState.favoriteIds.contains(
                               partner.id,
                             ),
@@ -1301,12 +1317,14 @@ class _FavoritePulseButtonState extends State<_FavoritePulseButton>
 
 class _PartnerCard extends StatelessWidget {
   final PartnerNearbyDto partner;
+  final bool isOutOfZone;
   final bool isFavorite;
   final VoidCallback? onToggleFavorite;
   final VoidCallback? onTap;
 
   const _PartnerCard({
     required this.partner,
+    this.isOutOfZone = false,
     this.isFavorite = false,
     this.onToggleFavorite,
     this.onTap,
@@ -1393,21 +1411,35 @@ class _PartnerCard extends StatelessWidget {
                       Positioned(
                         top: 10,
                         left: 10,
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (partner.isNew && !closed)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: _Badge(
-                                  label: l10n.translate('new_badge'),
-                                  color: AppColors.success,
-                                ),
-                              ),
-                            if (partner.isPremium)
+                            if (isOutOfZone)
                               _Badge(
-                                label: 'PREMIUM',
-                                color: const Color(0xFFFFC107),
+                                label: l10n.translate(
+                                  'delivery_out_of_zone_badge',
+                                ),
+                                color: AppColors.error,
                               ),
+                            if ((partner.isNew && !closed) || partner.isPremium)
+                              const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                if (partner.isNew && !closed)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 6),
+                                    child: _Badge(
+                                      label: l10n.translate('new_badge'),
+                                      color: AppColors.success,
+                                    ),
+                                  ),
+                                if (partner.isPremium)
+                                  _Badge(
+                                    label: 'PREMIUM',
+                                    color: const Color(0xFFFFC107),
+                                  ),
+                              ],
+                            ),
                           ],
                         ),
                       ),

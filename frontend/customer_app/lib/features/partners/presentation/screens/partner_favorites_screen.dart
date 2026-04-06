@@ -4,9 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/utils/delivery_zone_utils.dart';
 import '../../../../core/utils/media_url.dart';
+import '../../../location/presentation/providers/location_provider.dart';
+import '../../../profile/data/models/address_model.dart';
+import '../../../profile/presentation/providers/address_provider.dart';
 import '../../data/models/partner_nearby_dto.dart';
 import '../providers/favorite_partners_provider.dart';
+import '../providers/nearby_partners_provider.dart';
 import 'partner_details_screen.dart';
 
 class PartnerFavoritesScreen extends ConsumerStatefulWidget {
@@ -19,6 +24,38 @@ class PartnerFavoritesScreen extends ConsumerStatefulWidget {
 
 class _PartnerFavoritesScreenState
     extends ConsumerState<PartnerFavoritesScreen> {
+  ({double lat, double lng}) _resolveCoordinates() {
+    final selectedLoc = ref.read(locationNotifierProvider).location;
+    if (selectedLoc != null) {
+      return (lat: selectedLoc.latitude, lng: selectedLoc.longitude);
+    }
+
+    final addresses = ref.read(addressNotifierProvider).valueOrNull ?? [];
+    AddressModel? target;
+
+    for (final a in addresses) {
+      if (a.isDefault && a.latitude != null && a.longitude != null) {
+        target = a;
+        break;
+      }
+    }
+
+    if (target == null) {
+      for (final a in addresses) {
+        if (a.latitude != null && a.longitude != null) {
+          target = a;
+          break;
+        }
+      }
+    }
+
+    if (target != null) {
+      return (lat: target.latitude!, lng: target.longitude!);
+    }
+
+    return (lat: 0.0, lng: 0.0);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -87,7 +124,21 @@ class _PartnerFavoritesScreenState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final favoritesState = ref.watch(favoritePartnersNotifierProvider);
+    final nearbyState = ref.watch(nearbyPartnersNotifierProvider);
     final favorites = favoritesState.favoritePartners;
+    ref.watch(addressNotifierProvider);
+    ref.watch(locationNotifierProvider);
+
+    final coords = _resolveCoordinates();
+    final zoneUserLat = (coords.lat == 0.0 && coords.lng == 0.0)
+        ? null
+        : coords.lat;
+    final zoneUserLng = (coords.lat == 0.0 && coords.lng == 0.0)
+        ? null
+        : coords.lng;
+
+    final nearbyById = {for (final p in nearbyState.allPartners) p.id: p};
+
     final width = MediaQuery.of(context).size.width;
     final horizontalPadding = width >= 900
         ? width * 0.16
@@ -196,6 +247,15 @@ class _PartnerFavoritesScreenState
                     }
 
                     final partner = favorites[index - 1];
+                    final zonePartner = nearbyById[partner.id] ?? partner;
+                    final isOutOfZone = isOutsideDeliveryZone(
+                      deliveryRadius: zonePartner.deliveryRadius,
+                      distanceKm: zonePartner.distanceKm,
+                      userLat: zoneUserLat,
+                      userLng: zoneUserLng,
+                      partnerLat: zonePartner.latitude,
+                      partnerLng: zonePartner.longitude,
+                    );
                     return Dismissible(
                       key: ValueKey('favorite-${partner.id}'),
                       direction: DismissDirection.endToStart,
@@ -230,6 +290,7 @@ class _PartnerFavoritesScreenState
                       },
                       child: _FavoriteListCard(
                         partner: partner,
+                        isOutOfZone: isOutOfZone,
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute<void>(
@@ -298,7 +359,10 @@ class _FavoritesSummaryCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(999),
@@ -337,7 +401,9 @@ class _FavoritesSummaryCard extends StatelessWidget {
                         : l10n.translate('favorites_error_retry'),
                     style: TextStyle(
                       fontSize: 12,
-                      color: syncing ? AppColors.textSecondary : AppColors.error,
+                      color: syncing
+                          ? AppColors.textSecondary
+                          : AppColors.error,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -432,9 +498,14 @@ class _EmptyFavoritesState extends StatelessWidget {
 
 class _FavoriteListCard extends StatelessWidget {
   final PartnerNearbyDto partner;
+  final bool isOutOfZone;
   final VoidCallback onTap;
 
-  const _FavoriteListCard({required this.partner, required this.onTap});
+  const _FavoriteListCard({
+    required this.partner,
+    this.isOutOfZone = false,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -509,7 +580,8 @@ class _FavoriteListCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      partner.type?.replaceAll('_', ' ') ?? l10n.translate('partner'),
+                      partner.type?.replaceAll('_', ' ') ??
+                          l10n.translate('partner'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -543,25 +615,61 @@ class _FavoriteListCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: closed ? const Color(0xFFFFEFF1) : const Color(0xFFEAF8EF),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: closed ? const Color(0xFFF4C5CB) : const Color(0xFFC5ECD4),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: closed
+                          ? const Color(0xFFFFEFF1)
+                          : const Color(0xFFEAF8EF),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: closed
+                            ? const Color(0xFFF4C5CB)
+                            : const Color(0xFFC5ECD4),
+                      ),
+                    ),
+                    child: Text(
+                      closed
+                          ? l10n.translate('partner_status_closed')
+                          : l10n.translate('partner_status_open'),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: closed
+                            ? AppColors.error
+                            : const Color(0xFF159957),
+                      ),
+                    ),
                   ),
-                ),
-                child: Text(
-                  closed
-                      ? l10n.translate('partner_status_closed')
-                      : l10n.translate('partner_status_open'),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: closed ? AppColors.error : const Color(0xFF159957),
-                  ),
-                ),
+                  if (isOutOfZone) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF2F2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFFFD7D7)),
+                      ),
+                      child: Text(
+                        l10n.translate('delivery_out_of_zone_badge'),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.error,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),

@@ -1,10 +1,10 @@
 {
   "env": "dev",
   "apiMode": "auto",
-  "apiBaseUrlPhysical": "http://192.168.1.171:8080",
+  "apiBaseUrlPhysical": "http://192.168.1.172:8080",
   "apiBaseUrlEmulator": "http://10.0.0.2:8080",
   "apiBaseUrlCloud": "https://api-gateway-392205979525.europe-west1.run.app",
-  "wsUrlPhysical": "ws://192.168.1.171:8080",
+  "wsUrlPhysical": "ws://192.168.1.172:8080",
   "wsUrlEmulator": "ws://10.0.0.2:8080",
   "wsUrlCloud": "wss://api-gateway-392205979525.europe-west1.run.app",
   "apiTimeoutMs": 30000

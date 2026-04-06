@@ -8,8 +8,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../config/dependency_injection/injection.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/utils/delivery_zone_utils.dart';
 import '../../../../core/utils/media_url.dart';
+import '../../../cart/cart_providers.dart';
+import '../../../location/presentation/providers/location_provider.dart';
 import '../../../menu/presentation/screens/product_detail_screen.dart';
+import '../../../profile/data/models/address_model.dart';
+import '../../../profile/presentation/providers/address_provider.dart';
 import '../../data/datasources/partner_api_service.dart';
 import '../../data/models/partner_nearby_dto.dart';
 import 'partner_establishment_info_screen.dart';
@@ -202,10 +207,60 @@ class _PartnerDetailsScreenState extends ConsumerState<PartnerDetailsScreen>
     });
   }
 
+  ({double lat, double lng}) _resolveCoordinates() {
+    final selectedLoc = ref.read(locationNotifierProvider).location;
+    if (selectedLoc != null) {
+      return (lat: selectedLoc.latitude, lng: selectedLoc.longitude);
+    }
+
+    final addresses = ref.read(addressNotifierProvider).valueOrNull ?? [];
+    AddressModel? target;
+    for (final a in addresses) {
+      if (a.isDefault && a.latitude != null && a.longitude != null) {
+        target = a;
+        break;
+      }
+    }
+
+    if (target == null) {
+      for (final a in addresses) {
+        if (a.latitude != null && a.longitude != null) {
+          target = a;
+          break;
+        }
+      }
+    }
+
+    if (target != null) {
+      return (lat: target.latitude!, lng: target.longitude!);
+    }
+
+    return (lat: 0.0, lng: 0.0);
+  }
+
   Future<void> _openProductDetails(
     MenuProductDto product, {
     String? categoryName,
+    required PartnerNearbyDto partner,
   }) async {
+    final coords = _resolveCoordinates();
+    final zoneUserLat = (coords.lat == 0.0 && coords.lng == 0.0)
+        ? null
+        : coords.lat;
+    final zoneUserLng = (coords.lat == 0.0 && coords.lng == 0.0)
+        ? null
+        : coords.lng;
+    final outOfZone = _isOutOfZone(
+      partner,
+      userLat: zoneUserLat,
+      userLng: zoneUserLng,
+    );
+    if (outOfZone) {
+      final l10n = AppLocalizations.of(context);
+      _toast(l10n.translate('partner_details_out_of_zone'));
+      return;
+    }
+
     final result = await Navigator.of(context).push<ProductSelectionResult>(
       MaterialPageRoute<ProductSelectionResult>(
         builder: (_) => ProductDetailScreen(
@@ -217,6 +272,34 @@ class _PartnerDetailsScreenState extends ConsumerState<PartnerDetailsScreen>
     );
 
     if (!mounted || result == null) return;
+
+    final selectedOptions = result.selections
+        .expand(
+          (group) => group.options.map(
+            (option) =>
+                '${_translateMenuLabel(group.groupName, const ['menu_option_group', 'menu_label'])}: '
+                '${_translateMenuLabel(option.name, const ['menu_option', 'menu_label'])}',
+          ),
+        )
+        .toList();
+
+    final cartItem = CartItemModel(
+      productId: result.productId,
+      partnerId: partner.id,
+      partnerName: partner.displayName,
+      partnerLogoUrl: partner.logo ?? '',
+      productName: result.productName,
+      unitPrice: result.unitPrice,
+      quantity: result.quantity,
+      selectedOptions: selectedOptions,
+      kitchenNote: null,
+    );
+
+    final added = await ref
+        .read(cartNotifierProvider.notifier)
+        .addItem(cartItem, context: context);
+
+    if (!mounted || !added) return;
 
     final l10n = AppLocalizations.of(context);
     _toast(
@@ -237,11 +320,15 @@ class _PartnerDetailsScreenState extends ConsumerState<PartnerDetailsScreen>
     );
   }
 
-  bool _isOutOfZone(PartnerNearbyDto p) {
-    if (p.distanceKm == null || p.deliveryRadius == null) return false;
-    final raw = p.deliveryRadius!.toDouble();
-    final radiusKm = raw > 50 ? raw / 1000.0 : raw;
-    return p.distanceKm! > radiusKm;
+  bool _isOutOfZone(PartnerNearbyDto p, {double? userLat, double? userLng}) {
+    return isOutsideDeliveryZone(
+      deliveryRadius: p.deliveryRadius,
+      distanceKm: p.distanceKm,
+      userLat: userLat,
+      userLng: userLng,
+      partnerLat: p.latitude,
+      partnerLng: p.longitude,
+    );
   }
 
   String _money(double? value) {
@@ -560,6 +647,16 @@ class _PartnerDetailsScreenState extends ConsumerState<PartnerDetailsScreen>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final lightTheme = _screenLightTheme(context);
+    ref.watch(addressNotifierProvider);
+    ref.watch(locationNotifierProvider);
+
+    final coords = _resolveCoordinates();
+    final zoneUserLat = (coords.lat == 0.0 && coords.lng == 0.0)
+        ? null
+        : coords.lat;
+    final zoneUserLng = (coords.lat == 0.0 && coords.lng == 0.0)
+        ? null
+        : coords.lng;
 
     return Theme(
       data: lightTheme,
@@ -598,7 +695,11 @@ class _PartnerDetailsScreenState extends ConsumerState<PartnerDetailsScreen>
 
             final data = snapshot.data!;
             final partner = data.partner;
-            final outOfZone = _isOutOfZone(partner);
+            final outOfZone = _isOutOfZone(
+              partner,
+              userLat: zoneUserLat,
+              userLng: zoneUserLng,
+            );
             final hasPromo = data.menuSections
                 .expand((s) => s.products)
                 .any((p) => p.hasDiscount);
@@ -864,11 +965,13 @@ class _PartnerDetailsScreenState extends ConsumerState<PartnerDetailsScreen>
                                 _openProductDetails(
                                   product,
                                   categoryName: categoryName,
+                                  partner: partner,
                                 ),
                             onAddToCart: (product, categoryName) =>
                                 _openProductDetails(
                                   product,
                                   categoryName: categoryName,
+                                  partner: partner,
                                 ),
                           ),
                       ],

@@ -119,6 +119,19 @@ spring:
                 name: orderServiceBreaker
                 fallbackUri: forward:/fallback/order
 
+        # Cart endpoints (backed by order-service)
+        - id: order-service-cart
+          uri: lb://order-service
+          predicates:
+            - Path=/api/cart, /api/cart/**
+          filters:
+            - StripPrefix=1
+            - AuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: orderServiceBreaker
+                fallbackUri: forward:/fallback/order
+
         # Delivery Service
         - id: delivery-service
           uri: lb://delivery-service
