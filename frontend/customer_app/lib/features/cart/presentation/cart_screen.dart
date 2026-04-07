@@ -21,9 +21,12 @@ class CartScreen extends ConsumerStatefulWidget {
 }
 
 class _CartScreenState extends ConsumerState<CartScreen> {
+  static const String _paymentMethodCash = 'CASH';
+
   String? _loadedPartnerId;
   PartnerCartInfo? _partnerInfo;
   String? _promoCode;
+  String? _selectedPaymentMethod;
   double _promoDiscount = 0;
   bool _isPlacingOrder = false;
 
@@ -94,6 +97,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     _loadedPartnerId = partnerId;
     _partnerInfo = null;
     _promoCode = null;
+    _selectedPaymentMethod = null;
     _promoDiscount = 0;
 
     if (partnerId == null || partnerId.isEmpty) {
@@ -140,6 +144,18 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Future<void> _placeOrder() async {
+    final selectedPaymentMethod = _selectedPaymentMethod;
+    if (selectedPaymentMethod == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Veuillez choisir un mode de paiement.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final coords = _resolveCoordinates();
     final zoneUserLat = (coords.lat == 0.0 && coords.lng == 0.0)
         ? null
@@ -167,7 +183,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     try {
       await ref
           .read(cartNotifierProvider.notifier)
-          .placeOrder(promoCode: _promoCode, paymentMethod: 'CASH');
+          .placeOrder(
+            promoCode: _promoCode,
+            paymentMethod: selectedPaymentMethod,
+          );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -231,12 +250,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final missingAmount = (minimumOrder - subtotal)
         .clamp(0, double.infinity)
         .toDouble();
+    final hasSelectedPaymentMethod = _selectedPaymentMethod != null;
 
     final canCheckout =
         items.isNotEmpty &&
         !minNotReached &&
         isOpen &&
         !outOfZone &&
+        hasSelectedPaymentMethod &&
         !_isPlacingOrder;
 
     return Scaffold(
@@ -344,6 +365,15 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     });
                   },
                 ),
+                const SizedBox(height: 10),
+                _PaymentMethodCard(
+                  selectedMethod: _selectedPaymentMethod,
+                  onMethodChanged: (method) {
+                    setState(() {
+                      _selectedPaymentMethod = method;
+                    });
+                  },
+                ),
               ],
             ),
       bottomNavigationBar: items.isEmpty
@@ -361,6 +391,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               ? 'Partenaire fermé'
                               : outOfZone
                               ? l10n.translate('delivery_out_of_zone_badge')
+                              : !hasSelectedPaymentMethod
+                              ? 'Choisir le paiement'
                               : minNotReached
                               ? 'Minimum non atteint'
                               : 'Panier vide'),
@@ -373,17 +405,111 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 }
 
+class _PaymentMethodCard extends StatelessWidget {
+  final String? selectedMethod;
+  final ValueChanged<String?> onMethodChanged;
+
+  const _PaymentMethodCard({
+    required this.selectedMethod,
+    required this.onMethodChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isCashSelected =
+        selectedMethod == _CartScreenState._paymentMethodCash;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Mode de paiement',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Veuillez choisir un mode de paiement avant validation.',
+              style: TextStyle(color: Colors.black54),
+            ),
+            const SizedBox(height: 8),
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => onMethodChanged(_CartScreenState._paymentMethodCash),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isCashSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.black12,
+                    width: isCashSelected ? 1.6 : 1,
+                  ),
+                  color: isCashSelected
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.07)
+                      : Colors.transparent,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.payments_outlined),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Paiement à la livraison',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Règlement en espèces à la réception.',
+                            style: TextStyle(color: Colors.black54),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      isCashSelected
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: isCashSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.black45,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyCartView extends StatelessWidget {
   const _EmptyCartView();
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return const Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: const [
+          children: [
             Icon(Icons.shopping_bag_outlined, size: 56, color: Colors.black38),
             SizedBox(height: 8),
             Text(
