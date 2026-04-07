@@ -49,7 +49,7 @@ void main() async {
 
   // Initialize SharedPreferences before anything else
   final sharedPreferences = await SharedPreferences.getInstance();
-  
+
   // Setup DI
   setupInjection();
 

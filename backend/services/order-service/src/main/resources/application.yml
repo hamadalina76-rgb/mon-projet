@@ -26,6 +26,10 @@ spring:
     openfeign:
       circuitbreaker:
         enabled: true
+    gcp:
+      enabled: ${GCP_ENABLED:false}
+      pubsub:
+        enabled: ${GCP_PUBSUB_ENABLED:false}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -63,3 +67,7 @@ cart:
   redis:
     # Configurable cart TTL in hours. Effective value is clamped between 24h and 72h.
     ttl-hours: ${CART_REDIS_TTL_HOURS:24}
+
+order:
+  events:
+    topic: ${ORDER_EVENTS_TOPIC:order-events}

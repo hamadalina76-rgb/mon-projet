@@ -3,6 +3,7 @@ package com.speedline.order.service;
 import com.speedline.order.domain.OrderStatus;
 import com.speedline.order.dto.CreateOrderRequest;
 import com.speedline.order.dto.OrderResponse;
+import com.speedline.order.dto.checkout.CheckoutOrderRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -49,6 +50,11 @@ public interface OrderService {
      * @throws AddressNotInDeliveryZoneException si l'adresse n'est pas dans la zone de livraison
      */
     OrderResponse createOrder(CreateOrderRequest request);
+
+    /**
+     * Créer une commande à partir du payload checkout mobile (cartItems + paymentMethod).
+     */
+    OrderResponse createOrderFromCheckout(Long customerId, CheckoutOrderRequest request);
 
     // ==================== LECTURE ====================
 
