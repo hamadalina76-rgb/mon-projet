@@ -1,4 +1,4 @@
-<div class="form-page">
+﻿<div class="form-page">
 
   <!-- Back button + title -->
   <div class="form-header">
@@ -6,8 +6,8 @@
       <mat-icon>arrow_back</mat-icon>
     </button>
     <div>
-      <h1>{{ (isEdit ? 'promotions.form.editTitle' : 'promotions.form.createTitle') | translate }}</h1>
-      <p class="subtitle">{{ (isEdit ? 'promotions.form.editSubtitle' : 'promotions.form.createSubtitle') | translate }}</p>
+      <h1>{{ title }}</h1>
+      <p class="subtitle">{{ subtitle }}</p>
     </div>
   </div>
 
@@ -16,275 +16,112 @@
     <mat-spinner diameter="48"></mat-spinner>
   </div>
 
-  <form *ngIf="!loading" [formGroup]="form" (ngSubmit)="onSubmit()" class="form-body">
+  <!-- Stepper -->
+  <mat-stepper *ngIf="!loading" #stepper linear class="promo-stepper" labelPosition="bottom">
 
-    <div class="form-grid">
+    <!-- â•â•â• Ã‰tape 1 â€” Informations gÃ©nÃ©rales â•â•â• -->
+    <mat-step [stepControl]="stepGeneralGroup"
+              [label]="'promotions.form.step1Title' | translate"
+              [hasError]="stepGeneralGroup.invalid && stepGeneralGroup.touched">
+      <ng-template matStepLabel>
+        <mat-icon>badge</mat-icon>
+        {{ 'promotions.form.step1Title' | translate }}
+      </ng-template>
 
-      <!-- === Section 1: Identité === -->
-      <mat-card class="section-card">
-        <mat-card-header>
-          <mat-icon mat-card-avatar>badge</mat-icon>
-          <mat-card-title>{{ 'promotions.form.identity' | translate }}</mat-card-title>
-          <mat-card-subtitle>{{ 'promotions.form.identityDesc' | translate }}</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
+      <app-step-general
+        [formGroup]="stepGeneralGroup"
+        [isEdit]="isEdit">
+      </app-step-general>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>{{ 'promotions.code' | translate }} *</mat-label>
-            <input matInput formControlName="code" [placeholder]="'promotions.form.codePlaceholder' | translate"
-                   oninput="this.value=this.value.toUpperCase()">
-            <mat-icon matSuffix>confirmation_number</mat-icon>
-            <mat-hint>{{ 'promotions.form.codeHint' | translate }}</mat-hint>
-            <mat-error *ngIf="err('code')">
-              {{ form.get('code')?.errors?.['required'] ? ('promotions.form.codeRequired' | translate) :
-                 form.get('code')?.errors?.['minlength'] ? ('promotions.form.codeMinLength' | translate) :
-                 form.get('code')?.errors?.['pattern'] ? ('promotions.form.codePattern' | translate) :
-                 ('promotions.form.codeInvalid' | translate) }}
-            </mat-error>
-          </mat-form-field>
+      <div class="step-actions">
+        <span></span>
+        <button mat-flat-button matStepperNext color="primary" class="btn-next"
+                (click)="validateStep(stepGeneralGroup, 'promotions.form.step1Title')">
+          {{ 'promotions.form.next' | translate }}
+          <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+        </button>
+      </div>
+    </mat-step>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>{{ 'promotions.name' | translate }} *</mat-label>
-            <input matInput formControlName="name" [placeholder]="'promotions.form.namePlaceholder' | translate">
-            <mat-error *ngIf="err('name')">{{ 'promotions.form.nameRequired' | translate }}</mat-error>
-          </mat-form-field>
+    <!-- â•â•â• Ã‰tape 2 â€” Conditions & Limites â•â•â• -->
+    <mat-step [stepControl]="stepConditionsGroup"
+              [label]="'promotions.form.step2Title' | translate">
+      <ng-template matStepLabel>
+        <mat-icon>tune</mat-icon>
+        {{ 'promotions.form.step2Title' | translate }}
+      </ng-template>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>{{ 'promotions.form.description' | translate }}</mat-label>
-            <textarea matInput formControlName="description" rows="2"
-                      [placeholder]="'promotions.form.descriptionPlaceholder' | translate"></textarea>
-          </mat-form-field>
+      <app-step-conditions
+        [formGroup]="stepConditionsGroup">
+      </app-step-conditions>
 
-          <mat-form-field appearance="outline">
-            <mat-label>{{ 'promotions.form.initialStatus' | translate }} *</mat-label>
-            <mat-select formControlName="status">
-              <mat-option *ngFor="let s of statuses" [value]="s.value">
-                {{ 'promotions.statuses.' + s.value | translate }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
+      <div class="step-actions">
+        <button mat-stroked-button matStepperPrevious class="btn-prev">
+          <mat-icon>arrow_back</mat-icon>
+          {{ 'promotions.form.previous' | translate }}
+        </button>
+        <button mat-flat-button matStepperNext color="primary" class="btn-next"
+                (click)="validateStep(stepConditionsGroup, 'promotions.form.step2Title')">
+          {{ 'promotions.form.next' | translate }}
+          <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+        </button>
+      </div>
+    </mat-step>
 
-        </mat-card-content>
-      </mat-card>
+    <!-- â•â•â• Ã‰tape 3 â€” Ciblage â•â•â• -->
+    <mat-step [stepControl]="stepTargetingGroup"
+              [label]="'promotions.form.step3Title' | translate"
+              [optional]="true">
+      <ng-template matStepLabel>
+        <mat-icon>filter_alt</mat-icon>
+        {{ 'promotions.form.step3Title' | translate }}
+      </ng-template>
 
-      <!-- === Section 2: Réduction === -->
-      <mat-card class="section-card">
-        <mat-card-header>
-          <mat-icon mat-card-avatar>discount</mat-icon>
-          <mat-card-title>{{ 'promotions.form.reduction' | translate }}</mat-card-title>
-          <mat-card-subtitle>{{ 'promotions.form.reductionDesc' | translate }}</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
+      <app-step-targeting
+        [formGroup]="stepTargetingGroup"
+        [promotionType]="promotionType"
+        [rulesArray]="rulesArray"
+        (partnersLoaded)="onPartnersLoaded($event)"
+        (categoriesLoaded)="onCategoriesLoaded($event)"
+        (zonesLoaded)="onZonesLoaded($event)">
+      </app-step-targeting>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>{{ 'promotions.form.reductionType' | translate }} *</mat-label>
-            <mat-select formControlName="type">
-              <mat-option *ngFor="let t of types" [value]="t.value">
-                <mat-icon>{{ t.icon }}</mat-icon>
-                {{ 'promotions.types.' + t.value | translate }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
+      <div class="step-actions">
+        <button mat-stroked-button matStepperPrevious class="btn-prev">
+          <mat-icon>arrow_back</mat-icon>
+          {{ 'promotions.form.previous' | translate }}
+        </button>
+        <button mat-flat-button matStepperNext color="primary" class="btn-next">
+          {{ 'promotions.form.next' | translate }}
+          <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+        </button>
+      </div>
+    </mat-step>
 
-          <div class="two-col" *ngIf="form.get('type')?.value !== 'FREE_DELIVERY'">
-            <mat-form-field appearance="outline">
-              <mat-label>{{ valueLabel }} *</mat-label>
-              <input matInput type="number" formControlName="value"
-                     [placeholder]="form.get('type')?.value === 'PERCENTAGE' ? '25' : '5.00'"
-                     min="0" step="0.01">
-              <mat-error *ngIf="err('value')">{{ 'promotions.form.valueRequired' | translate }}</mat-error>
-            </mat-form-field>
+    <!-- â•â•â• Ã‰tape 4 â€” RÃ©capitulatif â•â•â• -->
+    <mat-step [label]="'promotions.form.step4Title' | translate">
+      <ng-template matStepLabel>
+        <mat-icon>check_circle</mat-icon>
+        {{ 'promotions.form.step4Title' | translate }}
+      </ng-template>
 
-            <mat-form-field appearance="outline">
-              <mat-label>{{ 'promotions.form.maxDiscount' | translate }}</mat-label>
-              <input matInput type="number" formControlName="maximumDiscount"
-                     placeholder="15.00" min="0" step="0.01">
-              <mat-hint>{{ 'promotions.form.maxDiscountHint' | translate }}</mat-hint>
-            </mat-form-field>
-          </div>
+      <app-step-summary
+        [form]="form"
+        [isEdit]="isEdit"
+        [saving]="saving"
+        [partners]="partners"
+        [categories]="categories"
+        [zones]="zones"
+        (submitDraft)="submitAsDraft()"
+        (submitActive)="submitAsActive()">
+      </app-step-summary>
 
-          <!-- FREE_DELIVERY info -->
-          <div class="free-delivery-info" *ngIf="form.get('type')?.value === 'FREE_DELIVERY'">
-            <mat-icon>info</mat-icon>
-            <span>{{ 'promotions.form.freeDeliveryInfo' | translate }}</span>
-          </div>
-
-          <mat-form-field appearance="outline">
-            <mat-label>{{ 'promotions.form.minOrder' | translate }}</mat-label>
-            <input matInput type="number" formControlName="minimumOrder"
-                   placeholder="20.00" min="0" step="0.01">
-            <mat-icon matSuffix>shopping_cart</mat-icon>
-          </mat-form-field>
-
-          <mat-checkbox formControlName="firstOrderOnly" class="checkbox-field">
-            {{ 'promotions.form.firstOrderOnly' | translate }}
-          </mat-checkbox>
-
-        </mat-card-content>
-      </mat-card>
-
-      <!-- === Section 3: Partenaires (PERCENTAGE / FIXED_AMOUNT) === -->
-      <mat-card class="section-card" *ngIf="form.get('type')?.value !== 'FREE_DELIVERY'">
-        <mat-card-header>
-          <mat-icon mat-card-avatar>store</mat-icon>
-          <mat-card-title>{{ 'promotions.form.partners' | translate }}</mat-card-title>
-          <mat-card-subtitle>{{ 'promotions.form.partnersDesc' | translate }}</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          <mat-radio-group [value]="allPartners" (change)="onPartnerModeChange($event.value)" class="partner-radio">
-            <mat-radio-button [value]="true">{{ 'promotions.form.allPartners' | translate }}</mat-radio-button>
-            <mat-radio-button [value]="false">{{ 'promotions.form.specificPartners' | translate }}</mat-radio-button>
-          </mat-radio-group>
-
-          <mat-form-field appearance="outline" class="full-width" *ngIf="!allPartners">
-            <mat-label>{{ 'promotions.form.selectPartners' | translate }}</mat-label>
-            <mat-select formControlName="applicablePartnerIds" multiple panelClass="dropdown-select-panel">
-
-              <div class="dropdown-search-box">
-                <mat-icon class="search-icon">search</mat-icon>
-                <input type="text"
-                       [placeholder]="'promotions.form.searchPartners' | translate"
-                       (input)="filterPartners($event)"
-                       (keydown)="$event.stopPropagation()"
-                       class="dropdown-search-input">
-              </div>
-
-              <mat-divider></mat-divider>
-
-              <mat-option *ngFor="let p of filteredPartners" [value]="p.id" class="dropdown-option">
-                <div class="dropdown-option-content">
-                  <img *ngIf="p.logo" [src]="p.logo" [alt]="p.name" class="dropdown-option-logo">
-                  <span *ngIf="!p.logo" class="dropdown-option-icon partner">
-                    {{ getPartnerInitial(p.name) }}
-                  </span>
-                  <span class="dropdown-option-name">{{ p.name }}</span>
-                </div>
-              </mat-option>
-
-              <div *ngIf="filteredPartners.length === 0" class="dropdown-no-results">
-                <mat-icon>search_off</mat-icon>
-                <span>{{ 'promotions.form.noPartnersFound' | translate }}</span>
-              </div>
-
-            </mat-select>
-            <mat-hint>{{ 'promotions.form.selectPartnersHint' | translate }}</mat-hint>
-          </mat-form-field>
-        </mat-card-content>
-      </mat-card>
-
-      <!-- === Section 3b: Zones (FREE_DELIVERY) === -->
-      <mat-card class="section-card" *ngIf="form.get('type')?.value === 'FREE_DELIVERY'">
-        <mat-card-header>
-          <mat-icon mat-card-avatar>map</mat-icon>
-          <mat-card-title>{{ 'promotions.form.zones' | translate }}</mat-card-title>
-          <mat-card-subtitle>{{ 'promotions.form.zonesDesc' | translate }}</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>{{ 'promotions.form.selectZones' | translate }}</mat-label>
-            <mat-select formControlName="applicableZoneIds" multiple panelClass="dropdown-select-panel">
-
-              <div class="dropdown-search-box">
-                <mat-icon class="search-icon">search</mat-icon>
-                <input type="text"
-                       [placeholder]="'promotions.form.searchZones' | translate"
-                       [(ngModel)]="zoneSearch"
-                       [ngModelOptions]="{standalone: true}"
-                       (input)="filterZones()"
-                       (keydown)="$event.stopPropagation()"
-                       class="dropdown-search-input">
-              </div>
-
-              <mat-divider></mat-divider>
-
-              <mat-option *ngFor="let z of filteredZones" [value]="z.id" class="dropdown-option">
-                <div class="dropdown-option-content">
-                  <span class="dropdown-option-icon zone">
-                    <mat-icon>place</mat-icon>
-                  </span>
-                  <div class="dropdown-option-details">
-                    <span class="dropdown-option-name">{{ z.name }}</span>
-                    <span class="dropdown-option-meta">{{ z.deliveryFee | number:'1.2-2' }} TND</span>
-                  </div>
-                </div>
-              </mat-option>
-
-              <div *ngIf="filteredZones.length === 0" class="dropdown-no-results">
-                <mat-icon>search_off</mat-icon>
-                <span>{{ 'promotions.form.noZonesFound' | translate }}</span>
-              </div>
-
-            </mat-select>
-            <mat-hint>{{ 'promotions.form.zonesHint' | translate }}</mat-hint>
-          </mat-form-field>
-        </mat-card-content>
-      </mat-card>
-
-      <!-- === Section 4: Quotas === -->
-      <mat-card class="section-card">
-        <mat-card-header>
-          <mat-icon mat-card-avatar>bar_chart</mat-icon>
-          <mat-card-title>{{ 'promotions.form.quotas' | translate }}</mat-card-title>
-          <mat-card-subtitle>{{ 'promotions.form.quotasDesc' | translate }}</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-
-          <div class="two-col">
-            <mat-form-field appearance="outline">
-              <mat-label>{{ 'promotions.form.totalQuota' | translate }}</mat-label>
-              <input matInput type="number" formControlName="usageLimitTotal"
-                     placeholder="5000" min="1">
-              <mat-hint>{{ 'promotions.form.totalQuotaHint' | translate }}</mat-hint>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline">
-              <mat-label>{{ 'promotions.form.userQuota' | translate }}</mat-label>
-              <input matInput type="number" formControlName="usageLimitPerUser"
-                     placeholder="2" min="1">
-              <mat-hint>{{ 'promotions.form.userQuotaHint' | translate }}</mat-hint>
-            </mat-form-field>
-          </div>
-
-        </mat-card-content>
-      </mat-card>
-
-      <!-- === Section 5: Validité === -->
-      <mat-card class="section-card">
-        <mat-card-header>
-          <mat-icon mat-card-avatar>event</mat-icon>
-          <mat-card-title>{{ 'promotions.form.validity' | translate }}</mat-card-title>
-          <mat-card-subtitle>{{ 'promotions.form.validityDesc' | translate }}</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="two-col">
-            <mat-form-field appearance="outline">
-              <mat-label>{{ 'promotions.form.startDate' | translate }}</mat-label>
-              <input matInput [matDatepicker]="startPicker" formControlName="startDate">
-              <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
-              <mat-datepicker #startPicker></mat-datepicker>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline">
-              <mat-label>{{ 'promotions.form.endDate' | translate }}</mat-label>
-              <input matInput [matDatepicker]="endPicker" formControlName="endDate"
-                     [min]="form.get('startDate')?.value || today">
-              <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
-              <mat-datepicker #endPicker></mat-datepicker>
-            </mat-form-field>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-    </div>
-
-    <!-- Actions -->
-    <div class="form-actions">
-      <button mat-stroked-button type="button" (click)="back()">{{ 'promotions.form.cancel' | translate }}</button>
-      <button mat-flat-button color="primary" type="submit" [disabled]="saving">
-        <mat-spinner *ngIf="saving" diameter="18" class="btn-spinner"></mat-spinner>
-        <span *ngIf="!saving">{{ (isEdit ? 'promotions.form.save' : 'promotions.form.create') | translate }}</span>
-      </button>
-    </div>
-
-  </form>
+      <div class="step-actions step-actions--back-only">
+        <button mat-stroked-button matStepperPrevious class="btn-prev">
+          <mat-icon>arrow_back</mat-icon>
+          {{ 'promotions.form.previous' | translate }}
+        </button>
+      </div>
+    </mat-step>
+  </mat-stepper>
 </div>

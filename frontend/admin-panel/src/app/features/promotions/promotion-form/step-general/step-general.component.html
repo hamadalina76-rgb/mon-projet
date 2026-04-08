@@ -1,0 +1,84 @@
+<div class="step-content" [formGroup]="formGroup">
+
+  <!-- Code promo -->
+  <div class="code-row">
+    <mat-form-field appearance="outline" class="code-field">
+      <mat-label>{{ 'promotions.code' | translate }} *</mat-label>
+      <input matInput formControlName="code"
+             [placeholder]="'promotions.form.codePlaceholder' | translate"
+             oninput="this.value=this.value.toUpperCase()">
+      <mat-icon matSuffix *ngIf="!checkingCode && codeAvailable === true" class="code-ok">check_circle</mat-icon>
+      <mat-icon matSuffix *ngIf="!checkingCode && codeAvailable === false" class="code-taken">cancel</mat-icon>
+      <mat-spinner matSuffix *ngIf="checkingCode" diameter="18"></mat-spinner>
+      <mat-hint>{{ 'promotions.form.codeHint' | translate }}</mat-hint>
+      <mat-error *ngIf="err('code')">
+        {{ formGroup.get('code')?.errors?.['required'] ? ('promotions.form.codeRequired' | translate) :
+           formGroup.get('code')?.errors?.['minlength'] ? ('promotions.form.codeMinLength' | translate) :
+           formGroup.get('code')?.errors?.['pattern'] ? ('promotions.form.codePattern' | translate) :
+           formGroup.get('code')?.errors?.['codeTaken'] ? ('promotions.form.codeTaken' | translate) :
+           ('promotions.form.codeInvalid' | translate) }}
+      </mat-error>
+    </mat-form-field>
+
+    <button mat-stroked-button type="button" (click)="generateCode()"
+            class="generate-btn" [disabled]="isEdit"
+            [matTooltip]="'promotions.form.generateCode' | translate">
+      <mat-icon>casino</mat-icon>
+      {{ 'promotions.form.generateCode' | translate }}
+    </button>
+  </div>
+
+  <!-- Nom -->
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>{{ 'promotions.name' | translate }} *</mat-label>
+    <input matInput formControlName="name" [placeholder]="'promotions.form.namePlaceholder' | translate">
+    <mat-error *ngIf="err('name')">{{ 'promotions.form.nameRequired' | translate }}</mat-error>
+  </mat-form-field>
+
+  <!-- Description -->
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>{{ 'promotions.form.description' | translate }}</mat-label>
+    <textarea matInput formControlName="description" rows="2"
+              [placeholder]="'promotions.form.descriptionPlaceholder' | translate"></textarea>
+  </mat-form-field>
+
+  <!-- Type de réduction — radio cards -->
+  <label class="field-label">{{ 'promotions.form.reductionType' | translate }} *</label>
+  <div class="type-cards">
+    <label *ngFor="let t of types" class="type-card"
+           [class.type-card--selected]="typeValue === t.value">
+      <input type="radio" formControlName="type" [value]="t.value">
+      <mat-icon>{{ t.icon }}</mat-icon>
+      <span>{{ t.label | translate }}</span>
+    </label>
+  </div>
+
+  <!-- Valeur réduction (masqué si FREE_DELIVERY) -->
+  <div class="value-row" *ngIf="typeValue !== 'FREE_DELIVERY'">
+    <mat-form-field appearance="outline" class="value-field">
+      <mat-label>
+        {{ typeValue === 'PERCENTAGE' ? ('promotions.form.valuePercent' | translate) : ('promotions.form.valueFixed' | translate) }} *
+      </mat-label>
+      <input matInput type="number" formControlName="value"
+             [placeholder]="typeValue === 'PERCENTAGE' ? '25' : '5.00'"
+             min="0" step="0.01">
+      <span matSuffix *ngIf="typeValue === 'PERCENTAGE'" class="suffix">%</span>
+      <span matSuffix *ngIf="typeValue === 'FIXED_AMOUNT'" class="suffix">TND</span>
+      <mat-error *ngIf="err('value')">{{ 'promotions.form.valueRequired' | translate }}</mat-error>
+    </mat-form-field>
+
+    <!-- Réduction max (uniquement PERCENTAGE) -->
+    <mat-form-field appearance="outline" *ngIf="typeValue === 'PERCENTAGE'" class="value-field">
+      <mat-label>{{ 'promotions.form.maxDiscount' | translate }}</mat-label>
+      <input matInput type="number" formControlName="maximumDiscount" placeholder="15.00" min="0" step="0.01">
+      <span matSuffix class="suffix">TND</span>
+      <mat-hint>{{ 'promotions.form.maxDiscountHint' | translate }}</mat-hint>
+    </mat-form-field>
+  </div>
+
+  <!-- FREE_DELIVERY info -->
+  <div class="free-delivery-info" *ngIf="typeValue === 'FREE_DELIVERY'">
+    <mat-icon>info</mat-icon>
+    <span>{{ 'promotions.form.freeDeliveryInfo' | translate }}</span>
+  </div>
+</div>

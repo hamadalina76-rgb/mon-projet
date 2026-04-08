@@ -78,14 +78,19 @@ $ease:         cubic-bezier(.4, 0, .2, 1);
 }
 
 // ── Add button (header) ─────────────────────────────────────────
-:host ::ng-deep .btn-add-promotion {
+:host ::ng-deep .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+:host ::ng-deep .btn-add-promotion,
+:host ::ng-deep .btn-export {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: v.$primary-color;
-  color: v.$white !important;
   border-radius: 0.5rem;
   font-weight: 500;
   text-decoration: none;
@@ -94,16 +99,31 @@ $ease:         cubic-bezier(.4, 0, .2, 1);
   cursor: pointer;
   font-size: 0.875rem;
 
+  .material-icons-round {
+    font-size: 1.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+
+:host ::ng-deep .btn-add-promotion {
+  background: v.$primary-color;
+  color: v.$white !important;
+
   &:hover {
     background: color.adjust(v.$primary-color, $lightness: -8%);
     text-decoration: none;
     color: v.$white !important;
   }
+}
 
-  .material-icons-round {
-    font-size: 1.25rem;
-    width: 1.25rem;
-    height: 1.25rem;
+:host ::ng-deep .btn-export {
+  background: rgba(#64748B, .08);
+  color: #475569;
+
+  &:hover {
+    background: rgba(#64748B, .16);
+    color: #1e293b;
   }
 }
 
@@ -125,6 +145,34 @@ $ease:         cubic-bezier(.4, 0, .2, 1);
     letter-spacing: 0.03em;
   }
 
+  .promo-code-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .copy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background: transparent;
+    color: #94a3b8;
+    padding: 0;
+    transition: all .15s $ease;
+
+    .material-icons-round { font-size: 14px; }
+
+    &:hover {
+      background: $primary-soft;
+      color: $primary;
+    }
+  }
+
   .promo-name {
     font-size: 0.8125rem;
     color: #64748b;
@@ -135,52 +183,54 @@ $ease:         cubic-bezier(.4, 0, .2, 1);
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 0.2rem 0.6rem;
-    border-radius: 0.375rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    padding: 0.4rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
 
     &--percentage {
-      background: rgba(#3B82F6, .1);
-      color: #2563EB;
-      border: 1px solid rgba(#3B82F6, .2);
+      background: #1D4ED8;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(#1D4ED8, .35);
     }
     &--fixed_amount {
-      background: rgba(#F59E0B, .1);
-      color: #D97706;
-      border: 1px solid rgba(#F59E0B, .2);
+      background: #B45309;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(#B45309, .35);
     }
     &--free_delivery {
-      background: rgba(#10B981, .1);
-      color: #059669;
-      border: 1px solid rgba(#10B981, .2);
+      background: #047857;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(#047857, .35);
     }
   }
 
   // ── Status badges ───────────────────────────────────────────────
   .col-status .status-badge {
     display: inline-block;
-    padding: 0.25rem 0.75rem;
+    padding: 0.3rem 0.85rem;
     border-radius: v.$border-radius-full;
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
 
     &.status-active {
-      background: rgba(#10B981, 0.15);
-      color: #10B981;
+      background: #059669;
+      color: #fff;
     }
     &.status-scheduled {
-      background: rgba(#64748B, 0.12);
-      color: #64748B;
+      background: #2563EB;
+      color: #fff;
     }
     &.status-inactive {
-      background: rgba(#EF4444, 0.12);
-      color: #EF4444;
+      background: #6B7280;
+      color: #fff;
     }
     &.status-expired {
-      background: rgba(#94A3B8, 0.2);
-      color: #64748B;
+      background: #DC2626;
+      color: #fff;
     }
   }
 
@@ -235,5 +285,374 @@ $ease:         cubic-bezier(.4, 0, .2, 1);
     background: rgba(#94A3B8, .12);
     color: #94A3B8;
     &:hover { background: rgba(#94A3B8, .22); color: #CBD5E1; }
+  }
+  .stat-card { background: #1e293b; border-color: #334155; }
+  .stat-value { color: #f1f5f9; }
+  .chip { background: #334155; color: #cbd5e1; border-color: #475569; }
+  .search-input { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+  .usage-bar { background: #334155; }
+  .usage-text { color: #94a3b8; }
+  .row-warning { background: rgba(#F59E0B, .06); }
+  .type-badge {
+    &--percentage { background: #2563EB; }
+    &--fixed_amount { background: #D97706; }
+    &--free_delivery { background: #059669; }
+  }
+}
+
+// ── Filters bar ───────────────────────────────────────────────────
+:host ::ng-deep .filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+:host ::ng-deep .search-box {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 320px;
+
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 20px;
+    pointer-events: none;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 10px 12px 10px 40px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    outline: none;
+    background: #f8fafc;
+    color: #1e293b;
+    transition: all .2s $ease;
+    font-family: inherit;
+
+    &:focus {
+      border-color: $primary;
+      background: #fff;
+      box-shadow: 0 0 0 3px $primary-soft;
+    }
+
+    &::placeholder { color: #94a3b8; }
+  }
+}
+
+:host ::ng-deep .status-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+:host ::ng-deep .chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all .2s $ease;
+  white-space: nowrap;
+
+  &:hover { border-color: #cbd5e1; background: #f8fafc; }
+
+  &--active {
+    border-color: $primary !important;
+    background: $primary-soft !important;
+    color: $primary !important;
+    font-weight: 600;
+  }
+
+  &--green.chip--active { border-color: #10B981 !important; background: rgba(#10B981, .1) !important; color: #059669 !important; }
+  &--gray.chip--active  { border-color: #64748B !important; background: rgba(#64748B, .1) !important; color: #475569 !important; }
+  &--blue.chip--active  { border-color: #3B82F6 !important; background: rgba(#3B82F6, .1) !important; color: #2563EB !important; }
+  &--red.chip--active   { border-color: #EF4444 !important; background: rgba(#EF4444, .1) !important; color: #DC2626 !important; }
+}
+
+:host ::ng-deep .filter-field {
+  min-width: 160px;
+
+  &--date { min-width: 220px; }
+}
+
+// ── Sortable headers ──────────────────────────────────────────────
+:host ::ng-deep .sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: color .15s $ease;
+
+  &:hover { color: $primary; }
+}
+
+:host ::ng-deep .sort-icon {
+  font-size: 14px !important;
+  vertical-align: middle;
+  margin-left: 2px;
+  color: $primary;
+}
+
+// ── Usage bar ─────────────────────────────────────────────────────
+:host ::ng-deep .usage-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 100px;
+}
+
+:host ::ng-deep .usage-text {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #475569;
+  white-space: nowrap;
+}
+
+:host ::ng-deep .usage-bar {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+:host ::ng-deep .usage-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .4s $ease;
+
+  &.usage-bar--green  { background: #10B981; }
+  &.usage-bar--orange { background: #F59E0B; }
+  &.usage-bar--red    { background: #EF4444; }
+}
+
+// ── Row warning (quota >= 80%) ────────────────────────────────────
+:host ::ng-deep .row-warning {
+  background: rgba(#F59E0B, .04) !important;
+  border-left: 3px solid #F59E0B;
+}
+
+// ── Responsive ────────────────────────────────────────────────────
+
+// Tablet landscape (≤1200px) — tighten spacing
+@media (max-width: 1200px) {
+  :host ::ng-deep .data-table {
+    font-size: 0.8125rem;
+
+    th, td { padding: 0.5rem 0.625rem; }
+  }
+
+  :host ::ng-deep .filters-bar {
+    gap: 8px;
+  }
+
+  :host ::ng-deep .filter-field { min-width: 140px; }
+  :host ::ng-deep .filter-field--date { min-width: 190px; }
+}
+
+// Tablet portrait (≤1024px) — hide less important columns, stack filters
+@media (max-width: 1024px) {
+  :host ::ng-deep .header-actions {
+    flex-wrap: wrap;
+
+    .btn-export,
+    .btn-add-promotion {
+      font-size: 0.8rem;
+      padding: 0.45rem 0.75rem;
+    }
+  }
+
+  :host ::ng-deep .filters-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  :host ::ng-deep .search-box {
+    max-width: 100%;
+  }
+
+  :host ::ng-deep .status-chips {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+
+    &::-webkit-scrollbar { height: 0; }
+  }
+
+  :host ::ng-deep .data-table {
+    .col-dates { display: none; }
+  }
+}
+
+// Mobile (≤768px) — card-like layout
+@media (max-width: 768px) {
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .stat-card {
+    min-width: 0;
+    padding: 0.625rem 0.75rem;
+  }
+
+  .stat-value { font-size: 1rem; }
+  .stat-label { font-size: 0.6875rem; }
+
+  :host ::ng-deep .header-actions {
+    width: 100%;
+    justify-content: stretch;
+
+    .btn-export,
+    .btn-add-promotion {
+      flex: 1;
+      justify-content: center;
+    }
+  }
+
+  :host ::ng-deep .data-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+
+    thead { display: none; }
+
+    tbody {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    tr.table-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 0.875rem 1rem;
+
+      &.row-warning {
+        border-left: 3px solid #F59E0B;
+      }
+    }
+
+    td {
+      display: flex;
+      align-items: center;
+      padding: 0;
+      border: none;
+
+      &::before {
+        display: none;
+      }
+    }
+
+    .col-code {
+      flex: 1 1 100%;
+      order: 1;
+    }
+
+    .col-type {
+      order: 2;
+    }
+
+    .col-value {
+      order: 3;
+      font-weight: 600;
+    }
+
+    .col-usage {
+      order: 4;
+      flex: 1 1 100%;
+    }
+
+    .col-dates {
+      display: none;
+    }
+
+    .col-status {
+      order: 5;
+    }
+
+    .col-actions {
+      order: 6;
+      margin-left: auto;
+    }
+  }
+
+  :host ::ng-deep .chip {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+  }
+
+  :host ::ng-deep .filter-field {
+    min-width: 0;
+    width: 100%;
+  }
+
+  :host ::ng-deep .filter-field--date {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+// Small mobile (≤480px)
+@media (max-width: 480px) {
+  .stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-card {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  :host ::ng-deep .header-actions {
+    flex-direction: column;
+
+    .btn-export,
+    .btn-add-promotion {
+      width: 100%;
+    }
+  }
+
+  :host ::ng-deep .action-buttons {
+    gap: 2px;
+  }
+
+  :host ::ng-deep .action-btn {
+    width: 30px;
+    height: 30px;
+
+    .material-icons-round { font-size: 16px; }
+  }
+
+  :host ::ng-deep .type-badge {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.6rem;
+  }
+}
+
+// ── Dark mode responsive overrides ────────────────────────────────
+@media (max-width: 768px) {
+  :host-context(html.dark) ::ng-deep {
+    .data-table tr.table-row {
+      background: #1e293b;
+      border-color: #334155;
+    }
   }
 }

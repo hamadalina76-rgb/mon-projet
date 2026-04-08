@@ -1,0 +1,87 @@
+@use 'variables' as v;
+
+$primary: v.$primary-color;
+$primary-soft: rgba(v.$primary-color, .08);
+$ease: cubic-bezier(.4, 0, .2, 1);
+
+.rule-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rule-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition: all .2s $ease;
+
+  &:hover { border-color: $primary; background: $primary-soft; }
+
+  @media (max-width: 600px) { flex-wrap: wrap; }
+}
+
+.rule-type-field { flex: 2; min-width: 160px; }
+.rule-value-field { flex: 2; min-width: 120px; }
+
+.rule-time-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 2;
+  min-width: 200px;
+
+  mat-form-field { flex: 1; }
+
+  .time-separator {
+    font-size: 1.1rem;
+    color: #94a3b8;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+}
+
+.no-rules-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  background: #f0f9ff;
+  border-radius: 8px;
+  border-left: 4px solid #0ea5e9;
+  color: #0369a1;
+  font-size: 0.85rem;
+
+  mat-icon { font-size: 20px; width: 20px; height: 20px; flex-shrink: 0; }
+}
+
+.add-rule-btn {
+  margin-top: 4px;
+  border-color: $primary;
+  color: $primary;
+  border-radius: 10px;
+  font-weight: 500;
+  align-self: flex-start;
+
+  mat-icon { margin-right: 4px; }
+  &:hover { background: $primary-soft; }
+}
+
+:host-context(html.dark) {
+  .rule-row {
+    background: #1e293b;
+    border-color: #334155;
+    &:hover { border-color: $primary; background: rgba($primary, .08); }
+  }
+  .no-rules-info { background: rgba(#0ea5e9, .08); color: #7dd3fc; }
+}

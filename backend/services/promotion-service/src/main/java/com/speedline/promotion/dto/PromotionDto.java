@@ -28,10 +28,15 @@ public record PromotionDto(
     List<Long> applicableCategoryIds,
     List<Long> applicableZoneIds,
     Boolean firstOrderOnly,
+    List<RuleDto> rules,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {
     public static PromotionDto from(Promotion p) {
+        return from(p, List.of());
+    }
+
+    public static PromotionDto from(Promotion p, List<com.speedline.promotion.domain.PromotionRule> rules) {
         return new PromotionDto(
             p.getId(),
             p.getCode(),
@@ -52,6 +57,7 @@ public record PromotionDto(
             parseIds(p.getApplicableCategoryIds()),
             parseIds(p.getApplicableZoneIds()),
             p.getFirstOrderOnly(),
+            rules.stream().map(RuleDto::from).toList(),
             p.getCreatedAt(),
             p.getUpdatedAt()
         );

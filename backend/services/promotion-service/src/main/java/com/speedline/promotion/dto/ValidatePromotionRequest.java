@@ -25,5 +25,7 @@ public record ValidatePromotionRequest(
 
     List<Long> categoryIds,
 
-    List<Long> productIds
+    List<Long> productIds,
+
+    Integer itemCount
 ) {}

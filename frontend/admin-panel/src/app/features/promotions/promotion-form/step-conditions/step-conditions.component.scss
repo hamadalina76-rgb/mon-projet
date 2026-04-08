@@ -1,0 +1,69 @@
+@use 'variables' as v;
+
+$primary: v.$primary-color;
+$ease: cubic-bezier(.4, 0, .2, 1);
+
+.step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.full-width { width: 100%; }
+
+.field-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  margin: 8px 0 4px;
+}
+
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  @media (max-width: 600px) { flex-direction: column; align-items: stretch; }
+}
+
+.date-field { flex: 1; }
+
+.arrow-icon {
+  color: #94a3b8;
+  @media (max-width: 600px) { display: none; }
+}
+
+.date-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #EF4444;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-top: -4px;
+
+  mat-icon { font-size: 16px; width: 16px; height: 16px; }
+}
+
+.quota-row {
+  display: flex;
+  gap: 16px;
+
+  @media (max-width: 480px) { flex-direction: column; }
+}
+
+.quota-field { flex: 1; }
+
+.checkbox-field {
+  margin: 8px 0;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+:host-context(html.dark) {
+  .field-label { color: #94a3b8; }
+  .checkbox-field { color: #cbd5e1; }
+}

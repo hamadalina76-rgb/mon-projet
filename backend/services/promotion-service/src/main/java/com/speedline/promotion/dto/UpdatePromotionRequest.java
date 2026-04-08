@@ -9,6 +9,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.speedline.promotion.domain.RuleType;
+
 public record UpdatePromotionRequest(
 
     String name,
@@ -17,7 +19,6 @@ public record UpdatePromotionRequest(
 
     PromotionType type,
 
-    @DecimalMin(value = "0.01", message = "La valeur doit être positive")
     BigDecimal value,
 
     @DecimalMin(value = "0")
@@ -44,5 +45,13 @@ public record UpdatePromotionRequest(
 
     Boolean firstOrderOnly,
 
-    PromotionStatus status
-) {}
+    PromotionStatus status,
+
+    List<RuleRequest> rules
+) {
+    public record RuleRequest(
+        RuleType ruleType,
+        String operator,
+        String targetValue
+    ) {}
+}

@@ -8,6 +8,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,6 +32,7 @@ public class PromotionController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTo,
             @RequestParam(required = false) String partnerId,
+            @RequestParam(required = false) String zoneId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "created_at") String sortBy,
@@ -41,7 +43,7 @@ public class PromotionController {
                 ? Sort.by(column).ascending()
                 : Sort.by(column).descending();
         PromotionPageResponse body = promotionService.getPromotions(
-                search, status, type, startFrom, startTo, partnerId, PageRequest.of(page, size, sort));
+                search, status, type, startFrom, startTo, partnerId, zoneId, PageRequest.of(page, size, sort));
         return ResponseEntity.ok(PromotionResponse.ok(body));
     }
 
@@ -63,6 +65,12 @@ public class PromotionController {
     @GetMapping("/code/{code}")
     public ResponseEntity<PromotionResponse<PromotionDto>> getByCode(@PathVariable String code) {
         return ResponseEntity.ok(PromotionResponse.ok(promotionService.getByCode(code)));
+    }
+
+    @GetMapping("/code/{code}/available")
+    public ResponseEntity<PromotionResponse<Boolean>> isCodeAvailable(@PathVariable String code) {
+        boolean available = promotionService.isCodeAvailable(code);
+        return ResponseEntity.ok(PromotionResponse.ok(available));
     }
 
     // ---------------------------------------------------------------- CRUD --
@@ -106,13 +114,6 @@ public class PromotionController {
         return ResponseEntity.ok(PromotionResponse.ok("Promotion désactivée", null));
     }
 
-    @PostMapping("/{id}/duplicate")
-    public ResponseEntity<PromotionResponse<PromotionDto>> duplicate(@PathVariable Long id) {
-        PromotionDto copy = promotionService.duplicate(id);
-        return ResponseEntity.status(HttpStatus.CREATED).body(
-                PromotionResponse.ok("Promotion dupliquée", copy));
-    }
-
     // -------------------------------------------------- BUSINESS LOGIC ----
 
     @PostMapping("/validate")
@@ -128,7 +129,8 @@ public class PromotionController {
         ApplyPromotionRequest req = new ApplyPromotionRequest(
                 code, request.userId(), request.orderId(),
                 request.orderSubtotal(), request.deliveryFee(),
-                request.partnerId(), request.categoryIds());
+                request.partnerId(), request.categoryIds(),
+                request.itemCount());
         return ResponseEntity.ok(PromotionResponse.ok(promotionService.apply(req)));
     }
 
@@ -142,11 +144,34 @@ public class PromotionController {
         return ResponseEntity.ok(PromotionResponse.ok("Promotion révoquée", null));
     }
 
+    // -------------------------------------------------------- SIMULATE ---
+
+    @PostMapping("/simulate")
+    public ResponseEntity<PromotionResponse<SimulateDiscountResponse>> simulate(
+            @Valid @RequestBody SimulateDiscountRequest request) {
+        return ResponseEntity.ok(PromotionResponse.ok(promotionService.simulate(request)));
+    }
+
     // ------------------------------------------------------------- STATS ---
 
     @GetMapping("/{id}/analytics")
     public ResponseEntity<PromotionResponse<PromotionAnalyticsDto>> analytics(
             @PathVariable Long id) {
         return ResponseEntity.ok(PromotionResponse.ok(promotionService.getAnalytics(id)));
+    }
+
+    // ------------------------------------------------------------- CSV ---
+
+    @GetMapping(value = "/export/csv", produces = "text/csv")
+    public ResponseEntity<byte[]> exportCsv(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String type) {
+        String csv = promotionService.exportCsv(search, status, type);
+        byte[] bytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=promotions.csv")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(bytes);
     }
 }

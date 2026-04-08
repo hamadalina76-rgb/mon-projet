@@ -1,0 +1,146 @@
+<div class="step-content">
+
+  <!-- ═══ Récapitulatif ═══ -->
+  <div class="summary-card">
+    <h3 class="summary-title">
+      <mat-icon>receipt_long</mat-icon>
+      {{ 'promotions.form.summary.title' | translate }}
+    </h3>
+
+    <!-- Code & Nom -->
+    <div class="summary-section">
+      <div class="summary-row">
+        <span class="label">{{ 'promotions.code' | translate }}</span>
+        <span class="value code-value">{{ raw.code || '—' }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">{{ 'promotions.name' | translate }}</span>
+        <span class="value">{{ raw.name || '—' }}</span>
+      </div>
+      <div class="summary-row" *ngIf="raw.description">
+        <span class="label">{{ 'promotions.form.description' | translate }}</span>
+        <span class="value">{{ raw.description }}</span>
+      </div>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <!-- Type & Valeur -->
+    <div class="summary-section">
+      <div class="summary-row">
+        <span class="label">{{ 'promotions.type' | translate }}</span>
+        <span class="value">
+          <span class="type-badge type-badge--{{ raw.type?.toLowerCase() }}">{{ typeLabel }}</span>
+        </span>
+      </div>
+      <div class="summary-row" *ngIf="raw.type !== 'FREE_DELIVERY'">
+        <span class="label">{{ 'promotions.value' | translate }}</span>
+        <span class="value highlight">{{ formattedValue }}</span>
+      </div>
+      <div class="summary-row" *ngIf="raw.maximumDiscount">
+        <span class="label">{{ 'promotions.form.maxDiscount' | translate }}</span>
+        <span class="value">{{ raw.maximumDiscount }} TND</span>
+      </div>
+      <div class="summary-row" *ngIf="raw.minimumOrder">
+        <span class="label">{{ 'promotions.form.minOrder' | translate }}</span>
+        <span class="value">{{ raw.minimumOrder }} TND</span>
+      </div>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <!-- Dates & Quotas -->
+    <div class="summary-section">
+      <div class="summary-row" *ngIf="raw.startDate">
+        <span class="label">{{ 'promotions.form.startDate' | translate }}</span>
+        <span class="value">{{ raw.startDate | date:'dd/MM/yyyy' }}</span>
+      </div>
+      <div class="summary-row" *ngIf="raw.endDate">
+        <span class="label">{{ 'promotions.form.endDate' | translate }}</span>
+        <span class="value">{{ raw.endDate | date:'dd/MM/yyyy' }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">{{ 'promotions.form.totalQuota' | translate }}</span>
+        <span class="value">{{ raw.usageLimitTotal || ('promotions.form.unlimited' | translate) }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">{{ 'promotions.form.userQuota' | translate }}</span>
+        <span class="value">{{ raw.usageLimitPerUser || '—' }}</span>
+      </div>
+      <div class="summary-row" *ngIf="raw.firstOrderOnly">
+        <span class="label">{{ 'promotions.form.firstOrderOnly' | translate }}</span>
+        <span class="value"><mat-icon class="check-icon">check_circle</mat-icon></span>
+      </div>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <!-- Ciblage -->
+    <div class="summary-section">
+      <div class="summary-row" *ngIf="selectedPartnerNames.length > 0">
+        <span class="label">{{ 'promotions.form.partners' | translate }}</span>
+        <span class="value chips">
+          <span class="chip" *ngFor="let name of selectedPartnerNames">{{ name }}</span>
+        </span>
+      </div>
+      <div class="summary-row" *ngIf="selectedPartnerNames.length === 0 && raw.type !== 'FREE_DELIVERY'">
+        <span class="label">{{ 'promotions.form.partners' | translate }}</span>
+        <span class="value muted">{{ 'promotions.form.allPartners' | translate }}</span>
+      </div>
+      <div class="summary-row" *ngIf="selectedCategoryNames.length > 0">
+        <span class="label">{{ 'promotions.form.categories' | translate }}</span>
+        <span class="value chips">
+          <span class="chip" *ngFor="let name of selectedCategoryNames">{{ name }}</span>
+        </span>
+      </div>
+      <div class="summary-row" *ngIf="selectedZoneNames.length > 0">
+        <span class="label">{{ 'promotions.form.zones' | translate }}</span>
+        <span class="value chips">
+          <span class="chip" *ngFor="let name of selectedZoneNames">{{ name }}</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Règles -->
+    <div *ngIf="rulesArray.length > 0">
+      <mat-divider></mat-divider>
+      <div class="summary-section">
+        <div class="summary-row" *ngFor="let rule of rulesArray.controls; let i = index">
+          <span class="label">{{ 'promotions.form.ruleType' | translate }} {{ i + 1 }}</span>
+          <span class="value">{{ getRuleLabel(rule.value) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Simulateur ═══ -->
+  <app-simulator
+    [type]="raw.type"
+    [value]="raw.value"
+    [maximumDiscount]="raw.maximumDiscount"
+    [minimumOrder]="raw.minimumOrder">
+  </app-simulator>
+
+  <!-- ═══ Actions ═══ -->
+  <div class="action-buttons">
+    <ng-container *ngIf="!isEdit">
+      <button mat-stroked-button type="button" (click)="submitDraft.emit()" [disabled]="saving" class="btn-draft">
+        <mat-icon>save</mat-icon>
+        {{ 'promotions.form.createDraft' | translate }}
+      </button>
+      <button mat-flat-button color="primary" type="button" (click)="submitActive.emit()" [disabled]="saving" class="btn-activate">
+        <mat-spinner *ngIf="saving" diameter="18"></mat-spinner>
+        <ng-container *ngIf="!saving">
+          <mat-icon>rocket_launch</mat-icon>
+          {{ 'promotions.form.createAndActivate' | translate }}
+        </ng-container>
+      </button>
+    </ng-container>
+    <ng-container *ngIf="isEdit">
+      <button mat-flat-button color="primary" type="button" (click)="submitActive.emit()" [disabled]="saving" class="btn-activate">
+        <mat-spinner *ngIf="saving" diameter="18"></mat-spinner>
+        <span *ngIf="!saving">{{ 'promotions.form.save' | translate }}</span>
+      </button>
+    </ng-container>
+  </div>
+</div>

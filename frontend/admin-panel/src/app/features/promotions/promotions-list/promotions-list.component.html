@@ -56,11 +56,17 @@
   [ofLabel]="'promotions.of'"
   (pageChange)="onPageChange($event)"
 >
-  <!-- Header Action -->
-  <a headerAction class="btn-add-promotion" routerLink="/promotions/new">
-    <span class="material-icons-round">add</span>
-    {{ 'promotions.addPromotion' | translate }}
-  </a>
+  <!-- Header Actions -->
+  <div headerAction class="header-actions">
+    <button class="btn-export" (click)="exportCsv()" [matTooltip]="'promotions.exportCsv' | translate">
+      <span class="material-icons-round">download</span>
+      {{ 'promotions.exportCsv' | translate }}
+    </button>
+    <a class="btn-add-promotion" routerLink="/promotions/new">
+      <span class="material-icons-round">add</span>
+      {{ 'promotions.addPromotion' | translate }}
+    </a>
+  </div>
 
   <!-- Filters -->
   <div filters class="filters-bar">
@@ -74,22 +80,67 @@
         (ngModelChange)="onSearchChange()"
       />
     </div>
+
+    <!-- Status chips -->
+    <div class="status-chips">
+      <button class="chip" [class.chip--active]="selectedStatus === 'all'" (click)="selectedStatus = 'all'; onStatusChange()">
+        {{ 'promotions.filters.allStatuses' | translate }}
+      </button>
+      <button class="chip chip--green" [class.chip--active]="selectedStatus === 'ACTIVE'" (click)="selectedStatus = 'ACTIVE'; onStatusChange()">
+        {{ 'promotions.statuses.ACTIVE' | translate }}
+      </button>
+      <button class="chip chip--gray" [class.chip--active]="selectedStatus === 'INACTIVE'" (click)="selectedStatus = 'INACTIVE'; onStatusChange()">
+        {{ 'promotions.statuses.INACTIVE' | translate }}
+      </button>
+      <button class="chip chip--blue" [class.chip--active]="selectedStatus === 'SCHEDULED'" (click)="selectedStatus = 'SCHEDULED'; onStatusChange()">
+        {{ 'promotions.statuses.SCHEDULED' | translate }}
+      </button>
+      <button class="chip chip--red" [class.chip--active]="selectedStatus === 'EXPIRED'" (click)="selectedStatus = 'EXPIRED'; onStatusChange()">
+        {{ 'promotions.statuses.EXPIRED' | translate }}
+      </button>
+    </div>
+
+    <!-- Type multi-select -->
     <mat-form-field appearance="outline" class="filter-field">
-      <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange()">
-        <mat-option value="all">{{ 'promotions.filters.allStatuses' | translate }}</mat-option>
-        <mat-option value="ACTIVE">{{ 'promotions.statuses.ACTIVE' | translate }}</mat-option>
-        <mat-option value="INACTIVE">{{ 'promotions.statuses.INACTIVE' | translate }}</mat-option>
-        <mat-option value="SCHEDULED">{{ 'promotions.statuses.SCHEDULED' | translate }}</mat-option>
-        <mat-option value="EXPIRED">{{ 'promotions.statuses.EXPIRED' | translate }}</mat-option>
-      </mat-select>
-    </mat-form-field>
-    <mat-form-field appearance="outline" class="filter-field">
-      <mat-select [(ngModel)]="selectedType" (selectionChange)="onTypeChange()">
-        <mat-option value="all">{{ 'promotions.filters.allTypes' | translate }}</mat-option>
+      <mat-label>{{ 'promotions.filters.allTypes' | translate }}</mat-label>
+      <mat-select [(ngModel)]="selectedTypes" multiple (selectionChange)="onTypeChange()">
         <mat-option value="PERCENTAGE">{{ 'promotions.types.PERCENTAGE' | translate }}</mat-option>
         <mat-option value="FIXED_AMOUNT">{{ 'promotions.types.FIXED_AMOUNT' | translate }}</mat-option>
         <mat-option value="FREE_DELIVERY">{{ 'promotions.types.FREE_DELIVERY' | translate }}</mat-option>
       </mat-select>
+    </mat-form-field>
+
+    <!-- Partner filter -->
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>{{ 'promotions.filters.allPartners' | translate }}</mat-label>
+      <mat-select [(ngModel)]="selectedPartnerId" (selectionChange)="onPartnerChange()">
+        <mat-option value="">{{ 'promotions.filters.allPartners' | translate }}</mat-option>
+        @for (p of partnersList; track p.id) {
+          <mat-option [value]="p.id.toString()">{{ p.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Zone filter -->
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>{{ 'promotions.filters.allZones' | translate }}</mat-label>
+      <mat-select [(ngModel)]="selectedZoneId" (selectionChange)="onZoneChange()">
+        <mat-option value="">{{ 'promotions.filters.allZones' | translate }}</mat-option>
+        @for (z of zonesList; track z.id) {
+          <mat-option [value]="z.id.toString()">{{ z.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Date range -->
+    <mat-form-field appearance="outline" class="filter-field filter-field--date">
+      <mat-label>{{ 'promotions.filters.dateRange' | translate }}</mat-label>
+      <mat-date-range-input [rangePicker]="rangePicker">
+        <input matStartDate [(ngModel)]="startFrom" (dateChange)="onDateChange()" [placeholder]="'promotions.filters.from' | translate">
+        <input matEndDate [(ngModel)]="startTo" (dateChange)="onDateChange()" [placeholder]="'promotions.filters.to' | translate">
+      </mat-date-range-input>
+      <mat-datepicker-toggle matSuffix [for]="rangePicker"></mat-datepicker-toggle>
+      <mat-date-range-picker #rangePicker></mat-date-range-picker>
     </mat-form-field>
   </div>
 
@@ -97,22 +148,52 @@
   <table table class="data-table">
     <thead>
       <tr>
-        <th class="col-code">{{ 'promotions.code' | translate | uppercase }}</th>
-        <th class="col-type">{{ 'promotions.type' | translate | uppercase }}</th>
+        <th class="col-code sortable" (click)="toggleSort('code')">
+          {{ 'promotions.code' | translate | uppercase }}
+          @if (sortBy === 'code') {
+            <span class="material-icons-round sort-icon">{{ sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</span>
+          }
+        </th>
+        <th class="col-type sortable" (click)="toggleSort('type')">
+          {{ 'promotions.type' | translate | uppercase }}
+          @if (sortBy === 'type') {
+            <span class="material-icons-round sort-icon">{{ sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</span>
+          }
+        </th>
         <th class="col-value">{{ 'promotions.value' | translate | uppercase }}</th>
-        <th class="col-usage">{{ 'promotions.usages' | translate | uppercase }}</th>
-        <th class="col-dates">{{ 'promotions.validFrom' | translate | uppercase }}</th>
-        <th class="col-status">{{ 'promotions.status' | translate | uppercase }}</th>
+        <th class="col-usage sortable" (click)="toggleSort('usage_count')">
+          {{ 'promotions.usages' | translate | uppercase }}
+          @if (sortBy === 'usage_count') {
+            <span class="material-icons-round sort-icon">{{ sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</span>
+          }
+        </th>
+        <th class="col-dates sortable" (click)="toggleSort('start_date')">
+          {{ 'promotions.validFrom' | translate | uppercase }}
+          @if (sortBy === 'start_date') {
+            <span class="material-icons-round sort-icon">{{ sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</span>
+          }
+        </th>
+        <th class="col-status sortable" (click)="toggleSort('status')">
+          {{ 'promotions.status' | translate | uppercase }}
+          @if (sortBy === 'status') {
+            <span class="material-icons-round sort-icon">{{ sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</span>
+          }
+        </th>
         <th class="col-actions">{{ 'promotions.actions.title' | translate | uppercase }}</th>
       </tr>
     </thead>
     <tbody>
       @for (promo of paginatedPromotions; track promo.id) {
-        <tr class="table-row">
+        <tr class="table-row" [class.row-warning]="getUsagePercent(promo) >= 80 && getUsagePercent(promo) < 100">
           <!-- Code + Name -->
           <td class="col-code">
             <div class="promo-info">
-              <div class="promo-code">{{ promo.code }}</div>
+              <div class="promo-code-row">
+                <span class="promo-code">{{ promo.code }}</span>
+                <button class="copy-btn" (click)="copyCode(promo.code)" [matTooltip]="'promotions.copyCode' | translate">
+                  <span class="material-icons-round">content_copy</span>
+                </button>
+              </div>
               @if (promo.name) {
                 <div class="promo-name">{{ promo.name }}</div>
               }
@@ -129,9 +210,17 @@
           <!-- Value -->
           <td class="col-value">{{ formatValue(promo) }}</td>
 
-          <!-- Usage -->
+          <!-- Usage with progress bar -->
           <td class="col-usage">
-            {{ promo.usageCount || 0 }} / {{ promo.usageLimitTotal || '∞' }}
+            <div class="usage-cell">
+              <span class="usage-text">{{ promo.usageCount || 0 }} / {{ promo.usageLimitTotal || '∞' }}</span>
+              @if (promo.usageLimitTotal) {
+                <div class="usage-bar">
+                  <div class="usage-bar-fill usage-bar--{{ getUsageColor(promo) }}"
+                       [style.width.%]="getUsagePercent(promo)"></div>
+                </div>
+              }
+            </div>
           </td>
 
           <!-- Dates -->

@@ -44,3 +44,18 @@ eureka:
   client:
     service-url:
       defaultZone: http://${EUREKA_USER:eureka}:${EUREKA_PASSWORD:eureka123}@localhost:8761/eureka/
+
+# Resilience4j — circuit breaker for Feign calls
+resilience4j:
+  circuitbreaker:
+    instances:
+      orderService:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+  retry:
+    instances:
+      orderService:
+        max-attempts: 3
+        wait-duration: 500ms
