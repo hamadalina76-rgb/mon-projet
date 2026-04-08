@@ -39,6 +39,9 @@ public class OrderItemDTO {
     // Instructions
     private String specialInstructions;
 
+    /** Minutes de préparation (fiche produit au moment de la commande), si connues. */
+    private Integer preparationTimeMin;
+
     /**
      * DTO pour une option sélectionnée
      */

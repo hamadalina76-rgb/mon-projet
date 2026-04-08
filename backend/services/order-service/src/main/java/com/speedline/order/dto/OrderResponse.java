@@ -70,6 +70,8 @@ public class OrderResponse {
     private LocalDateTime orderTime;
     private LocalDateTime estimatedDeliveryTime;
     private LocalDateTime actualDeliveryTime;
+    /** Max des temps produit (minutes) à la commande ; utile pour l’acceptation côté partenaire. */
+    private Integer suggestedPreparationMinutes;
     private Boolean isScheduled;
     private LocalDateTime scheduledDeliveryTime;
     
@@ -120,8 +122,13 @@ public class OrderResponse {
     @AllArgsConstructor
     public static class StatusHistoryDTO {
         private OrderStatus status;
+        private OrderStatus previousStatus;
         private String description;
+        private String notes;
         private String updatedBy;
+        private String actorType;
         private LocalDateTime timestamp;
+        /** Minutes de préparation indiquées par le partenaire à l'acceptation (si présent). */
+        private Integer estimatedPrepMinutes;
     }
 }

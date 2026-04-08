@@ -48,6 +48,11 @@ export class ApiService {
     return this.http.delete<T>(`${this.apiUrl}/${endpoint}`);
   }
 
+  /** DELETE with JSON body (e.g. order cancel). */
+  deleteWithBody<T>(endpoint: string, body: unknown): Observable<T> {
+    return this.http.request<T>('DELETE', `${this.apiUrl}/${endpoint}`, { body });
+  }
+
   upload<T>(endpoint: string, formData: FormData): Observable<T> {
     return this.http.post<T>(`${this.apiUrl}/${endpoint}`, formData);
   }

@@ -1,2 +1,5 @@
 <!-- Order Status Badge Component Template - Angular 19 -->
-<span class="status-badge" [ngClass]="status()">{{ statusLabel() }}</span>
+<span class="status-badge" [ngClass]="'badge-' + status().toLowerCase()">
+  <span class="badge-dot"></span>
+  {{ statusTranslateKey() | translate }}
+</span>

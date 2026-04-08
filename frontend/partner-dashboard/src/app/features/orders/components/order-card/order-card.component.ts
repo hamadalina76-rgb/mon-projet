@@ -2,22 +2,19 @@
 import { Component, input, output, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { TranslateModule } from '@ngx-translate/core';
 import { OrderStatusBadgeComponent } from '../order-status-badge/order-status-badge.component';
 import { TimeAgoPipe } from '@shared/pipes/time-ago.pipe';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-order-card',
   standalone: true,
+  host: {
+    '[class.new-order]': 'isNew()',
+  },
   imports: [
     CommonModule,
     RouterLink,
-    MatCardModule,
-    MatButtonModule,
-    MatIconModule,
     TranslateModule,
     OrderStatusBadgeComponent,
     TimeAgoPipe,
@@ -28,17 +25,22 @@ import { TimeAgoPipe } from '@shared/pipes/time-ago.pipe';
 export class OrderCardComponent {
   // Angular 19 Signal Inputs
   order = input.required<any>();
-  
+  /** True for ~2s after the order first arrives via WebSocket */
+  isNew = input<boolean>(false);
+
   // Angular 19 Outputs
   confirm = output<string>();
+  reject = output<string>();
   startPreparing = output<string>();
   markReady = output<string>();
 
-  // Computed
-  isPending = computed(() => this.order()?.status === 'pending');
-  isConfirmed = computed(() => this.order()?.status === 'confirmed');
-  isPreparing = computed(() => this.order()?.status === 'preparing');
-  
+  // Computed — compare uppercase to match backend OrderStatus enum
+  isPending = computed(() => this.order()?.status === 'PENDING');
+  isConfirmed = computed(() => this.order()?.status === 'CONFIRMED');
+  isPreparing = computed(() => this.order()?.status === 'PREPARING');
+  isReady = computed(() => this.order()?.status === 'READY');
+  isCancelled = computed(() => this.order()?.status === 'CANCELLED');
+
   totalItems = computed(() => {
     const o = this.order();
     return o?.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) ?? 0;
@@ -46,6 +48,10 @@ export class OrderCardComponent {
 
   onConfirm(): void {
     this.confirm.emit(this.order().id);
+  }
+
+  onReject(): void {
+    this.reject.emit(this.order().id);
   }
 
   onStartPreparing(): void {

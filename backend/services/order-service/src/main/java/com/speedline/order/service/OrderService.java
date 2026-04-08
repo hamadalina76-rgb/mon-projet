@@ -301,6 +301,52 @@ public interface OrderService {
      */
     OrderResponse updateEstimatedDeliveryTime(Long orderId, LocalDateTime estimatedTime);
 
+    // ==================== FILTRAGE PARTENAIRE (server-side) ====================
+
+    /**
+     * Commandes d'un partenaire avec filtrage serveur (statut + recherche textuelle).
+     *
+     * @param partnerId ID du partenaire
+     * @param status    Filtre statut (null = tous)
+     * @param search    Recherche sur numéro commande ou nom client (null/"" = aucun filtre)
+     * @param pageable  Pagination et tri
+     */
+    Page<OrderResponse> getPartnerOrdersFiltered(
+            Long partnerId,
+            OrderStatus status,
+            String search,
+            Pageable pageable,
+            String sortBy,
+            LocalDateTime from,
+            LocalDateTime to
+    );
+
+    /**
+     * Historique des statuts d'une commande avec filtres optionnels (côté serveur).
+     *
+     * @param status    filtre sur le statut de l'événement (null = tous)
+     * @param actorType filtre sur le type d'acteur SYSTEM, PARTNER, etc. (null/vide = tous)
+     * @param from      début inclus, ISO-8601 local {@code yyyy-MM-dd'T'HH:mm:ss} (null = sans borne)
+     * @param to        fin inclusive, même format (null = sans borne)
+     * @param pageable  pagination (page, size)
+     */
+    Page<OrderResponse.StatusHistoryDTO> getOrderHistory(
+            Long orderId,
+            OrderStatus status,
+            String actorType,
+            String from,
+            String to,
+            Pageable pageable
+    );
+
+    /**
+     * Compteurs par statut pour les chips (alignés sur le filtre date de la liste).
+     *
+     * @param from début sur {@code orderTime} (null = sans borne basse)
+     * @param to   fin inclusive (null = sans borne haute)
+     */
+    java.util.Map<String, Long> getPartnerOrderCounts(Long partnerId, LocalDateTime from, LocalDateTime to);
+
     // ==================== STATS INTERNES ====================
 
     /**

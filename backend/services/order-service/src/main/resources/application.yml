@@ -27,9 +27,14 @@ spring:
       circuitbreaker:
         enabled: true
     gcp:
-      enabled: ${GCP_ENABLED:false}
+      # Même modèle que partner-service : topic order-events → notification-service (WebSocket)
+      project-id: ${GCP_PROJECT_ID:speedline-local}
+      # Local + émulateur : pas d'Application Default Credentials (évite l'erreur IOException au démarrage)
+      credentials:
+        enabled: ${GCP_CREDENTIALS_ENABLED:false}
       pubsub:
-        enabled: ${GCP_PUBSUB_ENABLED:false}
+        enabled: ${GCP_PUBSUB_ENABLED:true}
+        emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8090}
   data:
     redis:
       host: ${REDIS_HOST:localhost}

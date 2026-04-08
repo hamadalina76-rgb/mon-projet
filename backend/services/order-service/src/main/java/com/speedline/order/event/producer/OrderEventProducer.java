@@ -12,13 +12,10 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.TimeUnit;
 
 /**
- * GCP Pub/Sub Producer pour les événements Order
- * - OrderCreatedEvent
- * - OrderConfirmedEvent
- * - OrderCancelledEvent
- * - OrderCompletedEvent
- * - OrderStatusChangedEvent
- * 
+ * Publie ORDER_CREATED sur le topic Pub/Sub {@code order-events},
+ * comme {@code PartnerEventPublisher} publie sur {@code partner-events}.
+ * Le {@link com.speedline.notification.event.consumer.OrderEventConsumer} consomme ce topic
+ * et pousse la notification WebSocket au partenaire.
  */
 @Component
 @RequiredArgsConstructor
@@ -40,7 +37,11 @@ public class OrderEventProducer {
 
         final PubSubTemplate pubSubTemplate = pubSubTemplateProvider.getIfAvailable();
         if (pubSubTemplate == null) {
-            log.debug("Pub/Sub indisponible: événement ORDER_CREATED ignoré orderId={}", event.getOrderId());
+            log.warn(
+                    "PubSubTemplate absent (spring.cloud.gcp.pubsub.enabled=false ou GCP mal configuré) — "
+                            + "ORDER_CREATED non publié orderId={}. "
+                            + "En local : démarrez l'émulateur Pub/Sub et utilisez PUBSUB_EMULATOR_HOST=localhost:8090.",
+                    event.getOrderId());
             return;
         }
 
@@ -50,9 +51,11 @@ public class OrderEventProducer {
             final String messageId = pubSubTemplate.publish(orderEventsTopic, payload)
                     .get(PUBLISH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
-            log.info("ORDER_CREATED published topic={} messageId={} orderId={}", orderEventsTopic, messageId, event.getOrderId());
+            log.info("ORDER_CREATED published topic={} messageId={} orderId={}",
+                    orderEventsTopic, messageId, event.getOrderId());
         } catch (Exception ex) {
-            log.warn("Impossible de publier ORDER_CREATED pour orderId={}", event.getOrderId(), ex);
+            log.warn("Impossible de publier ORDER_CREATED sur topic={} orderId={}",
+                    orderEventsTopic, event.getOrderId(), ex);
         }
     }
 }

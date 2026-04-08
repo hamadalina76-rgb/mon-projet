@@ -1,98 +1,494 @@
-// Order Card Component Styles
+// Order Card Component Styles — SpeedLine Partner Dashboard
 @use 'assets/styles/variables' as *;
 
+// ---------------------------------------------------------------------------
+// Animations
+// ---------------------------------------------------------------------------
+@keyframes urgentPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.8); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+// ---------------------------------------------------------------------------
+// Status-specific color tokens
+// ---------------------------------------------------------------------------
+$status-pending:   $warning-color;       // #F59E0B
+$status-confirmed: $info-color;          // #3B82F6
+$status-preparing: #8B5CF6;             // violet
+$status-ready:     $success-color;       // #10B981
+$status-cancelled: $gray-400;           // #A0AEC0
+
+// ---------------------------------------------------------------------------
+// Host
+// ---------------------------------------------------------------------------
+:host {
+  display: block;
+}
+
+// ---------------------------------------------------------------------------
+// Card base
+// ---------------------------------------------------------------------------
 .order-card {
-  padding: 1rem;
+  background: $white;
+  border-radius: $border-radius-xl;
+  box-shadow: $shadow-sm;
+  border: 1px solid $gray-200;
+  overflow: hidden;
+  transition: box-shadow $transition-fast, transform $transition-fast, border-color $transition-fast;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 
-  &.PENDING {
-    border-left: 4px solid var(--warning);
+  &:hover {
+    box-shadow: $shadow-md;
+    transform: translateY(-2px);
+    border-color: $gray-300;
   }
 
-  &.CONFIRMED {
-    border-left: 4px solid var(--info);
-  }
+  // Status-specific border tints on hover
+  &[data-status="PENDING"]:hover   { border-color: rgba($status-pending, 0.4); }
+  &[data-status="CONFIRMED"]:hover { border-color: rgba($status-confirmed, 0.4); }
+  &[data-status="PREPARING"]:hover { border-color: rgba($status-preparing, 0.4); }
+  &[data-status="READY"]:hover     { border-color: rgba($status-ready, 0.4); }
 
-  &.PREPARING {
-    border-left: 4px solid var(--primary);
-  }
-
-  &.READY {
-    border-left: 4px solid var(--success);
+  &[data-status="CANCELLED"] {
+    opacity: 0.68;
+    filter: grayscale(0.25);
   }
 }
 
+// ---------------------------------------------------------------------------
+// Top status strip
+// ---------------------------------------------------------------------------
+.status-strip {
+  height: 4px;
+  width: 100%;
+  flex-shrink: 0;
+
+  .order-card[data-status="PENDING"]   & { background: $status-pending; }
+  .order-card[data-status="CONFIRMED"] & { background: $status-confirmed; }
+  .order-card[data-status="PREPARING"] & {
+    background: linear-gradient(90deg, $status-preparing, #a78bfa);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+  .order-card[data-status="READY"]     & { background: $status-ready; }
+  .order-card[data-status="CANCELLED"] & { background: $status-cancelled; }
+}
+
+// ---------------------------------------------------------------------------
+// Card Header
+// ---------------------------------------------------------------------------
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 1rem;
+  padding: $spacing-md $spacing-md 0.625rem;
+  gap: $spacing-sm;
 }
 
-.order-info {
+.order-meta {
   display: flex;
   flex-direction: column;
-
-  .order-number {
-    font-weight: 600;
-    font-size: 1.125rem;
-  }
-
-  .order-time {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-  }
+  gap: 2px;
+  flex-shrink: 0;
 }
 
-.card-body {
-  margin-bottom: 1rem;
+.order-number {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: $text-primary;
+  letter-spacing: -0.02em;
 }
 
-.customer {
+.order-time {
+  font-size: 0.7rem;
+  color: $text-muted;
+  font-weight: 400;
+}
+
+.header-right {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  gap: $spacing-xs;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 
-  mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
-    color: var(--text-secondary);
+.urgent-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.15rem 0.5rem;
+  border-radius: $border-radius-full;
+  background: rgba($status-pending, 0.12);
+  color: $warning-dark;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid rgba($status-pending, 0.25);
+
+  .urgent-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: $status-pending;
+    animation: urgentPulse 1.2s infinite;
+    flex-shrink: 0;
   }
 }
 
-.items-summary {
+// ---------------------------------------------------------------------------
+// Customer Section
+// ---------------------------------------------------------------------------
+.customer-section {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: 0.5rem $spacing-md;
+  border-top: 1px solid $gray-100;
+}
+
+.customer-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: $gray-100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  .material-icons {
+    font-size: 1.1rem;
+    color: $gray-500;
+  }
+}
+
+.customer-info {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  margin-bottom: 0.75rem;
-  padding: 0.75rem;
-  background: var(--bg-secondary);
-  border-radius: 8px;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
 
-  .more-items {
-    color: var(--primary);
+.customer-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: $text-primary;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.customer-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.75rem;
+  color: $text-muted;
+  text-decoration: none;
+  transition: color $transition-fast;
+
+  .material-icons { font-size: 0.875rem; }
+
+  &:hover {
+    color: $primary-color;
+    text-decoration: none;
   }
 }
 
-.order-total {
+// ---------------------------------------------------------------------------
+// Items Section
+// ---------------------------------------------------------------------------
+.items-section {
+  padding: 0.5rem $spacing-md;
+  background: $gray-50;
+  border-top: 1px solid $gray-100;
+  border-bottom: 1px solid $gray-100;
+}
+
+.items-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 0.375rem;
+
+  .material-icons {
+    font-size: 0.9rem;
+    color: $text-muted;
+  }
+
+  .items-count {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: $text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+}
+
+.items-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: $text-secondary;
+
+  .item-qty {
+    font-weight: 700;
+    color: $text-primary;
+    min-width: 1.75rem;
+    flex-shrink: 0;
+  }
+
+  .item-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .item-price {
+    font-size: 0.75rem;
+    color: $text-muted;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  &.more-row {
+    color: $text-muted;
+    font-style: italic;
+    margin-top: 2px;
+
+    .material-icons {
+      font-size: 1rem;
+      color: $text-muted;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Total Section
+// ---------------------------------------------------------------------------
+.total-section {
+  padding: 0.625rem $spacing-md $spacing-sm;
+}
+
+.total-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fee-row {
   display: flex;
   justify-content: space-between;
-  font-weight: 500;
+  font-size: 0.75rem;
+  color: $text-muted;
 
-  .total-value {
-    font-size: 1.125rem;
-    color: var(--primary);
+  .fee-value { font-weight: 500; }
+}
+
+.grand-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.total-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: $text-secondary;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.total-amount {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: $text-primary;
+  letter-spacing: -0.02em;
+
+  .currency {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: $text-muted;
+    margin-left: 2px;
   }
 }
 
+// ---------------------------------------------------------------------------
+// Actions
+// ---------------------------------------------------------------------------
 .card-actions {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md $spacing-md;
+}
 
-  button {
-    flex: 1;
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-xs;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 $spacing-md;
+  border-radius: $border-radius-md;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition: all $transition-fast;
+
+  .material-icons { font-size: 1.1rem; }
+
+  &:hover { filter: brightness(0.94); transform: translateY(-1px); }
+  &:active { transform: translateY(0); }
+}
+
+.btn-outline {
+  background: $white;
+  border: 1.5px solid $gray-200;
+  color: $text-secondary;
+
+  &:hover {
+    border-color: $gray-400;
+    color: $text-primary;
+    background: $gray-50;
+    filter: none;
+  }
+}
+
+.pending-actions {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+  width: 100%;
+}
+
+.btn-accept {
+  background: $primary-color;
+  color: $white;
+  box-shadow: 0 2px 8px rgba($primary-color, 0.3);
+  min-height: 48px;
+  font-size: 0.9375rem;
+}
+
+.btn-reject {
+  background: $white;
+  color: $error-dark;
+  border: 1.5px solid rgba($error-color, 0.35);
+  min-height: 44px;
+  box-shadow: none;
+
+  &:hover {
+    background: rgba($error-color, 0.06);
+    filter: none;
+  }
+}
+
+.btn-prepare {
+  background: $info-color;
+  color: $white;
+  box-shadow: 0 2px 8px rgba($info-color, 0.3);
+  min-height: 48px;
+}
+
+.btn-ready {
+  background: $success-color;
+  color: $white;
+  box-shadow: 0 2px 8px rgba($success-color, 0.3);
+  min-height: 48px;
+}
+
+.ready-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-xs;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $border-radius-md;
+  background: rgba($success-color, 0.08);
+  color: $success-dark;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid rgba($success-color, 0.2);
+
+  .material-icons { font-size: 1rem; color: $success-color; }
+}
+
+// ---------------------------------------------------------------------------
+// Cancelled footer
+// ---------------------------------------------------------------------------
+.cancelled-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-xs;
+  padding: $spacing-sm $spacing-md;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: $gray-500;
+  border-top: 1px solid $gray-100;
+  background: $gray-50;
+
+  .material-icons { font-size: 1rem; color: $gray-400; }
+}
+
+// ---------------------------------------------------------------------------
+// Desktop: side-by-side buttons
+// ---------------------------------------------------------------------------
+@media (min-width: 480px) {
+  .card-actions {
+    flex-direction: row;
+
+    .detail-btn {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 110px;
+    }
+
+    .pending-actions {
+      flex-direction: row;
+      flex: 1;
+      min-width: 0;
+
+      .btn-accept,
+      .btn-reject {
+        flex: 1;
+      }
+    }
+
+    .btn-accept,
+    .btn-prepare,
+    .btn-ready {
+      flex: 1;
+    }
+
+    .ready-tag {
+      flex: 1;
+    }
   }
 }

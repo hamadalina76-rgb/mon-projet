@@ -7,31 +7,31 @@
   <mat-menu #actionsMenu="matMenu">
     <button mat-menu-item (click)="print.emit()">
       <mat-icon>print</mat-icon>
-      <span>Imprimer</span>
+      <span>{{ 'ORDERS.ACTIONS.PRINT' | translate }}</span>
     </button>
     @if (isPending()) {
       <button mat-menu-item (click)="cancel.emit()">
         <mat-icon>cancel</mat-icon>
-        <span>Refuser</span>
+        <span>{{ 'ORDERS.ACTIONS.REJECT' | translate }}</span>
       </button>
     }
   </mat-menu>
 
   @if (isPending()) {
     <button mat-flat-button color="primary" (click)="confirm.emit()">
-      Accepter
+      {{ 'ORDERS.ACTIONS.ACCEPT' | translate }}
     </button>
   }
 
   @if (isConfirmed()) {
     <button mat-flat-button color="primary" (click)="startPreparing.emit()">
-      Préparer
+      {{ 'ORDERS.ACTIONS.PREPARE' | translate }}
     </button>
   }
 
   @if (isPreparing()) {
     <button mat-flat-button color="primary" (click)="markReady.emit()">
-      Prêt
+      {{ 'ORDERS.ACTIONS.READY' | translate }}
     </button>
   }
 </div>

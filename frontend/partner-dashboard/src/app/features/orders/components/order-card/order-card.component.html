@@ -1,55 +1,133 @@
 <!-- Order Card Component Template - Angular 19 -->
-<mat-card class="order-card" [class]="order().status">
+<article class="order-card" [attr.data-status]="order().status">
+
+  <!-- Status strip (top colored bar) -->
+  <div class="status-strip"></div>
+
+  <!-- Card Header -->
   <div class="card-header">
-    <div class="order-info">
+    <div class="order-meta">
       <span class="order-number">#{{ order().orderNumber }}</span>
       <span class="order-time">{{ order().createdAt | timeAgo }}</span>
     </div>
-    <app-order-status-badge [status]="order().status"></app-order-status-badge>
-  </div>
-
-  <div class="card-body">
-    <div class="customer">
-      <mat-icon>person</mat-icon>
-      <span>{{ order().customer.name }}</span>
-    </div>
-
-    <div class="items-summary">
-      @for (item of order().items.slice(0, 3); track item.productId) {
-        <span>{{ item.quantity }}x {{ item.productName }}</span>
+    <div class="header-right">
+      @if (isPending()) {
+        <span class="urgent-indicator">
+          <span class="urgent-dot"></span>
+          {{ 'ORDERS.CARD.NEW' | translate }}
+        </span>
       }
-      @if (order().items.length > 3) {
-        <span class="more-items">+{{ order().items.length - 3 }} autres</span>
+      <app-order-status-badge [status]="order().status"></app-order-status-badge>
+    </div>
+  </div>
+
+  <!-- Customer -->
+  <div class="customer-section">
+    <div class="customer-avatar">
+      <span class="material-icons">person</span>
+    </div>
+    <div class="customer-info">
+      <span class="customer-name">{{ order().customer?.name ?? order().customerName ?? '—' }}</span>
+      @if (order().customer?.phone) {
+        <a class="customer-phone" [href]="'tel:' + order().customer.phone">
+          <span class="material-icons">phone</span>
+          {{ order().customer.phone }}
+        </a>
       }
     </div>
+  </div>
 
-    <div class="order-total">
-      <span>Total</span>
-      <span class="total-value">{{ order().total | currency:'MAD' }}</span>
+  <!-- Items -->
+  <div class="items-section">
+    <div class="items-header">
+      <span class="material-icons">shopping_bag</span>
+      <span class="items-count">
+        {{ totalItems() }}
+        @if (totalItems() === 1) {
+          {{ 'ORDERS.CARD.ITEM' | translate }}
+        } @else {
+          {{ 'ORDERS.CARD.ITEMS' | translate }}
+        }
+      </span>
+    </div>
+    <ul class="items-list">
+      @for (item of order().items?.slice(0, 3); track item.productId) {
+        <li class="item-row">
+          <span class="item-qty">{{ item.quantity }}×</span>
+          <span class="item-name">{{ item.productName }}</span>
+          @if (item.unitPrice) {
+            <span class="item-price">{{ item.unitPrice * item.quantity | number:'1.2-2' }} TND</span>
+          }
+        </li>
+      }
+      @if ((order().items?.length ?? 0) > 3) {
+        <li class="item-row more-row">
+          <span class="material-icons">more_horiz</span>
+          <span>{{ 'ORDERS.CARD.MORE_ITEMS' | translate: { count: order().items.length - 3 } }}</span>
+        </li>
+      }
+    </ul>
+  </div>
+
+  <!-- Montant articles (partenaire — hors frais livraison) -->
+  <div class="total-section">
+    <div class="total-row">
+      <div class="grand-total-row">
+        <span class="total-label">{{ 'ORDERS.CARD.SUBTOTAL_LABEL' | translate }}</span>
+        <span class="total-amount">{{ order().subtotal | number:'1.2-2' }} <span class="currency">TND</span></span>
+      </div>
     </div>
   </div>
 
-  <div class="card-actions">
-    <button mat-stroked-button [routerLink]="['/orders', order().id]">
-      Voir détails
-    </button>
+  <!-- Actions -->
+  @if (!isCancelled()) {
+    <div class="card-actions">
+      <a class="btn btn-outline detail-btn" [routerLink]="['/orders', order().id]">
+        <span class="material-icons">visibility</span>
+        {{ 'ORDERS.CARD.DETAILS' | translate }}
+      </a>
 
-    @if (isPending()) {
-      <button mat-flat-button color="primary" (click)="onConfirm()">
-        Accepter
-      </button>
-    }
+      @if (isPending()) {
+        <div class="pending-actions">
+          <button class="btn btn-accept" (click)="onConfirm()">
+            <span class="material-icons">check_circle</span>
+            {{ 'ORDERS.CARD.ACCEPT' | translate }}
+          </button>
+          <button type="button" class="btn btn-reject" (click)="onReject()">
+            <span class="material-icons">block</span>
+            {{ 'ORDERS.CARD.REJECT' | translate }}
+          </button>
+        </div>
+      }
 
-    @if (isConfirmed()) {
-      <button mat-flat-button color="primary" (click)="onStartPreparing()">
-        Préparer
-      </button>
-    }
+      @if (isConfirmed()) {
+        <button class="btn btn-prepare" (click)="onStartPreparing()">
+          <span class="material-icons">restaurant</span>
+          {{ 'ORDERS.CARD.PREPARE' | translate }}
+        </button>
+      }
 
-    @if (isPreparing()) {
-      <button mat-flat-button color="primary" (click)="onMarkReady()">
-        Prêt
-      </button>
-    }
-  </div>
-</mat-card>
+      @if (isPreparing()) {
+        <button class="btn btn-ready" (click)="onMarkReady()">
+          <span class="material-icons">done_all</span>
+          {{ 'ORDERS.CARD.READY' | translate }}
+        </button>
+      }
+
+      @if (isReady()) {
+        <span class="ready-tag">
+          <span class="material-icons">check_circle</span>
+          {{ 'ORDERS.CARD.WAITING_COURIER' | translate }}
+        </span>
+      }
+    </div>
+  }
+
+  @if (isCancelled()) {
+    <div class="cancelled-footer">
+      <span class="material-icons">cancel</span>
+      {{ 'ORDERS.CARD.CANCELLED' | translate }}
+    </div>
+  }
+
+</article>

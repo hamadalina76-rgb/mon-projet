@@ -1,142 +1,457 @@
-<!-- Order Detail Component Template - Angular 19 -->
-<div class="order-detail-page">
+<!-- order-detail.component.html -->
+<div class="detail-page">
+
   @if (loading()) {
-    <div class="loading-container">
-      <mat-spinner diameter="48"></mat-spinner>
-    </div>
-  } @else if (order()) {
-    <header class="page-header">
-      <div class="header-left">
-        <button mat-icon-button routerLink="/orders">
-          <mat-icon>arrow_back</mat-icon>
-        </button>
-        <div class="order-title">
-          <h1>Commande #{{ order()?.orderNumber }}</h1>
-          <app-order-status-badge [status]="order()?.status"></app-order-status-badge>
-        </div>
-      </div>
-      <div class="header-actions">
-        @if (order()?.status === 'PENDING') {
-          <button mat-stroked-button color="warn" (click)="cancelOrder()">
-            Refuser
-          </button>
-          <button mat-flat-button color="primary" (click)="confirmOrder()">
-            Accepter
-          </button>
-        }
-        @if (order()?.status === 'CONFIRMED') {
-          <button mat-flat-button color="primary" (click)="startPreparing()">
-            Commencer préparation
-          </button>
-        }
-        @if (order()?.status === 'PREPARING') {
-          <button mat-flat-button color="primary" (click)="markReady()">
-            Marquer prêt
-          </button>
-        }
-      </div>
-    </header>
-
-    <div class="order-content">
-      <div class="content-left">
-        <!-- Order Items -->
-        <mat-card class="items-card">
-          <h3>Articles commandés</h3>
-          <div class="items-list">
-            @for (item of order()?.items; track item.id) {
-              <div class="item-row">
-                <div class="item-quantity">{{ item.quantity }}x</div>
-                <div class="item-details">
-                  <span class="item-name">{{ item.productName }}</span>
-                  @if (item.options?.length) {
-                    <span class="item-options">{{ item.options | json }}</span>
-                  }
-                  @if (item.notes) {
-                    <span class="item-notes">Note: {{ item.notes }}</span>
-                  }
-                </div>
-                <div class="item-price">{{ item.price * item.quantity | currency:'MAD' }}</div>
-              </div>
-            }
-          </div>
-
-          <mat-divider></mat-divider>
-
-          <div class="order-totals">
-            <div class="total-row">
-              <span>Sous-total</span>
-              <span>{{ order()?.subtotal | currency:'MAD' }}</span>
-            </div>
-            <div class="total-row">
-              <span>Frais de livraison</span>
-              <span>{{ order()?.deliveryFee | currency:'MAD' }}</span>
-            </div>
-            <div class="total-row total">
-              <span>Total</span>
-              <span>{{ order()?.total | currency:'MAD' }}</span>
-            </div>
-          </div>
-        </mat-card>
-
-        <!-- Notes -->
-        @if (order()?.notes) {
-          <mat-card class="notes-card">
-            <h3>Notes du client</h3>
-            <p>{{ order()?.notes }}</p>
-          </mat-card>
-        }
-      </div>
-
-      <div class="content-right">
-        <!-- Customer Info -->
-        <mat-card class="info-card">
-          <h3>Client</h3>
-          <div class="info-row">
-            <mat-icon>person</mat-icon>
-            <span>{{ order()?.customer?.name }}</span>
-          </div>
-          <div class="info-row">
-            <mat-icon>phone</mat-icon>
-            <a [href]="'tel:' + order()?.customer?.phone">{{ order()?.customer?.phone }}</a>
-          </div>
-        </mat-card>
-
-        <!-- Payment Info -->
-        <mat-card class="info-card">
-          <h3>Paiement</h3>
-          <div class="info-row">
-            <mat-icon>payment</mat-icon>
-            <span>{{ order()?.paymentMethod }}</span>
-          </div>
-          <div class="info-row">
-            <mat-icon>check_circle</mat-icon>
-            <span>{{ order()?.paymentStatus }}</span>
-          </div>
-        </mat-card>
-
-        <!-- Timeline -->
-        <mat-card class="timeline-card">
-          <h3>Historique</h3>
-          <div class="timeline">
-            <div class="timeline-item">
-              <div class="timeline-dot"></div>
-              <div class="timeline-content">
-                <span class="timeline-label">Commande reçue</span>
-                <span class="timeline-time">{{ order()?.createdAt | date:'HH:mm' }}</span>
-              </div>
-            </div>
-            @if (order()?.confirmedAt) {
-              <div class="timeline-item">
-                <div class="timeline-dot"></div>
-                <div class="timeline-content">
-                  <span class="timeline-label">Commande confirmée</span>
-                  <span class="timeline-time">{{ order()?.confirmedAt | date:'HH:mm' }}</span>
-                </div>
-              </div>
-            }
-          </div>
-        </mat-card>
-      </div>
+    <div class="loading-full">
+      <app-loading-spinner></app-loading-spinner>
     </div>
   }
+
+  @if (!loading() && order()) {
+
+    <div class="top-bar">
+      <a class="back-btn" routerLink="/orders">
+        <span class="material-icons">arrow_back</span>
+        <span>{{ 'ORDERS.DETAIL.BACK_LIST' | translate }}</span>
+      </a>
+      <div class="top-center">
+        <span class="order-number">#{{ order().orderNumber }}</span>
+        <app-order-status-badge [status]="order().status"></app-order-status-badge>
+      </div>
+      <div class="top-meta">
+        <span class="material-icons meta-icon">schedule</span>
+        <span class="meta-text">{{ order().createdAt | timeAgo }}</span>
+        <span class="meta-sep">·</span>
+        <span class="meta-text">{{ order().createdAt | date:'dd MMM, HH:mm' }}</span>
+      </div>
+    </div>
+
+    @if (!isCancelled()) {
+      <div class="action-bar" [attr.data-status]="order().status">
+
+        @if (isPending()) {
+          <div class="action-hint">
+            <span class="material-icons">info_outline</span>
+            {{ 'ORDERS.DETAIL.PENDING_HINT' | translate }}
+          </div>
+          <div class="action-btns">
+            <button class="btn-reject" [disabled]="actionLoading()" (click)="openRejectDialog()">
+              <span class="material-icons">cancel</span>
+              {{ 'ORDERS.DETAIL.REJECT' | translate }}
+            </button>
+            <button class="btn-accept" [disabled]="actionLoading()" (click)="openAcceptDialog()">
+              @if (!actionLoading()) {
+                <span class="material-icons">check_circle</span>
+                {{ 'ORDERS.DETAIL.ACCEPT_ORDER' | translate }}
+              } @else {
+                <span class="spinner-sm"></span>
+                {{ 'ORDERS.DETAIL.IN_PROGRESS' | translate }}
+              }
+            </button>
+          </div>
+        }
+
+        @if (isConfirmed()) {
+          <div class="action-hint info">
+            <span class="material-icons">check_circle_outline</span>
+            {{ 'ORDERS.DETAIL.CONFIRMED_HINT' | translate }}
+          </div>
+          <div class="action-btns">
+            <button class="btn-prepare" [disabled]="actionLoading()" (click)="startPreparing()">
+              <span class="material-icons">restaurant</span>
+              {{ 'ORDERS.DETAIL.START_PREP' | translate }}
+            </button>
+          </div>
+        }
+
+        @if (isPreparing()) {
+          <div class="action-hint purple">
+            <span class="material-icons">restaurant</span>
+            {{ 'ORDERS.DETAIL.PREPARING_HINT' | translate }}
+          </div>
+          <div class="action-btns">
+            <button class="btn-ready" [disabled]="actionLoading()" (click)="markReady()">
+              <span class="material-icons">done_all</span>
+              {{ 'ORDERS.DETAIL.MARK_READY' | translate }}
+            </button>
+          </div>
+        }
+
+        @if (isReady()) {
+          <div class="action-hint success">
+            <span class="material-icons">check_circle</span>
+            {{ 'ORDERS.DETAIL.READY_HINT' | translate }}
+          </div>
+        }
+      </div>
+    }
+
+    @if (isCancelled()) {
+      <div class="cancelled-banner">
+        <span class="material-icons">cancel</span>
+        <div>
+          <strong>{{ 'ORDERS.DETAIL.CANCELLED_TITLE' | translate }}</strong>
+          @if (order().cancelReason) {
+            <span>· {{ order().cancelReason }}</span>
+          }
+        </div>
+      </div>
+    }
+
+    <div class="content-grid">
+
+      <div class="col-left">
+
+        <div class="summary-chips">
+          <div class="summary-chip">
+            <span class="material-icons">shopping_bag</span>
+            <span>{{ 'ORDERS.DETAIL.ITEMS_COUNT' | translate: { count: totalItems() } }}</span>
+          </div>
+          @if (order().orderType) {
+            <div class="summary-chip">
+              <span class="material-icons">{{ getOrderTypeIcon(order().orderType) }}</span>
+              <span>{{ ('ORDERS.ORDER_TYPE.' + order().orderType) | translate }}</span>
+            </div>
+          }
+          <div class="summary-chip total-chip">
+            <span class="material-icons">payments</span>
+            <span>{{ 'ORDERS.DETAIL.SUBTOTAL_ITEMS' | translate: { amount: (order().subtotal | number:'1.2-2') } }}</span>
+          </div>
+        </div>
+
+        <div class="detail-card">
+          <div class="card-title">
+            <span class="material-icons">receipt_long</span>
+            {{ 'ORDERS.DETAIL.ORDERED_ITEMS' | translate }}
+          </div>
+
+          <div class="items-table-wrap">
+          <div class="items-table">
+            <div class="items-header">
+              <span>{{ 'ORDERS.DETAIL.ITEM_COL' | translate }}</span>
+              <span>{{ 'ORDERS.DETAIL.QTY_COL' | translate }}</span>
+              <span>{{ 'ORDERS.DETAIL.UNIT_COL' | translate }}</span>
+              <span class="text-right">{{ 'ORDERS.DETAIL.LINE_SUBTOTAL' | translate }}</span>
+            </div>
+            @for (item of order().items; track item.id ?? item.productId) {
+              <div class="item-row">
+                <div class="item-info">
+                  <span class="item-name">{{ item.productName }}</span>
+                  @if (item.options?.length) {
+                    <ul class="item-options">
+                      @for (opt of item.options; track opt.name) {
+                        <li>+ {{ opt.name }} : {{ opt.value }}
+                          @if (opt.price > 0) { <span class="opt-price">+{{ opt.price | number:'1.2-2' }}</span>}
+                        </li>
+                      }
+                    </ul>
+                  }
+                  @if (item.notes) {
+                    <p class="item-note">📝 {{ item.notes }}</p>
+                  }
+                </div>
+                <span class="item-qty">{{ item.quantity }}</span>
+                <span class="item-unit-price">{{ (item.unitPrice ?? item.price ?? 0) | number:'1.2-2' }} TND</span>
+                <span class="item-subtotal text-right">{{ getItemTotal(item) | number:'1.2-2' }} TND</span>
+              </div>
+            }
+          </div>
+          </div>
+
+          <div class="pricing-section">
+            <div class="pricing-row">
+              <span>{{ 'ORDERS.DETAIL.SUBTOTAL' | translate }}</span>
+              <span>{{ order().subtotal | number:'1.2-2' }} TND</span>
+            </div>
+            @if (order().deliveryFee > 0) {
+              <div class="pricing-row">
+                <span>{{ 'ORDERS.DETAIL.DELIVERY_FEE' | translate }}</span>
+                <span>{{ order().deliveryFee | number:'1.2-2' }} TND</span>
+              </div>
+            }
+            @if (order().serviceFee > 0) {
+              <div class="pricing-row">
+                <span>{{ 'ORDERS.DETAIL.SERVICE_FEE' | translate }}</span>
+                <span>{{ order().serviceFee | number:'1.2-2' }} TND</span>
+              </div>
+            }
+            @if (order().discount > 0) {
+              <div class="pricing-row discount">
+                <span>{{ 'ORDERS.DETAIL.DISCOUNT' | translate }}</span>
+                <span>-{{ order().discount | number:'1.2-2' }} TND</span>
+              </div>
+            }
+            <div class="pricing-row total-row">
+              <span>{{ 'ORDERS.DETAIL.TOTAL' | translate }}</span>
+              <span>{{ order().total | number:'1.2-2' }} TND</span>
+            </div>
+          </div>
+        </div>
+
+        @if (order().notes) {
+          <div class="detail-card notes-card">
+            <div class="card-title">
+              <span class="material-icons">sticky_note_2</span>
+              {{ 'ORDERS.DETAIL.CLIENT_NOTES' | translate }}
+            </div>
+            <p class="notes-text">{{ order().notes }}</p>
+          </div>
+        }
+      </div>
+
+      <div class="col-right">
+
+        <div class="detail-card">
+          <div class="card-title">
+            <span class="material-icons">person</span>
+            {{ 'ORDERS.DETAIL.CUSTOMER' | translate }}
+          </div>
+          <div class="info-block">
+            <div class="info-row">
+              <span class="material-icons info-icon">badge</span>
+              <span class="info-val">{{ order().customer?.name ?? '—' }}</span>
+            </div>
+            @if (order().customer?.phone) {
+              <div class="info-row">
+                <span class="material-icons info-icon">phone</span>
+                <a class="phone-link" [href]="'tel:' + order().customer.phone">
+                  {{ order().customer.phone }}
+                </a>
+              </div>
+            }
+            @if (order().customer?.email) {
+              <div class="info-row">
+                <span class="material-icons info-icon">email</span>
+                <span class="info-val small">{{ order().customer.email }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        @if (order().deliveryAddress || order().orderType === 'DELIVERY') {
+          <div class="detail-card">
+            <div class="card-title">
+              <span class="material-icons">location_on</span>
+              {{ 'ORDERS.DETAIL.DELIVERY_ADDR' | translate }}
+            </div>
+            @if (order().deliveryAddress) {
+              <div class="info-block">
+                @if (order().deliveryAddress.street) {
+                  <div class="info-row">
+                    <span class="material-icons info-icon">place</span>
+                    <span class="info-val">{{ order().deliveryAddress.street }}</span>
+                  </div>
+                }
+                @if (order().deliveryAddress.building || order().deliveryAddress.floor) {
+                  <div class="info-row">
+                    <span class="material-icons info-icon">apartment</span>
+                    <span class="info-val">
+                      @if (order().deliveryAddress.building) {
+                        {{ 'ORDERS.DETAIL.BUILDING' | translate: { n: order().deliveryAddress.building } }}
+                      }
+                      @if (order().deliveryAddress.floor) {
+                        @if (order().deliveryAddress.building) { · }
+                        {{ 'ORDERS.DETAIL.FLOOR' | translate: { n: order().deliveryAddress.floor } }}
+                      }
+                    </span>
+                  </div>
+                }
+                @if (order().deliveryAddress.city) {
+                  <div class="info-row">
+                    <span class="material-icons info-icon">location_city</span>
+                    <span class="info-val">{{ order().deliveryAddress.city }}</span>
+                  </div>
+                }
+                @if (order().deliveryAddress.notes) {
+                  <div class="addr-note">
+                    <span class="material-icons">info_outline</span>
+                    {{ order().deliveryAddress.notes }}
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="info-val muted">{{ 'ORDERS.DETAIL.ADDR_MISSING' | translate }}</p>
+            }
+          </div>
+        }
+
+        <div class="detail-card">
+          <div class="card-title">
+            <span class="material-icons">payments</span>
+            {{ 'ORDERS.DETAIL.PAYMENT' | translate }}
+          </div>
+          <div class="info-block">
+            <div class="info-row">
+              <span class="material-icons info-icon">credit_card</span>
+              <span class="info-val">
+                @if (order().paymentMethod) {
+                  {{ ('ORDERS.PAYMENT_METHOD.' + order().paymentMethod) | translate }}
+                } @else { — }
+              </span>
+            </div>
+            <div class="info-row">
+              <span class="material-icons info-icon">check_circle</span>
+              <span class="payment-status" [attr.data-status]="order().paymentStatus">
+                @if (order().paymentStatus) {
+                  {{ ('ORDERS.PAYMENT_STATUS.' + order().paymentStatus) | translate }}
+                } @else { — }
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="detail-card history-card history-span">
+        <div class="card-title history-card-title">
+          <span class="material-icons">history</span>
+          {{ 'ORDERS.DETAIL.HISTORY_TITLE' | translate }}
+          <span class="history-count">{{ 'ORDERS.DETAIL.HISTORY_COUNT' | translate: { count: historyTotalElements() } }}</span>
+        </div>
+
+        <div class="history-filters">
+          <div class="history-filters-grid">
+            <label class="history-filter-field">
+              <span class="history-filter-label">{{ 'ORDERS.DETAIL.FILTER_STATUS' | translate }}</span>
+              <select
+                class="history-filter-select"
+                [value]="historyFilterStatus()"
+                (change)="historyFilterStatus.set($any($event.target).value); onHistoryFiltersChange()">
+                @for (opt of historyStatusFilterOptions; track opt.value) {
+                  <option [value]="opt.value">{{ opt.labelKey | translate }}</option>
+                }
+              </select>
+            </label>
+            <label class="history-filter-field">
+              <span class="history-filter-label">{{ 'ORDERS.DETAIL.FILTER_ACTOR' | translate }}</span>
+              <select
+                class="history-filter-select"
+                [value]="historyFilterActor()"
+                (change)="historyFilterActor.set($any($event.target).value); onHistoryFiltersChange()">
+                @for (opt of historyActorFilterOptions; track opt.value) {
+                  <option [value]="opt.value">{{ opt.labelKey | translate }}</option>
+                }
+              </select>
+            </label>
+            <label class="history-filter-field">
+              <span class="history-filter-label">{{ 'ORDERS.DETAIL.FILTER_FROM' | translate }}</span>
+              <input
+                type="datetime-local"
+                class="history-filter-input"
+                [value]="historyFilterFrom()"
+                (change)="historyFilterFrom.set($any($event.target).value); onHistoryFiltersChange()" />
+            </label>
+            <label class="history-filter-field">
+              <span class="history-filter-label">{{ 'ORDERS.DETAIL.FILTER_TO' | translate }}</span>
+              <input
+                type="datetime-local"
+                class="history-filter-input"
+                [value]="historyFilterTo()"
+                (change)="historyFilterTo.set($any($event.target).value); onHistoryFiltersChange()" />
+            </label>
+            <div class="history-filter-actions">
+              @if (historyHasActiveFilters()) {
+                <button type="button" class="history-filter-reset" (click)="resetHistoryFilters()">
+                  <span class="material-icons">filter_alt_off</span>
+                  {{ 'ORDERS.DETAIL.FILTER_RESET' | translate }}
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+
+        @if (historyLoading()) {
+          <div class="history-loading-inline">
+            <app-loading-spinner></app-loading-spinner>
+          </div>
+        }
+
+        @if (!historyLoading() && historyTotalElements() === 0) {
+          <div class="tl-empty">
+            <span class="material-icons">info_outline</span>
+            @if (historyHasActiveFilters()) {
+              {{ 'ORDERS.DETAIL.HISTORY_EMPTY_FILTER' | translate }}
+            } @else {
+              {{ 'ORDERS.DETAIL.HISTORY_EMPTY' | translate }}
+            }
+          </div>
+        }
+
+        @if (!historyLoading() && historyTotalElements() > 0) {
+          <div class="history-table-wrap">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th class="col-status">{{ 'ORDERS.DETAIL.HIST_COL_STATUS' | translate }}</th>
+                  <th class="col-event">{{ 'ORDERS.DETAIL.HIST_COL_EVENT' | translate }}</th>
+                  <th class="col-actor">{{ 'ORDERS.DETAIL.HIST_COL_ACTOR' | translate }}</th>
+                  <th class="col-prep">{{ 'ORDERS.DETAIL.HIST_COL_PREP' | translate }}</th>
+                  <th class="col-time">{{ 'ORDERS.DETAIL.HIST_COL_TIME' | translate }}</th>
+                  <th class="col-detail">{{ 'ORDERS.DETAIL.HIST_COL_DETAIL' | translate }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (entry of timelineEntries(); track $index) {
+                  <tr class="history-row" [attr.data-status]="entry.status">
+                    <td class="col-status">
+                      <span class="hist-status-dot" [attr.data-status]="entry.status"></span>
+                      <span class="hist-status-label" [attr.data-status]="entry.status">{{ ('ORDERS.STATUS.' + entry.status) | translate }}</span>
+                    </td>
+                    <td class="hist-label col-event">{{ entry.eventKey | translate }}</td>
+                    <td class="hist-actor col-actor">
+                      @if (entry.actorKey) {
+                        <span class="actor-badge">{{ entry.actorKey | translate }}</span>
+                      } @else {
+                        <span class="text-muted">—</span>
+                      }
+                    </td>
+                    <td class="col-prep">
+                      @if (entry.estimatedPrepMinutes != null) {
+                        <span class="prep-pill" [title]="'ORDERS.DETAIL.PREP_TOOLTIP' | translate">
+                          <span class="material-icons prep-pill-icon">schedule</span>
+                          {{ entry.estimatedPrepMinutes }} {{ 'ORDERS.ACCEPT_DIALOG.MIN_UNIT' | translate }}
+                        </span>
+                      } @else {
+                        <span class="text-muted prep-empty">—</span>
+                      }
+                    </td>
+                    <td class="hist-time col-time" [title]="entry.timestamp | date:'dd/MM/yyyy HH:mm:ss'">
+                      <span class="hist-date">{{ entry.timestamp | date:'dd/MM/yy' }}</span>
+                      <span class="hist-clock">{{ entry.timestamp | date:'HH:mm:ss' }}</span>
+                    </td>
+                    <td class="hist-desc col-detail">
+                      @if (entry.description) { <span class="hist-desc-main">{{ entry.description }}</span> }
+                      @if (entry.notes) { <em class="hist-notes">{{ entry.notes }}</em> }
+                      @if (!entry.description && !entry.notes) { <span class="text-muted">—</span> }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <mat-paginator
+            #historyPaginator
+            class="history-paginator"
+            [length]="historyTotalElements()"
+            [pageIndex]="historyPageIndex()"
+            [pageSize]="historyPageSize()"
+            [pageSizeOptions]="[5, 10, 20, 50]"
+            [showFirstLastButtons]="true"
+            (page)="onHistoryPage($event)">
+          </mat-paginator>
+        }
+      </div>
+
+    </div>
+
+  }
+
+  @if (!loading() && !order()) {
+    <div class="not-found">
+      <span class="material-icons">search_off</span>
+      <p>{{ 'ORDERS.DETAIL.NOT_FOUND' | translate }}</p>
+      <a routerLink="/orders" class="back-link">{{ 'ORDERS.DETAIL.BACK_TO_LIST' | translate }}</a>
+    </div>
+  }
+
 </div>

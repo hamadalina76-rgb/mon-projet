@@ -4,11 +4,13 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { TimeAgoPipe } from '@shared/pipes/time-ago.pipe';
+import { TranslateModule } from '@ngx-translate/core';
+import { OrderStatusBadgeComponent } from '@features/orders/components/order-status-badge/order-status-badge.component';
 
 @Component({
   selector: 'app-recent-orders',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule, TimeAgoPipe],
+  imports: [CommonModule, RouterLink, MatIconModule, TimeAgoPipe, TranslateModule, OrderStatusBadgeComponent],
   templateUrl: './recent-orders.component.html',
   styleUrls: ['./recent-orders.component.scss'],
 })

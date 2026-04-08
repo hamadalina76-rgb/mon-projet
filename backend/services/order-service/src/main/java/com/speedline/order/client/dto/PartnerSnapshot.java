@@ -16,6 +16,8 @@ import java.math.BigDecimal;
 public class PartnerSnapshot {
 
     private Long id;
+    /** Compte utilisateur lié au partenaire (dashboard partenaire = ce userId pour les notifications). */
+    private Long userId;
     private String businessName;
     private String name;
     private String address;
