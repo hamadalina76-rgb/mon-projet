@@ -3,6 +3,23 @@
 export type PromotionType = 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE_DELIVERY';
 export type PromotionStatus = 'SCHEDULED' | 'ACTIVE' | 'INACTIVE' | 'EXPIRED';
 
+export type RuleType =
+  | 'MIN_ORDER'
+  | 'PARTNER_RESTRICTION'
+  | 'CATEGORY_RESTRICTION'
+  | 'FIRST_ORDER'
+  | 'USER_QUOTA'
+  | 'SPECIFIC_DAY'
+  | 'TIME_RANGE'
+  | 'MIN_ITEMS';
+
+export interface PromotionRule {
+  id?: number;
+  ruleType: RuleType;
+  operator?: string;
+  targetValue?: string;
+}
+
 export interface Promotion {
   id: number;
   code: string;
@@ -23,6 +40,7 @@ export interface Promotion {
   applicableCategoryIds?: number[];
   applicableZoneIds?: number[];
   firstOrderOnly: boolean;
+  rules?: PromotionRule[];
   createdAt: string;
   updatedAt: string;
 }
@@ -53,6 +71,7 @@ export interface CreatePromotionRequest {
   applicableZoneIds?: number[];
   firstOrderOnly?: boolean;
   status?: PromotionStatus;
+  rules?: PromotionRule[];
 }
 
 export interface UpdatePromotionRequest {
@@ -71,6 +90,7 @@ export interface UpdatePromotionRequest {
   applicableZoneIds?: number[];
   firstOrderOnly?: boolean;
   status?: PromotionStatus;
+  rules?: PromotionRule[];
 }
 
 export interface ValidatePromotionRequest {
@@ -81,6 +101,7 @@ export interface ValidatePromotionRequest {
   partnerId?: number;
   categoryIds?: number[];
   productIds?: number[];
+  itemCount?: number;
 }
 
 export interface ValidatePromotionResponse {
@@ -102,6 +123,7 @@ export interface ApplyPromotionRequest {
   deliveryFee?: number;
   partnerId?: number;
   categoryIds?: number[];
+  itemCount?: number;
 }
 
 export interface RevokePromotionRequest {

@@ -1,0 +1,127 @@
+<div class="step-content" [formGroup]="formGroup">
+
+  <!-- ═══ Partenaires (PERCENTAGE / FIXED_AMOUNT) ═══ -->
+  <section *ngIf="promotionType !== 'FREE_DELIVERY'" class="section">
+    <h3 class="section-title">
+      <mat-icon>store</mat-icon>
+      {{ 'promotions.form.partners' | translate }}
+    </h3>
+    <p class="section-desc">{{ 'promotions.form.partnersDesc' | translate }}</p>
+
+    <mat-radio-group [value]="allPartners" (change)="onPartnerModeChange($event.value)" class="partner-radio">
+      <mat-radio-button [value]="true">{{ 'promotions.form.allPartners' | translate }}</mat-radio-button>
+      <mat-radio-button [value]="false">{{ 'promotions.form.specificPartners' | translate }}</mat-radio-button>
+    </mat-radio-group>
+
+    <mat-form-field appearance="outline" class="full-width" *ngIf="!allPartners">
+      <mat-label>{{ 'promotions.form.selectPartners' | translate }}</mat-label>
+      <mat-select formControlName="applicablePartnerIds" multiple panelClass="dropdown-select-panel">
+        <div class="dropdown-search-box">
+          <mat-icon class="search-icon">search</mat-icon>
+          <input type="text"
+                 [placeholder]="'promotions.form.searchPartners' | translate"
+                 (input)="filterPartners($event)"
+                 (keydown)="$event.stopPropagation()"
+                 class="dropdown-search-input">
+        </div>
+        <mat-divider></mat-divider>
+        <mat-option *ngFor="let p of filteredPartners" [value]="p.id" class="dropdown-option">
+          <div class="dropdown-option-content">
+            <img *ngIf="p.logo" [src]="p.logo" [alt]="p.name" class="dropdown-option-logo">
+            <span *ngIf="!p.logo" class="dropdown-option-icon partner">{{ getPartnerInitial(p.name) }}</span>
+            <span class="dropdown-option-name">{{ p.name }}</span>
+          </div>
+        </mat-option>
+        <div *ngIf="filteredPartners.length === 0" class="dropdown-no-results">
+          <mat-icon>search_off</mat-icon>
+          <span>{{ 'promotions.form.noPartnersFound' | translate }}</span>
+        </div>
+      </mat-select>
+      <mat-hint>{{ 'promotions.form.selectPartnersHint' | translate }}</mat-hint>
+    </mat-form-field>
+  </section>
+
+  <!-- ═══ Zones (FREE_DELIVERY) ═══ -->
+  <section *ngIf="promotionType === 'FREE_DELIVERY'" class="section">
+    <h3 class="section-title">
+      <mat-icon>map</mat-icon>
+      {{ 'promotions.form.zones' | translate }}
+    </h3>
+    <p class="section-desc">{{ 'promotions.form.zonesDesc' | translate }}</p>
+
+    <mat-radio-group [value]="allZones" (change)="onZoneModeChange($event.value)" class="partner-radio">
+      <mat-radio-button [value]="true">{{ 'promotions.form.allZones' | translate }}</mat-radio-button>
+      <mat-radio-button [value]="false">{{ 'promotions.form.specificZones' | translate }}</mat-radio-button>
+    </mat-radio-group>
+
+    <mat-form-field appearance="outline" class="full-width" *ngIf="!allZones">
+      <mat-label>{{ 'promotions.form.selectZones' | translate }}</mat-label>
+      <mat-select formControlName="applicableZoneIds" multiple panelClass="dropdown-select-panel">
+        <div class="dropdown-search-box">
+          <mat-icon class="search-icon">search</mat-icon>
+          <input type="text"
+                 [placeholder]="'promotions.form.searchZones' | translate"
+                 [(ngModel)]="zoneSearch" [ngModelOptions]="{standalone: true}"
+                 (input)="filterZones()"
+                 (keydown)="$event.stopPropagation()"
+                 class="dropdown-search-input">
+        </div>
+        <mat-divider></mat-divider>
+        <mat-option *ngFor="let z of filteredZones" [value]="z.id" class="dropdown-option">
+          <div class="dropdown-option-content">
+            <span class="dropdown-option-icon zone"><mat-icon>place</mat-icon></span>
+            <div class="dropdown-option-details">
+              <span class="dropdown-option-name">{{ z.name }}</span>
+              <span class="dropdown-option-meta">{{ z.deliveryFee | number:'1.2-2' }} TND</span>
+            </div>
+          </div>
+        </mat-option>
+        <div *ngIf="filteredZones.length === 0" class="dropdown-no-results">
+          <mat-icon>search_off</mat-icon>
+          <span>{{ 'promotions.form.noZonesFound' | translate }}</span>
+        </div>
+      </mat-select>
+      <mat-hint>{{ 'promotions.form.zonesHint' | translate }}</mat-hint>
+    </mat-form-field>
+  </section>
+
+  <!-- ═══ Catégories ═══ -->
+  <section class="section">
+    <h3 class="section-title">
+      <mat-icon>category</mat-icon>
+      {{ 'promotions.form.categories' | translate }}
+    </h3>
+    <p class="section-desc">{{ 'promotions.form.categoriesDesc' | translate }}</p>
+
+    <mat-radio-group [value]="allCategories" (change)="onCategoryModeChange($event.value)" class="partner-radio">
+      <mat-radio-button [value]="true">{{ 'promotions.form.allCategories' | translate }}</mat-radio-button>
+      <mat-radio-button [value]="false">{{ 'promotions.form.specificCategories' | translate }}</mat-radio-button>
+    </mat-radio-group>
+
+    <div class="category-grid" *ngIf="!allCategories && categories.length > 0">
+      <mat-checkbox *ngFor="let cat of categories"
+                    [checked]="isCategorySelected(cat.id)"
+                    (change)="onCategoryToggle(cat.id, $event.checked)"
+                    class="category-chip">
+        <span class="cat-icon" *ngIf="cat.icon">
+          <img [src]="cat.icon" [alt]="cat.nameI18n['fr'] || cat.nameI18n['en']" width="20" height="20">
+        </span>
+        {{ cat.nameI18n['fr'] || cat.nameI18n['en'] || 'Catégorie #' + cat.id }}
+      </mat-checkbox>
+    </div>
+    <div *ngIf="!allCategories && categories.length === 0" class="empty-hint">
+      {{ 'promotions.form.noCategoriesFound' | translate }}
+    </div>
+  </section>
+
+  <!-- ═══ Règles avancées ═══ -->
+  <section class="section">
+    <h3 class="section-title">
+      <mat-icon>tune</mat-icon>
+      {{ 'promotions.form.rules' | translate }}
+    </h3>
+    <p class="section-desc">{{ 'promotions.form.rulesDesc' | translate }}</p>
+
+    <app-rule-builder [rulesArray]="rulesArray"></app-rule-builder>
+  </section>
+</div>

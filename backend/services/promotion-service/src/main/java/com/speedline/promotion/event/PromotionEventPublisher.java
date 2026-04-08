@@ -50,6 +50,14 @@ public class PromotionEventPublisher {
         ));
     }
 
+    public void publishPromotionExpired(Long promotionId, String code) {
+        publish("promotion-expired", Map.of(
+            "eventType", "PROMOTION_EXPIRED",
+            "promotionId", promotionId,
+            "code", code
+        ));
+    }
+
     private void publish(String topic, Object payload) {
         try {
             String json = objectMapper.writeValueAsString(payload);

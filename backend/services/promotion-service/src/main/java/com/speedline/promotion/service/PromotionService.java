@@ -11,13 +11,15 @@ public interface PromotionService {
     /** CRUD ---------------------------------------------------------------- */
     PromotionPageResponse getPromotions(String search, String status, String type,
                                         LocalDateTime startFrom, LocalDateTime startTo,
-                                        String partnerId, Pageable pageable);
+                                        String partnerId, String zoneId, Pageable pageable);
 
     List<PromotionDto> getActivePromotions();
 
     PromotionDetailDto getById(Long id);
 
     PromotionDto getByCode(String code);
+
+    boolean isCodeAvailable(String code);
 
     PromotionDto create(CreatePromotionRequest request);
 
@@ -31,9 +33,10 @@ public interface PromotionService {
 
     void deactivate(Long id);
 
-    PromotionDto duplicate(Long id);
-
     PromotionStatisticsDto getStatistics();
+
+    /** Simulate discount (before creation — stepper step 4) --------------- */
+    SimulateDiscountResponse simulate(SimulateDiscountRequest request);
 
     /** Validation (before order confirmation) ------------------------------ */
     ValidatePromotionResponse validate(ValidatePromotionRequest request);
@@ -46,4 +49,7 @@ public interface PromotionService {
 
     /** Analytics ----------------------------------------------------------- */
     PromotionAnalyticsDto getAnalytics(Long promotionId);
+
+    /** CSV export ---------------------------------------------------------- */
+    String exportCsv(String search, String status, String type);
 }

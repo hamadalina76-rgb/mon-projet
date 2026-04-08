@@ -39,7 +39,9 @@ public class PubSubConfig {
         {"promotion-created",  "promotion-created-promotion-sub"},
         {"promotion-applied",  "promotion-applied-promotion-sub"},
         {"promotion-revoked",  "promotion-revoked-promotion-sub"},
-        {"order-cancelled",    "order-cancelled-promotion-sub"}   // consumed for revoke
+        {"promotion-expired",  "promotion-expired-promotion-sub"},
+        {"order-cancelled",    "order-cancelled-promotion-sub"},
+        {"user-registered",    "user-registered-promotion-sub"}
     };
 
     @PostConstruct

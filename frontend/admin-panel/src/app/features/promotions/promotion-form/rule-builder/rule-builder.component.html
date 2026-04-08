@@ -1,0 +1,64 @@
+<div class="rule-builder">
+
+  <div class="rules-list">
+    <div *ngFor="let rule of rulesArray.controls; let i = index" [formGroup]="$any(rule)" class="rule-row">
+
+      <!-- Type de règle -->
+      <mat-form-field appearance="outline" class="rule-type-field">
+        <mat-label>{{ 'promotions.form.ruleType' | translate }}</mat-label>
+        <mat-select formControlName="ruleType" (selectionChange)="onRuleTypeChange(i)">
+          <mat-option *ngFor="let rt of ruleTypes" [value]="rt.value">
+            <mat-icon>{{ rt.icon }}</mat-icon>
+            {{ 'promotions.form.ruleTypes.' + rt.value | translate }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- SPECIFIC_DAY → multi-select jours -->
+      <mat-form-field appearance="outline" class="rule-value-field"
+                      *ngIf="getRuleType(i) === 'SPECIFIC_DAY'">
+        <mat-label>{{ 'promotions.form.ruleDays' | translate }}</mat-label>
+        <mat-select formControlName="days" multiple>
+          <mat-option *ngFor="let d of weekDays" [value]="d">
+            {{ 'promotions.form.weekDays.' + d | translate }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- TIME_RANGE → deux champs heure -->
+      <div class="rule-time-range" *ngIf="getRuleType(i) === 'TIME_RANGE'">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'promotions.form.ruleTimeFrom' | translate }}</mat-label>
+          <input matInput type="time" formControlName="timeFrom">
+        </mat-form-field>
+        <span class="time-separator">→</span>
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'promotions.form.ruleTimeTo' | translate }}</mat-label>
+          <input matInput type="time" formControlName="timeTo">
+        </mat-form-field>
+      </div>
+
+      <!-- MIN_ITEMS → champ numérique -->
+      <mat-form-field appearance="outline" class="rule-value-field"
+                      *ngIf="getRuleType(i) === 'MIN_ITEMS'">
+        <mat-label>{{ 'promotions.form.ruleMinItems' | translate }}</mat-label>
+        <input matInput type="number" formControlName="minItems" min="1" placeholder="3">
+      </mat-form-field>
+
+      <button mat-icon-button color="warn" type="button" (click)="removeRule(i)"
+              [matTooltip]="'promotions.form.removeRule' | translate">
+        <mat-icon>delete</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="rulesArray.length === 0" class="no-rules-info">
+    <mat-icon>info_outline</mat-icon>
+    <span>{{ 'promotions.form.noRules' | translate }}</span>
+  </div>
+
+  <button mat-stroked-button type="button" (click)="addRule()" class="add-rule-btn">
+    <mat-icon>add</mat-icon>
+    {{ 'promotions.form.addRule' | translate }}
+  </button>
+</div>

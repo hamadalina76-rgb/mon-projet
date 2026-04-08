@@ -1,0 +1,57 @@
+<div class="step-content" [formGroup]="formGroup">
+
+  <!-- Montant minimum commande -->
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>{{ 'promotions.form.minOrder' | translate }}</mat-label>
+    <input matInput type="number" formControlName="minimumOrder" placeholder="20.00" min="0" step="0.01">
+    <mat-icon matSuffix>shopping_cart</mat-icon>
+    <mat-hint>{{ 'promotions.form.minOrderHint' | translate }}</mat-hint>
+  </mat-form-field>
+
+  <!-- Dates début / fin -->
+  <label class="field-label">{{ 'promotions.form.validity' | translate }}</label>
+  <div class="date-row">
+    <mat-form-field appearance="outline" class="date-field">
+      <mat-label>{{ 'promotions.form.startDate' | translate }}</mat-label>
+      <input matInput [matDatepicker]="startPicker" formControlName="startDate">
+      <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+      <mat-datepicker #startPicker></mat-datepicker>
+      <mat-error *ngIf="err('startDate')">{{ 'promotions.form.startDateRequired' | translate }}</mat-error>
+    </mat-form-field>
+
+    <mat-icon class="arrow-icon">arrow_forward</mat-icon>
+
+    <mat-form-field appearance="outline" class="date-field">
+      <mat-label>{{ 'promotions.form.endDate' | translate }}</mat-label>
+      <input matInput [matDatepicker]="endPicker" formControlName="endDate"
+             [min]="startDateValue || today">
+      <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+      <mat-datepicker #endPicker></mat-datepicker>
+    </mat-form-field>
+  </div>
+  <div class="date-error" *ngIf="endDateInvalid">
+    <mat-icon>error_outline</mat-icon>
+    {{ 'promotions.form.endDateBeforeStart' | translate }}
+  </div>
+
+  <!-- Quotas -->
+  <label class="field-label">{{ 'promotions.form.quotas' | translate }}</label>
+  <div class="quota-row">
+    <mat-form-field appearance="outline" class="quota-field">
+      <mat-label>{{ 'promotions.form.totalQuota' | translate }}</mat-label>
+      <input matInput type="number" formControlName="usageLimitTotal" placeholder="5000" min="0">
+      <mat-hint>{{ 'promotions.form.totalQuotaHint' | translate }}</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="quota-field">
+      <mat-label>{{ 'promotions.form.userQuota' | translate }}</mat-label>
+      <input matInput type="number" formControlName="usageLimitPerUser" placeholder="2" min="1">
+      <mat-hint>{{ 'promotions.form.userQuotaHint' | translate }}</mat-hint>
+    </mat-form-field>
+  </div>
+
+  <!-- Première commande uniquement -->
+  <mat-checkbox formControlName="firstOrderOnly" class="checkbox-field">
+    {{ 'promotions.form.firstOrderOnly' | translate }}
+  </mat-checkbox>
+</div>

@@ -7,7 +7,12 @@ import com.speedline.promotion.dto.*;
 import com.speedline.promotion.event.PromotionEventPublisher;
 import com.speedline.promotion.exception.PromotionException;
 import com.speedline.promotion.repository.*;
+import com.speedline.promotion.service.DiscountCalculator;
 import com.speedline.promotion.service.PromotionService;
+import com.speedline.promotion.service.RedisPromotionCacheService;
+import com.speedline.promotion.service.RedisQuotaService;
+import com.speedline.promotion.validation.ValidationChain;
+import com.speedline.promotion.validation.ValidationContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -34,6 +39,10 @@ public class PromotionServiceImpl implements PromotionService {
     private final UserPromotionRepository    userPromotionRepository;
     private final PromotionEventPublisher    eventPublisher;
     private final ObjectMapper               objectMapper;
+    private final ValidationChain            validationChain;
+    private final DiscountCalculator         discountCalculator;
+    private final RedisQuotaService          redisQuotaService;
+    private final RedisPromotionCacheService cacheService;
 
     // ---------------------------------------------------------------- CRUD --
 
@@ -41,14 +50,15 @@ public class PromotionServiceImpl implements PromotionService {
     @Transactional
     public PromotionPageResponse getPromotions(String search, String statusStr, String typeStr,
                                                 LocalDateTime startFrom, LocalDateTime startTo,
-                                                String partnerId, Pageable pageable) {
+                                                String partnerId, String zoneId, Pageable pageable) {
         // Expire overdue promotions before reading
         promotionRepository.expirePromotions(LocalDateTime.now());
 
         String status = (statusStr != null && !statusStr.isBlank()) ? statusStr.toUpperCase() : null;
         String type   = (typeStr   != null && !typeStr.isBlank())   ? typeStr.toUpperCase()   : null;
         String pid    = (partnerId != null && !partnerId.isBlank()) ? partnerId               : null;
-        Page<Promotion> page = promotionRepository.findFiltered(search, status, type, startFrom, startTo, pid, pageable);
+        String zid    = (zoneId    != null && !zoneId.isBlank())    ? zoneId                  : null;
+        Page<Promotion> page = promotionRepository.findFiltered(search, status, type, startFrom, startTo, pid, zid, pageable);
         return new PromotionPageResponse(
             page.getContent().stream().map(PromotionDto::from).toList(),
             page.getNumber(),
@@ -84,13 +94,20 @@ public class PromotionServiceImpl implements PromotionService {
         long revoked  = usageLogRepository.countByPromotionIdAndStatus(id, PromotionUsageLog.UsageStatus.REVOKED);
         BigDecimal totalRevenue = usageLogRepository.sumDiscountByPromotion(id);
         long uniqueUsers = usageLogRepository.countUniqueUsersByPromotionId(id);
-        return new PromotionDetailDto(PromotionDto.from(p), applied, revoked, totalRevenue, uniqueUsers);
+        List<PromotionRule> rules = ruleRepository.findByPromotionId(id);
+        return new PromotionDetailDto(PromotionDto.from(p, rules), applied, revoked, totalRevenue, uniqueUsers);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PromotionDto getByCode(String code) {
         return PromotionDto.from(findByCode(code));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isCodeAvailable(String code) {
+        return !promotionRepository.existsByCode(code.toUpperCase());
     }
 
     @Override
@@ -123,8 +140,15 @@ public class PromotionServiceImpl implements PromotionService {
             .isActive(status == PromotionStatus.ACTIVE)
             .build();
         promo = promotionRepository.save(promo);
-        PromotionDto dto = PromotionDto.from(promo);
+
+        // Save rules if provided
+        List<com.speedline.promotion.domain.PromotionRule> savedRules = saveRules(promo.getId(), req.rules());
+
+        PromotionDto dto = PromotionDto.from(promo, savedRules);
         eventPublisher.publishPromotionCreated(dto);
+        if (Boolean.TRUE.equals(promo.getIsActive())) {
+            cacheService.addCode(promo.getCode());
+        }
         log.info("Promotion created: {}", promo.getCode());
         return dto;
     }
@@ -165,7 +189,19 @@ public class PromotionServiceImpl implements PromotionService {
             p.setStatus(req.status());
             p.setIsActive(req.status() == PromotionStatus.ACTIVE);
         }
-        return PromotionDto.from(promotionRepository.save(p));
+        Promotion saved = promotionRepository.save(p);
+
+        // Replace rules if provided
+        List<com.speedline.promotion.domain.PromotionRule> updatedRules;
+        if (req.rules() != null) {
+            ruleRepository.deleteByPromotionId(saved.getId());
+            updatedRules = saveRules(saved.getId(), req.rules().stream()
+                .map(r -> new CreatePromotionRequest.RuleRequest(r.ruleType(), r.operator(), r.targetValue()))
+                .toList());
+        } else {
+            updatedRules = ruleRepository.findByPromotionId(saved.getId());
+        }
+        return PromotionDto.from(saved, updatedRules);
     }
 
     @Override
@@ -178,6 +214,7 @@ public class PromotionServiceImpl implements PromotionService {
         p.setIsActive(false);
         p.setStatus(PromotionStatus.INACTIVE);
         promotionRepository.save(p);
+        cacheService.removeCode(p.getCode());
         log.info("Promotion soft-deleted: id={} code={}", id, p.getCode());
     }
 
@@ -193,6 +230,8 @@ public class PromotionServiceImpl implements PromotionService {
         p.setIsActive(newActive);
         p.setStatus(newActive ? PromotionStatus.ACTIVE : PromotionStatus.INACTIVE);
         promotionRepository.save(p);
+        if (newActive) cacheService.addCode(p.getCode());
+        else cacheService.removeCode(p.getCode());
     }
 
     @Override
@@ -203,6 +242,7 @@ public class PromotionServiceImpl implements PromotionService {
         p.setIsActive(true);
         p.setStatus(PromotionStatus.ACTIVE);
         promotionRepository.save(p);
+        cacheService.addCode(p.getCode());
         log.info("Promotion activated: id={} code={}", id, p.getCode());
     }
 
@@ -213,36 +253,8 @@ public class PromotionServiceImpl implements PromotionService {
         p.setIsActive(false);
         p.setStatus(PromotionStatus.INACTIVE);
         promotionRepository.save(p);
+        cacheService.removeCode(p.getCode());
         log.info("Promotion deactivated: id={} code={}", id, p.getCode());
-    }
-
-    @Override
-    @CacheEvict(value = "promotions:active", allEntries = true)
-    public PromotionDto duplicate(Long id) {
-        Promotion original = findById(id);
-        Promotion copy = Promotion.builder()
-            .code(null)  // code must be set by admin
-            .name(original.getName() + " (copie)")
-            .description(original.getDescription())
-            .type(original.getType())
-            .value(original.getValue())
-            .maximumDiscount(original.getMaximumDiscount())
-            .minimumOrder(original.getMinimumOrder())
-            .usageLimit(original.getUsageLimit())
-            .usageLimitPerUser(original.getUsageLimitPerUser())
-            .usageCount(0)
-            .startDate(original.getStartDate())
-            .endDate(original.getEndDate())
-            .applicablePartnerIds(original.getApplicablePartnerIds())
-            .applicableCategoryIds(original.getApplicableCategoryIds())
-            .applicableZoneIds(original.getApplicableZoneIds())
-            .firstOrderOnly(original.getFirstOrderOnly())
-            .status(PromotionStatus.INACTIVE)
-            .isActive(false)
-            .build();
-        copy = promotionRepository.save(copy);
-        log.info("Promotion duplicated: original={} copy={}", id, copy.getId());
-        return PromotionDto.from(copy);
     }
 
     @Override
@@ -257,14 +269,49 @@ public class PromotionServiceImpl implements PromotionService {
         return new PromotionStatisticsDto(active, inactive, expired, total, totalUsages, totalDiscount);
     }
 
+    // ----------------------------------------------------------- SIMULATE --
+
+    @Override
+    public SimulateDiscountResponse simulate(SimulateDiscountRequest req) {
+        BigDecimal subtotal = req.orderSubtotal();
+        BigDecimal deliveryFee = req.deliveryFee() != null ? req.deliveryFee() : BigDecimal.ZERO;
+        BigDecimal value = req.value() != null ? req.value() : BigDecimal.ZERO;
+        BigDecimal discount;
+
+        if (req.type() == PromotionType.PERCENTAGE) {
+            discount = subtotal.multiply(value)
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        } else if (req.type() == PromotionType.FIXED_AMOUNT) {
+            discount = value.min(subtotal);
+        } else { // FREE_DELIVERY
+            discount = deliveryFee;
+        }
+
+        // Apply max discount cap
+        if (req.maximumDiscount() != null && discount.compareTo(req.maximumDiscount()) > 0) {
+            discount = req.maximumDiscount();
+        }
+
+        discount = discount.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal newSubtotal = subtotal.subtract(
+                req.type() == PromotionType.FREE_DELIVERY ? BigDecimal.ZERO : discount);
+        BigDecimal total = newSubtotal.add(
+                req.type() == PromotionType.FREE_DELIVERY ? BigDecimal.ZERO : deliveryFee);
+
+        String message = String.format("Réduction %.2f TND — Total %.2f TND", discount, total);
+
+        return new SimulateDiscountResponse(discount, newSubtotal, deliveryFee, total, message);
+    }
+
     // ---------------------------------------------------------- VALIDATION --
 
     @Override
     @Transactional(readOnly = true)
     public ValidatePromotionResponse validate(ValidatePromotionRequest req) {
         Promotion p = findByCode(req.code());
-        doValidate(p, req.userId(), req.orderSubtotal(), req.partnerId(), req.categoryIds());
-        BigDecimal discount = computeDiscount(p, req.orderSubtotal(), req.deliveryFee());
+        validationChain.validate(buildValidationContext(p, req.userId(), req.orderSubtotal(),
+                req.deliveryFee(), req.partnerId(), req.categoryIds(), req.itemCount()));
+        BigDecimal discount = discountCalculator.compute(p, req.orderSubtotal(), req.deliveryFee());
         return buildResponse(p, req.orderSubtotal(), req.deliveryFee(), discount,
             "Code appliqué ! Vous économisez " + discount + " TND");
     }
@@ -274,8 +321,16 @@ public class PromotionServiceImpl implements PromotionService {
     @Override
     public ValidatePromotionResponse apply(ApplyPromotionRequest req) {
         Promotion p = findByCode(req.code());
-        doValidate(p, req.userId(), req.orderSubtotal(), req.partnerId(), req.categoryIds());
-        BigDecimal discount = computeDiscount(p, req.orderSubtotal(), req.deliveryFee());
+        validationChain.validate(buildValidationContext(p, req.userId(), req.orderSubtotal(),
+                req.deliveryFee(), req.partnerId(), req.categoryIds(), req.itemCount()));
+
+        // Redis atomic DECR for global quota
+        if (p.getUsageLimit() != null
+                && !redisQuotaService.tryConsume(p.getId(), p.getUsageLimit(), p.getUsageCount())) {
+            throw PromotionException.quotaExceeded(p.getCode());
+        }
+
+        BigDecimal discount = discountCalculator.compute(p, req.orderSubtotal(), req.deliveryFee());
 
         // Atomic: increment counters + log
         promotionRepository.incrementUsageCount(p.getId());
@@ -305,6 +360,7 @@ public class PromotionServiceImpl implements PromotionService {
         int rows = usageLogRepository.revoke(p.getId(), req.userId(), req.orderId(), LocalDateTime.now());
         if (rows > 0) {
             promotionRepository.decrementUsageCount(p.getId());
+            redisQuotaService.release(p.getId());
             eventPublisher.publishPromotionRevoked(p.getId(), p.getCode(), req.userId(), req.orderId());
             log.info("Promotion revoked: code={} user={} order={}", p.getCode(), req.userId(), req.orderId());
         } else {
@@ -357,12 +413,18 @@ public class PromotionServiceImpl implements PromotionService {
     }
 
     private void validateCreateRequest(CreatePromotionRequest req) {
+        // FREE_DELIVERY doesn't need a value; others must have value > 0
+        if (req.type() != PromotionType.FREE_DELIVERY) {
+            if (req.value() == null || req.value().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new PromotionException("INVALID_VALUE", "La valeur est obligatoire et doit être positive");
+            }
+        }
         // end_date < start_date → 400
         if (req.startDate() != null && req.endDate() != null && req.endDate().isBefore(req.startDate())) {
             throw PromotionException.invalidDateRange();
         }
         // discount_value > 100 for PERCENTAGE → 400
-        if (req.type() == PromotionType.PERCENTAGE && req.value().compareTo(BigDecimal.valueOf(100)) > 0) {
+        if (req.type() == PromotionType.PERCENTAGE && req.value() != null && req.value().compareTo(BigDecimal.valueOf(100)) > 0) {
             throw PromotionException.invalidPercentage(req.value());
         }
     }
@@ -373,57 +435,19 @@ public class PromotionServiceImpl implements PromotionService {
         }
     }
 
-    private void doValidate(Promotion p, Long userId, BigDecimal subtotal, Long partnerId, List<Long> categoryIds) {
-        LocalDateTime now = LocalDateTime.now();
-
-        if (!Boolean.TRUE.equals(p.getIsActive())) throw PromotionException.inactive(p.getCode());
-        if (p.getStartDate() != null && now.isBefore(p.getStartDate())) throw PromotionException.notStarted(p.getCode());
-        if (p.getEndDate()   != null && now.isAfter(p.getEndDate()))    throw PromotionException.expired(p.getCode());
-        if (p.getUsageLimit() != null && p.getUsageCount() >= p.getUsageLimit())
-            throw PromotionException.quotaExceeded(p.getCode());
-
-        // Per-user quota
-        if (p.getUsageLimitPerUser() != null && userId != null) {
-            long userUsage = userPromotionRepository.findByUserIdAndPromotionId(userId, p.getId())
-                .map(u -> (long) u.getUsageCount()).orElse(0L);
-            if (userUsage >= p.getUsageLimitPerUser()) throw PromotionException.userQuotaExceeded(p.getCode());
-        }
-
-        // Minimum order
-        if (p.getMinimumOrder() != null && subtotal.compareTo(p.getMinimumOrder()) < 0)
-            throw PromotionException.minimumOrderNotMet(p.getCode());
-
-        // Partner restriction
-        if (p.getApplicablePartnerIds() != null && !p.getApplicablePartnerIds().isBlank()
-                && partnerId != null) {
-            List<Long> allowed = PromotionDto.parseIds(p.getApplicablePartnerIds());
-            if (!allowed.isEmpty() && !allowed.contains(partnerId))
-                throw PromotionException.partnerNotEligible(p.getCode());
-        }
-
-        // Category restriction
-        if (p.getApplicableCategoryIds() != null && !p.getApplicableCategoryIds().isBlank()
-                && categoryIds != null && !categoryIds.isEmpty()) {
-            List<Long> allowed = PromotionDto.parseIds(p.getApplicableCategoryIds());
-            if (!allowed.isEmpty() && categoryIds.stream().noneMatch(allowed::contains))
-                throw PromotionException.categoryNotEligible(p.getCode());
-        }
-    }
-
-    private BigDecimal computeDiscount(Promotion p, BigDecimal subtotal, BigDecimal deliveryFee) {
-        BigDecimal discount;
-        if (p.getType() == PromotionType.PERCENTAGE) {
-            discount = subtotal.multiply(p.getValue()).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-        } else if (p.getType() == PromotionType.FIXED_AMOUNT) {
-            discount = p.getValue().min(subtotal);
-        } else { // FREE_DELIVERY
-            discount = deliveryFee != null ? deliveryFee : BigDecimal.ZERO;
-        }
-        // Apply maximum discount cap
-        if (p.getMaximumDiscount() != null && discount.compareTo(p.getMaximumDiscount()) > 0) {
-            discount = p.getMaximumDiscount();
-        }
-        return discount.setScale(2, RoundingMode.HALF_UP);
+    private ValidationContext buildValidationContext(Promotion p, Long userId,
+                                                     BigDecimal subtotal, BigDecimal deliveryFee,
+                                                     Long partnerId, List<Long> categoryIds,
+                                                     Integer itemCount) {
+        return ValidationContext.builder()
+                .promotion(p)
+                .userId(userId)
+                .orderSubtotal(subtotal)
+                .deliveryFee(deliveryFee)
+                .partnerId(partnerId)
+                .categoryIds(categoryIds)
+                .itemCount(itemCount)
+                .build();
     }
 
     private ValidatePromotionResponse buildResponse(Promotion p, BigDecimal subtotal,
@@ -442,6 +466,53 @@ public class PromotionServiceImpl implements PromotionService {
         if (ids == null || ids.isEmpty()) return null;
         try { return objectMapper.writeValueAsString(ids); }
         catch (JsonProcessingException e) { return ids.toString(); }
+    }
+
+    private List<PromotionRule> saveRules(Long promotionId, List<CreatePromotionRequest.RuleRequest> rules) {
+        if (rules == null || rules.isEmpty()) return List.of();
+        List<PromotionRule> entities = rules.stream()
+            .map(r -> PromotionRule.builder()
+                .promotionId(promotionId)
+                .ruleType(r.ruleType())
+                .operator(r.operator())
+                .targetValue(r.targetValue())
+                .build())
+            .toList();
+        return ruleRepository.saveAll(entities);
+    }
+
+    // --------------------------------------------------------------- CSV --
+
+    @Override
+    @Transactional
+    public String exportCsv(String search, String status, String type) {
+        // Re-use the same filtered query but without pagination
+        var page = getPromotions(search, status, type, null, null, null, null,
+                org.springframework.data.domain.PageRequest.of(0, 10_000,
+                        org.springframework.data.domain.Sort.by("created_at").descending()));
+        var sb = new StringBuilder();
+        sb.append("Code,Nom,Type,Valeur,Statut,Utilisations,Limite,Date Début,Date Fin\n");
+        for (var dto : page.content()) {
+            sb.append(escapeCsv(dto.code())).append(',')
+              .append(escapeCsv(dto.name())).append(',')
+              .append(dto.type()).append(',')
+              .append(dto.value()).append(',')
+              .append(dto.status()).append(',')
+              .append(dto.usageCount() != null ? dto.usageCount() : 0).append(',')
+              .append(dto.usageLimitTotal() != null ? dto.usageLimitTotal() : "∞").append(',')
+              .append(dto.startDate() != null ? dto.startDate().toLocalDate() : "").append(',')
+              .append(dto.endDate() != null ? dto.endDate().toLocalDate() : "")
+              .append('\n');
+        }
+        return sb.toString();
+    }
+
+    private static String escapeCsv(String val) {
+        if (val == null) return "";
+        if (val.contains(",") || val.contains("\"") || val.contains("\n")) {
+            return "\"" + val.replace("\"", "\"\"") + "\"";
+        }
+        return val;
     }
 }
 

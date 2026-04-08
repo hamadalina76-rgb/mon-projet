@@ -8,6 +8,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.speedline.promotion.domain.RuleType;
+
 public record CreatePromotionRequest(
 
     @NotBlank(message = "Le code est obligatoire")
@@ -23,8 +25,6 @@ public record CreatePromotionRequest(
     @NotNull(message = "Le type est obligatoire")
     PromotionType type,
 
-    @NotNull(message = "La valeur est obligatoire")
-    @DecimalMin(value = "0.01", message = "La valeur doit être positive")
     BigDecimal value,
 
     @DecimalMin(value = "0", message = "La réduction max ne peut pas être négative")
@@ -51,5 +51,14 @@ public record CreatePromotionRequest(
 
     Boolean firstOrderOnly,
 
-    PromotionStatus status
-) {}
+    PromotionStatus status,
+
+    List<RuleRequest> rules
+) {
+    public record RuleRequest(
+        @NotNull(message = "Le type de règle est obligatoire")
+        RuleType ruleType,
+        String operator,
+        String targetValue
+    ) {}
+}

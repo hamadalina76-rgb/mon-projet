@@ -85,7 +85,8 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
            "AND (CAST(:type AS text) IS NULL OR CAST(p.type AS text) = CAST(:type AS text)) " +
            "AND (CAST(:startFrom AS timestamp) IS NULL OR p.start_date >= CAST(:startFrom AS timestamp)) " +
            "AND (CAST(:startTo AS timestamp) IS NULL OR p.start_date <= CAST(:startTo AS timestamp)) " +
-           "AND (CAST(:partnerId AS text) IS NULL OR p.applicable_partner_ids LIKE '%' || CAST(:partnerId AS text) || '%')",
+           "AND (CAST(:partnerId AS text) IS NULL OR p.applicable_partner_ids LIKE '%' || CAST(:partnerId AS text) || '%') " +
+           "AND (CAST(:zoneId AS text) IS NULL OR p.applicable_zone_ids LIKE '%' || CAST(:zoneId AS text) || '%')",
            countQuery = "SELECT COUNT(*) FROM promotions p WHERE p.deleted = false AND " +
            "(CAST(:search AS text) IS NULL OR LOWER(p.code) LIKE LOWER('%' || CAST(:search AS text) || '%') " +
            "   OR LOWER(p.name) LIKE LOWER('%' || CAST(:search AS text) || '%')) " +
@@ -93,7 +94,8 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
            "AND (CAST(:type AS text) IS NULL OR CAST(p.type AS text) = CAST(:type AS text)) " +
            "AND (CAST(:startFrom AS timestamp) IS NULL OR p.start_date >= CAST(:startFrom AS timestamp)) " +
            "AND (CAST(:startTo AS timestamp) IS NULL OR p.start_date <= CAST(:startTo AS timestamp)) " +
-           "AND (CAST(:partnerId AS text) IS NULL OR p.applicable_partner_ids LIKE '%' || CAST(:partnerId AS text) || '%')",
+           "AND (CAST(:partnerId AS text) IS NULL OR p.applicable_partner_ids LIKE '%' || CAST(:partnerId AS text) || '%') " +
+           "AND (CAST(:zoneId AS text) IS NULL OR p.applicable_zone_ids LIKE '%' || CAST(:zoneId AS text) || '%')",
            nativeQuery = true)
     Page<Promotion> findFiltered(@Param("search") String search,
                                  @Param("status") String status,
@@ -101,6 +103,7 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
                                  @Param("startFrom") LocalDateTime startFrom,
                                  @Param("startTo") LocalDateTime startTo,
                                  @Param("partnerId") String partnerId,
+                                 @Param("zoneId") String zoneId,
                                  Pageable pageable);
 
     /**
@@ -122,4 +125,18 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
      */
     @Query("SELECT COALESCE(SUM(p.usageCount), 0) FROM Promotion p")
     long sumAllUsageCount();
+
+    /**
+     * Find active promotions about to expire (for Redis cleanup + events).
+     */
+    @Query("SELECT p FROM Promotion p WHERE p.endDate IS NOT NULL AND p.endDate < :now " +
+           "AND p.status <> com.speedline.promotion.domain.PromotionStatus.EXPIRED AND p.isActive = true")
+    List<Promotion> findExpirablePromotions(@Param("now") LocalDateTime now);
+
+    /**
+     * Find SCHEDULED promotions whose start_date has arrived.
+     */
+    @Query("SELECT p FROM Promotion p WHERE p.status = com.speedline.promotion.domain.PromotionStatus.SCHEDULED " +
+           "AND p.startDate IS NOT NULL AND p.startDate <= :now")
+    List<Promotion> findScheduledToActivate(@Param("now") LocalDateTime now);
 }

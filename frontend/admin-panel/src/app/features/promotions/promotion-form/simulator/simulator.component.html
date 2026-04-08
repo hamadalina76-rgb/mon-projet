@@ -1,0 +1,56 @@
+<div class="simulator">
+  <h4 class="sim-title">
+    <mat-icon>calculate</mat-icon>
+    {{ 'promotions.form.simulator.title' | translate }}
+  </h4>
+  <p class="sim-desc">{{ 'promotions.form.simulator.desc' | translate }}</p>
+
+  <div class="sim-inputs">
+    <mat-form-field appearance="outline" class="sim-field">
+      <mat-label>{{ 'promotions.form.simulator.orderSubtotal' | translate }}</mat-label>
+      <input matInput type="number" [(ngModel)]="orderSubtotal" min="0" step="0.5">
+      <span matSuffix class="suffix">TND</span>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="sim-field">
+      <mat-label>{{ 'promotions.form.simulator.deliveryFee' | translate }}</mat-label>
+      <input matInput type="number" [(ngModel)]="deliveryFee" min="0" step="0.5">
+      <span matSuffix class="suffix">TND</span>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="sim-field">
+      <mat-label>{{ 'promotions.form.simulator.itemCount' | translate }}</mat-label>
+      <input matInput type="number" [(ngModel)]="itemCount" min="1">
+    </mat-form-field>
+
+    <button mat-flat-button color="primary" type="button"
+            (click)="simulate()" [disabled]="loading" class="sim-btn">
+      <mat-spinner *ngIf="loading" diameter="18"></mat-spinner>
+      <span *ngIf="!loading">
+        <mat-icon>play_arrow</mat-icon>
+        {{ 'promotions.form.simulator.simulate' | translate }}
+      </span>
+    </button>
+  </div>
+
+  <!-- Résultat -->
+  <div class="sim-result" *ngIf="result">
+    <div class="result-row">
+      <span class="result-label">{{ 'promotions.form.simulator.discount' | translate }}</span>
+      <span class="result-value discount">-{{ result.discountAmount | number:'1.2-2' }} TND</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">{{ 'promotions.form.simulator.newSubtotal' | translate }}</span>
+      <span class="result-value">{{ result.newSubtotal | number:'1.2-2' }} TND</span>
+    </div>
+    <div class="result-row" *ngIf="result.deliveryFee > 0">
+      <span class="result-label">{{ 'promotions.form.simulator.deliveryFee' | translate }}</span>
+      <span class="result-value">{{ result.deliveryFee | number:'1.2-2' }} TND</span>
+    </div>
+    <div class="result-divider"></div>
+    <div class="result-row total">
+      <span class="result-label">{{ 'promotions.form.simulator.total' | translate }}</span>
+      <span class="result-value">{{ result.total | number:'1.2-2' }} TND</span>
+    </div>
+  </div>
+</div>

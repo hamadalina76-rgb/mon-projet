@@ -1,0 +1,149 @@
+@use 'variables' as v;
+
+$primary: v.$primary-color;
+$primary-soft: rgba(v.$primary-color, .08);
+$ease: cubic-bezier(.4, 0, .2, 1);
+
+.step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.full-width { width: 100%; }
+
+// ── Code row ────────────────────────────────────────────────────
+.code-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+
+  @media (max-width: 600px) { flex-direction: column; }
+}
+
+.code-field { flex: 1; }
+
+.generate-btn {
+  height: 56px;
+  border-color: #EF4444;
+  color: #EF4444;
+  border-radius: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+
+  mat-icon { margin-right: 4px; }
+
+  &:hover { background: rgba(#EF4444, .08); }
+}
+
+.code-ok { color: #10B981; }
+.code-taken { color: #EF4444; }
+
+// ── Type radio cards ────────────────────────────────────────────
+.field-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 4px;
+}
+
+.type-cards {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  @media (max-width: 600px) { flex-direction: column; }
+}
+
+.type-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all .2s $ease;
+  text-align: center;
+  background: #fff;
+
+  input[type="radio"] { display: none; }
+
+  mat-icon {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+    color: #94a3b8;
+    transition: color .2s $ease;
+  }
+
+  span {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #64748b;
+  }
+
+  &:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+  }
+
+  &--selected {
+    border-color: $primary;
+    background: $primary-soft;
+    box-shadow: 0 0 0 3px rgba($primary, .12);
+
+    mat-icon { color: $primary; }
+    span { color: $primary; font-weight: 600; }
+  }
+}
+
+// ── Value row ───────────────────────────────────────────────────
+.value-row {
+  display: flex;
+  gap: 16px;
+
+  @media (max-width: 480px) { flex-direction: column; }
+}
+
+.value-field { flex: 1; }
+
+.suffix {
+  font-weight: 600;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+// ── Free delivery info ──────────────────────────────────────────
+.free-delivery-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #e3f2fd;
+  border-radius: 8px;
+  border-left: 4px solid #1976d2;
+  color: #1565c0;
+  font-size: 13px;
+
+  mat-icon { font-size: 20px; width: 20px; height: 20px; flex-shrink: 0; }
+}
+
+// ── Dark mode ───────────────────────────────────────────────────
+:host-context(html.dark) {
+  .type-card {
+    border-color: #334155;
+    background: #1e293b;
+    &:hover { border-color: #475569; background: #1e293b; }
+    &--selected { border-color: $primary; background: rgba($primary, .1); }
+    span { color: #cbd5e1; }
+    mat-icon { color: #64748b; }
+  }
+  .field-label { color: #94a3b8; }
+  .free-delivery-info { background: rgba(#1976d2, .1); border-left-color: #42a5f5; color: #90caf9; }
+}
