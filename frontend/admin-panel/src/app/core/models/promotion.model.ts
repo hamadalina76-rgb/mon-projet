@@ -174,3 +174,59 @@ export interface PromotionStatistics {
   totalUsages: number;
   totalDiscount: number;
 }
+
+export type AuditAction =
+  | 'CREATED' | 'UPDATED' | 'DELETED'
+  | 'ACTIVATED' | 'DEACTIVATED' | 'TOGGLED'
+  | 'APPLIED' | 'REVOKED' | 'EXPIRED';
+
+export interface PromotionAuditLog {
+  id: number;
+  promotionId: number;
+  promotionCode: string;
+  action: AuditAction;
+  details: string;
+  performedBy: string;
+  createdAt: string;
+}
+
+export interface PromotionAuditPageResponse {
+  content: PromotionAuditLog[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+}
+
+// ─── Dashboard Analytics ─────────────────────────────────────────
+
+export interface PromotionDashboard {
+  activeCount: number;
+  usagesThisMonth: number;
+  totalDiscountTnd: number;
+  usageRatePct: number;
+  top5: TopPromotion[];
+  dailyUsages: DailyUsage[];
+  expiringAlerts: ExpiringPromotion[];
+}
+
+export interface TopPromotion {
+  id: number;
+  code: string;
+  name: string;
+  usageCount: number;
+}
+
+export interface DailyUsage {
+  date: string;
+  count: number;
+}
+
+export interface ExpiringPromotion {
+  id: number;
+  code: string;
+  name: string;
+  endDate: string;
+  daysRemaining: number;
+}

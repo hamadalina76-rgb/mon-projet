@@ -17,6 +17,7 @@ import { errorInterceptor } from '@core/interceptors/error.interceptor';
 import { loadingInterceptor } from '@core/interceptors/loading.interceptor';
 import { RuntimeConfigService } from '@core/services/runtime-config.service';
 import { environment } from '@environments/environment';
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 
 const CUSTOM_DATE_FORMATS = {
   parse: { dateInput: 'dd/MM/yyyy' },
@@ -101,5 +102,6 @@ export const appConfig: ApplicationConfig = {
     { provide: MAT_DATE_LOCALE, useValue: 'fr-FR' },
     { provide: MAT_DATE_FORMATS, useValue: CUSTOM_DATE_FORMATS },
     { provide: DateAdapter, useClass: NativeDateAdapter },
+    provideCharts(withDefaultRegisterables()),
   ],
 };

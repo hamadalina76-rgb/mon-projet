@@ -58,6 +58,14 @@ public class PromotionEventPublisher {
         ));
     }
 
+    public void publishPromotionActivated(Long promotionId, String code) {
+        publish("promotion-activated", Map.of(
+            "eventType", "PROMOTION_ACTIVATED",
+            "promotionId", promotionId,
+            "code", code
+        ));
+    }
+
     private void publish(String topic, Object payload) {
         try {
             String json = objectMapper.writeValueAsString(payload);

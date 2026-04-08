@@ -1,0 +1,84 @@
+<app-list-page
+  [title]="'promotions.history.title'"
+  [showBackButton]="true"
+  backLink="/promotions"
+  [loading]="loading"
+  [empty]="logs.length === 0 && !loading"
+  [emptyMessage]="hasActiveFilters ? 'promotions.history.noResults' : 'promotions.history.empty'"
+  emptyIcon="history"
+  [totalItems]="totalElements"
+  [currentPage]="currentPage"
+  [itemsPerPage]="itemsPerPage"
+  [itemsPerPageOptions]="[20, 50, 100]"
+  [showPagination]="totalElements > 0"
+  [itemsPerPageLabel]="'promotions.itemsPerPage'"
+  [ofLabel]="'promotions.of'"
+  (pageChange)="onPageChange($event)"
+>
+  <!-- Header: promotion code badge -->
+  <div headerAction class="header-actions">
+    @if (promotionCode) {
+      <span class="promo-code-badge">{{ promotionCode }}</span>
+    }
+  </div>
+
+  <!-- Filters -->
+  <div filters class="filters-bar">
+    <div class="search-box">
+      <span class="material-icons-round search-icon">search</span>
+      <input
+        type="text"
+        class="search-input"
+        [placeholder]="'promotions.history.searchPlaceholder' | translate"
+        [(ngModel)]="searchText"
+        (ngModelChange)="onSearchChange()"
+      />
+    </div>
+
+    <div class="action-chips">
+      <button class="chip" [class.chip--active]="selectedAction === ''" (click)="selectedAction = ''; onActionChange()">
+        {{ 'promotions.history.allActions' | translate }}
+      </button>
+      @for (act of actionOptions; track act) {
+        <button class="chip" [class.chip--active]="selectedAction === act"
+                [attr.data-action]="act"
+                (click)="selectedAction = act; onActionChange()">
+          {{ getActionLabel(act) }}
+        </button>
+      }
+    </div>
+
+    @if (hasActiveFilters) {
+      <button class="btn-reset" (click)="resetFilters()">
+        <span class="material-icons-round">restart_alt</span>
+        {{ 'promotions.history.reset' | translate }}
+      </button>
+    }
+  </div>
+
+  <!-- Table -->
+  <table table class="data-table">
+    <thead>
+      <tr>
+        <th>{{ 'promotions.history.action' | translate }}</th>
+        <th>{{ 'promotions.history.details' | translate }}</th>
+        <th>{{ 'promotions.history.performedBy' | translate }}</th>
+        <th>{{ 'promotions.history.date' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (log of logs; track log.id) {
+        <tr>
+          <td>
+            <span class="action-badge" [attr.data-action]="log.action">
+              {{ getActionLabel(log.action) }}
+            </span>
+          </td>
+          <td class="col-details">{{ log.details || '—' }}</td>
+          <td>{{ log.performedBy || 'Admin' }}</td>
+          <td class="col-date">{{ log.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</app-list-page>

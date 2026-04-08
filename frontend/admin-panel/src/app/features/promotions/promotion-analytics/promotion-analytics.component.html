@@ -1,216 +1,147 @@
-<div class="analytics-container">
+<div class="analytics-page">
 
-  <!-- Back + Title -->
+  <!-- Header -->
   <div class="page-header">
-    <button mat-icon-button (click)="goBack()" matTooltip="Back to promotions">
-      <mat-icon>arrow_back</mat-icon>
-    </button>
-    <div class="header-text">
-      <h1 class="page-title">
-        {{ promotion() ? promotion()!.name : 'Promotion Analytics' }}
-      </h1>
-      @if (promotion()) {
-        <span class="promo-code-badge">{{ promotion()!.code }}</span>
-      }
-    </div>
+    <a routerLink="/promotions" class="back-link">
+      <span class="material-icons-round">arrow_back</span>
+      {{ 'promotions.promoAnalytics.back' | translate }}
+    </a>
+    @if (promotion(); as p) {
+      <div class="title-row">
+        <h1>{{ p.name }}</h1>
+        <span class="code-chip">{{ p.code }}</span>
+        <span class="status-dot" [attr.data-status]="p.status.toLowerCase()">{{ p.status }}</span>
+      </div>
+      <p class="subtitle">
+        {{ p.type === 'PERCENTAGE' ? p.value + '%' : p.type === 'FREE_DELIVERY' ? ('promotions.types.FREE_DELIVERY' | translate) : p.value + ' TND' }}
+        &middot;
+        {{ p.startDate | date:'dd MMM yyyy' }} → {{ p.endDate ? (p.endDate | date:'dd MMM yyyy') : '∞' }}
+      </p>
+    }
   </div>
 
-  <!-- Loading -->
   @if (loading()) {
-    <div class="loading-state">
-      <mat-spinner diameter="48"/>
-      <p>Loading analytics…</p>
-    </div>
+    <div class="center-state"><mat-spinner diameter="44"></mat-spinner></div>
   }
 
-  <!-- Error -->
   @if (error()) {
-    <mat-card class="error-card">
-      <mat-icon color="warn">error_outline</mat-icon>
-      <span>{{ error() }}</span>
-    </mat-card>
+    <div class="error-bar">
+      <span class="material-icons-round">error_outline</span>
+      {{ error() }}
+    </div>
   }
 
-  <!-- Content -->
   @if (!loading() && !error() && promotion()) {
-    <!-- KPI row -->
-    <div class="kpi-row">
-      <mat-card class="kpi-card">
-        <div class="kpi-icon usage"><mat-icon>confirmation_number</mat-icon></div>
-        <div class="kpi-body">
-          <div class="kpi-value">{{ promotion()!.usageCount }}</div>
-          <div class="kpi-label">Total Uses</div>
+    <!-- KPIs -->
+    <div class="kpi-strip">
+      <div class="kpi" data-accent="red">
+        <div class="kpi-icon-wrap"><span class="material-icons-round">confirmation_number</span></div>
+        <div class="kpi-text">
+          <span class="kpi-val">{{ analytics()?.netUsage ?? 0 }}</span>
+          <span class="kpi-lbl">{{ 'promotions.promoAnalytics.netUsage' | translate }}</span>
         </div>
-      </mat-card>
-
-      <mat-card class="kpi-card">
-        <div class="kpi-icon savings"><mat-icon>savings</mat-icon></div>
-        <div class="kpi-body">
-          <div class="kpi-value">{{ (analytics()?.totalDiscountGiven ?? 0) | number:'1.2-2' }} TND</div>
-          <div class="kpi-label">Total Discount Given</div>
+      </div>
+      <div class="kpi" data-accent="green">
+        <div class="kpi-icon-wrap"><span class="material-icons-round">savings</span></div>
+        <div class="kpi-text">
+          <span class="kpi-val">{{ (analytics()?.totalDiscountGiven ?? 0) | number:'1.2-2' }}<small>TND</small></span>
+          <span class="kpi-lbl">{{ 'promotions.promoAnalytics.totalDiscount' | translate }}</span>
         </div>
-      </mat-card>
-
-      <mat-card class="kpi-card">
-        <div class="kpi-icon users"><mat-icon>group</mat-icon></div>
-        <div class="kpi-body">
-          <div class="kpi-value">{{ analytics()?.uniqueUsers ?? 0 }}</div>
-          <div class="kpi-label">Unique Users</div>
+      </div>
+      <div class="kpi" data-accent="pink">
+        <div class="kpi-icon-wrap"><span class="material-icons-round">group</span></div>
+        <div class="kpi-text">
+          <span class="kpi-val">{{ analytics()?.uniqueUsers ?? 0 }}</span>
+          <span class="kpi-lbl">{{ 'promotions.promoAnalytics.uniqueUsers' | translate }}</span>
         </div>
-      </mat-card>
-
-      <mat-card class="kpi-card">
-        <div class="kpi-icon avg"><mat-icon>calculate</mat-icon></div>
-        <div class="kpi-body">
-          <div class="kpi-value">{{ (analytics()?.avgDiscountPerUse ?? 0) | number:'1.2-2' }} TND</div>
-          <div class="kpi-label">Avg Discount / Use</div>
+      </div>
+      <div class="kpi" data-accent="cyan">
+        <div class="kpi-icon-wrap"><span class="material-icons-round">calculate</span></div>
+        <div class="kpi-text">
+          <span class="kpi-val">{{ (analytics()?.avgDiscountPerUse ?? 0) | number:'1.2-2' }}<small>TND</small></span>
+          <span class="kpi-lbl">{{ 'promotions.promoAnalytics.avgDiscount' | translate }}</span>
         </div>
-      </mat-card>
+      </div>
     </div>
 
-    <!-- Usage Rate Bar -->
-    @if (promotion()!.usageLimitTotal) {
-      <mat-card class="usage-rate-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>donut_large</mat-icon>
-            Quota Usage
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="quota-info">
-            <span class="quota-used">{{ promotion()!.usageCount }} uses</span>
-            <span class="quota-sep">/</span>
-            <span class="quota-total">{{ promotion()!.usageLimitTotal }} limit</span>
-            <span class="quota-pct" [style.color]="usageBarColor">{{ usageRate }}%</span>
+    <!-- Charts row -->
+    <div class="charts-row">
+      <!-- Quota Doughnut -->
+      @if (promotion()!.usageLimitTotal) {
+        <div class="card chart-card">
+          <div class="card-head">
+            <span class="material-icons-round">donut_large</span>
+            {{ 'promotions.promoAnalytics.quotaTitle' | translate }}
           </div>
-          <div class="progress-track">
-            <div class="progress-fill"
-                 [style.width.%]="usageRate"
-                 [style.background]="usageBarColor">
+          <div class="doughnut-wrapper">
+            <div class="doughnut-box">
+              <canvas baseChart [type]="'doughnut'" [data]="doughnutData" [options]="doughnutOptions"></canvas>
+              <div class="doughnut-center">
+                <span class="doughnut-pct" [style.color]="usageBarColor">{{ usageRate }}%</span>
+                <span class="doughnut-sub">{{ promotion()!.usageCount }} / {{ promotion()!.usageLimitTotal }}</span>
+              </div>
             </div>
           </div>
-        </mat-card-content>
-      </mat-card>
-    }
-
-    <!-- Promotion details summary -->
-    <mat-card class="details-card">
-      <mat-card-header>
-        <mat-card-title>
-          <mat-icon>info_outline</mat-icon>
-          Promotion Details
-        </mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="details-grid">
-          <div class="detail-item">
-            <span class="detail-label">Type</span>
-            <mat-chip [class]="'chip-type-' + promotion()!.type.toLowerCase()">
-              {{ promotion()!.type }}
-            </mat-chip>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Status</span>
-            <mat-chip [class]="'chip-status-' + promotion()!.status.toLowerCase()">
-              {{ promotion()!.status }}
-            </mat-chip>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Discount Value</span>
-            <span class="detail-value">
-              {{ promotion()!.value }}
-              {{ promotion()!.type === 'PERCENTAGE' ? '%' : 'TND' }}
-            </span>
-          </div>
-          @if (promotion()!.maximumDiscount) {
-            <div class="detail-item">
-              <span class="detail-label">Max Discount</span>
-              <span class="detail-value">{{ promotion()!.maximumDiscount }} TND</span>
-            </div>
-          }
-          @if (promotion()!.minimumOrder) {
-            <div class="detail-item">
-              <span class="detail-label">Min Order</span>
-              <span class="detail-value">{{ promotion()!.minimumOrder }} TND</span>
-            </div>
-          }
-          <div class="detail-item">
-            <span class="detail-label">Valid Period</span>
-            <span class="detail-value">
-              {{ promotion()!.startDate | date:'dd MMM yyyy' }}
-              → {{ promotion()!.endDate | date:'dd MMM yyyy' }}
-            </span>
-          </div>
-          @if (promotion()!.usageLimitPerUser) {
-            <div class="detail-item">
-              <span class="detail-label">Limit / User</span>
-              <span class="detail-value">{{ promotion()!.usageLimitPerUser }}×</span>
-            </div>
-          }
         </div>
-      </mat-card-content>
-    </mat-card>
+      }
 
-    <!-- Usage Log Table -->
+      <!-- Applied vs Revoked -->
+      <div class="card chart-card">
+        <div class="card-head">
+          <span class="material-icons-round">bar_chart</span>
+          {{ 'promotions.promoAnalytics.statusTitle' | translate }}
+        </div>
+        <div class="chart-box">
+          <canvas baseChart [type]="'bar'" [data]="statusBarData" [options]="statusBarOptions"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Usage Log -->
     @if (analytics()?.usageLogs?.length) {
-      <mat-card class="log-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>receipt_long</mat-icon>
-            Usage Log
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
+      <div class="card log-card">
+        <div class="card-head">
+          <span class="material-icons-round">receipt_long</span>
+          {{ 'promotions.promoAnalytics.logTitle' | translate }}
+          <span class="log-count">{{ analytics()!.usageLogs.length }}</span>
+        </div>
+        <div class="log-table-wrap">
           <table mat-table [dataSource]="analytics()!.usageLogs" class="log-table">
 
             <ng-container matColumnDef="userId">
-              <th mat-header-cell *matHeaderCellDef>User ID</th>
-              <td mat-cell *matCellDef="let row">{{ row.userId }}</td>
+              <th mat-header-cell *matHeaderCellDef>{{ 'promotions.promoAnalytics.userId' | translate }}</th>
+              <td mat-cell *matCellDef="let log"><span class="id-cell">#{{ log.userId }}</span></td>
             </ng-container>
 
             <ng-container matColumnDef="orderId">
-              <th mat-header-cell *matHeaderCellDef>Order ID</th>
-              <td mat-cell *matCellDef="let row">{{ row.orderId }}</td>
+              <th mat-header-cell *matHeaderCellDef>{{ 'promotions.promoAnalytics.orderId' | translate }}</th>
+              <td mat-cell *matCellDef="let log"><span class="id-cell">#{{ log.orderId }}</span></td>
             </ng-container>
 
             <ng-container matColumnDef="discountAmount">
-              <th mat-header-cell *matHeaderCellDef>Discount</th>
-              <td mat-cell *matCellDef="let row">{{ row.discountAmount | number:'1.2-2' }} TND</td>
+              <th mat-header-cell *matHeaderCellDef>{{ 'promotions.promoAnalytics.discount' | translate }}</th>
+              <td mat-cell *matCellDef="let log" class="money">{{ log.discountAmount | number:'1.2-2' }} TND</td>
             </ng-container>
 
             <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef>Status</th>
-              <td mat-cell *matCellDef="let row">
-                <mat-chip [class]="row.status === 'APPLIED' ? 'chip-applied' : 'chip-revoked'">
-                  {{ row.status }}
-                </mat-chip>
+              <th mat-header-cell *matHeaderCellDef>{{ 'promotions.promoAnalytics.status' | translate }}</th>
+              <td mat-cell *matCellDef="let log">
+                <span class="status-tag" [attr.data-st]="log.status.toLowerCase()">
+                  {{ log.status === 'APPLIED' ? ('promotions.promoAnalytics.applied' | translate) : ('promotions.promoAnalytics.revoked' | translate) }}
+                </span>
               </td>
             </ng-container>
 
             <ng-container matColumnDef="createdAt">
-              <th mat-header-cell *matHeaderCellDef>Date</th>
-              <td mat-cell *matCellDef="let row">{{ row.createdAt | date:'dd MMM yyyy, HH:mm' }}</td>
+              <th mat-header-cell *matHeaderCellDef>{{ 'promotions.promoAnalytics.date' | translate }}</th>
+              <td mat-cell *matCellDef="let log" class="date-cell">{{ log.createdAt | date:'dd/MM/yy HH:mm' }}</td>
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
             <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
           </table>
-        </mat-card-content>
-      </mat-card>
+        </div>
+      </div>
     }
   }
-
-  <!-- Empty state when no promotion ID -->
-  @if (!loading() && !error() && !promotion()) {
-    <mat-card class="empty-state">
-      <mat-icon>bar_chart</mat-icon>
-      <h3>Select a promotion to view analytics</h3>
-      <button mat-flat-button color="primary" (click)="goBack()">
-        <mat-icon>arrow_back</mat-icon>
-        Go to Promotions
-      </button>
-    </mat-card>
-  }
-
 </div>

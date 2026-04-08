@@ -1,0 +1,114 @@
+﻿<div class="dashboard-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <a routerLink="/promotions" class="back-link">
+      <span class="material-icons-round">arrow_back</span>
+      {{ 'promotions.dashboard.back' | translate }}
+    </a>
+    <h1>{{ 'promotions.dashboard.title' | translate }}</h1>
+    <p class="subtitle">{{ 'promotions.dashboard.subtitle' | translate }}</p>
+  </div>
+
+  @if (loading()) {
+    <div class="center-state"><mat-spinner diameter="44"></mat-spinner></div>
+  }
+
+  @if (error()) {
+    <div class="error-bar">
+      <span class="material-icons-round">error_outline</span>
+      {{ error() }}
+    </div>
+  }
+
+  @if (dashboard(); as d) {
+    <!-- KPIs -->
+    <div class="kpi-strip">
+      <div class="kpi" data-accent="green">
+        <div class="kpi-icon-wrap"><span class="material-icons-round">check_circle</span></div>
+        <div class="kpi-text">
+          <span class="kpi-val">{{ d.activeCount }}</span>
+          <span class="kpi-lbl">{{ 'promotions.dashboard.activeCount' | translate }}</span>
+        </div>
+      </div>
+      <div class="kpi" data-accent="blue">
+        <div class="kpi-icon-wrap"><span class="material-icons-round">receipt_long</span></div>
+        <div class="kpi-text">
+          <span class="kpi-val">{{ d.usagesThisMonth }}</span>
+          <span class="kpi-lbl">{{ 'promotions.dashboard.usagesThisMonth' | translate }}</span>
+        </div>
+      </div>
+      <div class="kpi" data-accent="orange">
+        <div class="kpi-icon-wrap"><span class="material-icons-round">savings</span></div>
+        <div class="kpi-text">
+          <span class="kpi-val">{{ d.totalDiscountTnd | number:'1.2-2' }}<small>TND</small></span>
+          <span class="kpi-lbl">{{ 'promotions.dashboard.totalDiscount' | translate }}</span>
+        </div>
+      </div>
+      <div class="kpi" data-accent="red">
+        <div class="kpi-icon-wrap"><span class="material-icons-round">speed</span></div>
+        <div class="kpi-text">
+          <span class="kpi-val">{{ d.usageRatePct | number:'1.1-1' }}<small>%</small></span>
+          <span class="kpi-lbl">{{ 'promotions.dashboard.usageRate' | translate }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-row">
+      <div class="card chart-card">
+        <div class="card-head">
+          <span class="material-icons-round">bar_chart</span>
+          {{ 'promotions.dashboard.top5Title' | translate }}
+        </div>
+        @if (d.top5.length === 0) {
+          <div class="empty-state-sm">{{ 'promotions.dashboard.noData' | translate }}</div>
+        } @else {
+          <div class="chart-box">
+            <canvas baseChart [type]="'bar'" [data]="barChartData" [options]="barChartOptions"></canvas>
+          </div>
+        }
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-head">
+          <span class="material-icons-round">show_chart</span>
+          {{ 'promotions.dashboard.dailyUsageTitle' | translate }}
+        </div>
+        @if (d.dailyUsages.length === 0) {
+          <div class="empty-state-sm">{{ 'promotions.dashboard.noData' | translate }}</div>
+        } @else {
+          <div class="chart-box">
+            <canvas baseChart [type]="'line'" [data]="lineChartData" [options]="lineChartOptions"></canvas>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Expiring Alerts -->
+    @if (d.expiringAlerts.length > 0) {
+      <div class="card alerts-card">
+        <div class="card-head warn">
+          <span class="material-icons-round">schedule</span>
+          {{ 'promotions.dashboard.expiringTitle' | translate }}
+        </div>
+        <div class="alert-list">
+          @for (alert of d.expiringAlerts; track alert.id) {
+            <a class="alert-row" [routerLink]="['/promotions', alert.id, 'analytics']">
+              <div class="alert-info">
+                <span class="alert-code">{{ alert.code }}</span>
+                <span class="alert-name">{{ alert.name }}</span>
+              </div>
+              <div class="alert-meta">
+                <span class="alert-date">{{ alert.endDate | date:'dd/MM/yyyy' }}</span>
+                <span class="alert-badge" [class.critical]="alert.daysRemaining <= 2">
+                  {{ alert.daysRemaining }}j
+                </span>
+              </div>
+            </a>
+          }
+        </div>
+      </div>
+    }
+  }
+</div>

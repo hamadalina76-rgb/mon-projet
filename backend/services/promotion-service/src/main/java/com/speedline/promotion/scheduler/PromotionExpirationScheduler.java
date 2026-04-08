@@ -1,8 +1,10 @@
 package com.speedline.promotion.scheduler;
 
 import com.speedline.promotion.domain.Promotion;
+import com.speedline.promotion.domain.PromotionAuditLog;
 import com.speedline.promotion.domain.PromotionStatus;
 import com.speedline.promotion.event.PromotionEventPublisher;
+import com.speedline.promotion.repository.PromotionAuditLogRepository;
 import com.speedline.promotion.repository.PromotionRepository;
 import com.speedline.promotion.service.RedisPromotionCacheService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import java.util.List;
 public class PromotionExpirationScheduler {
 
     private final PromotionRepository promotionRepository;
+    private final PromotionAuditLogRepository auditLogRepository;
     private final RedisPromotionCacheService cacheService;
     private final PromotionEventPublisher eventPublisher;
 
@@ -38,6 +41,12 @@ public class PromotionExpirationScheduler {
             for (Promotion p : expiring) {
                 cacheService.removeCode(p.getCode());
                 eventPublisher.publishPromotionExpired(p.getId(), p.getCode());
+                auditLogRepository.save(PromotionAuditLog.builder()
+                    .promotionId(p.getId()).promotionCode(p.getCode())
+                    .action(PromotionAuditLog.AuditAction.EXPIRED)
+                    .details("Expirée automatiquement (scheduler)")
+                    .performedBy("SYSTEM")
+                    .build());
             }
             int count = promotionRepository.expirePromotions(now);
             log.info("[Scheduler] {} promotion(s) expired", count);
@@ -48,7 +57,7 @@ public class PromotionExpirationScheduler {
      * Every hour: activate SCHEDULED promotions whose start_date has arrived.
      * Adds to Redis cache.
      */
-    @Scheduled(cron = "0 0 * * * *")
+    @Scheduled(cron = "0 * * * * *")
     @Transactional
     @CacheEvict(value = "promotions:active", allEntries = true)
     public void activateScheduledPromotions() {
@@ -59,7 +68,14 @@ public class PromotionExpirationScheduler {
             p.setIsActive(true);
             promotionRepository.save(p);
             cacheService.addCode(p.getCode());
-            log.info("[Scheduler] Promotion activated: {}", p.getCode());
+            eventPublisher.publishPromotionActivated(p.getId(), p.getCode());
+            auditLogRepository.save(PromotionAuditLog.builder()
+                .promotionId(p.getId()).promotionCode(p.getCode())
+                .action(PromotionAuditLog.AuditAction.ACTIVATED)
+                .details("Activation planifiée automatique (scheduler)")
+                .performedBy("SYSTEM")
+                .build());
+            log.info("[Scheduler] Promotion auto-activated: {} (startDate reached)", p.getCode());
         }
     }
 }

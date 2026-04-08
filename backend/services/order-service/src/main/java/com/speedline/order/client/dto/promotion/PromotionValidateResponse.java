@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 public class PromotionValidateResponse {
 
     private Boolean isValid;
+    private Long promotionId;
     private BigDecimal discountAmount;
     private String message;
 }

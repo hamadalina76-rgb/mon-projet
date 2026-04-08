@@ -885,7 +885,9 @@
       "deactivate": "Désactiver",
       "duplicate": "Dupliquer",
       "delete": "Supprimer",
-      "more": "Plus d'options"
+      "history": "Historique",
+      "more": "Plus d'options",
+      "scheduledAuto": "Activation automatique"
     },
     "form": {
       "createTitle": "Nouvelle promotion",
@@ -917,6 +919,7 @@
       "description": "Description",
       "descriptionPlaceholder": "Description visible par les clients…",
       "initialStatus": "Statut initial",
+      "statusHint": "Planifié : s'active automatiquement à la date de début",
       "reduction": "Réduction",
       "reductionDesc": "Type et montant de la réduction",
       "reductionType": "Type de réduction",
@@ -989,6 +992,7 @@
       "create": "Créer la promotion",
       "createDraft": "Créer en brouillon",
       "createAndActivate": "Créer & Activer",
+      "createAndSchedule": "Créer & Planifier",
       "save": "Enregistrer",
       "back": "Retour",
       "fixErrors": "Veuillez corriger les erreurs avant de continuer",
@@ -1039,6 +1043,62 @@
       "expired": "Expirées",
       "totalUsages": "Utilisations",
       "totalDiscount": "Réductions totales"
+    },
+    "history": {
+      "title": "Historique de la promotion",
+      "action": "Action",
+      "details": "Détails",
+      "performedBy": "Effectué par",
+      "date": "Date",
+      "empty": "Aucun historique pour cette promotion",
+      "searchPlaceholder": "Rechercher dans les détails\u2026",
+      "allActions": "Toutes les actions",
+      "reset": "Réinitialiser",
+      "noResults": "Aucun résultat pour ces filtres",
+      "actions": {
+        "CREATED": "Création",
+        "UPDATED": "Modification",
+        "DELETED": "Suppression",
+        "ACTIVATED": "Activation",
+        "DEACTIVATED": "Désactivation",
+        "TOGGLED": "Basculement",
+        "APPLIED": "Utilisation",
+        "REVOKED": "Révocation",
+        "EXPIRED": "Expiration"
+      }
+    },
+    "dashboard": {
+      "title": "Dashboard Promotions",
+      "subtitle": "Vue d'ensemble de la performance des promotions",
+      "back": "Retour aux promotions",
+      "activeCount": "Promotions actives",
+      "usagesThisMonth": "Utilisations ce mois",
+      "totalDiscount": "Total réductions",
+      "usageRate": "Taux d'utilisation",
+      "top5Title": "Top 5 — Promotions les plus utilisées",
+      "dailyUsageTitle": "Utilisations quotidiennes (30 jours)",
+      "expiringTitle": "Promotions expirant bientôt",
+      "endDate": "Date de fin",
+      "daysRemaining": "Jours restants",
+      "noData": "Aucune donnée disponible",
+      "noExpiring": "Aucune promotion n'expire dans les 7 prochains jours"
+    },
+    "promoAnalytics": {
+      "back": "Retour aux promotions",
+      "netUsage": "Utilisations nettes",
+      "totalDiscount": "Total réductions",
+      "uniqueUsers": "Utilisateurs uniques",
+      "avgDiscount": "Réduction moy.",
+      "quotaTitle": "Quota d'utilisation",
+      "statusTitle": "Appliquées vs Révoquées",
+      "logTitle": "Journal d'utilisation",
+      "userId": "Utilisateur",
+      "orderId": "Commande",
+      "discount": "Réduction",
+      "status": "Statut",
+      "date": "Date",
+      "applied": "Appliquée",
+      "revoked": "Révoquée"
     }
   },
   "reviews": {

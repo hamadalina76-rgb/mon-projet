@@ -15,6 +15,8 @@ import {
   ApplyPromotionRequest,
   RevokePromotionRequest,
   PromotionAnalytics,
+  PromotionAuditPageResponse,
+  PromotionDashboard,
 } from '@core/models/promotion.model';
 
 @Injectable({ providedIn: 'root' })
@@ -98,6 +100,10 @@ export class PromotionsService {
     return this.api.get<any>('promotions/statistics').pipe(map((r) => r.data ?? r));
   }
 
+  getDashboard(): Observable<PromotionDashboard> {
+    return this.api.get<any>('promotions/dashboard').pipe(map((r) => r.data ?? r));
+  }
+
   // ------------------------------------------------ CODE CHECK ----
 
   /**
@@ -135,6 +141,17 @@ export class PromotionsService {
 
   getAnalytics(id: number): Observable<PromotionAnalytics> {
     return this.api.get<any>(`promotions/${id}/analytics`).pipe(map((r) => r.data ?? r));
+  }
+
+  // ----------------------------------------------------------- HISTORY ---
+
+  getHistory(id: number, page = 0, size = 20, action?: string, search?: string): Observable<PromotionAuditPageResponse> {
+    let params = new HttpParams()
+      .set('page', String(page))
+      .set('size', String(size));
+    if (action) params = params.set('action', action);
+    if (search) params = params.set('search', search);
+    return this.api.get<any>(`promotions/${id}/history`, params).pipe(map((r) => r.data ?? r));
   }
 
   // ------------------------------------------------------------- CSV ---

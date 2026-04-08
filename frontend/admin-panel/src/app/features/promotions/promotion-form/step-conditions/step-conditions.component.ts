@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatSelectModule } from '@angular/material/select';
 import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
@@ -15,7 +16,7 @@ import { TranslateModule } from '@ngx-translate/core';
   imports: [
     CommonModule, ReactiveFormsModule,
     MatFormFieldModule, MatInputModule, MatIconModule, MatCheckboxModule,
-    MatDatepickerModule, MatNativeDateModule, TranslateModule,
+    MatDatepickerModule, MatNativeDateModule, MatSelectModule, TranslateModule,
   ],
   templateUrl: './step-conditions.component.html',
   styleUrls: ['./step-conditions.component.scss'],
