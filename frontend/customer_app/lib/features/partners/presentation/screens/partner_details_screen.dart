@@ -4,7 +4,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../config/routes/route_names.dart';
 import '../../../../config/dependency_injection/injection.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/localization/app_localizations.dart';
@@ -649,6 +651,20 @@ class _PartnerDetailsScreenState extends ConsumerState<PartnerDetailsScreen>
     final lightTheme = _screenLightTheme(context);
     ref.watch(addressNotifierProvider);
     ref.watch(locationNotifierProvider);
+    final cartState = ref.watch(cartNotifierProvider);
+
+    final partnerCartItems = cartState.items
+        .where((item) => item.partnerId == widget.partnerId)
+        .toList();
+    final partnerItemCount = partnerCartItems.fold<int>(
+      0,
+      (sum, item) => sum + item.quantity,
+    );
+    final partnerSubtotal = partnerCartItems.fold<double>(
+      0,
+      (sum, item) => sum + item.lineTotal,
+    );
+    final showPartnerCheckoutBar = partnerCartItems.isNotEmpty;
 
     final coords = _resolveCoordinates();
     final zoneUserLat = (coords.lat == 0.0 && coords.lng == 0.0)
@@ -662,6 +678,76 @@ class _PartnerDetailsScreenState extends ConsumerState<PartnerDetailsScreen>
       data: lightTheme,
       child: Scaffold(
         backgroundColor: AppColors.surface,
+        bottomNavigationBar: showPartnerCheckoutBar
+            ? SafeArea(
+                minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.black,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.20),
+                        blurRadius: 16,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '$partnerItemCount article${partnerItemCount > 1 ? 's' : ''}',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _money(partnerSubtotal),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 20,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        height: 44,
+                        child: ElevatedButton.icon(
+                          onPressed: () => context.push(RouteNames.cart),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: AppColors.surface,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          icon: const Icon(Icons.payment_rounded, size: 18),
+                          label: const Text(
+                            'Payer',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : null,
         body: FutureBuilder<_PartnerDetailsData>(
           future: _future,
           builder: (context, snapshot) {

@@ -187,6 +187,7 @@ class CartNotifier extends StateNotifier<CartState> {
     String? promoCode,
     String? addressId,
     String paymentMethod = 'CASH',
+    DateTime? scheduledDeliveryTime,
   }) async {
     if (state.items.isEmpty) return;
 
@@ -195,6 +196,7 @@ class CartNotifier extends StateNotifier<CartState> {
       promoCode: promoCode,
       addressId: addressId,
       paymentMethod: paymentMethod,
+      scheduledDeliveryTime: scheduledDeliveryTime,
     );
 
     await clearCart();
