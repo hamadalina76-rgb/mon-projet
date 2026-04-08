@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/localization/app_localizations.dart';
-import '../../../cart/presentation/cart_fab.dart';
 
 /// Main Scaffold with Bottom Navigation Bar
 /// Wraps the 4 main app screens: Explore, Search, Orders, Profile
@@ -54,8 +53,6 @@ class MainScaffold extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: child,
-      floatingActionButton: const CartFab(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _calculateSelectedIndex(currentPath),
         onTap: (index) => _onItemTapped(context, index),
