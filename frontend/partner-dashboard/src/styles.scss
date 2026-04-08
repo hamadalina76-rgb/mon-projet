@@ -292,6 +292,18 @@ button[mat-stroked-button] {
   }
 }
 
+/* New Order Snackbar
+   ========================================================================== */
+.new-order-snackbar {
+  &.mat-mdc-snack-bar-container {
+    --mdc-snackbar-container-color: #1a2332;
+    --mdc-snackbar-supporting-text-color: #ffffff;
+    --mat-snack-bar-button-color: #ff6b35;
+    border-left: 4px solid #ff6b35;
+    border-radius: 8px !important;
+  }
+}
+
 /* Scrollbar
    ========================================================================== */
 ::-webkit-scrollbar {
@@ -322,6 +334,33 @@ button[mat-stroked-button] {
 
   @media (max-width: 480px) {
     .mat-mdc-dialog-container .mdc-dialog__surface {
+      border-radius: 12px !important;
+    }
+  }
+}
+
+/* Accept / Refuse order dialogs — fit small viewports, safe areas
+   ========================================================================== */
+.sl-dialog-panel {
+  .mat-mdc-dialog-container {
+    padding: max(10px, env(safe-area-inset-top, 0px))
+      max(10px, env(safe-area-inset-right, 0px))
+      max(10px, env(safe-area-inset-bottom, 0px))
+      max(10px, env(safe-area-inset-left, 0px));
+    box-sizing: border-box;
+    max-width: 100vw;
+  }
+
+  .mat-mdc-dialog-container .mdc-dialog__surface {
+    width: 100%;
+    max-width: min(440px, calc(100vw - 20px));
+    border-radius: 16px !important;
+    overflow: hidden;
+  }
+
+  @media (max-width: 480px) {
+    .mat-mdc-dialog-container .mdc-dialog__surface {
+      max-width: calc(100vw - 16px);
       border-radius: 12px !important;
     }
   }

@@ -25,6 +25,12 @@ public class OrderCreatedEvent {
     private Long customerId;
     private Long partnerId;
 
+    /**
+     * Propriétaire du compte partenaire (user-service) — pour persister la notification
+     * sous le bon {@code userId} (GET /notifications/{userId} dans le dashboard).
+     */
+    private Long partnerUserId;
+
     private BigDecimal subtotal;
     private BigDecimal deliveryFee;
     private BigDecimal serviceFee;

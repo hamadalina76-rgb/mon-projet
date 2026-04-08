@@ -41,7 +41,8 @@ public class PubSubConfig {
     private static final String[][] TOPIC_SUBSCRIPTIONS = {
         {"partner-events", "partner-events-notification-sub"},
         {"partner-product-stock", "partner-product-stock-notification-sub"},
-        {"partner-promotion-ending", "partner-promotion-ending-notification-sub"}
+        {"partner-promotion-ending", "partner-promotion-ending-notification-sub"},
+        {"order-events", "order-events-notification-sub"}
     };
 
     @PostConstruct

@@ -12,6 +12,7 @@ import { LoadingService } from '@core/services/loading.service';
 import { AuthService } from '@core/services/auth.service';
 import { PartnerService } from '@core/services/partner.service';
 import { Subject, takeUntil, filter } from 'rxjs';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-main-layout',
@@ -34,6 +35,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private partnerService = inject(PartnerService);
   private breakpointObserver = inject(BreakpointObserver);
   private router = inject(Router);
+  private translate = inject(TranslateService);
   loadingService = inject(LoadingService);
 
   sidebarCollapsed = signal(false);
@@ -96,9 +98,12 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe((order: any) => {
         this.notificationService.newOrderAlert(order.orderNumber);
+        this.notificationService.showOrderBanner(order);
         this.notificationService.showBrowserNotification(
-          'Nouvelle commande!',
-          `Commande #${order.orderNumber} reçue`
+          this.translate.instant('ORDERS.NOTIF_NEW_ORDER'),
+          this.translate.instant('ORDERS.NOTIF_BROWSER_BODY', {
+            orderNumber: order.orderNumber ?? '',
+          }),
         );
       });
 
@@ -132,6 +137,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   closeSidebarMobile(): void {
     this.sidebarMobileOpen.set(false);
+  }
+
+  onUserInteraction(): void {
+    this.notificationService.unlockAudio();
   }
 
   ngOnDestroy(): void {

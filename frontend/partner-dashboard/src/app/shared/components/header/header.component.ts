@@ -63,20 +63,18 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.translate.use(savedLang);
     this.updateDirection(savedLang);
 
-    this.wsService.connect();
-    
+    // NB: MainLayoutComponent gère connect() / disconnect() — le header ne touche pas
+    // au cycle de vie du WebSocket (singleton partagé).
     const user = this.currentUser();
     const partnerId = user?.partnerId;
 
     if (partnerId) {
-      // Subscribe to partner notifications
       this.wsSub = this.wsService.onPartnerNotification.subscribe((notif: PartnerNotification) => {
         this.notifications.update((list) => [notif, ...list].slice(0, 20));
         this.unreadCount.update((c) => c + 1);
         this.playNotificationSound();
       });
 
-      // Load existing notifications
       this.loadNotifications(Number(user!.id));
       this.loadUnreadCount(Number(user!.id));
     }
@@ -84,7 +82,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.wsSub?.unsubscribe();
-    this.wsService.disconnect();
+    // NE PAS appeler wsService.disconnect() ici — MainLayoutComponent s'en charge.
   }
 
   private loadNotifications(userId: number): void {

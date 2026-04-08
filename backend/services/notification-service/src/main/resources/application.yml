@@ -12,6 +12,10 @@ spring:
   cloud:
     gcp:
       project-id: ${GCP_PROJECT_ID:speedline-local}
+      # Désactive l'essai de charger Application Default Credentials localement
+      # (évite IOException au démarrage — l'émulateur n'a pas besoin de credentials)
+      credentials:
+        enabled: ${GCP_CREDENTIALS_ENABLED:false}
       # ═══════════════════════════════════════════════════════════════════════════
       # Pub/Sub Configuration (Local Developer Environment)
       # ═══════════════════════════════════════════════════════════════════════════

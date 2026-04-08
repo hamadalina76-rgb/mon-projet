@@ -1,6 +1,9 @@
 // src/app/core/services/notification.service.ts
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { Observable } from 'rxjs';
+import { Title } from '@angular/platform-browser';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { TranslateService } from '@ngx-translate/core';
 import { ApiService } from './api.service';
 
 export interface Notification {
@@ -14,13 +17,29 @@ export interface Notification {
   createdAt: string;
 }
 
+const SOUND_PREF_KEY = 'speedline_sound_enabled';
+const APP_TITLE = 'SpeedLine Partner';
+
 @Injectable({
   providedIn: 'root',
 })
 export class NotificationService {
   private api = inject(ApiService);
+  private title = inject(Title);
+  private snackBar = inject(MatSnackBar);
+  private translate = inject(TranslateService);
 
-  getNotifications(userId: number, page: number = 0, size: number = 20): Observable<any> {
+  private audioCtx: AudioContext | null = null;
+  private pendingAudioPlay = false;
+
+  /** Reactive pending orders count — drives tab title */
+  readonly pendingCount = signal(0);
+
+  // ---------------------------------------------------------------------------
+  // REST API
+  // ---------------------------------------------------------------------------
+
+  getNotifications(userId: number, page = 0, size = 20): Observable<any> {
     return this.api.get(`notifications/${userId}?page=${page}&size=${size}`);
   }
 
@@ -36,37 +55,200 @@ export class NotificationService {
     return this.api.get(`notifications/${userId}/unread-count`);
   }
 
-  // Browser notification methods for order alerts
-  async requestBrowserPermission(): Promise<void> {
-    if (!('Notification' in window)) {
-      console.warn('Browser does not support notifications');
-      return;
-    }
+  // ---------------------------------------------------------------------------
+  // Order alert — sound + snackbar + tab title
+  // ---------------------------------------------------------------------------
 
+  /**
+   * Full alert pipeline for a new order.
+   * Call this from MainLayoutComponent or OrdersListComponent when an order arrives.
+   */
+  newOrderAlert(orderNumber: string): void {
+    this.playNewOrderSound();
+    this.incrementPending();
+  }
+
+  /**
+   * Displays a MatSnackBar banner with customer name and order total.
+   * @param order - partial order object with at minimum orderNumber, customer.name, total
+   */
+  showOrderBanner(order: any): void {
+    const customerName =
+      order?.customer?.name ??
+      order?.customerName ??
+      this.translate.instant('ORDERS.DEFAULT_CUSTOMER_NAME');
+    const orderNumber = order?.orderNumber ?? '';
+    const total = order?.total != null
+      ? `${Number(order.total).toFixed(2)} TND`
+      : '';
+
+    const message = `🛍️ #${orderNumber} — ${customerName}${total ? '  •  ' + total : ''}`;
+
+    this.snackBar.open(message, this.translate.instant('ORDERS.BANNER_VIEW'), {
+      duration: 5000,
+      horizontalPosition: 'right',
+      verticalPosition: 'top',
+      panelClass: ['new-order-snackbar'],
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pending count + tab title
+  // ---------------------------------------------------------------------------
+
+  incrementPending(): void {
+    this.pendingCount.update(n => n + 1);
+    this.updateTabTitle(this.pendingCount());
+  }
+
+  decrementPending(): void {
+    this.pendingCount.update(n => Math.max(0, n - 1));
+    this.updateTabTitle(this.pendingCount());
+  }
+
+  resetPending(): void {
+    this.pendingCount.set(0);
+    this.updateTabTitle(0);
+  }
+
+  updateTabTitle(count: number): void {
+    this.title.setTitle(count > 0 ? `(${count}) ${APP_TITLE}` : APP_TITLE);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Audio
+  // ---------------------------------------------------------------------------
+
+  playNewOrderSound(): void {
+    if (!this.isSoundEnabled()) return;
+
+    try {
+      const ctx = this.getAudioContext();
+      this.playRestaurantBell(ctx);
+    } catch {
+      // AudioContext blocked until user interaction
+      this.pendingAudioPlay = true;
+    }
+  }
+
+  /**
+   * Call this on the first user interaction (click anywhere) to unlock autoplay.
+   * MainLayoutComponent binds (click) on the root element.
+   */
+  unlockAudio(): void {
+    if (!this.pendingAudioPlay) return;
+    this.pendingAudioPlay = false;
+    try {
+      const ctx = this.getAudioContext();
+      // Resume suspended context (required after user gesture)
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(() => this.playRestaurantBell(ctx));
+      } else {
+        this.playRestaurantBell(ctx);
+      }
+    } catch { /* ignore */ }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Web Audio — restaurant bell synthesizer
+  // ---------------------------------------------------------------------------
+
+  private getAudioContext(): AudioContext {
+    if (!this.audioCtx || this.audioCtx.state === 'closed') {
+      this.audioCtx = new AudioContext();
+    }
+    return this.audioCtx;
+  }
+
+  /**
+   * Synthesises a two-tone restaurant bell (DING-DONG).
+   * Tone 1: 880 Hz → Tone 2: 659 Hz, each with a sharp attack and long decay.
+   * Volume is set to ~0.9 (strong) with a compressor to avoid clipping.
+   */
+  private playRestaurantBell(ctx: AudioContext): void {
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = 0.9;
+
+    // Soft limiter to avoid clipping on loud speakers
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = -6;
+    compressor.knee.value = 3;
+    compressor.ratio.value = 4;
+    compressor.attack.value = 0.002;
+    compressor.release.value = 0.2;
+
+    masterGain.connect(compressor);
+    compressor.connect(ctx.destination);
+
+    const bell = (freq: number, startTime: number) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      // Harmonics for a metallic bell timbre
+      const osc2  = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(freq * 2.756, startTime);
+      gain2.gain.value = 0.25;
+
+      // Sharp attack (1ms), long exponential decay (1.4s)
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(1, startTime + 0.001);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.4);
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc2.connect(gain2);
+      gain2.connect(masterGain);
+
+      osc.start(startTime);
+      osc.stop(startTime + 1.4);
+      osc2.start(startTime);
+      osc2.stop(startTime + 1.4);
+    };
+
+    const now = ctx.currentTime;
+    bell(880, now);        // DING — La5
+    bell(659, now + 0.35); // DONG — Mi5
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sound preference
+  // ---------------------------------------------------------------------------
+
+  isSoundEnabled(): boolean {
+    const stored = localStorage.getItem(SOUND_PREF_KEY);
+    return stored === null ? true : stored === 'true';
+  }
+
+  toggleSound(): boolean {
+    const next = !this.isSoundEnabled();
+    localStorage.setItem(SOUND_PREF_KEY, String(next));
+    return next;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Browser (OS) notifications
+  // ---------------------------------------------------------------------------
+
+  async requestBrowserPermission(): Promise<void> {
+    if (!('Notification' in window)) return;
     if (Notification.permission !== 'granted') {
       await Notification.requestPermission();
     }
   }
 
   showBrowserNotification(title: string, body: string, icon?: string): void {
-    if (!('Notification' in window)) {
-      return;
-    }
-
+    if (!('Notification' in window)) return;
     if (Notification.permission === 'granted') {
       new Notification(title, {
         body,
         icon: icon || '/assets/images/logo.svg',
-        badge: '/assets/images/logo-icon.svg'
+        badge: '/assets/images/logo-icon.svg',
       });
     }
-  }
-
-  newOrderAlert(orderNumber: string): void {
-    // Play sound notification
-    const audio = new Audio('/assets/sounds/notification.mp3');
-    audio.play().catch(err => console.warn('Could not play notification sound:', err));
-    
-    console.log(`New order received: ${orderNumber}`);
   }
 }

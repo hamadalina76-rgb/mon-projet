@@ -112,6 +112,12 @@ public class OrderItem {
     @Column(length = 500)
     private String specialInstructions;
 
+    /**
+     * Minutes de préparation indiquées sur la fiche produit (snapshot au moment de la commande).
+     */
+    @Column
+    private Integer preparationTimeMin;
+
     // ==================== TIMESTAMPS ====================
 
     @CreationTimestamp

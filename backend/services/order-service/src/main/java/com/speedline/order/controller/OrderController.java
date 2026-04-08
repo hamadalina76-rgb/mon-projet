@@ -17,11 +17,14 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * REST Controller pour Order
@@ -103,16 +106,116 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getCustomerOrders(customerId, pageable));
     }
 
+    /**
+     * Liste paginée des commandes d'un partenaire avec filtrage serveur.
+     * GET /orders/partners/{partnerId}?status=PENDING&search=ORD-123&sortBy=priority&sortDir=desc&page=0&size=10
+     *
+     * - status  : filtre optionnel (PENDING, CONFIRMED, PREPARING, READY_FOR_PICKUP, CANCELLED…)
+     * - search  : recherche textuelle sur orderNumber et customerName
+     * - sortBy  : priority (défaut, type Glovo : à traiter en premier puis plus récent) | orderTime | total | orderNumber | createdAt
+     * - sortDir : asc | desc — défaut : desc (pour orderTime / total / nombre…)
+     */
     @GetMapping("/partners/{partnerId}")
     public ResponseEntity<Page<OrderResponse>> getPartnerOrders(
             @PathVariable Long partnerId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(required = false)                       OrderStatus status,
+            @RequestParam(required = false, defaultValue = "")    String      search,
+            @RequestParam(defaultValue = "priority")              String      sortBy,
+            @RequestParam(defaultValue = "desc")                  String      sortDir,
+            @RequestParam(required = false)                       String      from,
+            @RequestParam(required = false)                       String      to,
+            @RequestParam(defaultValue = "0")                     int         page,
+            @RequestParam(defaultValue = "10")                    int         size
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return ResponseEntity.ok(orderService.getPartnerOrders(partnerId, pageable));
+        final String rawSort = sortBy == null ? "" : sortBy.trim();
+        final Pageable pageable;
+        if ("priority".equalsIgnoreCase(rawSort) && status == null) {
+            /* Tri « Glovo » : uniquement pour la liste sans filtre statut */
+            pageable = PageRequest.of(page, size);
+        } else if ("priority".equalsIgnoreCase(rawSort)) {
+            /* Onglet filtré : priorité = ordre chronologique (plus récent d’abord) */
+            final Sort sort = sortDir.equalsIgnoreCase("asc")
+                    ? Sort.by("orderTime").ascending()
+                    : Sort.by("orderTime").descending();
+            pageable = PageRequest.of(page, size, sort);
+        } else {
+            final String safeField = sanitizePartnerOrderSortField(rawSort);
+            final Sort sort = sortDir.equalsIgnoreCase("asc")
+                    ? Sort.by(safeField).ascending()
+                    : Sort.by(safeField).descending();
+            pageable = PageRequest.of(page, size, sort);
+        }
+        final LocalDateTime fromDt = parsePartnerOrderDate(from);
+        final LocalDateTime toDt   = parsePartnerOrderDate(to);
+        return ResponseEntity.ok(orderService.getPartnerOrdersFiltered(
+                partnerId, status, search, pageable, rawSort, fromDt, toDt));
     }
 
+    private static LocalDateTime parsePartnerOrderDate(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            String s = raw.trim();
+            if (s.length() == 10) s = s + "T00:00:00";
+            if (s.length() == 16) s = s + ":00";
+            return LocalDateTime.parse(s, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    private static final Set<String> ALLOWED_PARTNER_ORDER_SORT = Set.of(
+            "orderTime", "total", "orderNumber", "createdAt"
+    );
+
+    private static String sanitizePartnerOrderSortField(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) {
+            return "orderTime";
+        }
+        for (String allowed : ALLOWED_PARTNER_ORDER_SORT) {
+            if (allowed.equalsIgnoreCase(sortBy)) {
+                return allowed;
+            }
+        }
+        return "orderTime";
+    }
+
+    /**
+     * Compteurs par statut (chips), filtrés sur {@code orderTime} si {@code from}/{@code to} sont fournis
+     * (mêmes formats que GET /orders/partners/{partnerId}).
+     * GET /orders/partners/{partnerId}/counts?from=&to=
+     */
+    @GetMapping("/partners/{partnerId}/counts")
+    public ResponseEntity<Map<String, Long>> getPartnerOrderCounts(
+            @PathVariable Long partnerId,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to
+    ) {
+        final LocalDateTime fromDt = parsePartnerOrderDate(from);
+        final LocalDateTime toDt   = parsePartnerOrderDate(to);
+        return ResponseEntity.ok(orderService.getPartnerOrderCounts(partnerId, fromDt, toDt));
+    }
+
+    /**
+     * Historique des statuts d'une commande (filtres + pagination).
+     * GET /orders/{id}/history?status=&actorType=&from=&to=&page=&size=
+     */
+    @GetMapping("/{id}/history")
+    public ResponseEntity<Page<OrderResponse.StatusHistoryDTO>> getOrderHistory(
+            @PathVariable Long id,
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false) String actorType,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        final int safePage = Math.max(0, page);
+        final int safeSize = Math.min(100, Math.max(1, size));
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+        return ResponseEntity.ok(orderService.getOrderHistory(id, status, actorType, from, to, pageable));
+    }
+
+    /** Conservé pour rétro-compatibilité éventuelle (anciens clients). */
     @GetMapping("/partners/{partnerId}/status/{status}")
     public ResponseEntity<Page<OrderResponse>> getPartnerOrdersByStatus(
             @PathVariable Long partnerId,
@@ -120,7 +223,7 @@ public class OrderController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "orderTime"));
         return ResponseEntity.ok(orderService.getPartnerOrdersByStatus(partnerId, status, pageable));
     }
 

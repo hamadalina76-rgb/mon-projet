@@ -7,14 +7,14 @@
         <span class="order-customer">{{ order.customerName }}</span>
       </div>
       <div class="order-meta">
-        <span class="order-status" [ngClass]="order.status">{{ order.status }}</span>
+        <app-order-status-badge [status]="order.status"></app-order-status-badge>
         <span class="order-time">{{ order.createdAt | timeAgo }}</span>
       </div>
     </div>
   } @empty {
     <div class="no-orders">
       <mat-icon>receipt_long</mat-icon>
-      <span>Aucune commande récente</span>
+      <span>{{ 'ORDERS.DASH_RECENT_EMPTY' | translate }}</span>
     </div>
   }
 </div>

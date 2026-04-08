@@ -247,6 +247,12 @@ public class Order {
     private LocalDateTime estimatedDeliveryTime;
 
     /**
+     * Max des temps de préparation par article (minutes), figé à la création — correspond au plus long plat / goulot.
+     */
+    @Column
+    private Integer suggestedPreparationMinutes;
+
+    /**
      * Heure de livraison réelle
      */
     private LocalDateTime actualDeliveryTime;

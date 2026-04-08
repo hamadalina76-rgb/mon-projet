@@ -28,12 +28,14 @@ spring:
           delivery-service:
             url: ${DELIVERY_SERVICE_URL:https://delivery-service-392205979525.europe-west1.run.app}
     gcp:
-      enabled: ${GCP_ENABLED:false}
       project-id: ${GCP_PROJECT_ID:speedline-dev-488413}
       credentials:
-        enabled: ${GCP_CREDENTIALS_ENABLED:false}
+        enabled: true
+      core:
+        enabled: true
+      # Cloud Run / GCP réel : pas d'émulateur → PubSubConfig ne crée pas les topics (Terraform)
       pubsub:
-        enabled: ${GCP_PUBSUB_ENABLED:false}
+        enabled: true
         emulator-host: ${PUBSUB_EMULATOR_HOST:}
         subscriber:
           parallel-pull-count: 1

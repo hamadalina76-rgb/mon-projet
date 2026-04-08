@@ -1,5 +1,5 @@
 <!-- src/app/layout/main-layout/main-layout.component.html - Angular 19 -->
-<div class="app-layout" [class.mobile]="isMobile()">
+<div class="app-layout" [class.mobile]="isMobile()" (click)="onUserInteraction()">
   @if (isMobile() && sidebarMobileOpen()) {
     <div class="sidebar-backdrop" (click)="closeSidebarMobile()" role="button" tabindex="0" aria-label="Fermer le menu"></div>
   }

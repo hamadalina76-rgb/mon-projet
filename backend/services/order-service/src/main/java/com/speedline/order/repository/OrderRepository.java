@@ -39,12 +39,149 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // ==================== RECHERCHE PAR PARTENAIRE ====================
 
     Page<Order> findByPartnerId(Long partnerId, Pageable pageable);
-    
+
     List<Order> findByPartnerIdAndStatusIn(Long partnerId, List<OrderStatus> statuses);
-    
+
     Page<Order> findByPartnerIdAndStatus(Long partnerId, OrderStatus status, Pageable pageable);
-    
+
     long countByPartnerId(Long partnerId);
+
+    long countByPartnerIdAndStatus(Long partnerId, OrderStatus status);
+
+    /** Compte sur {@code orderTime} inclusif (même sémantique que la liste partenaire). */
+    long countByPartnerIdAndOrderTimeBetween(
+            Long partnerId,
+            LocalDateTime from,
+            LocalDateTime to);
+
+    long countByPartnerIdAndStatusAndOrderTimeBetween(
+            Long partnerId,
+            OrderStatus status,
+            LocalDateTime from,
+            LocalDateTime to);
+
+    /** Recherche libre sur numéro de commande OU nom client */
+    @Query("SELECT o FROM Order o WHERE o.partnerId = :partnerId AND (" +
+           "LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Order> findByPartnerIdAndSearch(
+            @Param("partnerId") Long partnerId,
+            @Param("search") String search,
+            Pageable pageable);
+
+    /**
+     * Liste « Toutes » (tri urgence) : pipeline cuisine d’abord, puis livrées / annulées ;
+     * dans chaque statut, commande la plus récente en premier (comme Glovo).
+     */
+    @Query("SELECT o FROM Order o WHERE o.partnerId = :partnerId ORDER BY "
+            + "CASE "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.PENDING THEN 0 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.CONFIRMED THEN 1 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.PREPARING THEN 2 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.READY_FOR_PICKUP THEN 3 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.PICKED_UP THEN 4 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.IN_DELIVERY THEN 5 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.DELIVERED THEN 6 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.CANCELLED THEN 7 "
+            + "ELSE 8 END ASC, o.orderTime DESC")
+    Page<Order> findByPartnerIdOrderByKitchenPriority(@Param("partnerId") Long partnerId, Pageable pageable);
+
+    @Query("SELECT o FROM Order o WHERE o.partnerId = :partnerId AND ("
+            + "LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR "
+            + "LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%'))) "
+            + "ORDER BY "
+            + "CASE "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.PENDING THEN 0 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.CONFIRMED THEN 1 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.PREPARING THEN 2 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.READY_FOR_PICKUP THEN 3 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.PICKED_UP THEN 4 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.IN_DELIVERY THEN 5 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.DELIVERED THEN 6 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.CANCELLED THEN 7 "
+            + "ELSE 8 END ASC, o.orderTime DESC")
+    Page<Order> findByPartnerIdAndSearchOrderByKitchenPriority(
+            @Param("partnerId") Long partnerId,
+            @Param("search") String search,
+            Pageable pageable);
+
+    /** Recherche libre + filtre statut */
+    @Query("SELECT o FROM Order o WHERE o.partnerId = :partnerId AND o.status = :status AND (" +
+           "LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Order> findByPartnerIdAndStatusAndSearch(
+            @Param("partnerId") Long partnerId,
+            @Param("status") OrderStatus status,
+            @Param("search") String search,
+            Pageable pageable);
+
+    // ==================== REQUÊTES UNIFIÉES (status + date + search) ====================
+
+    /**
+     * Tri par urgence — statuts actifs d'abord, avec filtrage optionnel par date et recherche.
+     * Utilisé pour l'onglet « Toutes » avec sortBy=priority.
+     */
+    /**
+     * Tri par urgence — always provide non-null from/to (use sentinel dates for "no filter").
+     * PostgreSQL cannot infer the type of a NULL-bound parameter in IS NULL checks.
+     */
+    @Query(value = "SELECT o FROM Order o WHERE o.partnerId = :partnerId "
+            + "AND o.orderTime >= :from AND o.orderTime <= :to "
+            + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
+            + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%'))) "
+            + "ORDER BY CASE "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.PENDING THEN 0 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.CONFIRMED THEN 1 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.PREPARING THEN 2 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.READY_FOR_PICKUP THEN 3 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.PICKED_UP THEN 4 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.IN_DELIVERY THEN 5 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.DELIVERED THEN 6 "
+            + "WHEN o.status = com.speedline.order.domain.OrderStatus.CANCELLED THEN 7 "
+            + "ELSE 8 END ASC, o.orderTime DESC",
+            countQuery = "SELECT COUNT(o) FROM Order o WHERE o.partnerId = :partnerId "
+            + "AND o.orderTime >= :from AND o.orderTime <= :to "
+            + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
+            + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Order> findByPartnerIdPriority(
+            @Param("partnerId") Long partnerId,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            @Param("search") String search,
+            Pageable pageable);
+
+    /** Tous statuts — always provide non-null from/to. */
+    @Query(value = "SELECT o FROM Order o WHERE o.partnerId = :partnerId "
+            + "AND o.orderTime >= :from AND o.orderTime <= :to "
+            + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
+            + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%')))",
+            countQuery = "SELECT COUNT(o) FROM Order o WHERE o.partnerId = :partnerId "
+            + "AND o.orderTime >= :from AND o.orderTime <= :to "
+            + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
+            + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Order> findByPartnerIdAllStatuses(
+            @Param("partnerId") Long partnerId,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            @Param("search") String search,
+            Pageable pageable);
+
+    /** Filtre statut précis — always provide non-null from/to. */
+    @Query(value = "SELECT o FROM Order o WHERE o.partnerId = :partnerId AND o.status = :status "
+            + "AND o.orderTime >= :from AND o.orderTime <= :to "
+            + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
+            + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%')))",
+            countQuery = "SELECT COUNT(o) FROM Order o WHERE o.partnerId = :partnerId AND o.status = :status "
+            + "AND o.orderTime >= :from AND o.orderTime <= :to "
+            + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
+            + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Order> findByPartnerIdAndStatusFiltered(
+            @Param("partnerId") Long partnerId,
+            @Param("status") OrderStatus status,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            @Param("search") String search,
+            Pageable pageable);
 
     // ==================== RECHERCHE PAR LIVREUR ====================
 

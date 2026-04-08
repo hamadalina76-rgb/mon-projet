@@ -30,6 +30,8 @@ import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -38,7 +40,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -218,12 +224,20 @@ public class OrderServiceImpl implements OrderService {
         final Order order = getOrderOrThrow(orderId);
         assertPartnerOwnsOrder(order, partnerId);
 
+        final String historyNotes;
+        if (estimatedPrepTime != null && estimatedPrepTime > 0) {
+            final int prepMinutes = Math.max(10, estimatedPrepTime);
+            historyNotes = "PREP_MINUTES:" + prepMinutes;
+        } else {
+            historyNotes = null;
+        }
+
         applyStatusTransition(
                 order,
                 OrderStatus.PREPARING,
                 "PARTNER",
                 partnerId,
-                null,
+                historyNotes,
                 "Commande confirmée par le partenaire"
         );
 
@@ -439,6 +453,7 @@ public class OrderServiceImpl implements OrderService {
                 .orderTime(o.getOrderTime())
                 .estimatedDeliveryTime(o.getEstimatedDeliveryTime())
                 .actualDeliveryTime(o.getActualDeliveryTime())
+                .suggestedPreparationMinutes(o.getSuggestedPreparationMinutes())
                 .isScheduled(o.getIsScheduled())
                 .scheduledDeliveryTime(o.getScheduledDeliveryTime())
                 .customerNotes(o.getCustomerNotes())
@@ -618,7 +633,7 @@ public class OrderServiceImpl implements OrderService {
         partnerOpen
     );
 
-        final List<OrderItem> orderItems = buildOrderItems(partnerId, cartItems);
+        final List<OrderItem> orderItems = buildOrderItems(partner, partnerId, cartItems);
         if (orderItems.isEmpty()) {
             throw badRequest("Aucun article valide à commander");
         }
@@ -656,6 +671,13 @@ public class OrderServiceImpl implements OrderService {
                         .subtract(discount)
         );
 
+        final int maxSuggestedPrepMinutes = orderItems.stream()
+                .map(OrderItem::getPreparationTimeMin)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .max()
+                .orElse(20);
+
         final Order order = Order.builder()
                 .customerId(customerId)
                 .partnerId(partnerId)
@@ -683,6 +705,7 @@ public class OrderServiceImpl implements OrderService {
                         ? normalizedScheduledDeliveryTime
                         : estimateDeliveryTime(partner)
                 )
+                .suggestedPreparationMinutes(maxSuggestedPrepMinutes)
                 .build();
 
         final Order savedOrder = orderRepository.save(order);
@@ -1153,11 +1176,23 @@ public class OrderServiceImpl implements OrderService {
                     .filter(Objects::nonNull)
                     .reduce(0, Integer::sum);
 
+            Long partnerUserId = null;
+            try {
+                final PartnerSnapshot partner = partnerServiceClient.getPartnerById(order.getPartnerId());
+                if (partner != null && partner.getUserId() != null) {
+                    partnerUserId = partner.getUserId();
+                }
+            } catch (Exception ex) {
+                log.warn("Impossible de résoudre partnerUserId pour partnerId={} : {}",
+                        order.getPartnerId(), ex.getMessage());
+            }
+
             final OrderCreatedEvent event = OrderCreatedEvent.builder()
                     .orderId(order.getId())
                     .orderNumber(order.getOrderNumber())
                     .customerId(order.getCustomerId())
                     .partnerId(order.getPartnerId())
+                    .partnerUserId(partnerUserId)
                     .subtotal(order.getSubtotal())
                     .deliveryFee(order.getDeliveryFee())
                     .serviceFee(order.getServiceFee())
@@ -1183,7 +1218,7 @@ public class OrderServiceImpl implements OrderService {
         return LocalDateTime.now().plusMinutes(totalMinutes);
     }
 
-    private List<OrderItem> buildOrderItems(Long partnerId, List<CartItemPayload> cartItems) {
+    private List<OrderItem> buildOrderItems(PartnerSnapshot partner, Long partnerId, List<CartItemPayload> cartItems) {
         final List<OrderItem> orderItems = new ArrayList<>();
 
         for (CartItemPayload cartItem : cartItems) {
@@ -1213,6 +1248,7 @@ public class OrderServiceImpl implements OrderService {
 
             final BigDecimal normalizedUnitPrice = scaleMoney(unitPrice);
             final Integer quantity = cartItem.getQuantity();
+            final int linePrepMin = resolveLinePreparationMinutes(product, partner);
 
             final OrderItem orderItem = OrderItem.builder()
                     .productId(productId)
@@ -1226,12 +1262,26 @@ public class OrderServiceImpl implements OrderService {
                     .selectedOptionsJson(writeJson(cartItem.getSelectedOptions() == null ? List.of() : cartItem.getSelectedOptions()))
                     .selectedAddonsJson("[]")
                     .specialInstructions(trimToNull(cartItem.getKitchenNote()))
+                    .preparationTimeMin(linePrepMin)
                     .build();
 
             orderItems.add(orderItem);
         }
 
         return orderItems;
+    }
+
+    /**
+     * Minutes de préparation pour une ligne : fiche produit, sinon défaut partenaire (aligné sur estimateDeliveryTime).
+     */
+    private int resolveLinePreparationMinutes(ProductSnapshot product, PartnerSnapshot partner) {
+        if (product.getPreparationTimeMin() != null) {
+            return Math.max(0, product.getPreparationTimeMin());
+        }
+        if (partner.getPreparationTime() != null) {
+            return Math.max(0, partner.getPreparationTime());
+        }
+        return 20;
     }
 
     private String resolveProductName(ProductSnapshot product, CartItemPayload cartItem, Long productId) {
@@ -1297,6 +1347,7 @@ public class OrderServiceImpl implements OrderService {
                 .selectedOptions(parseSelectedOptions(item.getSelectedOptionsJson()))
                 .selectedAddons(parseSelectedAddons(item.getSelectedAddonsJson()))
                 .specialInstructions(item.getSpecialInstructions())
+                .preparationTimeMin(item.getPreparationTimeMin())
                 .build();
     }
 
@@ -1374,15 +1425,147 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
+    private static final String PREP_NOTES_PREFIX = "PREP_MINUTES:";
+
     private List<OrderResponse.StatusHistoryDTO> mapStatusHistory(Long orderId) {
         return orderStatusHistoryRepository.findByOrderIdOrderByTimestampAsc(orderId).stream()
-                .map(history -> OrderResponse.StatusHistoryDTO.builder()
-                        .status(history.getStatus())
-                        .description(history.getDescription())
-                        .updatedBy(history.getUpdatedBy())
-                        .timestamp(history.getTimestamp())
-                        .build())
+                .map(this::toStatusHistoryDto)
                 .toList();
+    }
+
+    private OrderResponse.StatusHistoryDTO toStatusHistoryDto(OrderStatusHistory h) {
+        final String rawNotes = h.getNotes();
+        Integer prepMinutes = null;
+        String notesForClient = rawNotes;
+        if (rawNotes != null && rawNotes.startsWith(PREP_NOTES_PREFIX)) {
+            try {
+                prepMinutes = Integer.parseInt(rawNotes.substring(PREP_NOTES_PREFIX.length()).trim());
+                notesForClient = null;
+            } catch (NumberFormatException ignored) {
+                notesForClient = rawNotes;
+            }
+        }
+        return OrderResponse.StatusHistoryDTO.builder()
+                .status(h.getStatus())
+                .previousStatus(h.getPreviousStatus())
+                .description(h.getDescription())
+                .notes(notesForClient)
+                .updatedBy(h.getUpdatedBy())
+                .actorType(h.getActorType())
+                .timestamp(h.getTimestamp())
+                .estimatedPrepMinutes(prepMinutes)
+                .build();
+    }
+
+    // ==================== FILTRAGE PARTENAIRE (server-side) ====================
+
+    /** Sentinelle "pas de borne inférieure" : antérieure à toute commande réelle. */
+    private static final LocalDateTime DATE_SENTINEL_FROM = LocalDateTime.of(1970, 1, 1, 0, 0, 0);
+    /** Sentinelle "pas de borne supérieure" : postérieure à toute commande réelle. */
+    private static final LocalDateTime DATE_SENTINEL_TO   = LocalDateTime.of(2099, 12, 31, 23, 59, 59);
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getPartnerOrdersFiltered(
+            Long partnerId,
+            OrderStatus status,
+            String search,
+            Pageable pageable,
+            String sortByParam,
+            LocalDateTime from,
+            LocalDateTime to
+    ) {
+        final String trimmedSearch = search != null && !search.isBlank() ? search.trim() : "";
+        final boolean prioritySort = "priority".equalsIgnoreCase(
+                sortByParam == null ? "" : sortByParam.trim()
+        );
+
+        // PostgreSQL ne peut pas inférer le type d'un paramètre NULL seul dans IS NULL → on passe
+        // toujours des bornes non-nulles ; les sentinelles couvrent "toutes les dates".
+        final LocalDateTime effectiveFrom = from != null ? from : DATE_SENTINEL_FROM;
+        final LocalDateTime effectiveTo   = to   != null ? to   : DATE_SENTINEL_TO;
+
+        final Page<Order> page;
+        final int pageIdx = pageable.getPageNumber();
+        final int pageSize = pageable.getPageSize();
+        final Pageable unsortedPage = PageRequest.of(pageIdx, pageSize);
+
+        if (prioritySort && status == null) {
+            page = orderRepository.findByPartnerIdPriority(partnerId, effectiveFrom, effectiveTo, trimmedSearch, unsortedPage);
+        } else if (status != null) {
+            page = orderRepository.findByPartnerIdAndStatusFiltered(partnerId, status, effectiveFrom, effectiveTo, trimmedSearch, pageable);
+        } else {
+            page = orderRepository.findByPartnerIdAllStatuses(partnerId, effectiveFrom, effectiveTo, trimmedSearch, pageable);
+        }
+
+        return page.map(this::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OrderResponse.StatusHistoryDTO> getOrderHistory(
+            Long orderId,
+            OrderStatus status,
+            String actorType,
+            String from,
+            String to,
+            Pageable pageable
+    ) {
+        getOrderOrThrow(orderId);
+        final LocalDateTime fromDt = parseOptionalHistoryInstant(from);
+        final LocalDateTime toDt = parseOptionalHistoryInstant(to);
+        final String actorNorm = actorType == null ? null : actorType.trim();
+
+        final List<OrderResponse.StatusHistoryDTO> all = mapStatusHistory(orderId).stream()
+                .filter(dto -> status == null || dto.getStatus() == status)
+                .filter(dto -> actorNorm == null || actorNorm.isEmpty()
+                        || (dto.getActorType() != null
+                        && actorNorm.equalsIgnoreCase(dto.getActorType())))
+                .filter(dto -> fromDt == null || !dto.getTimestamp().isBefore(fromDt))
+                .filter(dto -> toDt == null || !dto.getTimestamp().isAfter(toDt))
+                .toList();
+
+        final int start = (int) pageable.getOffset();
+        final int end = Math.min(start + pageable.getPageSize(), all.size());
+        final List<OrderResponse.StatusHistoryDTO> slice =
+                start >= all.size() ? List.of() : all.subList(start, end);
+        return new PageImpl<>(slice, pageable, all.size());
+    }
+
+    private static LocalDateTime parseOptionalHistoryInstant(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String s = raw.trim();
+        try {
+            if (s.endsWith("Z")) {
+                return LocalDateTime.ofInstant(Instant.parse(s), ZoneId.systemDefault());
+            }
+            if (s.length() == 16) {
+                s = s + ":00";
+            }
+            return LocalDateTime.parse(s, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (DateTimeParseException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Format de date invalide (ex. 2026-04-07T17:29:00)"
+            );
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Long> getPartnerOrderCounts(Long partnerId, LocalDateTime from, LocalDateTime to) {
+        final LocalDateTime effectiveFrom = from != null ? from : DATE_SENTINEL_FROM;
+        final LocalDateTime effectiveTo   = to   != null ? to   : DATE_SENTINEL_TO;
+        final java.util.LinkedHashMap<String, Long> counts = new java.util.LinkedHashMap<>();
+        counts.put("ALL",       orderRepository.countByPartnerIdAndOrderTimeBetween(partnerId, effectiveFrom, effectiveTo));
+        counts.put("PENDING",   orderRepository.countByPartnerIdAndStatusAndOrderTimeBetween(partnerId, OrderStatus.PENDING, effectiveFrom, effectiveTo));
+        counts.put("CONFIRMED", orderRepository.countByPartnerIdAndStatusAndOrderTimeBetween(partnerId, OrderStatus.CONFIRMED, effectiveFrom, effectiveTo));
+        counts.put("PREPARING", orderRepository.countByPartnerIdAndStatusAndOrderTimeBetween(partnerId, OrderStatus.PREPARING, effectiveFrom, effectiveTo));
+        counts.put("READY",     orderRepository.countByPartnerIdAndStatusAndOrderTimeBetween(partnerId, OrderStatus.READY_FOR_PICKUP, effectiveFrom, effectiveTo));
+        counts.put("CANCELLED", orderRepository.countByPartnerIdAndStatusAndOrderTimeBetween(partnerId, OrderStatus.CANCELLED, effectiveFrom, effectiveTo));
+        return counts;
     }
 
     private OrderResponse.DeliveryAddressDTO parseDeliveryAddress(String deliveryAddressJson) {

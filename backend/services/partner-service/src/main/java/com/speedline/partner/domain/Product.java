@@ -134,7 +134,9 @@ public class Product {
     private String moderationReason;
 
     /**
-     * Temps de préparation spécifique (en minutes, null = utiliser celui du partenaire)
+     * Temps de préparation spécifique (en minutes, null = utiliser celui du partenaire).
+     * Exposé en API comme {@code preparationTimeMin} dans {@code ProductResponse} ; le order-service
+     * en prend le max par commande (plusieurs articles) et le stocke sur la commande.
      */
     private Integer preparationTime;
 
