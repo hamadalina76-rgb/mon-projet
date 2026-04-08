@@ -7,6 +7,7 @@ import com.speedline.order.client.PromotionServiceClient;
 import com.speedline.order.client.dto.PartnerSnapshot;
 import com.speedline.order.client.dto.ProductSnapshot;
 import com.speedline.order.client.dto.promotion.PromotionApiResponse;
+import com.speedline.order.client.dto.promotion.PromotionApplyRequest;
 import com.speedline.order.client.dto.promotion.PromotionValidateRequest;
 import com.speedline.order.client.dto.promotion.PromotionValidateResponse;
 import com.speedline.order.domain.Order;
@@ -726,6 +727,12 @@ public class OrderServiceImpl implements OrderService {
 
         publishOrderCreated(savedOrder, orderItems);
 
+        // Apply promotion usage (record in promotion-service)
+        if (normalizedPromoCode != null) {
+            applyPromotionUsage(normalizedPromoCode, customerId, savedOrder.getId(),
+                    subtotal, deliveryFee, partnerId, orderItems);
+        }
+
         if (clearCartAfterSuccess) {
             cartService.clearCart(customerId);
         }
@@ -1166,6 +1173,48 @@ public class OrderServiceImpl implements OrderService {
         } catch (Exception ex) {
             log.error("Erreur lors de la validation du code promo {}", promoCode, ex);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Service promotion indisponible");
+        }
+    }
+
+    /**
+     * Call POST /promotions/{code}/apply to record usage atomically.
+     * If the call fails (circuit breaker open, timeout, etc.), log the error
+     * but do NOT fail the order — the discount was already applied.
+     */
+    private void applyPromotionUsage(
+            String promoCode,
+            Long customerId,
+            Long orderId,
+            BigDecimal subtotal,
+            BigDecimal deliveryFee,
+            Long partnerId,
+            List<OrderItem> orderItems
+    ) {
+        try {
+            final PromotionApplyRequest request = PromotionApplyRequest.builder()
+                    .userId(customerId)
+                    .orderId(orderId)
+                    .orderSubtotal(subtotal)
+                    .deliveryFee(deliveryFee)
+                    .partnerId(partnerId)
+                    .itemCount(orderItems.size())
+                    .build();
+
+            PromotionApiResponse<PromotionValidateResponse> response =
+                    promotionServiceClient.applyPromotion(promoCode, request);
+
+            // Persist promotionId on the order
+            if (response != null && response.getData() != null
+                    && response.getData().getPromotionId() != null) {
+                orderRepository.findById(orderId).ifPresent(order -> {
+                    order.setPromotionId(response.getData().getPromotionId());
+                    orderRepository.save(order);
+                });
+            }
+            log.info("Promotion {} applied for order {}", promoCode, orderId);
+        } catch (Exception ex) {
+            log.error("Failed to apply promotion {} for order {} — usage not recorded",
+                    promoCode, orderId, ex);
         }
     }
 

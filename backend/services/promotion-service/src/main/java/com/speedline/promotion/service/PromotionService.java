@@ -50,6 +50,9 @@ public interface PromotionService {
     /** Analytics ----------------------------------------------------------- */
     PromotionAnalyticsDto getAnalytics(Long promotionId);
 
+    /** Dashboard analytics (global KPIs, charts, alerts) ------------------- */
+    PromotionDashboardDto getDashboard();
+
     /** CSV export ---------------------------------------------------------- */
     String exportCsv(String search, String status, String type);
 }

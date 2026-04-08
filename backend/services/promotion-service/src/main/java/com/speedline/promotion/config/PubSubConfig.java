@@ -36,12 +36,13 @@ public class PubSubConfig {
 
     /** topic -> subscription pairs owned by this service */
     private static final String[][] TOPIC_SUBSCRIPTIONS = {
-        {"promotion-created",  "promotion-created-promotion-sub"},
-        {"promotion-applied",  "promotion-applied-promotion-sub"},
-        {"promotion-revoked",  "promotion-revoked-promotion-sub"},
-        {"promotion-expired",  "promotion-expired-promotion-sub"},
-        {"order-cancelled",    "order-cancelled-promotion-sub"},
-        {"user-registered",    "user-registered-promotion-sub"}
+        {"promotion-created",    "promotion-created-promotion-sub"},
+        {"promotion-applied",    "promotion-applied-promotion-sub"},
+        {"promotion-revoked",    "promotion-revoked-promotion-sub"},
+        {"promotion-expired",    "promotion-expired-promotion-sub"},
+        {"promotion-activated",  "promotion-activated-promotion-sub"},
+        {"order-cancelled",      "order-cancelled-promotion-sub"},
+        {"user-registered",      "user-registered-promotion-sub"}
     };
 
     @PostConstruct

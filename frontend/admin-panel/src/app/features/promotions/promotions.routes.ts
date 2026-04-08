@@ -10,6 +10,13 @@ export const PROMOTIONS_ROUTES: Routes = [
       ),
   },
   {
+    path: 'dashboard',
+    loadComponent: () =>
+      import('./promotions-dashboard/promotions-dashboard.component').then(
+        (m) => m.PromotionsDashboardComponent
+      ),
+  },
+  {
     path: 'new',
     loadComponent: () =>
       import('./promotion-form/promotion-form.component').then(
@@ -28,6 +35,13 @@ export const PROMOTIONS_ROUTES: Routes = [
     loadComponent: () =>
       import('./promotion-analytics/promotion-analytics.component').then(
         (m) => m.PromotionAnalyticsComponent
+      ),
+  },
+  {
+    path: ':id/history',
+    loadComponent: () =>
+      import('./promotion-history/promotion-history.component').then(
+        (m) => m.PromotionHistoryComponent
       ),
   },
 ];

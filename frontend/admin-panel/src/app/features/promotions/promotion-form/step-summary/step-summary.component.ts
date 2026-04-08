@@ -36,6 +36,12 @@ export class StepSummaryComponent {
 
   get raw(): any { return this.form.getRawValue(); }
 
+  get isFutureStart(): boolean {
+    const sd = this.raw.startDate;
+    if (!sd) return false;
+    return new Date(sd) > new Date();
+  }
+
   get typeLabel(): string {
     return this.translate.instant('promotions.types.' + this.raw.type);
   }

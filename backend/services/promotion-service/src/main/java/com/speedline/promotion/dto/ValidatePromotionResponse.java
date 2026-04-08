@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 
 public record ValidatePromotionResponse(
     boolean isValid,
+    Long promotionId,
     BigDecimal discountAmount,
     PromotionType discountType,
     BigDecimal originalSubtotal,

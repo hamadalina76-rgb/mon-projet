@@ -829,7 +829,9 @@
       "deactivate": "تعطيل",
       "duplicate": "نسخ",
       "delete": "حذف",
-      "more": "المزيد"
+      "history": "السجل",
+      "more": "المزيد",
+      "scheduledAuto": "تفعيل تلقائي"
     },
     "form": {
       "createTitle": "عرض ترويجي جديد",
@@ -861,6 +863,7 @@
       "description": "الوصف",
       "descriptionPlaceholder": "وصف مرئي للعملاء…",
       "initialStatus": "الحالة الأولية",
+      "statusHint": "مجدول: يتم التفعيل تلقائيًا في تاريخ البداية",
       "reduction": "الخصم",
       "reductionDesc": "نوع ومبلغ الخصم",
       "reductionType": "نوع الخصم",
@@ -934,6 +937,7 @@
       "create": "إنشاء العرض",
       "createDraft": "إنشاء كمسودة",
       "createAndActivate": "إنشاء وتفعيل",
+      "createAndSchedule": "إنشاء وجدولة",
       "save": "حفظ",
       "back": "رجوع",
       "fixErrors": "يرجى تصحيح الأخطاء قبل المتابعة",
@@ -983,6 +987,62 @@
       "expired": "منتهية",
       "totalUsages": "الاستخدامات",
       "totalDiscount": "إجمالي الخصومات"
+    },
+    "history": {
+      "title": "سجل العرض الترويجي",
+      "action": "الإجراء",
+      "details": "التفاصيل",
+      "performedBy": "بواسطة",
+      "date": "التاريخ",
+      "empty": "لا يوجد سجل لهذا العرض",
+      "searchPlaceholder": "بحث في التفاصيل\u2026",
+      "allActions": "كل الإجراءات",
+      "reset": "إعادة تعيين",
+      "noResults": "لا توجد نتائج لهذه الفلاتر",
+      "actions": {
+        "CREATED": "إنشاء",
+        "UPDATED": "تعديل",
+        "DELETED": "حذف",
+        "ACTIVATED": "تفعيل",
+        "DEACTIVATED": "تعطيل",
+        "TOGGLED": "تبديل",
+        "APPLIED": "استخدام",
+        "REVOKED": "إلغاء",
+        "EXPIRED": "انتهاء"
+      }
+    },
+    "dashboard": {
+      "title": "لوحة تحكم العروض",
+      "subtitle": "نظرة عامة على أداء العروض الترويجية",
+      "back": "العودة إلى العروض",
+      "activeCount": "العروض النشطة",
+      "usagesThisMonth": "الاستخدامات هذا الشهر",
+      "totalDiscount": "إجمالي التخفيضات",
+      "usageRate": "نسبة الاستخدام",
+      "top5Title": "أفضل 5 — العروض الأكثر استخدامًا",
+      "dailyUsageTitle": "الاستخدام اليومي (30 يوم)",
+      "expiringTitle": "تنتهي قريبًا",
+      "endDate": "تاريخ الانتهاء",
+      "daysRemaining": "الأيام المتبقية",
+      "noData": "لا توجد بيانات متاحة",
+      "noExpiring": "لا توجد عروض تنتهي خلال الأيام السبعة القادمة"
+    },
+    "promoAnalytics": {
+      "back": "العودة إلى العروض",
+      "netUsage": "الاستخدامات الصافية",
+      "totalDiscount": "إجمالي التخفيضات",
+      "uniqueUsers": "المستخدمون الفريدون",
+      "avgDiscount": "متوسط التخفيض",
+      "quotaTitle": "حصة الاستخدام",
+      "statusTitle": "مطبقة مقابل ملغاة",
+      "logTitle": "سجل الاستخدام",
+      "userId": "المستخدم",
+      "orderId": "الطلب",
+      "discount": "التخفيض",
+      "status": "الحالة",
+      "date": "التاريخ",
+      "applied": "مطبقة",
+      "revoked": "ملغاة"
     }
   },
   "reviews": {

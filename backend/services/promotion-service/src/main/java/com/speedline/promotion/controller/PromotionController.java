@@ -1,6 +1,7 @@
 package com.speedline.promotion.controller;
 
 import com.speedline.promotion.dto.*;
+import com.speedline.promotion.repository.PromotionAuditLogRepository;
 import com.speedline.promotion.service.PromotionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.List;
 public class PromotionController {
 
     private final PromotionService promotionService;
+    private final PromotionAuditLogRepository auditLogRepository;
 
     // ---------------------------------------------------------------- LIST --
 
@@ -152,12 +154,38 @@ public class PromotionController {
         return ResponseEntity.ok(PromotionResponse.ok(promotionService.simulate(request)));
     }
 
+    // --------------------------------------------------------- DASHBOARD ---
+
+    @GetMapping("/dashboard")
+    public ResponseEntity<PromotionResponse<PromotionDashboardDto>> dashboard() {
+        return ResponseEntity.ok(PromotionResponse.ok(promotionService.getDashboard()));
+    }
+
     // ------------------------------------------------------------- STATS ---
 
     @GetMapping("/{id}/analytics")
     public ResponseEntity<PromotionResponse<PromotionAnalyticsDto>> analytics(
             @PathVariable Long id) {
         return ResponseEntity.ok(PromotionResponse.ok(promotionService.getAnalytics(id)));
+    }
+
+    // ----------------------------------------------------------- HISTORY ---
+
+    @GetMapping("/{id}/history")
+    public ResponseEntity<PromotionResponse<PromotionAuditPageResponse>> history(
+            @PathVariable Long id,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        String act = (action != null && !action.isBlank()) ? action.toUpperCase() : null;
+        String q   = (search != null && !search.isBlank()) ? search : null;
+        var result = auditLogRepository.findFiltered(id, act, q, PageRequest.of(page, size));
+        var body = new PromotionAuditPageResponse(
+                result.getContent().stream().map(PromotionAuditLogDto::from).toList(),
+                result.getNumber(), result.getSize(),
+                result.getTotalElements(), result.getTotalPages(), result.isLast());
+        return ResponseEntity.ok(PromotionResponse.ok(body));
     }
 
     // ------------------------------------------------------------- CSV ---

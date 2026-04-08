@@ -68,4 +68,9 @@ public class PromotionException extends RuntimeException {
     public static PromotionException cannotActivateExpired(String code) {
         return new PromotionException("CANNOT_ACTIVATE_EXPIRED", "Impossible d'activer une promotion expirée : " + code);
     }
+
+    public static PromotionException cannotActivateScheduled(String code) {
+        return new PromotionException("CANNOT_ACTIVATE_SCHEDULED",
+                "Impossible d'activer manuellement une promotion planifiée. Elle s'activera automatiquement à sa date de début : " + code);
+    }
 }

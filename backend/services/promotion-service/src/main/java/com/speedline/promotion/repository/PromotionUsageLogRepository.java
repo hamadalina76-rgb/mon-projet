@@ -46,4 +46,21 @@ public interface PromotionUsageLogRepository extends JpaRepository<PromotionUsag
      */
     @Query("SELECT COALESCE(SUM(l.discountAmount), 0) FROM PromotionUsageLog l WHERE l.status = 'APPLIED'")
     java.math.BigDecimal sumAllAppliedDiscount();
+
+    /**
+     * Count usages in a date range (for monthly KPI)
+     */
+    @Query("SELECT COUNT(l) FROM PromotionUsageLog l " +
+           "WHERE l.status = 'APPLIED' AND l.createdAt >= :from AND l.createdAt < :to")
+    long countAppliedBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /**
+     * Daily usage counts (for line chart) — native query for DATE()
+     */
+    @Query(value = "SELECT DATE(created_at) AS day, COUNT(*) AS cnt " +
+                   "FROM promotion_usage_log " +
+                   "WHERE status = 'APPLIED' AND created_at >= :from " +
+                   "GROUP BY DATE(created_at) ORDER BY day",
+           nativeQuery = true)
+    List<Object[]> countDailyUsageSince(@Param("from") LocalDateTime from);
 }

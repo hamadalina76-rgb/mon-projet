@@ -1,14 +1,15 @@
-﻿<div class="form-page">
+<div class="form-page">
 
-  <!-- Back button + title -->
-  <div class="form-header">
-    <button mat-icon-button (click)="back()" class="back-btn" [matTooltip]="'promotions.form.back' | translate">
-      <mat-icon>arrow_back</mat-icon>
-    </button>
-    <div>
-      <h1>{{ title }}</h1>
-      <p class="subtitle">{{ subtitle }}</p>
-    </div>
+  <!-- Back link -->
+  <a class="back-link" (click)="back()">
+    <span class="material-icons-round">arrow_back</span>
+    {{ 'promotions.title' | translate }}
+  </a>
+
+  <!-- Centered title + subtitle -->
+  <div class="form-hero">
+    <h1>{{ title }}</h1>
+    <p>{{ subtitle }}</p>
   </div>
 
   <!-- Loading state -->
@@ -16,22 +17,38 @@
     <mat-spinner diameter="48"></mat-spinner>
   </div>
 
-  <!-- Stepper -->
-  <mat-stepper *ngIf="!loading" #stepper linear class="promo-stepper" labelPosition="bottom">
+  <!-- Custom stepper header -->
+  <nav *ngIf="!loading" class="stepper-nav">
+    <ng-container *ngFor="let step of stepMeta; let i = index; let last = last">
+      <button class="step-indicator"
+              [class.step-indicator--active]="currentStep === i"
+              [class.step-indicator--done]="currentStep > i"
+              (click)="goToStep(i)">
+        <span class="step-circle">
+          <mat-icon *ngIf="currentStep > i" class="done-icon">check</mat-icon>
+          <span *ngIf="currentStep <= i">{{ i + 1 }}</span>
+        </span>
+        <span class="step-label">{{ step.label | translate }}</span>
+      </button>
+      <span *ngIf="!last" class="step-connector"
+            [class.step-connector--done]="currentStep > i"></span>
+    </ng-container>
+  </nav>
 
-    <!-- â•â•â• Ã‰tape 1 â€” Informations gÃ©nÃ©rales â•â•â• -->
+  <!-- Stepper (header hidden, only content) -->
+  <mat-stepper *ngIf="!loading" #stepper linear class="promo-stepper" labelPosition="bottom"
+               (selectionChange)="currentStep = $event.selectedIndex">
+
+    <!-- Step 1 -->
     <mat-step [stepControl]="stepGeneralGroup"
-              [label]="'promotions.form.step1Title' | translate"
               [hasError]="stepGeneralGroup.invalid && stepGeneralGroup.touched">
-      <ng-template matStepLabel>
-        <mat-icon>badge</mat-icon>
-        {{ 'promotions.form.step1Title' | translate }}
-      </ng-template>
 
-      <app-step-general
-        [formGroup]="stepGeneralGroup"
-        [isEdit]="isEdit">
-      </app-step-general>
+      <div class="step-card">
+        <app-step-general
+          [formGroup]="stepGeneralGroup"
+          [isEdit]="isEdit">
+        </app-step-general>
+      </div>
 
       <div class="step-actions">
         <span></span>
@@ -43,17 +60,14 @@
       </div>
     </mat-step>
 
-    <!-- â•â•â• Ã‰tape 2 â€” Conditions & Limites â•â•â• -->
-    <mat-step [stepControl]="stepConditionsGroup"
-              [label]="'promotions.form.step2Title' | translate">
-      <ng-template matStepLabel>
-        <mat-icon>tune</mat-icon>
-        {{ 'promotions.form.step2Title' | translate }}
-      </ng-template>
+    <!-- Step 2 -->
+    <mat-step [stepControl]="stepConditionsGroup">
 
-      <app-step-conditions
-        [formGroup]="stepConditionsGroup">
-      </app-step-conditions>
+      <div class="step-card">
+        <app-step-conditions
+          [formGroup]="stepConditionsGroup">
+        </app-step-conditions>
+      </div>
 
       <div class="step-actions">
         <button mat-stroked-button matStepperPrevious class="btn-prev">
@@ -68,23 +82,19 @@
       </div>
     </mat-step>
 
-    <!-- â•â•â• Ã‰tape 3 â€” Ciblage â•â•â• -->
-    <mat-step [stepControl]="stepTargetingGroup"
-              [label]="'promotions.form.step3Title' | translate"
-              [optional]="true">
-      <ng-template matStepLabel>
-        <mat-icon>filter_alt</mat-icon>
-        {{ 'promotions.form.step3Title' | translate }}
-      </ng-template>
+    <!-- Step 3 -->
+    <mat-step [stepControl]="stepTargetingGroup" [optional]="true">
 
-      <app-step-targeting
-        [formGroup]="stepTargetingGroup"
-        [promotionType]="promotionType"
-        [rulesArray]="rulesArray"
-        (partnersLoaded)="onPartnersLoaded($event)"
-        (categoriesLoaded)="onCategoriesLoaded($event)"
-        (zonesLoaded)="onZonesLoaded($event)">
-      </app-step-targeting>
+      <div class="step-card">
+        <app-step-targeting
+          [formGroup]="stepTargetingGroup"
+          [promotionType]="promotionType"
+          [rulesArray]="rulesArray"
+          (partnersLoaded)="onPartnersLoaded($event)"
+          (categoriesLoaded)="onCategoriesLoaded($event)"
+          (zonesLoaded)="onZonesLoaded($event)">
+        </app-step-targeting>
+      </div>
 
       <div class="step-actions">
         <button mat-stroked-button matStepperPrevious class="btn-prev">
@@ -98,23 +108,20 @@
       </div>
     </mat-step>
 
-    <!-- â•â•â• Ã‰tape 4 â€” RÃ©capitulatif â•â•â• -->
-    <mat-step [label]="'promotions.form.step4Title' | translate">
-      <ng-template matStepLabel>
-        <mat-icon>check_circle</mat-icon>
-        {{ 'promotions.form.step4Title' | translate }}
-      </ng-template>
+    <!-- Step 4 -->
+    <mat-step>
 
-      <app-step-summary
-        [form]="form"
-        [isEdit]="isEdit"
-        [saving]="saving"
-        [partners]="partners"
-        [categories]="categories"
-        [zones]="zones"
-        (submitDraft)="submitAsDraft()"
-        (submitActive)="submitAsActive()">
-      </app-step-summary>
+      <div class="step-card">
+        <app-step-summary
+          [form]="form"
+          [isEdit]="isEdit"
+          [saving]="saving"
+          [partners]="partners"
+          [categories]="categories"
+          [zones]="zones"
+          (submitActive)="submitForm()">
+        </app-step-summary>
+      </div>
 
       <div class="step-actions step-actions--back-only">
         <button mat-stroked-button matStepperPrevious class="btn-prev">

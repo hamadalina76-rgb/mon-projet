@@ -124,15 +124,25 @@
   <!-- ═══ Actions ═══ -->
   <div class="action-buttons">
     <ng-container *ngIf="!isEdit">
-      <button mat-stroked-button type="button" (click)="submitDraft.emit()" [disabled]="saving" class="btn-draft">
-        <mat-icon>save</mat-icon>
-        {{ 'promotions.form.createDraft' | translate }}
-      </button>
-      <button mat-flat-button color="primary" type="button" (click)="submitActive.emit()" [disabled]="saving" class="btn-activate">
+      <button *ngIf="raw.status === 'ACTIVE'" mat-flat-button color="primary" type="button" (click)="submitActive.emit()" [disabled]="saving" class="btn-activate">
         <mat-spinner *ngIf="saving" diameter="18"></mat-spinner>
         <ng-container *ngIf="!saving">
           <mat-icon>rocket_launch</mat-icon>
           {{ 'promotions.form.createAndActivate' | translate }}
+        </ng-container>
+      </button>
+      <button *ngIf="raw.status === 'INACTIVE'" mat-flat-button type="button" (click)="submitActive.emit()" [disabled]="saving" class="btn-draft">
+        <mat-spinner *ngIf="saving" diameter="18"></mat-spinner>
+        <ng-container *ngIf="!saving">
+          <mat-icon>save</mat-icon>
+          {{ 'promotions.form.createDraft' | translate }}
+        </ng-container>
+      </button>
+      <button *ngIf="raw.status === 'SCHEDULED'" mat-flat-button type="button" (click)="submitActive.emit()" [disabled]="saving" class="btn-schedule">
+        <mat-spinner *ngIf="saving" diameter="18"></mat-spinner>
+        <ng-container *ngIf="!saving">
+          <mat-icon>schedule</mat-icon>
+          {{ 'promotions.form.createAndSchedule' | translate }}
         </ng-container>
       </button>
     </ng-container>

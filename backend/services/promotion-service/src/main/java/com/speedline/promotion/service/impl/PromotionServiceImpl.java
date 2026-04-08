@@ -3,6 +3,7 @@ package com.speedline.promotion.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.speedline.promotion.domain.*;
+import com.speedline.promotion.domain.PromotionAuditLog.AuditAction;
 import com.speedline.promotion.dto.*;
 import com.speedline.promotion.event.PromotionEventPublisher;
 import com.speedline.promotion.exception.PromotionException;
@@ -36,6 +37,7 @@ public class PromotionServiceImpl implements PromotionService {
     private final PromotionRepository        promotionRepository;
     private final PromotionRuleRepository    ruleRepository;
     private final PromotionUsageLogRepository usageLogRepository;
+    private final PromotionAuditLogRepository auditLogRepository;
     private final UserPromotionRepository    userPromotionRepository;
     private final PromotionEventPublisher    eventPublisher;
     private final ObjectMapper               objectMapper;
@@ -120,6 +122,14 @@ public class PromotionServiceImpl implements PromotionService {
             throw PromotionException.duplicateCode(req.code());
         }
         PromotionStatus status = req.status() != null ? req.status() : PromotionStatus.ACTIVE;
+
+        // Auto-detect SCHEDULED: if startDate is in the future and status is ACTIVE
+        if (status == PromotionStatus.ACTIVE
+                && req.startDate() != null
+                && req.startDate().isAfter(LocalDateTime.now())) {
+            status = PromotionStatus.SCHEDULED;
+        }
+
         Promotion promo = Promotion.builder()
             .code(req.code().toUpperCase())
             .name(req.name())
@@ -149,6 +159,9 @@ public class PromotionServiceImpl implements PromotionService {
         if (Boolean.TRUE.equals(promo.getIsActive())) {
             cacheService.addCode(promo.getCode());
         }
+        audit(promo.getId(), promo.getCode(), AuditAction.CREATED,
+              "Promotion créée — type=" + promo.getType() + " valeur=" + promo.getValue()
+              + " statut=" + promo.getStatus());
         log.info("Promotion created: {}", promo.getCode());
         return dto;
     }
@@ -186,8 +199,16 @@ public class PromotionServiceImpl implements PromotionService {
         if (req.applicableZoneIds()       != null) p.setApplicableZoneIds(toJson(req.applicableZoneIds()));
         if (req.firstOrderOnly()    != null) p.setFirstOrderOnly(req.firstOrderOnly());
         if (req.status()            != null) {
-            p.setStatus(req.status());
-            p.setIsActive(req.status() == PromotionStatus.ACTIVE);
+            PromotionStatus newStatus = req.status();
+            // Auto-detect SCHEDULED on update
+            LocalDateTime effectiveStart = req.startDate() != null ? req.startDate() : p.getStartDate();
+            if (newStatus == PromotionStatus.ACTIVE
+                    && effectiveStart != null
+                    && effectiveStart.isAfter(LocalDateTime.now())) {
+                newStatus = PromotionStatus.SCHEDULED;
+            }
+            p.setStatus(newStatus);
+            p.setIsActive(newStatus == PromotionStatus.ACTIVE);
         }
         Promotion saved = promotionRepository.save(p);
 
@@ -201,6 +222,8 @@ public class PromotionServiceImpl implements PromotionService {
         } else {
             updatedRules = ruleRepository.findByPromotionId(saved.getId());
         }
+        audit(saved.getId(), saved.getCode(), AuditAction.UPDATED,
+              "Promotion mise à jour — statut=" + saved.getStatus());
         return PromotionDto.from(saved, updatedRules);
     }
 
@@ -215,6 +238,7 @@ public class PromotionServiceImpl implements PromotionService {
         p.setStatus(PromotionStatus.INACTIVE);
         promotionRepository.save(p);
         cacheService.removeCode(p.getCode());
+        audit(p.getId(), p.getCode(), AuditAction.DELETED, "Promotion supprimée (soft-delete)");
         log.info("Promotion soft-deleted: id={} code={}", id, p.getCode());
     }
 
@@ -223,8 +247,8 @@ public class PromotionServiceImpl implements PromotionService {
     public void toggleActive(Long id) {
         Promotion p = findById(id);
         if (!Boolean.TRUE.equals(p.getIsActive())) {
-            // Trying to activate — check if expired
             checkNotExpired(p);
+            checkNotScheduled(p);
         }
         boolean newActive = !Boolean.TRUE.equals(p.getIsActive());
         p.setIsActive(newActive);
@@ -232,6 +256,8 @@ public class PromotionServiceImpl implements PromotionService {
         promotionRepository.save(p);
         if (newActive) cacheService.addCode(p.getCode());
         else cacheService.removeCode(p.getCode());
+        audit(p.getId(), p.getCode(), AuditAction.TOGGLED,
+              newActive ? "Promotion activée (toggle)" : "Promotion désactivée (toggle)");
     }
 
     @Override
@@ -239,10 +265,12 @@ public class PromotionServiceImpl implements PromotionService {
     public void activate(Long id) {
         Promotion p = findById(id);
         checkNotExpired(p);
+        checkNotScheduled(p);
         p.setIsActive(true);
         p.setStatus(PromotionStatus.ACTIVE);
         promotionRepository.save(p);
         cacheService.addCode(p.getCode());
+        audit(p.getId(), p.getCode(), AuditAction.ACTIVATED, "Promotion activée");
         log.info("Promotion activated: id={} code={}", id, p.getCode());
     }
 
@@ -254,6 +282,7 @@ public class PromotionServiceImpl implements PromotionService {
         p.setStatus(PromotionStatus.INACTIVE);
         promotionRepository.save(p);
         cacheService.removeCode(p.getCode());
+        audit(p.getId(), p.getCode(), AuditAction.DEACTIVATED, "Promotion désactivée");
         log.info("Promotion deactivated: id={} code={}", id, p.getCode());
     }
 
@@ -347,6 +376,9 @@ public class PromotionServiceImpl implements PromotionService {
             "Code appliqué ! Vous économisez " + discount + " TND");
 
         eventPublisher.publishPromotionApplied(p.getId(), p.getCode(), req.userId(), req.orderId(), resp);
+        audit(p.getId(), p.getCode(), AuditAction.APPLIED,
+              "Utilisée par user=" + req.userId() + " commande=" + req.orderId()
+              + " réduction=" + discount + " TND");
         log.info("Promotion applied: code={} user={} order={} discount={}",
             p.getCode(), req.userId(), req.orderId(), discount);
         return resp;
@@ -362,6 +394,8 @@ public class PromotionServiceImpl implements PromotionService {
             promotionRepository.decrementUsageCount(p.getId());
             redisQuotaService.release(p.getId());
             eventPublisher.publishPromotionRevoked(p.getId(), p.getCode(), req.userId(), req.orderId());
+            audit(p.getId(), p.getCode(), AuditAction.REVOKED,
+                  "Révoquée pour user=" + req.userId() + " commande=" + req.orderId());
             log.info("Promotion revoked: code={} user={} order={}", p.getCode(), req.userId(), req.orderId());
         } else {
             log.warn("Revoke found no APPLIED log: code={} user={} order={}", p.getCode(), req.userId(), req.orderId());
@@ -400,6 +434,59 @@ public class PromotionServiceImpl implements PromotionService {
         );
     }
 
+    // --------------------------------------------------------- DASHBOARD --
+
+    @Override
+    @Transactional(readOnly = true)
+    public PromotionDashboardDto getDashboard() {
+        LocalDateTime now = LocalDateTime.now();
+
+        // KPIs
+        long activeCount = promotionRepository.countActivePromotions(now);
+        LocalDateTime startOfMonth = now.withDayOfMonth(1).toLocalDate().atStartOfDay();
+        long usagesThisMonth = usageLogRepository.countAppliedBetween(startOfMonth, now);
+        BigDecimal totalDiscountTnd = usageLogRepository.sumAllAppliedDiscount();
+        long totalUsages = promotionRepository.sumAllUsageCount();
+        long totalLimit  = promotionRepository.sumUsageLimitOfActive();
+        double usageRatePct = totalLimit > 0 ? (totalUsages * 100.0 / totalLimit) : 0;
+
+        // Top 5 promotions by usage
+        List<PromotionDashboardDto.TopPromotion> top5 = promotionRepository
+            .findTopByUsage(org.springframework.data.domain.PageRequest.of(0, 5))
+            .stream()
+            .map(p -> new PromotionDashboardDto.TopPromotion(p.getId(), p.getCode(), p.getName(), p.getUsageCount()))
+            .toList();
+
+        // Daily usage last 30 days (fill gaps with 0)
+        LocalDateTime thirtyDaysAgo = now.minusDays(30).toLocalDate().atStartOfDay();
+        List<Object[]> raw = usageLogRepository.countDailyUsageSince(thirtyDaysAgo);
+        java.util.Map<java.time.LocalDate, Long> dayMap = new java.util.LinkedHashMap<>();
+        for (Object[] row : raw) {
+            java.time.LocalDate d = ((java.sql.Date) row[0]).toLocalDate();
+            long cnt = ((Number) row[1]).longValue();
+            dayMap.put(d, cnt);
+        }
+        List<PromotionDashboardDto.DailyUsage> dailyUsages = new java.util.ArrayList<>();
+        for (java.time.LocalDate d = thirtyDaysAgo.toLocalDate(); !d.isAfter(now.toLocalDate()); d = d.plusDays(1)) {
+            dailyUsages.add(new PromotionDashboardDto.DailyUsage(d, dayMap.getOrDefault(d, 0L)));
+        }
+
+        // Expiring alerts (within 7 days)
+        LocalDateTime sevenDaysLater = now.plusDays(7);
+        List<PromotionDashboardDto.ExpiringPromotion> expiringAlerts = promotionRepository
+            .findExpiringBetween(now, sevenDaysLater)
+            .stream()
+            .map(p -> {
+                long daysRemaining = java.time.Duration.between(now, p.getEndDate()).toDays();
+                return new PromotionDashboardDto.ExpiringPromotion(
+                    p.getId(), p.getCode(), p.getName(), p.getEndDate(), daysRemaining);
+            })
+            .toList();
+
+        return new PromotionDashboardDto(activeCount, usagesThisMonth, totalDiscountTnd,
+            usageRatePct, top5, dailyUsages, expiringAlerts);
+    }
+
     // -------------------------------------------------- INTERNAL HELPERS ---
 
     private Promotion findById(Long id) {
@@ -435,6 +522,12 @@ public class PromotionServiceImpl implements PromotionService {
         }
     }
 
+    private void checkNotScheduled(Promotion p) {
+        if (p.getStatus() == PromotionStatus.SCHEDULED) {
+            throw PromotionException.cannotActivateScheduled(p.getCode());
+        }
+    }
+
     private ValidationContext buildValidationContext(Promotion p, Long userId,
                                                      BigDecimal subtotal, BigDecimal deliveryFee,
                                                      Long partnerId, List<Long> categoryIds,
@@ -457,7 +550,7 @@ public class PromotionServiceImpl implements PromotionService {
         BigDecimal fee = deliveryFee != null ? deliveryFee : BigDecimal.ZERO;
         if (p.getType() == PromotionType.FREE_DELIVERY) fee = BigDecimal.ZERO;
         return new ValidatePromotionResponse(
-            true, discount, p.getType(), subtotal, newSubtotal, fee,
+            true, p.getId(), discount, p.getType(), subtotal, newSubtotal, fee,
             newSubtotal.add(fee), message
         );
     }
@@ -513,6 +606,17 @@ public class PromotionServiceImpl implements PromotionService {
             return "\"" + val.replace("\"", "\"\"") + "\"";
         }
         return val;
+    }
+
+    // ----------------------------------------------------------- AUDIT ---
+
+    private void audit(Long promotionId, String code, AuditAction action, String details) {
+        auditLogRepository.save(PromotionAuditLog.builder()
+            .promotionId(promotionId)
+            .promotionCode(code)
+            .action(action)
+            .details(details)
+            .build());
     }
 }
 

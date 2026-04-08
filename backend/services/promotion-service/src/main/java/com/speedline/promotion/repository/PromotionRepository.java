@@ -139,4 +139,28 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
     @Query("SELECT p FROM Promotion p WHERE p.status = com.speedline.promotion.domain.PromotionStatus.SCHEDULED " +
            "AND p.startDate IS NOT NULL AND p.startDate <= :now")
     List<Promotion> findScheduledToActivate(@Param("now") LocalDateTime now);
+
+    // ── Dashboard queries ──────────────────────────────────────────
+
+    /**
+     * Top N promotions by usage count
+     */
+    @Query("SELECT p FROM Promotion p WHERE p.deleted = false ORDER BY p.usageCount DESC")
+    List<Promotion> findTopByUsage(Pageable pageable);
+
+    /**
+     * Promotions expiring within a date range (for alerts)
+     */
+    @Query("SELECT p FROM Promotion p WHERE p.endDate IS NOT NULL " +
+           "AND p.endDate > :now AND p.endDate <= :limit " +
+           "AND p.isActive = true AND p.deleted = false " +
+           "ORDER BY p.endDate ASC")
+    List<Promotion> findExpiringBetween(@Param("now") LocalDateTime now, @Param("limit") LocalDateTime limit);
+
+    /**
+     * Sum usage counts where usageLimit is set (for usage rate)
+     */
+    @Query("SELECT COALESCE(SUM(p.usageLimit), 0) FROM Promotion p " +
+           "WHERE p.usageLimit IS NOT NULL AND p.isActive = true AND p.deleted = false")
+    long sumUsageLimitOfActive();
 }

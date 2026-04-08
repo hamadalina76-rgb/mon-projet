@@ -1,69 +1,102 @@
 @use 'variables' as v;
 
 $primary: v.$primary-color;
+$primary-soft: rgba(v.$primary-color, .06);
 $ease: cubic-bezier(.4, 0, .2, 1);
 
 .step-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-width: 640px;
-  margin: 0 auto;
+  gap: 12px;
   width: 100%;
 }
 
 .full-width { width: 100%; }
 
-.field-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #475569;
-  margin: 8px 0 4px;
+// == Section header ==
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  &--spaced { margin-top: 12px; }
+  h3 { margin: 0; font-size: 1.05rem; font-weight: 700; color: #1e293b; letter-spacing: -0.01em; }
 }
 
+.section-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 10px; background: $primary-soft; flex-shrink: 0;
+  mat-icon { font-size: 20px; width: 20px; height: 20px; color: $primary; }
+}
+
+.section-divider {
+  height: 1px; background: #e8ecf1; margin-bottom: 8px;
+}
+
+.suffix {
+  font-weight: 700; color: #64748b; font-size: 0.9rem;
+}
+
+// == Date row ==
 .date-row {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 18px;
+  background: #f8fafc;
+  border-radius: 14px;
+  border: 1px solid #eef2f6;
+  transition: border-color .25s $ease;
 
-  @media (max-width: 600px) { flex-direction: column; align-items: stretch; }
+  &:hover { border-color: #e2e8f0; }
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+  }
 }
 
 .date-field { flex: 1; }
 
 .arrow-icon {
-  color: #94a3b8;
+  color: #cbd5e1; font-size: 20px; flex-shrink: 0;
   @media (max-width: 600px) { display: none; }
 }
 
 .date-error {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #EF4444;
-  font-size: 0.8rem;
-  font-weight: 500;
-  margin-top: -4px;
-
+  display: flex; align-items: center; gap: 6px;
+  color: #EF4444; font-size: 0.8rem; font-weight: 500;
+  padding: 8px 14px; background: rgba(#EF4444, .05); border-radius: 10px;
   mat-icon { font-size: 16px; width: 16px; height: 16px; }
 }
 
+// == Quota row ==
 .quota-row {
-  display: flex;
-  gap: 16px;
-
+  display: flex; gap: 16px;
   @media (max-width: 480px) { flex-direction: column; }
 }
 
 .quota-field { flex: 1; }
 
+// == Checkbox ==
 .checkbox-field {
-  margin: 8px 0;
+  margin: 8px 0 0;
   font-size: 0.9rem;
   color: #475569;
+  padding: 14px 18px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1.5px solid #eef2f6;
+  transition: all .25s $ease;
+  &:hover { border-color: #e2e8f0; background: #f1f5f9; }
 }
 
+// == Dark mode ==
 :host-context(html.dark) {
-  .field-label { color: #94a3b8; }
-  .checkbox-field { color: #cbd5e1; }
+  .section-header h3 { color: #f1f5f9; }
+  .section-icon { background: rgba($primary, .12); }
+  .section-divider { background: #334155; }
+  .date-row { background: #1e293b; border-color: #334155; &:hover { border-color: #475569; } }
+  .checkbox-field { color: #cbd5e1; background: #1e293b; border-color: #334155; &:hover { border-color: #475569; } }
+  .date-error { background: rgba(#EF4444, .08); }
 }

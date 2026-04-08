@@ -44,8 +44,6 @@ $ease:         cubic-bezier(.4, 0, .2, 1);
   &.active { background: rgba(#10B981, .12); color: #10B981; }
   &.inactive { background: rgba(#EF4444, .12); color: #EF4444; }
   &.expired { background: rgba(#64748B, .12); color: #64748B; }
-  &.usages { background: rgba(#3B82F6, .12); color: #3B82F6; }
-  &.discount { background: rgba(#F59E0B, .12); color: #D97706; }
 }
 
 .stat-body {
@@ -85,7 +83,8 @@ $ease:         cubic-bezier(.4, 0, .2, 1);
 }
 
 :host ::ng-deep .btn-add-promotion,
-:host ::ng-deep .btn-export {
+:host ::ng-deep .btn-export,
+:host ::ng-deep .btn-dashboard {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -124,6 +123,16 @@ $ease:         cubic-bezier(.4, 0, .2, 1);
   &:hover {
     background: rgba(#64748B, .16);
     color: #1e293b;
+  }
+}
+
+:host ::ng-deep .btn-dashboard {
+  background: rgba(#E31E24, .08);
+  color: #E31E24;
+
+  &:hover {
+    background: rgba(#E31E24, .16);
+    color: #C81E1E;
   }
 }
 

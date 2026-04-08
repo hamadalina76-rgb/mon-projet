@@ -61,6 +61,14 @@ export class PromotionFormComponent implements OnInit, OnDestroy {
   editId?: number;
   loading  = false;
   saving   = false;
+  currentStep = 0;
+
+  stepMeta = [
+    { label: 'promotions.form.step1Title', icon: 'badge' },
+    { label: 'promotions.form.step2Title', icon: 'tune' },
+    { label: 'promotions.form.step3Title', icon: 'filter_alt' },
+    { label: 'promotions.form.step4Title', icon: 'check_circle' },
+  ];
 
   // Data passed to StepSummary for display
   partners: { id: number; name: string }[] = [];
@@ -144,6 +152,7 @@ export class PromotionFormComponent implements OnInit, OnDestroy {
       startDate:         this.form.get('startDate')!,
       endDate:           this.form.get('endDate')!,
       firstOrderOnly:    this.form.get('firstOrderOnly')!,
+      status:            this.form.get('status')!,
     });
 
     this.stepTargetingGroup = this.fb.group({
@@ -217,10 +226,9 @@ export class PromotionFormComponent implements OnInit, OnDestroy {
   }
 
   // ── Submit ────────────────────────────────────────────────────
-  submitAsActive(): void { this.submit('ACTIVE'); }
-  submitAsDraft(): void  { this.submit('INACTIVE'); }
+  submitForm(): void { this.submit(); }
 
-  private submit(status: string): void {
+  private submit(): void {
     // Mark all as touched to show errors
     this.form.markAllAsTouched();
 
@@ -257,6 +265,7 @@ export class PromotionFormComponent implements OnInit, OnDestroy {
 
     this.saving = true;
     const raw = this.form.getRawValue();
+    const status = raw.status || 'ACTIVE';
 
     const toLocalIso = (d: Date | null) => {
       if (!d) return undefined;
@@ -341,6 +350,12 @@ export class PromotionFormComponent implements OnInit, OnDestroy {
   }
 
   back(): void { this.router.navigate(['/promotions']); }
+
+  goToStep(index: number): void {
+    if (this.stepper && index <= this.stepper.selectedIndex) {
+      this.stepper.selectedIndex = index;
+    }
+  }
 
   /** Show toast with field-level errors when user clicks Next on an invalid step */
   validateStep(stepGroup: FormGroup, stepTitle: string): void {

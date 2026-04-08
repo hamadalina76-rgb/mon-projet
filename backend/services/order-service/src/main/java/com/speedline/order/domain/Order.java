@@ -175,6 +175,11 @@ public class Order {
     private String promoCode;
 
     /**
+     * ID de la promotion (référence vers promotion-service)
+     */
+    private Long promotionId;
+
+    /**
      * Pourboire pour le livreur
      */
     @Column(precision = 10, scale = 2)

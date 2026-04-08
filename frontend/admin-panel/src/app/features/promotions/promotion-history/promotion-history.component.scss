@@ -1,0 +1,198 @@
+﻿@use 'variables' as v;
+
+$primary: v.$primary-color;
+$primary-soft: rgba(v.$primary-color, .08);
+$ease: cubic-bezier(.4, 0, .2, 1);
+
+// -- Promo code badge in header --
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.promo-code-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 1rem;
+  background: $primary-soft;
+  color: $primary;
+  border-radius: 100px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+// -- Filters bar (projected into list-page) --
+:host ::ng-deep .filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+:host ::ng-deep .search-box {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 320px;
+
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 20px;
+    pointer-events: none;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 10px 12px 10px 40px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    outline: none;
+    background: #f8fafc;
+    color: #1e293b;
+    transition: all .2s $ease;
+    font-family: inherit;
+
+    &:focus {
+      border-color: $primary;
+      background: #fff;
+      box-shadow: 0 0 0 3px $primary-soft;
+    }
+
+    &::placeholder { color: #94a3b8; }
+  }
+}
+
+:host ::ng-deep .action-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+:host ::ng-deep .chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all .2s $ease;
+  white-space: nowrap;
+  font-family: inherit;
+
+  &:hover { border-color: #cbd5e1; background: #f8fafc; }
+
+  &--active {
+    border-color: $primary !important;
+    background: $primary-soft !important;
+    color: $primary !important;
+    font-weight: 600;
+  }
+}
+
+:host ::ng-deep .btn-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #EF4444;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .2s $ease;
+  font-family: inherit;
+  white-space: nowrap;
+
+  .material-icons-round { font-size: 16px; }
+
+  &:hover {
+    border-color: #EF4444;
+    background: rgba(#EF4444, .06);
+  }
+}
+
+// -- Details column --
+.col-details {
+  max-width: 360px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.col-date {
+  white-space: nowrap;
+}
+
+// -- Action badges --
+.action-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+
+  &[data-action='CREATED'] {
+    background: rgba(#10B981, .1);
+    color: #10B981;
+  }
+
+  &[data-action='UPDATED'] {
+    background: rgba(#3B82F6, .1);
+    color: #3B82F6;
+  }
+
+  &[data-action='DELETED'] {
+    background: rgba(#EF4444, .1);
+    color: #EF4444;
+  }
+
+  &[data-action='ACTIVATED'] {
+    background: rgba(#059669, .1);
+    color: #059669;
+  }
+
+  &[data-action='DEACTIVATED'],
+  &[data-action='TOGGLED'] {
+    background: rgba(#D97706, .1);
+    color: #D97706;
+  }
+
+  &[data-action='APPLIED'] {
+    background: rgba(#6366F1, .1);
+    color: #6366F1;
+  }
+
+  &[data-action='REVOKED'] {
+    background: rgba(#DC2626, .08);
+    color: #DC2626;
+  }
+
+  &[data-action='EXPIRED'] {
+    background: rgba(#6B7280, .1);
+    color: #6B7280;
+  }
+}
+
+// -- Dark mode --
+:host-context(html.dark) {
+  .promo-code-badge {
+    background: rgba($primary, .15);
+  }
+}

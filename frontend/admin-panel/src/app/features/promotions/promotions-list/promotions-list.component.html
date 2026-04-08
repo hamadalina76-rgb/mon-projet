@@ -22,20 +22,6 @@
         <div class="stat-label">{{ 'promotions.stats.expired' | translate }}</div>
       </div>
     </div>
-    <div class="stat-card">
-      <span class="material-icons-round stat-icon usages">confirmation_number</span>
-      <div class="stat-body">
-        <div class="stat-value">{{ stats()!.totalUsages }}</div>
-        <div class="stat-label">{{ 'promotions.stats.totalUsages' | translate }}</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <span class="material-icons-round stat-icon discount">savings</span>
-      <div class="stat-body">
-        <div class="stat-value">{{ stats()!.totalDiscount | number:'1.0-0' }} TND</div>
-        <div class="stat-label">{{ 'promotions.stats.totalDiscount' | translate }}</div>
-      </div>
-    </div>
   </div>
 }
 
@@ -58,6 +44,10 @@
 >
   <!-- Header Actions -->
   <div headerAction class="header-actions">
+    <a class="btn-dashboard" routerLink="/promotions/dashboard" [matTooltip]="'promotions.dashboard.title' | translate">
+      <span class="material-icons-round">analytics</span>
+      {{ 'promotions.dashboard.title' | translate }}
+    </a>
     <button class="btn-export" (click)="exportCsv()" [matTooltip]="'promotions.exportCsv' | translate">
       <span class="material-icons-round">download</span>
       {{ 'promotions.exportCsv' | translate }}
@@ -252,6 +242,13 @@
               >
                 <span class="material-icons-round">bar_chart</span>
               </a>
+              <a
+                class="action-btn"
+                [routerLink]="['/promotions', promo.id, 'history']"
+                [matTooltip]="'promotions.actions.history' | translate"
+              >
+                <span class="material-icons-round">history</span>
+              </a>
               <button
                 class="action-btn"
                 [matMenuTriggerFor]="promoMenu"
@@ -260,7 +257,12 @@
                 <span class="material-icons-round">more_vert</span>
               </button>
               <mat-menu #promoMenu="matMenu">
-                @if (promo.isActive) {
+                @if (promo.status === 'SCHEDULED') {
+                  <button mat-menu-item disabled>
+                    <span class="material-icons-round" style="color: #94a3b8">schedule</span>
+                    <span>{{ 'promotions.actions.scheduledAuto' | translate }}</span>
+                  </button>
+                } @else if (promo.isActive) {
                   <button mat-menu-item (click)="togglePromotion(promo)">
                     <span class="material-icons-round" style="color: #EF4444">pause_circle</span>
                     <span>{{ 'promotions.actions.deactivate' | translate }}</span>
