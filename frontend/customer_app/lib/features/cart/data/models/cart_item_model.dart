@@ -113,6 +113,8 @@ class CartItemSelectedOption {
 class CartItemModel {
   final String productId;
 
+  final String productImageUrl;
+
   final String partnerId;
 
   final String partnerName;
@@ -131,6 +133,7 @@ class CartItemModel {
 
   CartItemModel({
     required this.productId,
+    this.productImageUrl = '',
     required this.partnerId,
     required this.partnerName,
     required this.partnerLogoUrl,
@@ -166,6 +169,7 @@ class CartItemModel {
 
   CartItemModel copyWith({
     String? productId,
+    String? productImageUrl,
     String? partnerId,
     String? partnerName,
     String? partnerLogoUrl,
@@ -178,6 +182,7 @@ class CartItemModel {
   }) {
     return CartItemModel(
       productId: productId ?? this.productId,
+      productImageUrl: productImageUrl ?? this.productImageUrl,
       partnerId: partnerId ?? this.partnerId,
       partnerName: partnerName ?? this.partnerName,
       partnerLogoUrl: partnerLogoUrl ?? this.partnerLogoUrl,
@@ -207,6 +212,11 @@ class CartItemModel {
   factory CartItemModel.fromJson(Map<String, dynamic> json) {
     return CartItemModel(
       productId: json['productId']?.toString() ?? '',
+      productImageUrl:
+          json['productImageUrl']?.toString() ??
+          json['productImage']?.toString() ??
+          json['imageUrl']?.toString() ??
+          '',
       partnerId: json['partnerId']?.toString() ?? '',
       partnerName: json['partnerName']?.toString() ?? '',
       partnerLogoUrl: json['partnerLogoUrl']?.toString() ?? '',

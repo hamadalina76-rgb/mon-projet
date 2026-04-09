@@ -299,6 +299,7 @@ class _PartnerDetailsScreenState extends ConsumerState<PartnerDetailsScreen>
 
     final cartItem = CartItemModel(
       productId: result.productId,
+      productImageUrl: resolveMediaUrl(product.imageUrl),
       partnerId: partner.id,
       partnerName: partner.displayName,
       partnerLogoUrl: partner.logo ?? '',

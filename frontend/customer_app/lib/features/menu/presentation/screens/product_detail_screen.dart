@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
@@ -25,12 +24,18 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
   final String partnerId;
   final MenuProductDto initialProduct;
   final String? categoryName;
+  final int initialQuantity;
+  final String? initialKitchenNote;
+  final Map<String, Set<String>> initialSelectedOptionIds;
 
   const ProductDetailScreen({
     super.key,
     required this.partnerId,
     required this.initialProduct,
     this.categoryName,
+    this.initialQuantity = 1,
+    this.initialKitchenNote,
+    this.initialSelectedOptionIds = const <String, Set<String>>{},
   });
 
   @override
@@ -58,6 +63,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   void initState() {
     super.initState();
     _product = widget.initialProduct;
+    _quantity = widget.initialQuantity < 1 ? 1 : widget.initialQuantity;
+
+    final initialNote = widget.initialKitchenNote?.trim();
+    if (initialNote != null && initialNote.isNotEmpty) {
+      _kitchenNoteController.text = initialNote;
+    }
 
     _scrollController = ScrollController()..addListener(_onScroll);
     _titleFadeController = AnimationController(
@@ -126,6 +137,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     }
 
     _seedDefaultSelections();
+    _applyInitialSelections();
 
     if (!mounted) return;
     setState(() {
@@ -277,6 +289,29 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         }
       }
       if (selected.isNotEmpty) _selectedOptionIds[group.id] = selected;
+    }
+  }
+
+  void _applyInitialSelections() {
+    if (widget.initialSelectedOptionIds.isEmpty) return;
+
+    for (final group in _optionGroups) {
+      final requested = widget.initialSelectedOptionIds[group.id];
+      if (requested == null || requested.isEmpty) continue;
+
+      final availableIds = group.options
+          .where((option) => option.isAvailable)
+          .map((option) => option.id)
+          .toSet();
+
+      final filtered = requested
+          .where(availableIds.contains)
+          .take(group.maxSelection)
+          .toSet();
+
+      if (filtered.isNotEmpty) {
+        _selectedOptionIds[group.id] = filtered;
+      }
     }
   }
 

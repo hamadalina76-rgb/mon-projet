@@ -154,6 +154,33 @@ class CartNotifier extends StateNotifier<CartState> {
     await _commitAndSync(next);
   }
 
+  Future<void> replaceItem({
+    required String itemKey,
+    required CartItemModel updatedItem,
+  }) async {
+    final next = List<CartItemModel>.from(state.items);
+    final index = next.indexWhere((item) => item.uniqueKey == itemKey);
+    if (index < 0) return;
+
+    next.removeAt(index);
+
+    final mergeIndex = next.indexWhere(
+      (item) => item.uniqueKey == updatedItem.uniqueKey,
+    );
+
+    if (mergeIndex >= 0) {
+      final merged = next[mergeIndex];
+      next[mergeIndex] = merged.copyWith(
+        quantity: merged.quantity + updatedItem.quantity,
+      );
+    } else {
+      final insertIndex = index <= next.length ? index : next.length;
+      next.insert(insertIndex, updatedItem);
+    }
+
+    await _commitAndSync(next);
+  }
+
   Future<void> clearCart() async {
     await _commitAndSync(const <CartItemModel>[]);
   }
