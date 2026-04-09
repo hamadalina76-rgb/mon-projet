@@ -28,8 +28,42 @@ export class ApiService {
   }
 
   /** GET that returns response as Blob (e.g. for file download). */
-  getBlob(endpoint: string): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/${endpoint}`, { responseType: 'blob' });
+  getBlob(endpoint: string, params?: HttpParams | Record<string, string | number | boolean | null | undefined>): Observable<Blob> {
+    let httpParams: HttpParams | undefined;
+    if (params && !(params instanceof HttpParams)) {
+      httpParams = new HttpParams();
+      Object.keys(params).forEach((key) => {
+        const v = params[key];
+        if (v !== undefined && v !== null && String(v) !== '') {
+          httpParams = httpParams!.set(key, String(v));
+        }
+      });
+    } else {
+      httpParams = params as HttpParams | undefined;
+    }
+    return this.http.get(`${this.apiUrl}/${endpoint}`, {
+      params: httpParams,
+      responseType: 'blob',
+    });
+  }
+
+  /** GET with plain text body (e.g. HTML ticket). */
+  getText(endpoint: string, params?: HttpParams | { [key: string]: any }): Observable<string> {
+    let httpParams: HttpParams | undefined;
+    if (params && !(params instanceof HttpParams)) {
+      httpParams = new HttpParams();
+      Object.keys(params).forEach((key) => {
+        if (params[key] !== undefined && params[key] !== null) {
+          httpParams = httpParams!.set(key, params[key].toString());
+        }
+      });
+    } else {
+      httpParams = params as HttpParams | undefined;
+    }
+    return this.http.get(`${this.apiUrl}/${endpoint}`, {
+      params: httpParams,
+      responseType: 'text',
+    });
   }
 
   post<T>(endpoint: string, data: unknown): Observable<T> {

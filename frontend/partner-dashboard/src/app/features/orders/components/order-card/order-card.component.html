@@ -17,6 +17,17 @@
           {{ 'ORDERS.CARD.NEW' | translate }}
         </span>
       }
+      @if (prepTimerContext(); as ctx) {
+        <div class="prep-timer-wrap" (click)="$event.stopPropagation()">
+          <app-timer
+            [startTimeIso]="ctx.startTimeIso"
+            [durationMinutes]="ctx.durationMinutes"
+            [active]="true"
+            [orderId]="order().id"
+            (expiredChange)="onPrepTimerExpiredChange($event)">
+          </app-timer>
+        </div>
+      }
       <app-order-status-badge [status]="order().status"></app-order-status-badge>
     </div>
   </div>

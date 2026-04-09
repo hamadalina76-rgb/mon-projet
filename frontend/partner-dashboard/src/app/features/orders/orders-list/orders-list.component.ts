@@ -27,6 +27,14 @@ import {
   hasProductPrepOnItems,
   suggestedPrepMinutesFromItems,
 } from '../models/order.model';
+import { TimerComponent } from '../components/prep-timer/timer.component';
+import { PrepTimerSessionService } from '../services/prep-timer-session.service';
+import { KitchenPrintService } from '../services/kitchen-print.service';
+import {
+  mergePrepTimerContext,
+  buildPrepTimerContextAfterAccept,
+  PrepTimerContext,
+} from '../utils/prep-timer.utils';
 import {
   AcceptOrderDialogComponent,
   AcceptOrderDialogResult,
@@ -71,6 +79,7 @@ const MOBILE_BATCH_SIZE = 5;
     MatDialogModule,
     OrderStatusBadgeComponent,
     OrderCardComponent,
+    TimerComponent,
     LoadingSpinnerComponent,
     EmptyStateComponent,
     TimeAgoPipe,
@@ -92,6 +101,8 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
   private router        = inject(Router);
   private breakpoints   = inject(BreakpointObserver);
   private translate     = inject(TranslateService);
+  private prepTimerSession = inject(PrepTimerSessionService);
+  private kitchenPrint   = inject(KitchenPrintService);
   private destroy$      = new Subject<void>();
 
   private searchInput$ = new Subject<string>();
@@ -129,7 +140,12 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
 
   tabDefs        = TAB_DEFS;
   datePresetDefs = DATE_PRESET_DEFS;
-  displayedColumns = ['indicator', 'orderNumber', 'customer', 'items', 'subtotal', 'status', 'time', 'actions'];
+  displayedColumns = [
+    'indicator', 'orderNumber', 'customer', 'items', 'subtotal', 'status', 'time', 'prepTimer', 'actions',
+  ];
+
+  /** Lignes dont le minuteur de prépa a dépassé l’échéance (clignotement). */
+  prepTimerExpiredIds = signal<Set<string>>(new Set());
 
   dataSource = new MatTableDataSource<Order>([]);
 
@@ -287,6 +303,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: (page) => {
         const orders = page.content as Order[];
+        this.clearPrepSessionsForTerminalOrders(orders);
         this.dataSource.data = orders;
         this.totalElements.set(page.totalElements);
         this.currentPage.set(page.number);
@@ -339,6 +356,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: (page) => {
         const chunk = page.content as Order[];
+        this.clearPrepSessionsForTerminalOrders(chunk);
         if (reset) {
           this.mobileOrders.set(chunk);
         } else {
@@ -461,6 +479,39 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.newOrderIds().has(id);
   }
 
+  prepTimerContextForRow(row: Order): PrepTimerContext | null {
+    return mergePrepTimerContext(this.prepTimerSession.load(row.id), row);
+  }
+
+  isPrepTimerRowOverdue(orderId: string): boolean {
+    return this.prepTimerExpiredIds().has(orderId);
+  }
+
+  onPrepTimerExpired(orderId: string, expired: boolean): void {
+    this.prepTimerExpiredIds.update((set) => {
+      const next = new Set(set);
+      if (expired) next.add(orderId);
+      else next.delete(orderId);
+      return next;
+    });
+  }
+
+  private clearPrepSessionsForTerminalOrders(orders: Order[]): void {
+    for (const o of orders) this.clearPrepTimerIfTerminal(o);
+  }
+
+  private clearPrepTimerIfTerminal(o: Order): void {
+    const s = o.status;
+    if (s === 'READY' || s === 'DELIVERED' || s === 'CANCELLED' || s === 'PICKED_UP') {
+      this.prepTimerSession.clear(o.id);
+      this.prepTimerExpiredIds.update((set) => {
+        const next = new Set(set);
+        next.delete(o.id);
+        return next;
+      });
+    }
+  }
+
   openDetail(order: any): void {
     this.router.navigate(['/orders', order.id]);
   }
@@ -522,6 +573,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private applyOrderUpdate(u: Order): void {
+    this.clearPrepTimerIfTerminal(u);
     this.ordersStore.updateOrder(u);
     this.dataSource.data = this.dataSource.data.map((o) =>
       o.id === u.id ? { ...o, ...u } : o
@@ -538,6 +590,9 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
     this.ordersService.confirmOrder(orderId, prepTime).subscribe({
       next: (u) => {
         this.applyOrderUpdate(u);
+        const ctx = buildPrepTimerContextAfterAccept(u, prepTime);
+        if (ctx) this.prepTimerSession.save(orderId, ctx);
+        this.kitchenPrint.printKitchenTicket(String(orderId));
         this.loadCounts();
         this.snackBar.open(
           this.translate.instant('ORDERS.TOAST.ACCEPTED', { minutes: prepTime }),
@@ -559,6 +614,8 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
     this.refreshRowEverywhere(orderId, 'CANCELLED');
     this.ordersService.cancelOrder(orderId, reason).subscribe({
       next: (u) => {
+        this.prepTimerSession.clear(orderId);
+        this.onPrepTimerExpired(orderId, false);
         this.applyOrderUpdate(u);
         this.loadCounts();
         this.snackBar.open(this.translate.instant('ORDERS.TOAST.REJECTED'), undefined, {
@@ -591,7 +648,13 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
     this.ordersStore.updateOrder({ id: orderId, status: 'READY' } as any);
     this.refreshRowEverywhere(orderId, 'READY');
     this.ordersService.markReady(orderId).subscribe({
-      next: (u) => { this.ordersStore.updateOrder(u); this.refreshRowEverywhere(orderId, u.status); this.loadCounts(); },
+      next: (u) => {
+        this.prepTimerSession.clear(orderId);
+        this.onPrepTimerExpired(orderId, false);
+        this.ordersStore.updateOrder(u);
+        this.refreshRowEverywhere(orderId, u.status);
+        this.loadCounts();
+      },
       error: () => { this.ordersStore.rollbackStatus(orderId, prev); this.refreshRowEverywhere(orderId, prev); this.snackBar.open(this.translate.instant('ORDERS.TOAST.READY_ERROR'), 'OK', { duration: 3000 }); },
     });
   }
@@ -628,41 +691,75 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
     this.wsService.onNewOrder()
       .pipe(takeUntil(this.destroy$))
       .subscribe((raw: any) => {
-        const order = {
-          ...raw,
-          id: raw?.id != null ? String(raw.id) : String(raw?.orderId ?? ''),
-        } as Order;
+        const rawId = raw?.id != null ? String(raw.id) : String(raw?.orderId ?? '');
+        if (!rawId) return;
 
-        this.ordersStore.addOrder(order);
+        // The WebSocket payload is a partial notification (orderId + orderNumber only).
+        // Always fetch the full order from the API so items, customer and amount are populated.
+        this.ordersService.getOrder(rawId).pipe(takeUntil(this.destroy$)).subscribe({
+          next: (fullOrder) => {
+            this.ordersStore.addOrder(fullOrder);
 
-        if (this.isMobile()) {
-          if (this.mobileNextPage() <= 1) {
-            this.mobileOrders.update((list) =>
-              list.some((o) => o.id === order.id) ? list : [order, ...list]
+            if (this.isMobile()) {
+              if (this.mobileNextPage() <= 1) {
+                this.mobileOrders.update((list) =>
+                  list.some((o) => o.id === fullOrder.id) ? list : [fullOrder, ...list]
+                );
+                this.totalElements.update((t) => t + 1);
+              }
+            } else if (this.currentPage() === 0) {
+              const current = this.dataSource.data;
+              if (!current.some((o: any) => o.id === fullOrder.id)) {
+                this.dataSource.data = [fullOrder, ...current];
+                this.totalElements.update((t) => t + 1);
+                if (this.paginator) this.paginator.length = this.totalElements();
+              } else {
+                // Order already in list (race with polling): update in place
+                this.dataSource.data = this.dataSource.data.map((o: any) =>
+                  o.id === fullOrder.id ? fullOrder : o
+                );
+              }
+            }
+
+            this.newOrderIds.update((ids) => new Set([...ids, fullOrder.id]));
+            setTimeout(() => {
+              this.newOrderIds.update((ids) => { const n = new Set(ids); n.delete(fullOrder.id); return n; });
+            }, 3000);
+
+            this.loadCounts();
+            this.notifService.newOrderAlert(fullOrder.orderNumber ?? '');
+            this.notifService.showOrderBanner(fullOrder);
+            this.notifService.showBrowserNotification(
+              this.translate.instant('ORDERS.NOTIF_NEW_ORDER'),
+              `#${fullOrder.orderNumber}`,
             );
-            this.totalElements.update((t) => t + 1);
-          }
-        } else if (this.currentPage() === 0) {
-          const current = this.dataSource.data;
-          if (!current.some((o: any) => o.id === order.id)) {
-            this.dataSource.data = [order, ...current];
-            this.totalElements.update((t) => t + 1);
-            if (this.paginator) this.paginator.length = this.totalElements();
-          }
-        }
-
-        this.newOrderIds.update((ids) => new Set([...ids, order.id]));
-        setTimeout(() => {
-          this.newOrderIds.update((ids) => { const n = new Set(ids); n.delete(order.id); return n; });
-        }, 3000);
-
-        this.loadCounts();
-        this.notifService.newOrderAlert(order.orderNumber ?? '');
-        this.notifService.showOrderBanner(order);
-        this.notifService.showBrowserNotification(
-          this.translate.instant('ORDERS.NOTIF_NEW_ORDER'),
-          `#${order.orderNumber}`,
-        );
+          },
+          // On error fall back to partial data so the row at least appears
+          error: () => {
+            const fallback = {
+              ...raw,
+              id: rawId,
+            } as Order;
+            this.ordersStore.addOrder(fallback);
+            if (this.isMobile()) {
+              if (this.mobileNextPage() <= 1) {
+                this.mobileOrders.update((list) =>
+                  list.some((o) => o.id === fallback.id) ? list : [fallback, ...list]
+                );
+                this.totalElements.update((t) => t + 1);
+              }
+            } else if (this.currentPage() === 0) {
+              const current = this.dataSource.data;
+              if (!current.some((o: any) => o.id === fallback.id)) {
+                this.dataSource.data = [fallback, ...current];
+                this.totalElements.update((t) => t + 1);
+                if (this.paginator) this.paginator.length = this.totalElements();
+              }
+            }
+            this.loadCounts();
+            this.notifService.newOrderAlert(fallback.orderNumber ?? '');
+          },
+        });
       });
   }
 

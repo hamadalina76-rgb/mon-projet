@@ -24,7 +24,15 @@ import {
 import {
   hasProductPrepOnItems,
   suggestedPrepMinutesFromItems,
+  Order,
 } from '../models/order.model';
+import { TimerComponent } from '../components/prep-timer/timer.component';
+import { PrepTimerSessionService } from '../services/prep-timer-session.service';
+import {
+  mergePrepTimerContext,
+  buildPrepTimerContextAfterAccept,
+} from '../utils/prep-timer.utils';
+import { KitchenPrintService } from '../services/kitchen-print.service';
 
 @Component({
   selector: 'app-order-detail',
@@ -39,6 +47,7 @@ import {
     OrderStatusBadgeComponent,
     TimeAgoPipe,
     LoadingSpinnerComponent,
+    TimerComponent,
   ],
   templateUrl: './order-detail.component.html',
   styleUrls: ['./order-detail.component.scss'],
@@ -53,8 +62,12 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
   private snackBar      = inject(MatSnackBar);
   private translate     = inject(TranslateService);
   private destroyRef    = inject(DestroyRef);
+  private prepTimerSession = inject(PrepTimerSessionService);
+  private kitchenPrint     = inject(KitchenPrintService);
 
   order   = signal<any>(null);
+  /** Bandeau minuteur en surbrillance quand l’échéance est dépassée. */
+  detailPrepOverdue = signal(false);
   loading = signal(false);
   actionLoading = signal(false);
 
@@ -95,6 +108,12 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
   isPreparing = computed(() => this.order()?.status === 'PREPARING');
   isReady     = computed(() => this.order()?.status === 'READY');
   isCancelled = computed(() => this.order()?.status === 'CANCELLED');
+
+  prepTimerDetailContext = computed(() => {
+    const o = this.order() as Order | null;
+    if (!o) return null;
+    return mergePrepTimerContext(this.prepTimerSession.load(o.id), o);
+  });
 
   totalItems = computed(() =>
     (this.order()?.items ?? []).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0)
@@ -161,8 +180,10 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
 
   fetchOrder(id: string): void {
     if (!this.order()) this.loading.set(true);
+    this.detailPrepOverdue.set(false);
     this.ordersService.getOrder(id).subscribe({
       next: (o) => {
+        this.clearPrepTimerIfTerminal(o);
         this.order.set(o);
         this.ordersStore.updateOrder(o);
         this.loading.set(false);
@@ -290,6 +311,9 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
       next: (updated) => {
         this.order.set(updated);
         this.ordersStore.updateOrder(updated);
+        const ctx = buildPrepTimerContextAfterAccept(updated as Order, prepTime);
+        if (ctx) this.prepTimerSession.save(id, ctx);
+        this.kitchenPrint.printKitchenTicket(String(id));
         this.actionLoading.set(false);
         this.refreshHistoryAfterAction();
         this.snackBar.open(
@@ -316,6 +340,8 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
 
     this.ordersService.cancelOrder(id, reason).subscribe({
       next: (updated) => {
+        this.prepTimerSession.clear(id);
+        this.detailPrepOverdue.set(false);
         this.order.set(updated);
         this.ordersStore.updateOrder(updated);
         this.actionLoading.set(false);
@@ -370,6 +396,8 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
 
     this.ordersService.markReady(o.id).subscribe({
       next: (updated) => {
+        this.prepTimerSession.clear(o.id);
+        this.detailPrepOverdue.set(false);
         this.order.set(updated);
         this.ordersStore.updateOrder(updated);
         this.actionLoading.set(false);
@@ -387,6 +415,12 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
     });
   }
 
+  reprintKitchenTicket(): void {
+    const o = this.order();
+    if (!o) return;
+    this.kitchenPrint.printKitchenTicket(String(o.id));
+  }
+
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
@@ -398,6 +432,15 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
       DINE_IN:  'restaurant',
     };
     return map[type] ?? 'receipt_long';
+  }
+
+  private clearPrepTimerIfTerminal(o: Order | null): void {
+    if (!o) return;
+    const s = o.status;
+    if (s === 'READY' || s === 'DELIVERED' || s === 'CANCELLED' || s === 'PICKED_UP') {
+      this.prepTimerSession.clear(o.id);
+      this.detailPrepOverdue.set(false);
+    }
   }
 
   getItemTotal(item: any): number {

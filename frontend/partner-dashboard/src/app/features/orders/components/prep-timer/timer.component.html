@@ -1,0 +1,6 @@
+<span
+  class="prep-timer"
+  [class.timer-warning]="active && remainingSeconds < 120 && remainingSeconds > 0"
+  [class.timer-expired]="active && remainingSeconds <= 0">
+  {{ remainingSeconds | timerFormat }}
+</span>

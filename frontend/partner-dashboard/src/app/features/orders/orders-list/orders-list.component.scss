@@ -442,6 +442,11 @@
   }
 
   // Rows
+  @keyframes prepTimerRowBlink {
+    0%, 100% { background-color: rgba(239, 68, 68, 0.07); }
+    50%       { background-color: rgba(239, 68, 68, 0.2); }
+  }
+
   tr.order-row {
     cursor: pointer;
     transition: background $transition-fast;
@@ -457,6 +462,27 @@
     &[data-status="CANCELLED"] td.mat-mdc-cell {
       opacity: 0.55;
     }
+
+    &.prep-timer-overdue td.mat-mdc-cell {
+      animation: prepTimerRowBlink 1s ease-in-out infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      &.prep-timer-overdue td.mat-mdc-cell {
+        animation: none;
+        background-color: rgba(239, 68, 68, 0.12);
+      }
+    }
+  }
+
+  .cell-prep-timer {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .prep-timer-placeholder {
+    color: $gray-400;
+    font-size: 0.875rem;
   }
 }
 

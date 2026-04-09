@@ -193,6 +193,24 @@
             </td>
           </ng-container>
 
+          <!-- Prep countdown (confirmed / preparing) -->
+          <ng-container matColumnDef="prepTimer">
+            <th mat-header-cell *matHeaderCellDef>{{ 'ORDERS.COL_PREP_TIMER' | translate }}</th>
+            <td mat-cell *matCellDef="let row" class="cell-prep-timer" (click)="$event.stopPropagation()">
+              @if (prepTimerContextForRow(row); as ctx) {
+                <app-timer
+                  [startTimeIso]="ctx.startTimeIso"
+                  [durationMinutes]="ctx.durationMinutes"
+                  [active]="true"
+                  [orderId]="row.id"
+                  (expiredChange)="onPrepTimerExpired(row.id, $event)">
+                </app-timer>
+              } @else {
+                <span class="prep-timer-placeholder">—</span>
+              }
+            </td>
+          </ng-container>
+
           <!-- Actions Column -->
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef></th>
@@ -227,6 +245,7 @@
           <tr mat-row *matRowDef="let row; columns: displayedColumns;"
               class="order-row"
               [class.new-row]="isNewOrder(row.id)"
+              [class.prep-timer-overdue]="isPrepTimerRowOverdue(row.id)"
               [attr.data-status]="row.status"
               (click)="openDetail(row)">
           </tr>
@@ -271,7 +290,8 @@
           (confirm)="openAcceptDialog($event)"
           (reject)="openRejectDialog($event)"
           (startPreparing)="startPreparing($event)"
-          (markReady)="markReady($event)">
+          (markReady)="markReady($event)"
+          (prepTimerExpired)="onPrepTimerExpired(order.id, $event)">
         </app-order-card>
       } @empty {
         @if (!loading()) {

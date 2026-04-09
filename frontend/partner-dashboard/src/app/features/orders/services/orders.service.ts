@@ -5,6 +5,7 @@ import { map, catchError } from 'rxjs/operators';
 import { ApiService } from '@core/services/api.service';
 import { AuthService } from '@core/services/auth.service';
 import { TranslateService } from '@ngx-translate/core';
+import { Order } from '../models/order.model';
 
 export interface OrderListParams {
   page?:    number;
@@ -17,6 +18,37 @@ export interface OrderListParams {
   from?:    string;
   /** ISO LocalDateTime, ex. 2026-04-07T23:59:59 */
   to?:      string;
+  /** Avec {@code status=CANCELLED} : ex. PARTNER (refus partenaire). */
+  cancelledBy?: string;
+}
+
+/** Filtres écran historique partenaire (PD-507). */
+export type PartnerHistoryStatusChip = 'ALL' | 'DELIVERED' | 'CANCELLED' | 'REFUSED';
+
+export interface PartnerHistoryFilters {
+  from: string;
+  to: string;
+  statusChip: PartnerHistoryStatusChip;
+  search: string;
+  page: number;
+  size: number;
+}
+
+/** Filtres historique sans pagination (export PD-508). */
+export type PartnerHistoryBaseFilters = Omit<PartnerHistoryFilters, 'page' | 'size'>;
+
+export interface PartnerHistoryPage {
+  items: any[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export interface PartnerOrderHistorySummary {
+  totalOrders: number;
+  revenueTnd: number;
+  cancelledCount: number;
+  cancellationRatePercent: number;
 }
 
 export interface OrderPage {
@@ -88,6 +120,9 @@ export class OrdersService {
     }
     if (params.from) queryParams['from'] = params.from;
     if (params.to)   queryParams['to']   = params.to;
+    if (params.cancelledBy?.trim()) {
+      queryParams['cancelledBy'] = params.cancelledBy.trim().toUpperCase();
+    }
 
     return this.api.get<any>(`orders/partners/${partnerId}`, queryParams).pipe(
       map((res) => ({
@@ -137,8 +172,126 @@ export class OrdersService {
     );
   }
 
+  /**
+   * Liste historique partenaire (même endpoint que {@link getOrders}, tri date + mapping ticket).
+   */
+  getHistory(filters: PartnerHistoryFilters): Observable<PartnerHistoryPage> {
+    const partnerId = this.partnerIdOrThrow();
+    const queryParams: Record<string, any> = {
+      page:    filters.page ?? 0,
+      size:    filters.size ?? 20,
+      sortBy:  'orderTime',
+      sortDir: 'desc',
+      from:    filters.from,
+      to:      filters.to,
+    };
+    switch (filters.statusChip) {
+      case 'DELIVERED':
+        queryParams['status'] = 'DELIVERED';
+        break;
+      case 'CANCELLED':
+        queryParams['status'] = 'CANCELLED';
+        break;
+      case 'REFUSED':
+        queryParams['status'] = 'CANCELLED';
+        queryParams['cancelledBy'] = 'PARTNER';
+        break;
+      default:
+        break;
+    }
+    if (filters.search?.trim()) {
+      queryParams['search'] = filters.search.trim();
+    }
+
+    return this.api.get<any>(`orders/partners/${partnerId}`, queryParams).pipe(
+      map((res) => ({
+        items: (res?.content ?? []).map((o: any) => this.normalizeOrder(o)),
+        total: res?.totalElements ?? 0,
+        page:  res?.number ?? 0,
+        size:  res?.size ?? (filters.size ?? 20),
+      })),
+      catchError((err) => {
+        console.error('[OrdersService] getHistory', err);
+        return of({
+          items: [],
+          total: 0,
+          page:  0,
+          size:  filters.size ?? 20,
+        });
+      })
+    );
+  }
+
+  /**
+   * Export serveur (Excel ou PDF), mêmes filtres que {@link getHistory}.
+   */
+  exportHistoryBlob(
+    format: 'excel' | 'pdf',
+    base: PartnerHistoryBaseFilters,
+    lang: string
+  ): Observable<Blob> {
+    const partnerId = this.partnerIdOrThrow();
+    const segment = format === 'excel' ? 'excel' : 'pdf';
+    const queryParams: Record<string, string> = {
+      from: base.from,
+      to: base.to,
+      lang: lang || 'fr',
+    };
+    switch (base.statusChip) {
+      case 'DELIVERED':
+        queryParams['status'] = 'DELIVERED';
+        break;
+      case 'CANCELLED':
+        queryParams['status'] = 'CANCELLED';
+        break;
+      case 'REFUSED':
+        queryParams['status'] = 'CANCELLED';
+        queryParams['cancelledBy'] = 'PARTNER';
+        break;
+      default:
+        break;
+    }
+    if (base.search?.trim()) {
+      queryParams['search'] = base.search.trim();
+    }
+    return this.api.getBlob(`orders/partners/${partnerId}/export/${segment}`, queryParams);
+  }
+
+  /** KPI période (commandes livrées, annulations, CA). */
+  getPartnerOrderHistorySummary(
+    from: string,
+    to: string
+  ): Observable<PartnerOrderHistorySummary> {
+    const partnerId = this.partnerIdOrThrow();
+    return this.api
+      .get<PartnerOrderHistorySummary>(`orders/partners/${partnerId}/history-summary`, { from, to })
+      .pipe(
+        map((raw) => ({
+          totalOrders:             raw?.totalOrders ?? 0,
+          revenueTnd:              Number(raw?.revenueTnd ?? 0),
+          cancelledCount:          raw?.cancelledCount ?? 0,
+          cancellationRatePercent: Number(raw?.cancellationRatePercent ?? 0),
+        })),
+        catchError((err) => {
+          console.error('[OrdersService] getPartnerOrderHistorySummary', err);
+          return of({
+            totalOrders:             0,
+            revenueTnd:              0,
+            cancelledCount:          0,
+            cancellationRatePercent: 0,
+          });
+        })
+      );
+  }
+
   getOrder(id: string): Observable<any> {
     return this.api.get<any>(`orders/${id}`).pipe(map((o) => this.normalizeOrder(o)));
+  }
+
+  /** HTML complet du ticket cuisine (order-service), pour impression dans un iframe. */
+  getKitchenTicketHtml(orderId: string): Observable<string> {
+    const partnerId = this.partnerIdOrThrow();
+    return this.api.getText(`orders/${orderId}/partner/kitchen-ticket`, { partnerId });
   }
 
   getOrderHistory(id: string, params?: OrderHistoryParams): Observable<OrderHistoryPage> {
@@ -275,7 +428,9 @@ export class OrdersService {
       deliveryFee:  o.deliveryFee       ?? 0,
       serviceFee:   o.serviceFee        ?? 0,
       discount:     o.discount          ?? 0,
+      tax:          o.tax != null ? Number(o.tax) : 0,
       total:        o.total,
+      courierName:  o.courierName ?? '',
       suggestedPreparationMinutes:
         o.suggestedPreparationMinutes != null
           ? Number(o.suggestedPreparationMinutes)
