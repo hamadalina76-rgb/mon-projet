@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name = "promotion-service")
+@FeignClient(name = "promotion-service", url = "${PROMOTION_SERVICE_URL:http://localhost:8092}")
 public interface PromotionServiceClient {
 
     @PostMapping("/promotions/validate")

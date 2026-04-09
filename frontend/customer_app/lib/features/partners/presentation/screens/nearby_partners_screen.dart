@@ -343,6 +343,8 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
   }
 
   Future<void> _handleFavoriteToggle(PartnerNearbyDto partner) async {
+    final l10n = AppLocalizations.of(context)!;
+
     final result = await ref
         .read(favoritePartnersNotifierProvider.notifier)
         .toggleFavorite(partnerId: partner.id, partnerSnapshot: partner);
@@ -351,8 +353,8 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
 
     if (!result.success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Erreur, veuillez reessayer'),
+        SnackBar(
+          content: Text(l10n.translate('favorites_error_retry')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -360,8 +362,8 @@ class _NearbyPartnersScreenState extends ConsumerState<NearbyPartnersScreen> {
     }
 
     final message = result.action == FavoriteToggleAction.added
-        ? 'Ajoute aux favoris'
-        : 'Retire des favoris';
+        ? l10n.translate('partner_details_favorite_added')
+        : l10n.translate('partner_details_favorite_removed');
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

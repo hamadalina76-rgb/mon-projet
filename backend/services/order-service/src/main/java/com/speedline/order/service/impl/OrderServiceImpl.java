@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.speedline.order.client.PartnerServiceClient;
 import com.speedline.order.client.PromotionServiceClient;
+import com.speedline.order.client.UserServiceClient;
+import com.speedline.order.client.dto.CustomerSnapshot;
 import com.speedline.order.client.dto.PartnerSnapshot;
 import com.speedline.order.client.dto.ProductSnapshot;
 import com.speedline.order.client.dto.promotion.PromotionApiResponse;
@@ -47,6 +49,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -89,6 +92,7 @@ public class OrderServiceImpl implements OrderService {
     private final CartService cartService;
     private final PartnerServiceClient partnerServiceClient;
     private final PromotionServiceClient promotionServiceClient;
+    private final UserServiceClient userServiceClient;
     private final OrderEventProducer orderEventProducer;
     private final ObjectMapper objectMapper;
 
@@ -128,6 +132,7 @@ public class OrderServiceImpl implements OrderService {
                 cartItems,
                 request.getPromoCode(),
                 addressId,
+                null,
                 paymentMethod,
             false,
             request.getIsScheduled(),
@@ -156,6 +161,7 @@ public class OrderServiceImpl implements OrderService {
                 cartItems,
                 request.getPromoCode(),
                 request.getAddressId(),
+                request.getDeliveryAddressDetails(),
                 request.getPaymentMethod(),
             true,
             request.getIsScheduled(),
@@ -603,6 +609,7 @@ public class OrderServiceImpl implements OrderService {
             List<CartItemPayload> cartItems,
             String promoCode,
             String addressId,
+            CheckoutOrderRequest.DeliveryAddressRequest deliveryAddressDetails,
             String paymentMethodRaw,
             boolean clearCartAfterSuccess,
             Boolean requestedScheduled,
@@ -679,12 +686,17 @@ public class OrderServiceImpl implements OrderService {
                 .max()
                 .orElse(20);
 
+        final ResolvedCustomerInfo customerInfo = resolveCustomerInfo(customerId);
+        final ResolvedDeliveryAddress resolvedDeliveryAddress = resolveDeliveryAddress(addressId, deliveryAddressDetails);
+
         final Order order = Order.builder()
                 .customerId(customerId)
                 .partnerId(partnerId)
                 .status(OrderStatus.PENDING)
                 .type(Order.OrderType.DELIVERY)
-                .customerName("Client #" + customerId)
+            .customerName(customerInfo.name())
+            .customerEmail(customerInfo.email())
+            .customerPhone(customerInfo.phone())
                 .partnerName(resolvePartnerName(partner))
                 .partnerAddress(partner.getAddress())
                 .partnerPhone(partner.getPhoneNumber())
@@ -696,7 +708,10 @@ public class OrderServiceImpl implements OrderService {
                 .promoCode(normalizedPromoCode)
                 .tip(tip)
                 .total(total)
-                .deliveryAddressJson(buildDeliveryAddressJson(addressId))
+                .deliveryAddressJson(resolvedDeliveryAddress.deliveryAddressJson())
+                .deliveryLatitude(resolvedDeliveryAddress.deliveryLatitude())
+                .deliveryLongitude(resolvedDeliveryAddress.deliveryLongitude())
+                .deliveryInstructions(resolvedDeliveryAddress.deliveryInstructions())
                 .paymentMethod(paymentMethod)
                 .paymentStatus(Order.PaymentStatus.PENDING)
                 .isScheduled(normalizedScheduledDeliveryTime != null)
@@ -710,6 +725,7 @@ public class OrderServiceImpl implements OrderService {
                 .build();
 
         final Order savedOrder = orderRepository.save(order);
+        syncLegacyDeliveryFields(savedOrder, resolvedDeliveryAddress.deliveryAddressJson());
 
         for (OrderItem item : orderItems) {
             item.setOrderId(savedOrder.getId());
@@ -994,14 +1010,7 @@ public class OrderServiceImpl implements OrderService {
     private List<String> cartSignature(List<CartItemPayload> items) {
         return items.stream()
                 .map(item -> {
-                    final List<String> normalizedOptions = item.getSelectedOptions() == null
-                            ? List.of()
-                            : item.getSelectedOptions().stream()
-                            .filter(Objects::nonNull)
-                            .map(option -> option.trim().toLowerCase(Locale.ROOT))
-                            .filter(option -> !option.isEmpty())
-                            .sorted()
-                            .toList();
+                final List<String> normalizedOptions = normalizeOptionsForSignature(item.getSelectedOptions());
 
                     final String note = item.getKitchenNote() == null
                             ? ""
@@ -1016,6 +1025,23 @@ public class OrderServiceImpl implements OrderService {
                 .sorted()
                 .toList();
     }
+
+            private List<String> normalizeOptionsForSignature(List<Object> rawSelectedOptions) {
+            return normalizeSelectedOptions(rawSelectedOptions).stream()
+                .map(option -> {
+                    final String optionName = trimToNull(option.getOptionName()) == null
+                        ? ""
+                        : option.getOptionName().trim().toLowerCase(Locale.ROOT);
+                    final String valueName = trimToNull(option.getValueName()) == null
+                        ? ""
+                        : option.getValueName().trim().toLowerCase(Locale.ROOT);
+                    final String priceModifier = scaleMoney(option.getPriceModifier()).toPlainString();
+                    return optionName + ":" + valueName + ":" + priceModifier;
+                })
+                .filter(token -> !token.equals("::0.00"))
+                .sorted()
+                .toList();
+            }
 
     private Long extractSinglePartnerId(List<CartItemPayload> cartItems) {
         Long partnerId = null;
@@ -1169,10 +1195,12 @@ public class OrderServiceImpl implements OrderService {
             }
 
             log.error("Erreur promotion-service lors de la validation du code {}", promoCode, ex);
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Service promotion indisponible");
+            log.warn("Validation promo indisponible, poursuite du checkout sans réduction. code={}", promoCode);
+            return ZERO;
         } catch (Exception ex) {
             log.error("Erreur lors de la validation du code promo {}", promoCode, ex);
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Service promotion indisponible");
+            log.warn("Validation promo indisponible, poursuite du checkout sans réduction. code={}", promoCode);
+            return ZERO;
         }
     }
 
@@ -1298,6 +1326,13 @@ public class OrderServiceImpl implements OrderService {
             final BigDecimal normalizedUnitPrice = scaleMoney(unitPrice);
             final Integer quantity = cartItem.getQuantity();
             final int linePrepMin = resolveLinePreparationMinutes(product, partner);
+                final List<OrderItemDTO.SelectedOptionDTO> normalizedSelectedOptions =
+                    normalizeSelectedOptions(cartItem.getSelectedOptions());
+                final BigDecimal modifiersTotal = scaleMoney(normalizedSelectedOptions.stream()
+                    .map(OrderItemDTO.SelectedOptionDTO::getPriceModifier)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add));
+                final BigDecimal totalUnitPrice = scaleMoney(normalizedUnitPrice.add(modifiersTotal));
 
             final OrderItem orderItem = OrderItem.builder()
                     .productId(productId)
@@ -1306,9 +1341,9 @@ public class OrderServiceImpl implements OrderService {
                     .productImage(product.getImageUrl())
                     .quantity(quantity)
                     .unitPrice(normalizedUnitPrice)
-                    .modifiersTotal(ZERO)
-                    .subtotal(scaleMoney(normalizedUnitPrice.multiply(BigDecimal.valueOf(quantity))))
-                    .selectedOptionsJson(writeJson(cartItem.getSelectedOptions() == null ? List.of() : cartItem.getSelectedOptions()))
+                    .modifiersTotal(modifiersTotal)
+                    .subtotal(scaleMoney(totalUnitPrice.multiply(BigDecimal.valueOf(quantity))))
+                    .selectedOptionsJson(writeJson(normalizedSelectedOptions))
                     .selectedAddonsJson("[]")
                     .specialInstructions(trimToNull(cartItem.getKitchenNote()))
                     .preparationTimeMin(linePrepMin)
@@ -1318,6 +1353,91 @@ public class OrderServiceImpl implements OrderService {
         }
 
         return orderItems;
+    }
+
+    private List<OrderItemDTO.SelectedOptionDTO> normalizeSelectedOptions(List<Object> rawSelectedOptions) {
+        if (rawSelectedOptions == null || rawSelectedOptions.isEmpty()) {
+            return List.of();
+        }
+
+        final List<OrderItemDTO.SelectedOptionDTO> normalized = new ArrayList<>();
+
+        for (Object rawOption : rawSelectedOptions) {
+            if (rawOption instanceof String optionLabel) {
+                final String trimmedLabel = optionLabel.trim();
+                if (trimmedLabel.isEmpty()) {
+                    continue;
+                }
+
+                final String optionName = normalizeOptionNameFromLabel(trimmedLabel);
+                final String valueName = firstNonBlank(
+                        trimmedLabel.contains(":")
+                                ? trimmedLabel.substring(trimmedLabel.indexOf(':') + 1).trim()
+                                : null,
+                        trimmedLabel
+                );
+
+                normalized.add(OrderItemDTO.SelectedOptionDTO.builder()
+                        .optionName(optionName)
+                        .valueName(valueName)
+                        .priceModifier(ZERO)
+                        .build());
+                continue;
+            }
+
+            if (!(rawOption instanceof Map<?, ?> map)) {
+                continue;
+            }
+
+            final String optionName = firstNonBlank(
+                    asString(map.get("optionName")),
+                    asString(map.get("groupName")),
+                    asString(map.get("groupLabel"))
+            );
+            final String valueName = firstNonBlank(
+                    asString(map.get("valueName")),
+                    asString(map.get("optionValueName")),
+                    asString(map.get("label")),
+                    asString(map.get("name")),
+                    optionName
+            );
+            final BigDecimal priceModifier = scaleMoney(asBigDecimal(
+                    map.containsKey("priceModifier") ? map.get("priceModifier") : map.get("price")
+            ));
+
+            if (trimToNull(optionName) == null && trimToNull(valueName) == null) {
+                continue;
+            }
+
+            normalized.add(OrderItemDTO.SelectedOptionDTO.builder()
+                    .optionId(asLong(map.get("optionId")))
+                    .optionName(optionName)
+                    .valueId(asLong(map.get("valueId")))
+                    .valueName(valueName)
+                    .priceModifier(priceModifier)
+                    .build());
+        }
+
+        return List.copyOf(normalized);
+    }
+
+    private String normalizeOptionNameFromLabel(String label) {
+        final int separatorIndex = label.indexOf(':');
+        if (separatorIndex < 0) {
+            return null;
+        }
+        final String group = label.substring(0, separatorIndex).trim();
+        return group.isEmpty() ? null : group;
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            final String normalized = trimToNull(value);
+            if (normalized != null) {
+                return normalized;
+            }
+        }
+        return null;
     }
 
     /**
@@ -1357,6 +1477,142 @@ public class OrderServiceImpl implements OrderService {
         return "Partenaire #" + partner.getId();
     }
 
+    private ResolvedCustomerInfo resolveCustomerInfo(Long customerId) {
+        try {
+            final CustomerSnapshot snapshot = userServiceClient.getCustomerByUserId(customerId);
+            if (snapshot != null) {
+                final String resolvedName = firstNonBlank(
+                        joinNonBlank(snapshot.getFirstName(), snapshot.getLastName()),
+                        snapshot.getFirstName(),
+                        snapshot.getLastName()
+                );
+
+                return new ResolvedCustomerInfo(
+                        firstNonBlank(resolvedName, "Client #" + customerId),
+                        trimToNull(snapshot.getEmail()),
+                        trimToNull(snapshot.getPhoneNumber())
+                );
+            }
+        } catch (Exception ex) {
+            log.warn("Impossible de récupérer les informations client userId={} : {}", customerId, ex.getMessage());
+        }
+
+        return new ResolvedCustomerInfo("Client #" + customerId, null, null);
+    }
+
+    private ResolvedDeliveryAddress resolveDeliveryAddress(
+            String legacyAddressId,
+            CheckoutOrderRequest.DeliveryAddressRequest deliveryAddressDetails
+    ) {
+        final String requestAddressId = deliveryAddressDetails == null
+                ? null
+                : trimToNull(deliveryAddressDetails.getAddressId());
+        final String normalizedAddressId = firstNonBlank(requestAddressId, trimToNull(legacyAddressId));
+
+        final Map<String, Object> payload = new LinkedHashMap<>();
+        if (normalizedAddressId != null) {
+            payload.put("addressId", normalizedAddressId);
+        }
+
+        if (deliveryAddressDetails != null) {
+            putIfNotBlank(payload, "label", deliveryAddressDetails.getLabel());
+            putIfNotBlank(payload, "deliveryAddress", deliveryAddressDetails.getDeliveryAddress());
+            putIfNotBlank(payload, "deliveryLocation", deliveryAddressDetails.getDeliveryLocation());
+            putIfNotBlank(payload, "street", deliveryAddressDetails.getStreet());
+            putIfNotBlank(payload, "building", deliveryAddressDetails.getBuilding());
+            putIfNotBlank(payload, "floor", deliveryAddressDetails.getFloor());
+            putIfNotBlank(payload, "apartment", deliveryAddressDetails.getApartment());
+            putIfNotBlank(payload, "city", deliveryAddressDetails.getCity());
+            putIfNotBlank(payload, "postalCode", deliveryAddressDetails.getPostalCode());
+            putIfNotBlank(payload, "state", deliveryAddressDetails.getState());
+            putIfNotBlank(payload, "country", deliveryAddressDetails.getCountry());
+            putIfNotBlank(payload, "formattedAddress", deliveryAddressDetails.getFormattedAddress());
+            putIfNotBlank(payload, "deliveryInstructions", deliveryAddressDetails.getDeliveryInstructions());
+            putIfNotBlank(payload, "contactName", deliveryAddressDetails.getContactName());
+            putIfNotBlank(payload, "contactPhone", deliveryAddressDetails.getContactPhone());
+            if (deliveryAddressDetails.getIsFromMap() != null) {
+                payload.put("isFromMap", deliveryAddressDetails.getIsFromMap());
+            }
+
+            final BigDecimal latitude = resolveCoordinate(
+                    deliveryAddressDetails.getDeliveryLatitude(),
+                    deliveryAddressDetails.getLatitude()
+            );
+            final BigDecimal longitude = resolveCoordinate(
+                    deliveryAddressDetails.getDeliveryLongitude(),
+                    deliveryAddressDetails.getLongitude()
+            );
+
+            if (latitude != null) {
+                payload.put("deliveryLatitude", latitude);
+                payload.put("latitude", latitude);
+            }
+            if (longitude != null) {
+                payload.put("deliveryLongitude", longitude);
+                payload.put("longitude", longitude);
+            }
+
+            return new ResolvedDeliveryAddress(
+                    payload.isEmpty() ? null : writeJson(payload),
+                    latitude,
+                    longitude,
+                    trimToNull(deliveryAddressDetails.getDeliveryInstructions())
+            );
+        }
+
+        if (payload.isEmpty()) {
+            return new ResolvedDeliveryAddress(null, null, null, null);
+        }
+
+        return new ResolvedDeliveryAddress(writeJson(payload), null, null, null);
+    }
+
+    private void syncLegacyDeliveryFields(Order savedOrder, String deliveryAddressJson) {
+        if (savedOrder == null || savedOrder.getId() == null) {
+            return;
+        }
+
+        try {
+            orderRepository.syncLegacyDeliveryFields(
+                    savedOrder.getId(),
+                    deliveryAddressJson,
+                    savedOrder.getDeliveryLatitude(),
+                    savedOrder.getDeliveryLongitude()
+            );
+        } catch (Exception ex) {
+            log.debug("Impossible de synchroniser les colonnes legacy de livraison pour orderId={}", savedOrder.getId(), ex);
+        }
+    }
+
+    private BigDecimal resolveCoordinate(BigDecimal preferred, BigDecimal fallback) {
+        if (preferred != null) {
+            return preferred;
+        }
+        return fallback;
+    }
+
+    private void putIfNotBlank(Map<String, Object> payload, String key, String value) {
+        final String normalized = trimToNull(value);
+        if (normalized != null) {
+            payload.put(key, normalized);
+        }
+    }
+
+    private String joinNonBlank(String first, String second) {
+        final String left = trimToNull(first);
+        final String right = trimToNull(second);
+        if (left == null && right == null) {
+            return null;
+        }
+        if (left == null) {
+            return right;
+        }
+        if (right == null) {
+            return left;
+        }
+        return left + " " + right;
+    }
+
     private String buildDeliveryAddressJson(String addressId) {
         final String normalized = trimToNull(addressId);
         if (normalized == null) {
@@ -1371,7 +1627,7 @@ public class OrderServiceImpl implements OrderService {
             return objectMapper.writeValueAsString(value);
         } catch (Exception ex) {
             log.warn("Impossible de sérialiser le JSON", ex);
-            return "[]";
+            return "{}";
         }
     }
 
@@ -1425,10 +1681,21 @@ public class OrderServiceImpl implements OrderService {
                 if (rawOption instanceof Map<?, ?> map) {
                     parsed.add(OrderItemDTO.SelectedOptionDTO.builder()
                             .optionId(asLong(map.get("optionId")))
-                            .optionName(asString(map.get("optionName")))
+                        .optionName(firstNonBlank(
+                            asString(map.get("optionName")),
+                            asString(map.get("groupName")),
+                            asString(map.get("groupLabel"))
+                        ))
                             .valueId(asLong(map.get("valueId")))
-                            .valueName(asString(map.get("valueName")))
-                            .priceModifier(scaleMoney(asBigDecimal(map.get("priceModifier"))))
+                        .valueName(firstNonBlank(
+                            asString(map.get("valueName")),
+                            asString(map.get("optionValueName")),
+                            asString(map.get("label")),
+                            asString(map.get("name"))
+                        ))
+                        .priceModifier(scaleMoney(asBigDecimal(
+                            map.containsKey("priceModifier") ? map.get("priceModifier") : map.get("price")
+                        )))
                             .build());
                 }
             }
@@ -1625,9 +1892,14 @@ public class OrderServiceImpl implements OrderService {
         try {
             final Map<String, Object> payload = objectMapper.readValue(deliveryAddressJson, new TypeReference<Map<String, Object>>() {});
             final String addressId = asString(payload.get("addressId"));
-            final String formattedAddress = trimToNull(asString(payload.get("formattedAddress"))) != null
-                    ? asString(payload.get("formattedAddress"))
-                    : (addressId == null ? null : "addressId:" + addressId);
+            final String deliveryAddress = trimToNull(asString(payload.get("deliveryAddress")));
+            final String deliveryLocation = trimToNull(asString(payload.get("deliveryLocation")));
+            final String formattedAddress = firstNonBlank(
+                asString(payload.get("formattedAddress")),
+                deliveryAddress,
+                deliveryLocation,
+                addressId == null ? null : "addressId:" + addressId
+            );
 
             return OrderResponse.DeliveryAddressDTO.builder()
                     .street(asString(payload.get("street")))
@@ -1636,8 +1908,14 @@ public class OrderServiceImpl implements OrderService {
                     .apartment(asString(payload.get("apartment")))
                     .city(asString(payload.get("city")))
                     .postalCode(asString(payload.get("postalCode")))
-                    .latitude(asBigDecimal(payload.get("latitude")))
-                    .longitude(asBigDecimal(payload.get("longitude")))
+                .latitude(firstNonNullDecimal(
+                    asBigDecimalOrNull(payload.get("deliveryLatitude")),
+                    asBigDecimalOrNull(payload.get("latitude"))
+                ))
+                .longitude(firstNonNullDecimal(
+                    asBigDecimalOrNull(payload.get("deliveryLongitude")),
+                    asBigDecimalOrNull(payload.get("longitude"))
+                ))
                     .formattedAddress(formattedAddress)
                     .build();
         } catch (Exception ex) {
@@ -1723,6 +2001,39 @@ public class OrderServiceImpl implements OrderService {
         return ZERO;
     }
 
+    private BigDecimal asBigDecimalOrNull(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        if (value instanceof BigDecimal decimal) {
+            return decimal;
+        }
+
+        if (value instanceof Number number) {
+            return BigDecimal.valueOf(number.doubleValue());
+        }
+
+        if (value instanceof String text) {
+            try {
+                return new BigDecimal(text.trim());
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    private BigDecimal firstNonNullDecimal(BigDecimal... values) {
+        for (BigDecimal value : values) {
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
     private String asString(Object value) {
         if (value == null) {
             return null;
@@ -1749,4 +2060,13 @@ public class OrderServiceImpl implements OrderService {
     private ResponseStatusException badRequest(String message) {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
     }
+
+    private record ResolvedCustomerInfo(String name, String email, String phone) {}
+
+    private record ResolvedDeliveryAddress(
+            String deliveryAddressJson,
+            BigDecimal deliveryLatitude,
+            BigDecimal deliveryLongitude,
+            String deliveryInstructions
+    ) {}
 }

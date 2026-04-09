@@ -43,6 +43,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
   late MenuProductDto _product;
   List<MenuProductOptionGroupDto> _optionGroups = const [];
   final Map<String, Set<String>> _selectedOptionIds = {};
+  final TextEditingController _kitchenNoteController = TextEditingController();
 
   bool _isLoading = true;
   String? _loadError;
@@ -88,6 +89,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _titleFadeController.dispose();
+    _kitchenNoteController.dispose();
     super.dispose();
   }
 
@@ -437,15 +439,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
           final ids = _selectedOptionIds[group.id] ?? const <String>{};
           return ProductSelectionGroup(
             groupId: group.id,
-            groupName: _translateDynamicLabel(group.name, const [
-              'menu_option_group',
-              'menu_label',
-            ]),
+            groupName: group.name,
             options: group.options.where((o) => ids.contains(o.id)).toList(),
           );
         })
         .where((g) => g.options.isNotEmpty)
         .toList();
+
+    final kitchenNote = _kitchenNoteController.text.trim();
 
     Navigator.of(context).pop(
       ProductSelectionResult(
@@ -455,6 +456,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
         unitPrice: _unitPrice,
         totalPrice: _totalPrice,
         selections: selectedGroups,
+        kitchenNote: kitchenNote.isEmpty ? null : kitchenNote,
       ),
     );
   }
@@ -564,6 +566,21 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   ),
                   const SizedBox(height: 24),
                 ],
+
+                TextField(
+                  controller: _kitchenNoteController,
+                  maxLines: 3,
+                  maxLength: 500,
+                  decoration: InputDecoration(
+                    labelText:
+                        '${_tr('kitchen_note')} (${_tr('product_detail_optional')})',
+                    alignLabelWithHint: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
 
                 // Option groups — no boxes, just dividers
                 if (_optionGroups.isNotEmpty)
@@ -1530,6 +1547,7 @@ class ProductSelectionResult {
   final double unitPrice;
   final double totalPrice;
   final List<ProductSelectionGroup> selections;
+  final String? kitchenNote;
 
   const ProductSelectionResult({
     required this.productId,
@@ -1538,6 +1556,7 @@ class ProductSelectionResult {
     required this.unitPrice,
     required this.totalPrice,
     required this.selections,
+    this.kitchenNote,
   });
 }
 

@@ -22,6 +22,7 @@ import '../../features/location/data/models/saved_location.dart';
 import '../../features/profile/data/models/address_model.dart';
 import '../../features/partners/presentation/screens/nearby_partners_screen.dart';
 import '../../features/cart/presentation/cart_screen.dart';
+import '../../features/cart/presentation/screens/checkout_screen.dart';
 import 'route_names.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -157,6 +158,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: RouteNames.cart,
       builder: (context, state) => const CartScreen(),
+    ),
+    GoRoute(
+      path: RouteNames.checkout,
+      builder: (context, state) => const CheckoutScreen(),
     ),
 
     // Main App Screens with Bottom Navigation

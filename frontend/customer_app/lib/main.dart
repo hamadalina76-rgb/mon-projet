@@ -98,7 +98,7 @@ class SpeedLineApp extends ConsumerWidget {
       title: 'SpeedLine',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.light,
       debugShowCheckedModeBanner: false,
       routerConfig: appRouter,
       locale: locale,
