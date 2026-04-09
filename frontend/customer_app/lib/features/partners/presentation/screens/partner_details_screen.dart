@@ -276,13 +276,25 @@ class _PartnerDetailsScreenState extends ConsumerState<PartnerDetailsScreen>
     if (!mounted || result == null) return;
 
     final selectedOptions = result.selections
-        .expand(
-          (group) => group.options.map(
-            (option) =>
-                '${_translateMenuLabel(group.groupName, const ['menu_option_group', 'menu_label'])}: '
-                '${_translateMenuLabel(option.name, const ['menu_option', 'menu_label'])}',
-          ),
-        )
+        .expand((group) {
+          final translatedGroup = _translateMenuLabel(
+            group.groupName,
+            const ['menu_option_group', 'menu_label'],
+          );
+
+          return group.options.map(
+            (option) => CartItemSelectedOption(
+              optionId: group.groupId,
+              optionName: translatedGroup,
+              valueId: option.id,
+              valueName: _translateMenuLabel(
+                option.name,
+                const ['menu_option', 'menu_label'],
+              ),
+              priceModifier: option.priceModifier,
+            ),
+          );
+        })
         .toList();
 
     final cartItem = CartItemModel(
@@ -294,7 +306,7 @@ class _PartnerDetailsScreenState extends ConsumerState<PartnerDetailsScreen>
       unitPrice: result.unitPrice,
       quantity: result.quantity,
       selectedOptions: selectedOptions,
-      kitchenNote: null,
+      kitchenNote: result.kitchenNote,
     );
 
     final added = await ref

@@ -258,6 +258,25 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     int updateActualDeliveryTime(@Param("orderId") Long orderId, 
                                   @Param("time") LocalDateTime time);
 
+    @Modifying
+    @Query(value = "UPDATE orders "
+            + "SET delivery_address = CASE "
+            + "        WHEN :deliveryAddressJson IS NULL OR :deliveryAddressJson = '' THEN NULL "
+            + "        ELSE CAST(:deliveryAddressJson AS jsonb) "
+            + "    END, "
+            + "    delivery_location = CASE "
+            + "        WHEN :deliveryLatitude IS NULL OR :deliveryLongitude IS NULL THEN NULL "
+            + "        ELSE CAST(ST_SetSRID(ST_MakePoint(CAST(:deliveryLongitude AS DOUBLE PRECISION), CAST(:deliveryLatitude AS DOUBLE PRECISION)), 4326) AS geography) "
+            + "    END "
+            + "WHERE id = :orderId",
+            nativeQuery = true)
+    int syncLegacyDeliveryFields(
+            @Param("orderId") Long orderId,
+            @Param("deliveryAddressJson") String deliveryAddressJson,
+            @Param("deliveryLatitude") BigDecimal deliveryLatitude,
+            @Param("deliveryLongitude") BigDecimal deliveryLongitude
+    );
+
     // ==================== STATISTIQUES ====================
 
     @Query("SELECT SUM(o.total) FROM Order o WHERE o.partnerId = :partnerId AND o.status = 'DELIVERED'")

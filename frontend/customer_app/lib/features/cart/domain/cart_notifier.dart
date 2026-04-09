@@ -134,7 +134,9 @@ class CartNotifier extends StateNotifier<CartState> {
 
     final current = next[index];
     final updated = current.copyWith(
-      selectedOptions: selectedOptions,
+      selectedOptions: selectedOptions
+          .map(CartItemSelectedOption.freeText)
+          .toList(),
       kitchenNote: kitchenNote,
       clearKitchenNote: (kitchenNote == null || kitchenNote.trim().isEmpty),
     );
@@ -186,6 +188,7 @@ class CartNotifier extends StateNotifier<CartState> {
   Future<void> placeOrder({
     String? promoCode,
     String? addressId,
+    Map<String, dynamic>? deliveryAddressDetails,
     String paymentMethod = 'CASH',
     DateTime? scheduledDeliveryTime,
   }) async {
@@ -195,6 +198,7 @@ class CartNotifier extends StateNotifier<CartState> {
       cartItems: state.items,
       promoCode: promoCode,
       addressId: addressId,
+      deliveryAddressDetails: deliveryAddressDetails,
       paymentMethod: paymentMethod,
       scheduledDeliveryTime: scheduledDeliveryTime,
     );

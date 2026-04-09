@@ -24,7 +24,7 @@ public class CartItemPayload {
     private Integer quantity;
 
     @Builder.Default
-    private List<String> selectedOptions = List.of();
+    private List<Object> selectedOptions = List.of();
 
     private String kitchenNote;
 }

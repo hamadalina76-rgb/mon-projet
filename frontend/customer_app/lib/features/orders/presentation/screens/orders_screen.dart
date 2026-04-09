@@ -34,18 +34,18 @@ class OrdersScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
         children: [
-          const _SectionTitle(
-            title: 'Commandes validees',
+          _SectionTitle(
+            title: l10n.translate('validated_orders_title'),
             icon: Icons.verified_outlined,
           ),
           const SizedBox(height: 8),
           if (validatedOrderCount == 0)
-            const Card(
+            Card(
               child: Padding(
                 padding: EdgeInsets.all(14),
                 child: Text(
-                  'Aucune commande validee pour le moment.',
-                  style: TextStyle(color: AppColors.textSecondary),
+                  l10n.translate('no_validated_orders'),
+                  style: const TextStyle(color: AppColors.textSecondary),
                 ),
               ),
             )
@@ -54,25 +54,25 @@ class OrdersScreen extends ConsumerWidget {
               return Card(
                 child: ListTile(
                   leading: const Icon(Icons.receipt_long_rounded),
-                  title: Text('Commande #${index + 1}'),
-                  subtitle: const Text('Commande validee'),
+                  title: Text('${l10n.translate('order_number_prefix')}${index + 1}'),
+                  subtitle: Text(l10n.translate('validated_order_status')),
                   trailing: const Icon(Icons.chevron_right),
                 ),
               );
             }),
           const SizedBox(height: 16),
-          const _SectionTitle(
-            title: 'Panier',
+          _SectionTitle(
+            title: l10n.translate('cart'),
             icon: Icons.shopping_bag_outlined,
           ),
           const SizedBox(height: 8),
           if (cartItems.isEmpty)
-            const Card(
+            Card(
               child: Padding(
                 padding: EdgeInsets.all(14),
                 child: Text(
-                  'Votre panier est vide.',
-                  style: TextStyle(color: AppColors.textSecondary),
+                  l10n.translate('cart_empty_title'),
+                  style: const TextStyle(color: AppColors.textSecondary),
                 ),
               ),
             )
@@ -99,7 +99,7 @@ class OrdersScreen extends ConsumerWidget {
                       if (item.selectedOptions.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(
-                          item.selectedOptions.join(', '),
+                          item.selectedOptionsDisplay.join(', '),
                           style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 12,
@@ -125,10 +125,10 @@ class OrdersScreen extends ConsumerWidget {
                   children: [
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'Sous-total panier',
-                            style: TextStyle(fontWeight: FontWeight.w700),
+                            l10n.translate('cart_subtotal'),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ),
                         Text(
@@ -143,7 +143,7 @@ class OrdersScreen extends ConsumerWidget {
                       child: ElevatedButton.icon(
                         onPressed: () => context.push(RouteNames.cart),
                         icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                        label: const Text('Ouvrir le panier'),
+                        label: Text(l10n.translate('open_cart')),
                       ),
                     ),
                   ],

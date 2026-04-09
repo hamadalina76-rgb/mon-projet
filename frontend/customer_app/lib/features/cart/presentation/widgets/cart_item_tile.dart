@@ -50,7 +50,7 @@ class CartItemTile extends StatelessWidget {
 
   Future<void> _openCustomizationSheet(BuildContext context) async {
     final optionsController = TextEditingController(
-      text: item.selectedOptions.join(', '),
+      text: item.selectedOptionsDisplay.join(', '),
     );
     final noteController = TextEditingController(text: item.kitchenNote ?? '');
 
@@ -168,7 +168,7 @@ class CartItemTile extends StatelessWidget {
                 if (item.selectedOptions.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
-                    item.selectedOptions.join(', '),
+                    item.selectedOptionsDisplay.join(', '),
                     style: const TextStyle(color: Colors.black54),
                   ),
                 ],

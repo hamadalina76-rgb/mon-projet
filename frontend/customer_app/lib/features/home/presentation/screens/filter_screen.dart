@@ -10,9 +10,11 @@ class FilterScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Filter')),
-      body: const Center(child: Text('Filter Screen')),
+      appBar: AppBar(title: Text(l10n.translate('filter'))),
+      body: Center(child: Text(l10n.translate('filter_screen_placeholder'))),
     );
   }
 }

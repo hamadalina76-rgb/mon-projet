@@ -17,7 +17,7 @@ class ApiEndpoints {
   static const String AUTH_RESEND_OTP = '$AUTH_BASE/resend-otp';
   static const String AUTH_FORGOT_PASSWORD = '$AUTH_BASE/forgot-password';
   static const String AUTH_RESET_PASSWORD = '$AUTH_BASE/reset-password';
-  static const String AUTH_REFRESH_TOKEN = '$AUTH_BASE/refresh-token';
+    static const String AUTH_REFRESH_TOKEN = '$AUTH_BASE/refresh';
   static const String AUTH_LOGOUT = '$AUTH_BASE/logout';
   static const String AUTH_CURRENT_USER = '$AUTH_BASE/current_user';
   static const String AUTH_SOCIAL_LOGIN = '$AUTH_BASE/social-login';

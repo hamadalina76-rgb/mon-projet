@@ -11,6 +11,10 @@ import '../api_endpoints.dart';
 /// - Retry automatique après refresh token
 /// - Logging des requêtes/réponses
 class AuthInterceptor extends Interceptor {
+  static const String _accessTokenKey = 'auth_token';
+  static const String _refreshTokenKey = 'auth_refresh_token';
+  static const String _legacyRefreshTokenKey = 'refresh_token';
+
   final FlutterSecureStorage _secureStorage;
   final Logger _logger;
   final Dio _dio;
@@ -43,7 +47,7 @@ class AuthInterceptor extends Interceptor {
 
     // Injecter le token pour les endpoints protégés
     if (!isPublicEndpoint) {
-      final token = await _secureStorage.read(key: 'auth_token');
+      final token = await _secureStorage.read(key: _accessTokenKey);
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
         _logger.d('🔐 Token injecté pour ${options.path}');
@@ -126,7 +130,7 @@ class AuthInterceptor extends Interceptor {
   /// Rafraîchir le token JWT
   Future<bool> _refreshToken() async {
     try {
-      final refreshToken = await _secureStorage.read(key: 'refresh_token');
+      final refreshToken = await _readRefreshToken();
 
       if (refreshToken == null) {
         _logger.w('⚠️ Aucun refresh token disponible');
@@ -146,13 +150,23 @@ class AuthInterceptor extends Interceptor {
         data: {'refreshToken': refreshToken},
       );
 
-      if (response.statusCode == 200) {
-        final newToken = response.data['token'] as String?;
-        final newRefreshToken = response.data['refreshToken'] as String?;
+      if (response.statusCode == 200 && response.data is Map) {
+        final data = response.data as Map;
+        final newToken = _asNonEmptyString(
+          data['access_token'] ?? data['accessToken'] ?? data['token'],
+        );
+        final newRefreshToken = _asNonEmptyString(
+          data['refresh_token'] ?? data['refreshToken'],
+        );
 
         if (newToken != null && newRefreshToken != null) {
-          await _secureStorage.write(key: 'auth_token', value: newToken);
-          await _secureStorage.write(key: 'refresh_token', value: newRefreshToken);
+          await _secureStorage.write(key: _accessTokenKey, value: newToken);
+          await _secureStorage.write(key: _refreshTokenKey, value: newRefreshToken);
+          // Kept for backward compatibility with older storage readers.
+          await _secureStorage.write(
+            key: _legacyRefreshTokenKey,
+            value: newRefreshToken,
+          );
           _logger.i('✅ Nouveaux tokens sauvegardés');
           return true;
         }
@@ -168,7 +182,7 @@ class AuthInterceptor extends Interceptor {
   /// Retry une requête avec le nouveau token
   Future<Response<dynamic>> _retry(RequestOptions requestOptions) async {
     // Récupérer le nouveau token
-    final token = await _secureStorage.read(key: 'auth_token');
+    final token = await _secureStorage.read(key: _accessTokenKey);
 
     // Mettre à jour le header Authorization
     final options = Options(
@@ -188,10 +202,33 @@ class AuthInterceptor extends Interceptor {
     );
   }
 
+  Future<String?> _readRefreshToken() async {
+    final primary = await _secureStorage.read(key: _refreshTokenKey);
+    if (primary != null && primary.trim().isNotEmpty) {
+      return primary;
+    }
+
+    final legacy = await _secureStorage.read(key: _legacyRefreshTokenKey);
+    if (legacy != null && legacy.trim().isNotEmpty) {
+      return legacy;
+    }
+
+    return null;
+  }
+
+  String? _asNonEmptyString(dynamic value) {
+    if (value is! String) {
+      return null;
+    }
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
   /// Nettoyer les tokens (lors d'une déconnexion ou erreur auth)
   Future<void> _clearTokens() async {
-    await _secureStorage.delete(key: 'auth_token');
-    await _secureStorage.delete(key: 'refresh_token');
+    await _secureStorage.delete(key: _accessTokenKey);
+    await _secureStorage.delete(key: _refreshTokenKey);
+    await _secureStorage.delete(key: _legacyRefreshTokenKey);
     _logger.i('🧹 Tokens supprimés');
   }
 }

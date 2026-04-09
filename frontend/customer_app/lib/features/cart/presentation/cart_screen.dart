@@ -1,17 +1,14 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../config/routes/route_names.dart';
 import '../../../core/localization/app_localizations.dart';
-import '../../../core/utils/delivery_zone_utils.dart';
-import '../../location/presentation/providers/location_provider.dart';
-import '../../profile/data/models/address_model.dart';
-import '../../profile/presentation/providers/address_provider.dart';
+import '../../partners/presentation/screens/partner_details_screen.dart';
 import '../cart_providers.dart';
-import 'widgets/cart_item_tile.dart';
-import 'widgets/minimum_order_banner.dart';
-import 'widgets/order_summary_card.dart';
-import 'widgets/partner_closed_banner.dart';
-import 'widgets/partner_header.dart';
+import '../data/models/cart_item_model.dart';
+import '../data/repositories/cart_repository.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -20,81 +17,14 @@ class CartScreen extends ConsumerStatefulWidget {
   ConsumerState<CartScreen> createState() => _CartScreenState();
 }
 
-enum _CheckoutAction {
-  now,
-  schedule,
-}
-
 class _CartScreenState extends ConsumerState<CartScreen> {
-  static const String _paymentMethodCash = 'CASH';
-  static const int _scheduleLeadMinutes = 15;
-
   String? _loadedPartnerId;
   PartnerCartInfo? _partnerInfo;
-  String? _promoCode;
-  String? _selectedPaymentMethod;
-  double _promoDiscount = 0;
-  bool _isPlacingOrder = false;
+  bool _isLoadingPartner = false;
 
-  ({double lat, double lng}) _resolveCoordinates() {
-    final selectedLoc = ref.read(locationNotifierProvider).location;
-    if (selectedLoc != null) {
-      return (lat: selectedLoc.latitude, lng: selectedLoc.longitude);
-    }
-
-    final addresses = ref.read(addressNotifierProvider).valueOrNull ?? [];
-    AddressModel? target;
-
-    for (final a in addresses) {
-      if (a.isDefault && a.latitude != null && a.longitude != null) {
-        target = a;
-        break;
-      }
-    }
-
-    if (target == null) {
-      for (final a in addresses) {
-        if (a.latitude != null && a.longitude != null) {
-          target = a;
-          break;
-        }
-      }
-    }
-
-    if (target != null) {
-      return (lat: target.latitude!, lng: target.longitude!);
-    }
-
-    return (lat: 0.0, lng: 0.0);
-  }
-
-  double _computeServiceFee(double subtotal) {
-    final info = _partnerInfo;
-    if (info == null) return 0;
-
-    final base = info.serviceFeeValue;
-    if (base <= 0) return 0;
-
-    if (info.serviceFeeIsPercentage) {
-      final calculated = subtotal * (base / 100);
-      return calculated.clamp(0, double.infinity).toDouble();
-    }
-
-    return base;
-  }
-
-  bool _isCurrentPartnerOutOfZone({double? userLat, double? userLng}) {
-    final info = _partnerInfo;
-    if (info == null) return false;
-
-    return isOutsideDeliveryZone(
-      deliveryRadius: info.deliveryRadius,
-      distanceKm: info.distanceKm,
-      userLat: userLat,
-      userLng: userLng,
-      partnerLat: info.latitude,
-      partnerLng: info.longitude,
-    );
+  String _money(double value) {
+    if ((value % 1).abs() < 0.0001) return '${value.toStringAsFixed(0)} DT';
+    return '${value.toStringAsFixed(2)} DT';
   }
 
   void _ensurePartnerLoaded(String? partnerId) {
@@ -102,9 +32,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
     _loadedPartnerId = partnerId;
     _partnerInfo = null;
-    _promoCode = null;
-    _selectedPaymentMethod = null;
-    _promoDiscount = 0;
+    _isLoadingPartner = false;
 
     if (partnerId == null || partnerId.isEmpty) {
       if (mounted) setState(() {});
@@ -112,32 +40,35 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final info = await ref
-          .read(cartRepositoryProvider)
-          .fetchPartnerInfo(partnerId);
+      if (!mounted) return;
+      setState(() => _isLoadingPartner = true);
+      final info = await ref.read(cartRepositoryProvider).fetchPartnerInfo(partnerId);
       if (!mounted) return;
       setState(() {
         _partnerInfo = info;
+        _isLoadingPartner = false;
       });
     });
   }
 
   Future<void> _confirmClearCart() async {
+    final l10n = AppLocalizations.of(context);
+
     final accepted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Vider le panier ?'),
-          content: const Text('Êtes-vous sûr de vouloir vider votre panier ?'),
+          title: Text(l10n.translate('clear_cart_question')),
+          content: Text(l10n.translate('clear_cart_message')),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Annuler'),
+              child: Text(l10n.translate('cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('Vider'),
+              child: Text(l10n.translate('clear_cart_action')),
             ),
           ],
         );
@@ -149,507 +80,21 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
   }
 
-  List<_PartnerTimeWindow> _windowsForDate(DateTime date) {
-    final info = _partnerInfo;
-    if (info == null || info.openingHours.isEmpty) {
-      return const <_PartnerTimeWindow>[];
-    }
-
-    final dayName = _dayNameForDate(date);
-    final previousDayName = _dayNameForDate(
-      date.subtract(const Duration(days: 1)),
+  Future<void> _openPartnerDetails(String partnerId) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PartnerDetailsScreen(partnerId: partnerId),
+      ),
     );
-
-    final windows = <_PartnerTimeWindow>[];
-    for (final hour in info.openingHours) {
-      if (hour.dayOfWeek.toUpperCase() != dayName || hour.isClosed) {
-        continue;
-      }
-
-      if (hour.is24Hours) {
-        windows.add(
-          const _PartnerTimeWindow(startMinutes: 0, endMinutes: 1439),
-        );
-        continue;
-      }
-
-      final open = _parseTimeToMinutes(hour.openTime);
-      final close = _parseTimeToMinutes(hour.closeTime);
-      if (open == null || close == null) {
-        continue;
-      }
-
-      if (close > open) {
-        windows.add(_PartnerTimeWindow(startMinutes: open, endMinutes: close));
-      } else {
-        // Overnight slot, keep today's evening segment.
-        windows.add(_PartnerTimeWindow(startMinutes: open, endMinutes: 1439));
-      }
-    }
-
-    for (final hour in info.openingHours) {
-      if (hour.dayOfWeek.toUpperCase() != previousDayName ||
-          hour.isClosed ||
-          hour.is24Hours) {
-        continue;
-      }
-
-      final open = _parseTimeToMinutes(hour.openTime);
-      final close = _parseTimeToMinutes(hour.closeTime);
-      if (open == null || close == null) {
-        continue;
-      }
-
-      // Overnight slot from previous day contributes to current day early hours.
-      if (close <= open) {
-        windows.add(_PartnerTimeWindow(startMinutes: 0, endMinutes: close));
-      }
-    }
-
-    windows.sort((a, b) => a.startMinutes.compareTo(b.startMinutes));
-    return _mergeOverlappingWindows(windows);
-  }
-
-  String _dayNameForDate(DateTime date) {
-    const dayNames = <String>[
-      'MONDAY',
-      'TUESDAY',
-      'WEDNESDAY',
-      'THURSDAY',
-      'FRIDAY',
-      'SATURDAY',
-      'SUNDAY',
-    ];
-
-    return dayNames[date.weekday - 1];
-  }
-
-  List<_PartnerTimeWindow> _mergeOverlappingWindows(
-    List<_PartnerTimeWindow> windows,
-  ) {
-    if (windows.isEmpty) return const <_PartnerTimeWindow>[];
-
-    final merged = <_PartnerTimeWindow>[];
-    for (final window in windows) {
-      if (merged.isEmpty) {
-        merged.add(window);
-        continue;
-      }
-
-      final last = merged.last;
-      if (window.startMinutes <= last.endMinutes + 1) {
-        merged[merged.length - 1] = _PartnerTimeWindow(
-          startMinutes: last.startMinutes,
-          endMinutes: window.endMinutes > last.endMinutes
-              ? window.endMinutes
-              : last.endMinutes,
-        );
-        continue;
-      }
-
-      merged.add(window);
-    }
-
-    return merged;
-  }
-
-  int? _parseTimeToMinutes(String? value) {
-    if (value == null || value.trim().isEmpty) return null;
-
-    final parts = value.trim().split(':');
-    if (parts.length < 2) return null;
-
-    final hour = int.tryParse(parts[0]);
-    final minute = int.tryParse(parts[1]);
-    if (hour == null || minute == null) return null;
-    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
-
-    return (hour * 60) + minute;
-  }
-
-  DateTime _stripTime(DateTime value) {
-    return DateTime(value.year, value.month, value.day);
-  }
-
-  bool _isSameDate(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-
-  List<DateTime> _currentWeekDates() {
-    final today = _stripTime(DateTime.now());
-    final startOfWeek =
-        today.subtract(Duration(days: today.weekday - DateTime.monday));
-
-    return List<DateTime>.generate(
-      7,
-      (index) => startOfWeek.add(Duration(days: index)),
-    );
-  }
-
-  List<_HalfHourInterval> _buildHalfHourIntervalsForDate(DateTime date) {
-    final target = _stripTime(date);
-    final today = _stripTime(DateTime.now());
-    if (target.isBefore(today)) {
-      return const <_HalfHourInterval>[];
-    }
-
-    final windows = _windowsForDate(target);
-    if (windows.isEmpty) {
-      return const <_HalfHourInterval>[];
-    }
-
-    final now = DateTime.now();
-    final minAllowed = _isSameDate(target, now)
-        ? (now.hour * 60) + now.minute + _scheduleLeadMinutes
-        : 0;
-
-    final intervals = <_HalfHourInterval>[];
-    final seenStarts = <int>{};
-    for (final window in windows) {
-      var minute = window.startMinutes;
-      if (minute < minAllowed) {
-        final missing = minAllowed - minute;
-        minute += (missing / 30).ceil() * 30;
-      }
-
-      while (minute + 30 <= window.endMinutes) {
-        if (seenStarts.add(minute)) {
-          intervals.add(
-            _HalfHourInterval(startMinutes: minute, endMinutes: minute + 30),
-          );
-        }
-        minute += 30;
-      }
-    }
-
-    intervals.sort((a, b) => a.startMinutes.compareTo(b.startMinutes));
-    return intervals;
-  }
-
-  String _formatScheduleDayLabel(DateTime date) {
-    const dayLabels = <String>[
-      'Lun',
-      'Mar',
-      'Mer',
-      'Jeu',
-      'Ven',
-      'Sam',
-      'Dim',
-    ];
-
-    final d = date.day.toString().padLeft(2, '0');
-    final m = date.month.toString().padLeft(2, '0');
-    return '${dayLabels[date.weekday - 1]} $d/$m';
-  }
-
-  String _formatMinutesAsTime(int minute) {
-    final h = (minute ~/ 60).toString().padLeft(2, '0');
-    final m = (minute % 60).toString().padLeft(2, '0');
-    return '$h:$m';
-  }
-
-  String _formatHalfHourInterval(_HalfHourInterval interval) {
-    return '${_formatMinutesAsTime(interval.startMinutes)} - ${_formatMinutesAsTime(interval.endMinutes)}';
-  }
-
-  String _formatScheduleDateTime(DateTime value) {
-    final d = value.day.toString().padLeft(2, '0');
-    final m = value.month.toString().padLeft(2, '0');
-    final h = value.hour.toString().padLeft(2, '0');
-    final min = value.minute.toString().padLeft(2, '0');
-    return '$d/$m a $h:$min';
-  }
-
-  Future<DateTime?> _pickScheduledDateTime() async {
-    final info = _partnerInfo;
-    if (info == null || info.openingHours.isEmpty) {
-      if (!mounted) return null;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Impossible de charger les horaires du partenaire.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return null;
-    }
-
-    final weekDates = _currentWeekDates();
-
-    DateTime? initialDate;
-    for (final date in weekDates) {
-      if (_buildHalfHourIntervalsForDate(date).isNotEmpty) {
-        initialDate = date;
-        break;
-      }
-    }
-
-    if (initialDate == null) {
-      if (!mounted) return null;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Aucun creneau disponible cette semaine.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return null;
-    }
-
-    var selectedDate = initialDate;
-    var selectedIntervalStart =
-      _buildHalfHourIntervalsForDate(selectedDate).first.startMinutes;
-
-    final pickedDateTime = await showDialog<DateTime>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final media = MediaQuery.of(context);
-            final intervals = _buildHalfHourIntervalsForDate(selectedDate);
-            if (!intervals.any((e) => e.startMinutes == selectedIntervalStart)) {
-              selectedIntervalStart = intervals.isEmpty
-                  ? -1
-                  : intervals.first.startMinutes;
-            }
-
-            return AlertDialog(
-              title: const Text('Planifier la commande'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: media.size.height * 0.62,
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Semaine courante'),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          height: 44,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: weekDates.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 8),
-                            itemBuilder: (_, index) {
-                              final date = weekDates[index];
-                              final isSelected = _isSameDate(date, selectedDate);
-                              final hasSlots = _buildHalfHourIntervalsForDate(date)
-                                  .isNotEmpty;
-
-                              return ChoiceChip(
-                                label: Text(_formatScheduleDayLabel(date)),
-                                selected: isSelected,
-                                onSelected: (_) {
-                                  setModalState(() {
-                                    selectedDate = date;
-                                    final nextIntervals =
-                                        _buildHalfHourIntervalsForDate(date);
-                                    selectedIntervalStart = nextIntervals.isEmpty
-                                        ? -1
-                                        : nextIntervals.first.startMinutes;
-                                  });
-                                },
-                                side: BorderSide(
-                                  color: hasSlots
-                                      ? Colors.black26
-                                      : Colors.black12,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (intervals.isEmpty)
-                          const Text(
-                            'Aucun creneau disponible pour ce jour.',
-                            style: TextStyle(color: Colors.black54),
-                          )
-                        else
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: intervals.map((interval) {
-                              final isSelected =
-                                  interval.startMinutes == selectedIntervalStart;
-                              return ChoiceChip(
-                                label: Text(_formatHalfHourInterval(interval)),
-                                selected: isSelected,
-                                onSelected: (_) {
-                                  setModalState(() {
-                                    selectedIntervalStart = interval.startMinutes;
-                                  });
-                                },
-                              );
-                            }).toList(),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Annuler'),
-                ),
-                FilledButton(
-                  onPressed: selectedIntervalStart < 0
-                      ? null
-                      : () {
-                          final result = DateTime(
-                            selectedDate.year,
-                            selectedDate.month,
-                            selectedDate.day,
-                            selectedIntervalStart ~/ 60,
-                            selectedIntervalStart % 60,
-                          );
-                          Navigator.of(dialogContext).pop(result);
-                        },
-                  child: const Text('Valider'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    return pickedDateTime;
-  }
-
-  Future<void> _planAndPlaceOrder() async {
-    final scheduledAt = await _pickScheduledDateTime();
-    if (scheduledAt == null) return;
-    await _placeOrder(scheduledDeliveryTime: scheduledAt);
-  }
-
-  Future<void> _handleCheckoutPress({required bool isOpen}) async {
-    if (!isOpen) {
-      await _planAndPlaceOrder();
-      return;
-    }
-
-    if (!mounted) return;
-
-    final action = await showModalBottomSheet<_CheckoutAction>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.flash_on_rounded),
-                title: const Text('Commander maintenant'),
-                subtitle: const Text('Validation immediate de la commande.'),
-                onTap: () => Navigator.of(sheetContext).pop(_CheckoutAction.now),
-              ),
-              ListTile(
-                leading: const Icon(Icons.schedule),
-                title: const Text('Planifier la commande'),
-                subtitle: const Text('Choisir un jour et un creneau de 30 min.'),
-                onTap: () =>
-                    Navigator.of(sheetContext).pop(_CheckoutAction.schedule),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (action == _CheckoutAction.now) {
-      await _placeOrder();
-      return;
-    }
-
-    if (action == _CheckoutAction.schedule) {
-      await _planAndPlaceOrder();
-    }
-  }
-
-  Future<void> _placeOrder({DateTime? scheduledDeliveryTime}) async {
-    final selectedPaymentMethod = _selectedPaymentMethod;
-    if (selectedPaymentMethod == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez choisir un mode de paiement.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    final coords = _resolveCoordinates();
-    final zoneUserLat = (coords.lat == 0.0 && coords.lng == 0.0)
-        ? null
-        : coords.lat;
-    final zoneUserLng = (coords.lat == 0.0 && coords.lng == 0.0)
-        ? null
-        : coords.lng;
-    final outOfZone = _isCurrentPartnerOutOfZone(
-      userLat: zoneUserLat,
-      userLng: zoneUserLng,
-    );
-    if (outOfZone) {
-      if (!mounted) return;
-      final l10n = AppLocalizations.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.translate('partner_details_out_of_zone')),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isPlacingOrder = true);
-    try {
-      await ref
-          .read(cartNotifierProvider.notifier)
-          .placeOrder(
-            promoCode: _promoCode,
-            paymentMethod: selectedPaymentMethod,
-            scheduledDeliveryTime: scheduledDeliveryTime,
-          );
-
-      if (!mounted) return;
-      final successText = scheduledDeliveryTime != null
-          ? 'Commande planifiee pour ${_formatScheduleDateTime(scheduledDeliveryTime)}.'
-          : 'Commande validee avec succes.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(successText),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Échec de la commande: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isPlacingOrder = false);
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     final media = MediaQuery.of(context);
     final screenWidth = media.size.width;
-    final horizontalPadding = screenWidth < 360 ? 10.0 : 14.0;
-    final bodyBottomPadding = (screenWidth < 360 ? 118.0 : 110.0) +
-        media.padding.bottom;
-    final checkoutButtonHeight = screenWidth < 360 ? 48.0 : 52.0;
+    final horizontalPadding = screenWidth < 360 ? 12.0 : 16.0;
+    final isCompact = screenWidth < 360;
+    final l10n = AppLocalizations.of(context);
 
     final lightTheme = Theme.of(context).copyWith(
       brightness: Brightness.light,
@@ -663,75 +108,31 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             foregroundColor: Colors.black87,
             surfaceTintColor: Colors.white,
           ),
-      dialogTheme: Theme.of(context).dialogTheme.copyWith(
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.white,
-          ),
-      bottomSheetTheme: Theme.of(context).bottomSheetTheme.copyWith(
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.white,
-          ),
     );
-
-    ref.watch(addressNotifierProvider);
-    ref.watch(locationNotifierProvider);
 
     final cartState = ref.watch(cartNotifierProvider);
     final items = cartState.items;
     final subtotal = cartState.subtotal;
+
     final partnerId = items.isNotEmpty ? items.first.partnerId : null;
-
-    final coords = _resolveCoordinates();
-    final zoneUserLat = (coords.lat == 0.0 && coords.lng == 0.0)
-        ? null
-        : coords.lat;
-    final zoneUserLng = (coords.lat == 0.0 && coords.lng == 0.0)
-        ? null
-        : coords.lng;
-
     _ensurePartnerLoaded(partnerId);
 
-    final fallbackPartnerName = items.isNotEmpty ? items.first.partnerName : '';
-    final fallbackPartnerLogo = items.isNotEmpty
-        ? items.first.partnerLogoUrl
-        : '';
-
-    final partnerName = _partnerInfo?.partnerName ?? fallbackPartnerName;
-    final partnerLogoUrl = _partnerInfo?.partnerLogoUrl ?? fallbackPartnerLogo;
-    final minimumOrder = _partnerInfo?.minimumOrder ?? 0;
-    final isOpen = _partnerInfo?.isOpen ?? true;
-    final outOfZone = _isCurrentPartnerOutOfZone(
-      userLat: zoneUserLat,
-      userLng: zoneUserLng,
-    );
-    final serviceFee = _computeServiceFee(subtotal);
-
-    final minNotReached = minimumOrder > 0 && subtotal < minimumOrder;
-    final missingAmount = (minimumOrder - subtotal)
-        .clamp(0, double.infinity)
-        .toDouble();
-    final hasSelectedPaymentMethod = _selectedPaymentMethod != null;
-    final partnerLoaded = _partnerInfo != null || partnerId == null;
-
-    final canProceed =
-        items.isNotEmpty &&
-        !minNotReached &&
-        !outOfZone &&
-        hasSelectedPaymentMethod &&
-      partnerLoaded &&
-        !_isPlacingOrder;
+    final partnerName =
+        _partnerInfo?.partnerName ?? (items.isNotEmpty ? items.first.partnerName : l10n.translate('partner'));
+    final partnerLogoUrl = _partnerInfo?.partnerLogoUrl ??
+        (items.isNotEmpty ? items.first.partnerLogoUrl : '');
 
     return Theme(
       data: lightTheme,
       child: Scaffold(
       appBar: AppBar(
-        title: const Text('Mon panier'),
+        title: Text(l10n.translate('my_cart')),
         actions: [
           if (items.isNotEmpty)
             TextButton(
               onPressed: _confirmClearCart,
-              child: const Text(
-                'Vider',
+              child: Text(
+                l10n.translate('clear_cart_action'),
                 style: TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.w700,
@@ -747,170 +148,154 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 horizontalPadding,
                 14,
                 horizontalPadding,
-                bodyBottomPadding,
+                120 + media.padding.bottom,
               ),
               children: [
-                PartnerHeader(
+                _PartnerBlock(
                   partnerName: partnerName,
                   partnerLogoUrl: partnerLogoUrl,
+                  isLoading: _isLoadingPartner,
+                  onDetailsPressed: partnerId == null ? null : () => _openPartnerDetails(partnerId),
                 ),
-                if (!isOpen) const PartnerClosedBanner(),
-                if (!isOpen)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF7E6),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFCD9A6)),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(
-                          Icons.schedule,
-                          size: 18,
-                          color: Color(0xFFB96500),
-                        ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Vous pouvez planifier la commande selon les horaires d ouverture.',
-                            style: TextStyle(
-                              color: Color(0xFF7C4A00),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (outOfZone)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF2F2),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFFD7D7)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.location_off_outlined,
-                          size: 18,
-                          color: Colors.red,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '${l10n.translate('partner_details_out_of_zone')}.',
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (minNotReached)
-                  MinimumOrderBanner(
-                    minimumOrder: minimumOrder,
-                    missingAmount: missingAmount,
-                  ),
+                const SizedBox(height: 10),
                 ...items.map(
-                  (item) => CartItemTile(
+                  (item) => _CartLineItem(
                     item: item,
                     onQuantityChanged: (newQty) {
-                      ref
-                          .read(cartNotifierProvider.notifier)
-                          .updateQuantity(
+                      ref.read(cartNotifierProvider.notifier).updateQuantity(
                             itemKey: item.uniqueKey,
                             quantity: newQty,
                           );
                     },
                     onRemove: () {
-                      ref
-                          .read(cartNotifierProvider.notifier)
-                          .removeItem(item.uniqueKey);
-                    },
-                    onCustomizationChanged: (options, note) {
-                      ref
-                          .read(cartNotifierProvider.notifier)
-                          .updateItemCustomization(
-                            itemKey: item.uniqueKey,
-                            selectedOptions: options,
-                            kitchenNote: note,
-                          );
+                      ref.read(cartNotifierProvider.notifier).removeItem(item.uniqueKey);
                     },
                   ),
                 ),
-                OrderSummaryCard(
-                  subtotal: subtotal,
-                  partnerId: partnerId,
-                  serviceFee: serviceFee,
-                  discount: _promoDiscount,
-                  promoCode: _promoCode,
-                  onDeliveryFeeChanged: (_) {},
-                  onPromoChanged: (promoCode, discount) {
-                    setState(() {
-                      _promoCode = promoCode;
-                      _promoDiscount = discount;
-                    });
-                  },
+                const SizedBox(height: 6),
+                OutlinedButton.icon(
+                  onPressed: partnerId == null ? null : () => _openPartnerDetails(partnerId),
+                  icon: const Icon(Icons.add_circle_outline),
+                  label: Text(l10n.translate('add_more_from_partner')),
                 ),
-                const SizedBox(height: 10),
-                _PaymentMethodCard(
-                  selectedMethod: _selectedPaymentMethod,
-                  onMethodChanged: (method) {
-                    setState(() {
-                      _selectedPaymentMethod = method;
-                    });
-                  },
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Text(
+                      l10n.translate('products_total'),
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      _money(subtotal),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
       bottomNavigationBar: items.isEmpty
           ? null
           : SafeArea(
+              top: false,
               minimum: EdgeInsets.fromLTRB(
                 horizontalPadding,
                 8,
                 horizontalPadding,
                 10,
               ),
-              child: SizedBox(
-                height: checkoutButtonHeight,
-                child: ElevatedButton(
-                  onPressed: canProceed
-                      ? () => _handleCheckoutPress(isOpen: isOpen)
-                      : null,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      canProceed
-                          ? (isOpen
-                                ? 'Commander ou planifier'
-                                : 'Planifier la commande')
-                        : (!partnerLoaded
-                          ? 'Chargement...'
-                          : outOfZone
-                                ? l10n.translate('delivery_out_of_zone_badge')
-                                : !hasSelectedPaymentMethod
-                                ? 'Choisir le paiement'
-                                : minNotReached
-                                ? 'Minimum non atteint'
-                                : 'Panier vide'),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.black12),
                 ),
+                  child: isCompact
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    l10n.translate('total'),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  _money(subtotal),
+                                  style: const TextStyle(
+                                    fontSize: 19,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              height: 46,
+                              child: ElevatedButton(
+                                onPressed: () => context.push(RouteNames.checkout),
+                                child: Text(
+                                  l10n.translate('proceed_to_checkout'),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    l10n.translate('total'),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                  Text(
+                                    _money(subtotal),
+                                    style: const TextStyle(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ],
+                            ),
+                          ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              flex: 2,
+                              child: SizedBox(
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: () => context.push(RouteNames.checkout),
+                                  child: Text(
+                                    l10n.translate('proceed_to_checkout'),
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ),
       ),
@@ -918,116 +303,199 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 }
 
-class _PartnerTimeWindow {
-  final int startMinutes;
-  final int endMinutes;
+class _PartnerBlock extends StatelessWidget {
+  final String partnerName;
+  final String partnerLogoUrl;
+  final bool isLoading;
+  final VoidCallback? onDetailsPressed;
 
-  const _PartnerTimeWindow({
-    required this.startMinutes,
-    required this.endMinutes,
-  });
-
-  bool contains(int minute) {
-    return minute >= startMinutes && minute <= endMinutes;
-  }
-}
-
-class _HalfHourInterval {
-  final int startMinutes;
-  final int endMinutes;
-
-  const _HalfHourInterval({
-    required this.startMinutes,
-    required this.endMinutes,
-  });
-}
-
-class _PaymentMethodCard extends StatelessWidget {
-  final String? selectedMethod;
-  final ValueChanged<String?> onMethodChanged;
-
-  const _PaymentMethodCard({
-    required this.selectedMethod,
-    required this.onMethodChanged,
+  const _PartnerBlock({
+    required this.partnerName,
+    required this.partnerLogoUrl,
+    required this.isLoading,
+    required this.onDetailsPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isCashSelected =
-        selectedMethod == _CartScreenState._paymentMethodCash;
+    final l10n = AppLocalizations.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.black12),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: partnerLogoUrl.trim().isEmpty
+                ? Container(
+                    width: 48,
+                    height: 48,
+                    color: const Color(0xFFF3F3F3),
+                    child: const Icon(Icons.storefront),
+                  )
+                : CachedNetworkImage(
+                    imageUrl: partnerLogoUrl,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => Container(
+                      width: 48,
+                      height: 48,
+                      color: const Color(0xFFF3F3F3),
+                      child: const Icon(Icons.storefront),
+                    ),
+                  ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  partnerName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                TextButton(
+                  onPressed: onDetailsPressed,
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 30),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    alignment: Alignment.centerLeft,
+                  ),
+                  child: Text(l10n.translate('view_partner_details')),
+                ),
+              ],
+            ),
+          ),
+          if (isLoading)
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CartLineItem extends StatelessWidget {
+  final CartItemModel item;
+  final ValueChanged<int> onQuantityChanged;
+  final VoidCallback onRemove;
+
+  const _CartLineItem({
+    required this.item,
+    required this.onQuantityChanged,
+    required this.onRemove,
+  });
+
+  String _money(double value) {
+    if ((value % 1).abs() < 0.0001) return '${value.toStringAsFixed(0)} DT';
+    return '${value.toStringAsFixed(2)} DT';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
 
     return Card(
-      margin: EdgeInsets.zero,
+      margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Mode de paiement',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Veuillez choisir un mode de paiement avant validation.',
-              style: TextStyle(color: Colors.black54),
-            ),
-            const SizedBox(height: 8),
-            InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () => onMethodChanged(_CartScreenState._paymentMethodCash),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isCashSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.black12,
-                    width: isCashSelected ? 1.6 : 1,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    item.productName,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  color: isCashSelected
-                      ? Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.07)
-                      : Colors.transparent,
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.payments_outlined),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Paiement à la livraison',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Règlement en espèces à la réception.',
-                            style: TextStyle(color: Colors.black54),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      isCashSelected
-                          ? Icons.check_circle
-                          : Icons.radio_button_unchecked,
-                      color: isCashSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.black45,
-                    ),
-                  ],
+                IconButton(
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                ),
+              ],
+            ),
+            if (item.selectedOptions.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  item.selectedOptionsDisplay.join(', '),
+                  style: const TextStyle(color: Colors.black54),
                 ),
               ),
+            if ((item.kitchenNote ?? '').trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  '${l10n.translate('kitchen_note')}: ${item.kitchenNote}',
+                  style: const TextStyle(color: Colors.black54),
+                ),
+              ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () {
+                          final next = item.quantity - 1;
+                          if (next <= 0) {
+                            onRemove();
+                          } else {
+                            onQuantityChanged(next);
+                          }
+                        },
+                        icon: const Icon(Icons.remove),
+                      ),
+                      Text(
+                        '${item.quantity}',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => onQuantityChanged(item.quantity + 1),
+                        icon: const Icon(Icons.add),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  _money(item.lineTotal),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1041,23 +509,30 @@ class _EmptyCartView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final l10n = AppLocalizations.of(context);
+
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.shopping_bag_outlined, size: 56, color: Colors.black38),
-            SizedBox(height: 8),
+            const Icon(Icons.shopping_bag_outlined, size: 56, color: Colors.black38),
+            const SizedBox(height: 8),
             Text(
-              'Votre panier est vide',
+              l10n.translate('cart_empty_title'),
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(
-              'Ajoutez des articles depuis un partenaire pour commencer.',
+              l10n.translate('cart_empty_subtitle'),
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.black54),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton(
+              onPressed: () => context.go(RouteNames.explore),
+              child: Text(l10n.translate('explore_partners')),
             ),
           ],
         ),

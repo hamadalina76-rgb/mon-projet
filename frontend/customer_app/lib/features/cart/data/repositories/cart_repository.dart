@@ -341,6 +341,7 @@ class CartRepository {
     required List<CartItemModel> cartItems,
     String? promoCode,
     String? addressId,
+    Map<String, dynamic>? deliveryAddressDetails,
     required String paymentMethod,
     DateTime? scheduledDeliveryTime,
   }) async {
@@ -352,7 +353,7 @@ class CartRepository {
               'partnerId': item.partnerId,
               'quantity': item.quantity,
               'unitPrice': item.unitPrice,
-              'selectedOptions': item.selectedOptions,
+              'selectedOptions': item.selectedOptionsPayload,
               'kitchenNote': item.kitchenNote,
             },
           )
@@ -361,6 +362,8 @@ class CartRepository {
       'addressId': addressId,
       'paymentMethod': paymentMethod,
       'isScheduled': scheduledDeliveryTime != null,
+      if (deliveryAddressDetails != null)
+        'deliveryAddressDetails': deliveryAddressDetails,
     };
 
     if (scheduledDeliveryTime != null) {

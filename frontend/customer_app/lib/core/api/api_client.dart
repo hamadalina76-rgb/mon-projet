@@ -14,6 +14,10 @@ import '../../config/runtime_config.dart';
 /// - Intercepteurs: Auth + Logging
 /// - Gestion automatique des erreurs et retry
 class ApiClient {
+  static const String _accessTokenKey = 'auth_token';
+  static const String _refreshTokenKey = 'auth_refresh_token';
+  static const String _legacyRefreshTokenKey = 'refresh_token';
+
   static ApiClient? _instance;
   late final Dio _dio;
   final FlutterSecureStorage _secureStorage;
@@ -211,21 +215,24 @@ class ApiClient {
     required String token,
     required String refreshToken,
   }) async {
-    await _secureStorage.write(key: 'auth_token', value: token);
-    await _secureStorage.write(key: 'refresh_token', value: refreshToken);
+    await _secureStorage.write(key: _accessTokenKey, value: token);
+    await _secureStorage.write(key: _refreshTokenKey, value: refreshToken);
+    // Kept for compatibility with code paths still reading the legacy key.
+    await _secureStorage.write(key: _legacyRefreshTokenKey, value: refreshToken);
     _logger.i('💾 Tokens sauvegardés');
   }
 
   /// Supprimer les tokens (déconnexion)
   Future<void> clearTokens() async {
-    await _secureStorage.delete(key: 'auth_token');
-    await _secureStorage.delete(key: 'refresh_token');
+    await _secureStorage.delete(key: _accessTokenKey);
+    await _secureStorage.delete(key: _refreshTokenKey);
+    await _secureStorage.delete(key: _legacyRefreshTokenKey);
     _logger.i('🗑️ Tokens supprimés');
   }
 
   /// Vérifier si l'utilisateur est authentifié
   Future<bool> hasToken() async {
-    final token = await _secureStorage.read(key: 'auth_token');
+    final token = await _secureStorage.read(key: _accessTokenKey);
     return token != null && token.isNotEmpty;
   }
 
