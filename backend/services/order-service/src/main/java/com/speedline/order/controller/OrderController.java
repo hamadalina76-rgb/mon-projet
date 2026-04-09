@@ -2,20 +2,27 @@ package com.speedline.order.controller;
 
 import com.speedline.order.domain.OrderStatus;
 import com.speedline.order.dto.OrderResponse;
+import com.speedline.order.dto.PartnerOrderHistorySummaryDTO;
 import com.speedline.order.dto.checkout.CheckoutOrderRequest;
 import jakarta.validation.Valid;
 import com.speedline.order.service.OrderService;
+import com.speedline.order.service.export.PartnerOrderExportService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -45,6 +52,7 @@ import java.util.Set;
 public class OrderController {
 
     private final OrderService orderService;
+    private final PartnerOrderExportService partnerOrderExportService;
 
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(
@@ -114,6 +122,7 @@ public class OrderController {
      * - search  : recherche textuelle sur orderNumber et customerName
      * - sortBy  : priority (défaut, type Glovo : à traiter en premier puis plus récent) | orderTime | total | orderNumber | createdAt
      * - sortDir : asc | desc — défaut : desc (pour orderTime / total / nombre…)
+     * - cancelledBy : uniquement si {@code status=CANCELLED} (ex. PARTNER pour refus partenaire)
      */
     @GetMapping("/partners/{partnerId}")
     public ResponseEntity<Page<OrderResponse>> getPartnerOrders(
@@ -124,6 +133,7 @@ public class OrderController {
             @RequestParam(defaultValue = "desc")                  String      sortDir,
             @RequestParam(required = false)                       String      from,
             @RequestParam(required = false)                       String      to,
+            @RequestParam(required = false)                       String      cancelledBy,
             @RequestParam(defaultValue = "0")                     int         page,
             @RequestParam(defaultValue = "10")                    int         size
     ) {
@@ -148,7 +158,81 @@ public class OrderController {
         final LocalDateTime fromDt = parsePartnerOrderDate(from);
         final LocalDateTime toDt   = parsePartnerOrderDate(to);
         return ResponseEntity.ok(orderService.getPartnerOrdersFiltered(
-                partnerId, status, search, pageable, rawSort, fromDt, toDt));
+                partnerId, status, search, pageable, rawSort, fromDt, toDt, cancelledBy));
+    }
+
+    /**
+     * Export Excel (.xlsx) — mêmes filtres que {@code GET /orders/partners/{partnerId}} (historique).
+     * GET /orders/partners/{partnerId}/export/excel?from=&to=&status=&search=&cancelledBy=&lang=
+     */
+    @GetMapping("/partners/{partnerId}/export/excel")
+    public ResponseEntity<byte[]> exportPartnerOrdersExcel(
+            @PathVariable Long partnerId,
+            @RequestHeader(value = "X-Partner-Id", required = false) String authenticatedPartnerId,
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false, defaultValue = "") String search,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) String cancelledBy,
+            @RequestParam(required = false, defaultValue = "fr") String lang
+    ) {
+        assertPartnerExportAccess(partnerId, authenticatedPartnerId);
+        final LocalDateTime fromDt = parsePartnerOrderDate(from);
+        final LocalDateTime toDt = parsePartnerOrderDate(to);
+        final byte[] body = partnerOrderExportService.exportExcel(
+                partnerId, status, search, fromDt, toDt, cancelledBy, lang);
+        final String filename = "speedline-commandes-" + LocalDate.now() + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(filename, StandardCharsets.UTF_8)
+                        .build()
+                        .toString())
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(body);
+    }
+
+    /**
+     * Export PDF — mêmes filtres que {@code GET /orders/partners/{partnerId}}.
+     */
+    @GetMapping("/partners/{partnerId}/export/pdf")
+    public ResponseEntity<byte[]> exportPartnerOrdersPdf(
+            @PathVariable Long partnerId,
+            @RequestHeader(value = "X-Partner-Id", required = false) String authenticatedPartnerId,
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false, defaultValue = "") String search,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) String cancelledBy,
+            @RequestParam(required = false, defaultValue = "fr") String lang
+    ) {
+        assertPartnerExportAccess(partnerId, authenticatedPartnerId);
+        final LocalDateTime fromDt = parsePartnerOrderDate(from);
+        final LocalDateTime toDt = parsePartnerOrderDate(to);
+        final byte[] body = partnerOrderExportService.exportPdf(
+                partnerId, status, search, fromDt, toDt, cancelledBy, lang);
+        final String filename = "speedline-commandes-" + LocalDate.now() + ".pdf";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(filename, StandardCharsets.UTF_8)
+                        .build()
+                        .toString())
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(body);
+    }
+
+    private static void assertPartnerExportAccess(Long pathPartnerId, String xPartnerId) {
+        if (xPartnerId == null || xPartnerId.isBlank()) {
+            return;
+        }
+        try {
+            final long headerPid = Long.parseLong(xPartnerId.trim());
+            if (!Objects.equals(headerPid, pathPartnerId)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Accès refusé pour ce partenaire");
+            }
+        } catch (NumberFormatException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "X-Partner-Id invalide");
+        }
     }
 
     private static LocalDateTime parsePartnerOrderDate(String raw) {
@@ -193,6 +277,21 @@ public class OrderController {
         final LocalDateTime fromDt = parsePartnerOrderDate(from);
         final LocalDateTime toDt   = parsePartnerOrderDate(to);
         return ResponseEntity.ok(orderService.getPartnerOrderCounts(partnerId, fromDt, toDt));
+    }
+
+    /**
+     * Résumé KPI historique (total commandes, CA livrées, annulations, taux) sur {@code orderTime}.
+     * GET /orders/partners/{partnerId}/history-summary?from=&to=
+     */
+    @GetMapping("/partners/{partnerId}/history-summary")
+    public ResponseEntity<PartnerOrderHistorySummaryDTO> getPartnerOrderHistorySummary(
+            @PathVariable Long partnerId,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to
+    ) {
+        final LocalDateTime fromDt = parsePartnerOrderDate(from);
+        final LocalDateTime toDt   = parsePartnerOrderDate(to);
+        return ResponseEntity.ok(orderService.getPartnerOrderHistorySummary(partnerId, fromDt, toDt));
     }
 
     /**
@@ -289,6 +388,23 @@ public class OrderController {
     ) {
         final Long partnerId = resolveActorId(authenticatedPartnerId, request == null ? null : request.getPartnerId(), "X-Partner-Id");
         return ResponseEntity.ok(orderService.markAsReady(id, partnerId));
+    }
+
+    /**
+     * Ticket cuisine HTML (80&nbsp;mm) pour impression navigateur — partenaire propriétaire uniquement.
+     * GET /orders/{id}/partner/kitchen-ticket?partnerId=… ou header X-Partner-Id
+     */
+    @GetMapping(value = "/{id}/partner/kitchen-ticket", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> getPartnerKitchenTicket(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-Partner-Id", required = false) String authenticatedPartnerId,
+            @RequestParam(value = "partnerId", required = false) Long partnerIdParam
+    ) {
+        final Long partnerId = resolveActorId(authenticatedPartnerId, partnerIdParam, "X-Partner-Id");
+        final String html = orderService.buildKitchenTicketHtml(id, partnerId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.TEXT_HTML)
+                .body(html);
     }
 
     @PostMapping("/{id}/courier/assign")

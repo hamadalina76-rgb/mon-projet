@@ -1,0 +1,712 @@
+// order-history.component.scss
+@use 'assets/styles/variables' as *;
+
+// ---------------------------------------------------------------------------
+// Shell (sidenav wrapper)
+// ---------------------------------------------------------------------------
+.history-shell {
+  display: block;
+  min-height: 100%;
+  background: transparent;
+}
+
+// ---------------------------------------------------------------------------
+// Page layout — identical to .orders-page
+// ---------------------------------------------------------------------------
+.orders-page {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  padding: $spacing-lg;
+  min-height: 100%;
+}
+
+// ---------------------------------------------------------------------------
+// Page Header
+// ---------------------------------------------------------------------------
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+  }
+}
+
+.page-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: $text-primary;
+  letter-spacing: -0.02em;
+}
+
+.result-count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.75rem;
+  border-radius: $border-radius-full;
+  background: $gray-100;
+  color: $text-muted;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.outline-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 $spacing-md;
+  height: 40px;
+  border-radius: $border-radius-md;
+  border: 1px solid $primary-color;
+  background: $white;
+  color: $primary-color;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all $transition-fast;
+  white-space: nowrap;
+  text-decoration: none;
+
+  .material-icons { font-size: 1.1rem; }
+  &:hover { background: $primary-color; color: $white; }
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: $border-radius-md;
+  border: 1px solid $gray-200;
+  background: $white;
+  color: $gray-500;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  .material-icons { font-size: 1.25rem; }
+  &:hover { border-color: $primary-color; color: $primary-color; background: rgba($primary-color, 0.05); }
+}
+
+// ---------------------------------------------------------------------------
+// KPI Summary Cards
+// ---------------------------------------------------------------------------
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: $spacing-md;
+}
+
+.summary-card {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-md $spacing-lg;
+  background: $white;
+  border: 1px solid $gray-200;
+  border-radius: $border-radius-xl;
+  box-shadow: $shadow-sm;
+  transition: box-shadow $transition-fast;
+
+  &:hover { box-shadow: $shadow-md; }
+}
+
+.summary-icon {
+  font-size: 2rem;
+  width: 2rem;
+  height: 2rem;
+  color: $primary-color;
+  opacity: 0.8;
+  flex-shrink: 0;
+
+  &.revenue { color: $success-color; }
+  &.cancel  { color: $warning-color; }
+}
+
+.summary-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summary-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: $text-primary;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-unit {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: $text-muted;
+  margin-left: 2px;
+}
+
+.summary-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: $text-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+// ---------------------------------------------------------------------------
+// Status Chips — same design as orders-list
+// ---------------------------------------------------------------------------
+.chips-row {
+  display: flex;
+  gap: $spacing-sm;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+.status-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.5rem 1rem;
+  border-radius: $border-radius-full;
+  border: 1.5px solid $gray-200;
+  background: $white;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all $transition-fast;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  .chip-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: $text-muted;
+  }
+
+  &:hover {
+    border-color: $primary-color;
+    .chip-label { color: $primary-color; }
+  }
+
+  &.active {
+    background: rgba($primary-color, 0.07);
+    border-color: $primary-color;
+    box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+    .chip-label { color: $primary-dark; font-weight: 700; }
+  }
+
+  &[data-chip="DELIVERED"].active {
+    background: rgba($success-color, 0.08); border-color: $success-color;
+    box-shadow: 0 0 0 3px rgba($success-color, 0.1);
+    .chip-label { color: $success-dark; }
+  }
+
+  &[data-chip="CANCELLED"].active {
+    background: rgba($gray-400, 0.12); border-color: $gray-400;
+    box-shadow: 0 0 0 3px rgba($gray-400, 0.15);
+    .chip-label { color: $text-muted; }
+  }
+
+  &[data-chip="REFUSED"].active {
+    background: rgba($error-color, 0.08); border-color: $error-color;
+    box-shadow: 0 0 0 3px rgba($error-color, 0.1);
+    .chip-label { color: $error-dark; }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Date Preset Chips — same design as orders-list
+// ---------------------------------------------------------------------------
+.date-chips-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+.date-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.4rem 0.875rem;
+  border-radius: $border-radius-full;
+  border: 1.5px solid $gray-200;
+  background: $white;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: $text-muted;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all $transition-fast;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  .date-chip-icon { font-size: 0.95rem; width: 0.95rem; height: 0.95rem; }
+
+  &:hover {
+    border-color: $primary-color;
+    color: $primary-color;
+    background: rgba($primary-color, 0.04);
+  }
+
+  &.active {
+    background: $primary-color;
+    border-color: $primary-color;
+    color: $white;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba($primary-color, 0.3);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Custom date range picker row
+// ---------------------------------------------------------------------------
+.custom-range-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.65rem $spacing-md;
+  background: $white;
+  border: 1.5px solid $primary-color;
+  border-radius: $border-radius-md;
+  max-width: 380px;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.range-input {
+  flex: 1;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: $text-primary;
+}
+
+.range-toggle {
+  color: $primary-color;
+}
+
+// ---------------------------------------------------------------------------
+// Search Bar — identical to orders-list
+// ---------------------------------------------------------------------------
+.search-bar-row {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+}
+
+.search-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+
+  .search-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 1.1rem; color: $gray-400; pointer-events: none;
+  }
+
+  .clear-search {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    border: none; background: none; cursor: pointer;
+    display: flex; align-items: center;
+    color: $gray-400; padding: 4px;
+    &:hover { color: $text-primary; }
+    .material-icons { font-size: 1rem; }
+  }
+}
+
+.search-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 36px 0 38px;
+  border-radius: $border-radius-md;
+  border: 1.5px solid $gray-200;
+  background: $white;
+  font-size: 0.875rem; font-family: inherit; color: $text-primary;
+  outline: none; transition: border-color $transition-fast;
+
+  &:focus { border-color: $primary-color; }
+  &::placeholder { color: $gray-400; }
+}
+
+.result-count {
+  font-size: 0.8125rem;
+  color: $text-muted;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  .date-hint {
+    font-weight: 500;
+    color: $primary-color;
+    margin-left: 2px;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Export
+// ---------------------------------------------------------------------------
+.export-bar {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+}
+
+.export-spinner {
+  flex-shrink: 0;
+}
+
+.export-tooltip-wrap {
+  display: inline-flex;
+}
+
+.export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  .export-caret {
+    margin-left: -2px;
+    margin-right: -6px;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Table Section — identical to orders-list
+// ---------------------------------------------------------------------------
+.table-section {
+  position: relative;
+}
+
+.table-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba($white, 0.72);
+  border-radius: $border-radius-xl;
+  pointer-events: none;
+}
+
+.table-container {
+  position: relative;
+  background: $white;
+  border-radius: $border-radius-xl;
+  border: 1px solid $gray-200;
+  overflow: hidden;
+  box-shadow: $shadow-sm;
+
+  &--loading {
+    .table-scroll-wrap,
+    mat-paginator { opacity: 0.55; transition: opacity 0.15s ease; }
+  }
+}
+
+.table-scroll-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  max-width: 100%;
+}
+
+.orders-table {
+  width: 100%;
+  min-width: 820px;
+
+  .cell-urgency-indicator {
+    width: 48px;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    vertical-align: middle;
+    text-align: center;
+  }
+
+  th.mat-mdc-header-cell {
+    background: $gray-50 !important;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: $text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid $gray-200;
+    padding: 12px 8px;
+  }
+
+  td.mat-mdc-cell {
+    padding: 12px 8px;
+    font-size: 0.875rem;
+    color: $text-primary;
+    border-bottom: 1px solid $gray-100;
+  }
+
+  tr.order-row {
+    cursor: pointer;
+    transition: background $transition-fast;
+
+    &:hover td.mat-mdc-cell {
+      background: rgba($primary-color, 0.025);
+    }
+
+    &[data-status="CANCELLED"] td.mat-mdc-cell {
+      opacity: 0.55;
+    }
+    &[data-status="DELIVERED"] td.mat-mdc-cell {
+      opacity: 0.75;
+    }
+  }
+}
+
+// Status bar (left-side colored indicator)
+.status-bar {
+  display: inline-block;
+  width: 5px;
+  height: 40px;
+  border-radius: 3px;
+  background: $gray-200;
+
+  &[data-status="PENDING"]           { background: $warning-color; }
+  &[data-status="CONFIRMED"]         { background: $info-color; }
+  &[data-status="PREPARING"]         { background: #8B5CF6; }
+  &[data-status="READY"],
+  &[data-status="READY_FOR_PICKUP"]  { background: $success-color; }
+  &[data-status="DELIVERED"]         { background: $success-dark; }
+  &[data-status="CANCELLED"]         { background: $gray-300; }
+}
+
+// Cells
+.cell-order {
+  display: flex; align-items: center; gap: 8px;
+  .order-num { font-weight: 700; font-size: 0.9rem; color: $text-primary; }
+}
+
+.cell-customer {
+  display: flex; flex-direction: column; gap: 2px;
+  .cust-name  { font-weight: 500; font-size: 0.875rem; }
+  .cust-phone { font-size: 0.75rem; color: $text-muted; }
+}
+
+.cell-items {
+  display: flex; flex-direction: column; gap: 2px;
+  .items-count   { font-weight: 600; font-size: 0.8rem; color: $text-secondary; }
+  .items-summary {
+    font-size: 0.8rem; color: $text-muted;
+    max-width: 140px; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+}
+
+.cell-total {
+  font-weight: 700;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cell-time {
+  display: flex; flex-direction: column; gap: 2px;
+  .time-ago { font-size: 0.8rem; color: $text-secondary; font-weight: 500; }
+  .time-abs { font-size: 0.75rem; color: $text-muted; }
+}
+
+// Empty state
+.no-data-cell { border: none !important; padding: 0 !important; }
+
+.table-empty {
+  display: flex; flex-direction: column; align-items: center;
+  padding: $spacing-2xl;
+  gap: $spacing-sm;
+  color: $text-muted;
+  .material-icons { font-size: 2.5rem; color: $gray-300; }
+  p { margin: 0; font-size: 0.9rem; font-weight: 500; }
+  span { font-size: 0.8rem; }
+}
+
+mat-paginator {
+  border-top: 1px solid $gray-100;
+  font-size: 0.8125rem;
+}
+
+// ---------------------------------------------------------------------------
+// Detail Sidenav
+// ---------------------------------------------------------------------------
+.detail-sidenav {
+  width: min(100vw - 24px, 440px);
+}
+
+.sidenav-head {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-md $spacing-md $spacing-sm;
+  border-bottom: 1px solid $gray-100;
+  position: sticky;
+  top: 0;
+  background: $white;
+  z-index: 1;
+}
+
+.sidenav-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: $text-primary;
+}
+
+.detail-loading {
+  display: flex;
+  justify-content: center;
+  padding: $spacing-2xl;
+}
+
+.detail-body {
+  padding: $spacing-md $spacing-lg $spacing-xl;
+}
+
+.detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+}
+
+.detail-order-num {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: $text-primary;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  margin: 0.3rem 0;
+  color: $text-secondary;
+}
+
+.detail-row-icon {
+  font-size: 1rem;
+  color: $gray-400;
+  flex-shrink: 0;
+}
+
+.detail-section-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: $text-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: $spacing-lg 0 $spacing-sm;
+  padding-bottom: 6px;
+  border-bottom: 1px solid $gray-100;
+}
+
+.detail-items {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 $spacing-md;
+
+  li {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.35rem 0.75rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid $gray-100;
+    align-items: center;
+
+    &:last-child { border-bottom: none; }
+  }
+
+  .it-qty  { font-weight: 700; font-size: 0.85rem; color: $text-muted; }
+  .it-name { font-size: 0.875rem; }
+  .it-price {
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+}
+
+.detail-totals {
+  background: $gray-50;
+  border-radius: $border-radius-md;
+  padding: $spacing-sm $spacing-md;
+
+  .tot-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    color: $text-secondary;
+
+    &.discount { color: $success-dark; }
+
+    &.grand-total {
+      font-weight: 800;
+      font-size: 1rem;
+      color: $text-primary;
+      border-top: 1px solid $gray-200;
+      margin-top: 4px;
+      padding-top: $spacing-sm;
+    }
+  }
+}
+
+.detail-notes {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: $text-muted;
+  margin-top: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  background: $gray-50;
+  border-radius: $border-radius-md;
+  border-left: 3px solid $info-color;
+}
+
+.detail-cancel {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: $error-dark;
+  margin-top: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  background: rgba($error-color, 0.06);
+  border-radius: $border-radius-md;
+  border-left: 3px solid $error-color;
+}
+
+.detail-empty {
+  padding: $spacing-xl;
+  color: $text-muted;
+  font-size: 0.9rem;
+  text-align: center;
+}

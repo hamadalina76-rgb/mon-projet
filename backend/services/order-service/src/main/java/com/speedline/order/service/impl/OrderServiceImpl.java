@@ -17,6 +17,7 @@ import com.speedline.order.domain.OrderStatusHistory;
 import com.speedline.order.dto.CreateOrderRequest;
 import com.speedline.order.dto.OrderItemDTO;
 import com.speedline.order.dto.OrderResponse;
+import com.speedline.order.dto.PartnerOrderHistorySummaryDTO;
 import com.speedline.order.dto.cart.CartItemPayload;
 import com.speedline.order.dto.cart.CartResponse;
 import com.speedline.order.dto.checkout.CheckoutOrderRequest;
@@ -27,6 +28,7 @@ import com.speedline.order.repository.OrderRepository;
 import com.speedline.order.repository.OrderStatusHistoryRepository;
 import com.speedline.order.service.CartService;
 import com.speedline.order.service.OrderService;
+import com.speedline.order.service.kitchen.KitchenTicketHtmlBuilder;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +36,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -738,6 +741,18 @@ public class OrderServiceImpl implements OrderService {
         }
 
         return getOrderById(savedOrder.getId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String buildKitchenTicketHtml(Long orderId, Long partnerId) {
+        if (partnerId == null) {
+            throw badRequest("L'identifiant partenaire est obligatoire");
+        }
+        final Order order = getOrderOrThrow(orderId);
+        assertPartnerOwnsOrder(order, partnerId);
+        final List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+        return KitchenTicketHtmlBuilder.buildDocument(order, items, objectMapper);
     }
 
     private Order getOrderOrThrow(Long orderId) {
@@ -1522,7 +1537,8 @@ public class OrderServiceImpl implements OrderService {
             Pageable pageable,
             String sortByParam,
             LocalDateTime from,
-            LocalDateTime to
+            LocalDateTime to,
+            String cancelledBy
     ) {
         final String trimmedSearch = search != null && !search.isBlank() ? search.trim() : "";
         final boolean prioritySort = "priority".equalsIgnoreCase(
@@ -1534,6 +1550,8 @@ public class OrderServiceImpl implements OrderService {
         final LocalDateTime effectiveFrom = from != null ? from : DATE_SENTINEL_FROM;
         final LocalDateTime effectiveTo   = to   != null ? to   : DATE_SENTINEL_TO;
 
+        final String cancelledByFilter = resolveCancelledByForPartnerList(status, cancelledBy);
+
         final Page<Order> page;
         final int pageIdx = pageable.getPageNumber();
         final int pageSize = pageable.getPageSize();
@@ -1542,12 +1560,60 @@ public class OrderServiceImpl implements OrderService {
         if (prioritySort && status == null) {
             page = orderRepository.findByPartnerIdPriority(partnerId, effectiveFrom, effectiveTo, trimmedSearch, unsortedPage);
         } else if (status != null) {
-            page = orderRepository.findByPartnerIdAndStatusFiltered(partnerId, status, effectiveFrom, effectiveTo, trimmedSearch, pageable);
+            page = orderRepository.findByPartnerIdAndStatusFiltered(
+                    partnerId, status, effectiveFrom, effectiveTo, trimmedSearch, cancelledByFilter, pageable);
         } else {
             page = orderRepository.findByPartnerIdAllStatuses(partnerId, effectiveFrom, effectiveTo, trimmedSearch, pageable);
         }
 
         return page.map(this::toResponse);
+    }
+
+    private static final int EXPORT_PAGE_SIZE = 500;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderResponse> listAllPartnerOrdersForExport(
+            Long partnerId,
+            OrderStatus status,
+            String search,
+            LocalDateTime from,
+            LocalDateTime to,
+            String cancelledBy
+    ) {
+        final List<OrderResponse> out = new ArrayList<>();
+        int page = 0;
+        while (true) {
+            final Pageable pageable = PageRequest.of(
+                    page,
+                    EXPORT_PAGE_SIZE,
+                    Sort.by(Sort.Direction.DESC, "orderTime"));
+            final Page<OrderResponse> chunk = getPartnerOrdersFiltered(
+                    partnerId,
+                    status,
+                    search,
+                    pageable,
+                    "orderTime",
+                    from,
+                    to,
+                    cancelledBy);
+            out.addAll(chunk.getContent());
+            if (!chunk.hasNext()) {
+                break;
+            }
+            page++;
+        }
+        return out;
+    }
+
+    /**
+     * Filtre {@code cancelledBy} uniquement pour les commandes annulées (ex. PARTNER = refus partenaire).
+     */
+    private static String resolveCancelledByForPartnerList(OrderStatus status, String cancelledBy) {
+        if (status != OrderStatus.CANCELLED || cancelledBy == null || cancelledBy.isBlank()) {
+            return null;
+        }
+        return cancelledBy.trim().toUpperCase(Locale.ROOT);
     }
 
     @Override
@@ -1615,6 +1681,38 @@ public class OrderServiceImpl implements OrderService {
         counts.put("READY",     orderRepository.countByPartnerIdAndStatusAndOrderTimeBetween(partnerId, OrderStatus.READY_FOR_PICKUP, effectiveFrom, effectiveTo));
         counts.put("CANCELLED", orderRepository.countByPartnerIdAndStatusAndOrderTimeBetween(partnerId, OrderStatus.CANCELLED, effectiveFrom, effectiveTo));
         return counts;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PartnerOrderHistorySummaryDTO getPartnerOrderHistorySummary(
+            Long partnerId,
+            LocalDateTime from,
+            LocalDateTime to
+    ) {
+        final LocalDateTime effectiveFrom = from != null ? from : DATE_SENTINEL_FROM;
+        final LocalDateTime effectiveTo   = to   != null ? to   : DATE_SENTINEL_TO;
+        final long totalOrders = orderRepository.countByPartnerIdAndOrderTimeBetween(
+                partnerId, effectiveFrom, effectiveTo);
+        final long cancelledCount = orderRepository.countByPartnerIdAndStatusAndOrderTimeBetween(
+                partnerId, OrderStatus.CANCELLED, effectiveFrom, effectiveTo);
+        BigDecimal revenueTnd = orderRepository.sumTotalByPartnerIdStatusAndOrderTimeBetween(
+                partnerId, OrderStatus.DELIVERED, effectiveFrom, effectiveTo);
+        if (revenueTnd == null) {
+            revenueTnd = BigDecimal.ZERO;
+        }
+        final double cancellationRatePercent = totalOrders == 0
+                ? 0.0
+                : BigDecimal.valueOf(cancelledCount)
+                .multiply(ONE_HUNDRED)
+                .divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP)
+                .doubleValue();
+        return PartnerOrderHistorySummaryDTO.builder()
+                .totalOrders(totalOrders)
+                .revenueTnd(revenueTnd)
+                .cancelledCount(cancelledCount)
+                .cancellationRatePercent(cancellationRatePercent)
+                .build();
     }
 
     private OrderResponse.DeliveryAddressDTO parseDeliveryAddress(String deliveryAddressJson) {

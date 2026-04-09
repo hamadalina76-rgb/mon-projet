@@ -26,6 +26,20 @@
       </div>
     </div>
 
+    @if (prepTimerDetailContext(); as pctx) {
+      <div class="prep-timer-strip" [class.strip-overdue]="detailPrepOverdue()">
+        <span class="material-icons prep-timer-ico">timer</span>
+        <span class="prep-timer-label">{{ 'ORDERS.DETAIL.PREP_TIME_REMAINING' | translate }}</span>
+        <app-timer
+          [startTimeIso]="pctx.startTimeIso"
+          [durationMinutes]="pctx.durationMinutes"
+          [active]="true"
+          [orderId]="order().id"
+          (expiredChange)="detailPrepOverdue.set($event)">
+        </app-timer>
+      </div>
+    }
+
     @if (!isCancelled()) {
       <div class="action-bar" [attr.data-status]="order().status">
 
@@ -57,6 +71,11 @@
             {{ 'ORDERS.DETAIL.CONFIRMED_HINT' | translate }}
           </div>
           <div class="action-btns">
+            <button type="button" class="btn-reprint-kitchen" (click)="reprintKitchenTicket()"
+                    [title]="'ORDERS.DETAIL.REPRINT_KITCHEN' | translate">
+              <span class="material-icons">print</span>
+              {{ 'ORDERS.DETAIL.REPRINT_KITCHEN' | translate }}
+            </button>
             <button class="btn-prepare" [disabled]="actionLoading()" (click)="startPreparing()">
               <span class="material-icons">restaurant</span>
               {{ 'ORDERS.DETAIL.START_PREP' | translate }}
@@ -70,6 +89,11 @@
             {{ 'ORDERS.DETAIL.PREPARING_HINT' | translate }}
           </div>
           <div class="action-btns">
+            <button type="button" class="btn-reprint-kitchen" (click)="reprintKitchenTicket()"
+                    [title]="'ORDERS.DETAIL.REPRINT_KITCHEN' | translate">
+              <span class="material-icons">print</span>
+              {{ 'ORDERS.DETAIL.REPRINT_KITCHEN' | translate }}
+            </button>
             <button class="btn-ready" [disabled]="actionLoading()" (click)="markReady()">
               <span class="material-icons">done_all</span>
               {{ 'ORDERS.DETAIL.MARK_READY' | translate }}

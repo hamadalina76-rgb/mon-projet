@@ -23,7 +23,9 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -51,9 +53,15 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
     @Transactional(readOnly = true)
     public List<MenuCategoryResponse> getCategories(Long partnerId) {
         log.debug("getCategories partnerId={}", partnerId);
+
+        // Build a categoryId → count map in a single query to avoid N+1
+        Map<Long, Long> countByCategoryId = new HashMap<>();
+        productRepository.countGroupedByCategoryForPartner(partnerId, ProductStatus.DELETED)
+                .forEach(row -> countByCategoryId.put((Long) row[0], (Long) row[1]));
+
         return menuCategoryRepository.findByPartnerIdOrderByPositionAsc(partnerId)
                 .stream()
-                .map(this::toResponse)
+                .map(cat -> toResponseWithCount(cat, countByCategoryId.getOrDefault(cat.getId(), 0L)))
                 .collect(Collectors.toList());
     }
 
@@ -230,6 +238,10 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
     // ========================= MAPPING ======================
 
     private MenuCategoryResponse toResponse(MenuCategory cat) {
+        return toResponseWithCount(cat, 0L);
+    }
+
+    private MenuCategoryResponse toResponseWithCount(MenuCategory cat, long count) {
         return MenuCategoryResponse.builder()
                 .id(cat.getId())
                 .partnerId(cat.getPartnerId())
@@ -238,6 +250,7 @@ public class MenuCategoryServiceImpl implements MenuCategoryService {
                 .imageUrl(cat.getImageUrl())
                 .position(cat.getPosition())
                 .isVisible(cat.getIsVisible())
+                .productCount(count)
                 .createdAt(cat.getCreatedAt())
                 .updatedAt(cat.getUpdatedAt())
                 .build();

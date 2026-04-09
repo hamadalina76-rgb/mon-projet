@@ -131,6 +131,17 @@ export class NotificationService {
     }
   }
 
+  /** Short urgent alert when prep deadline is reached (partner dashboard). */
+  playPrepDeadlineSound(): void {
+    if (!this.isSoundEnabled()) return;
+    try {
+      const ctx = this.getAudioContext();
+      this.playPrepDeadlineTone(ctx);
+    } catch {
+      this.pendingAudioPlay = true;
+    }
+  }
+
   /**
    * Call this on the first user interaction (click anywhere) to unlock autoplay.
    * MainLayoutComponent binds (click) on the root element.
@@ -213,6 +224,35 @@ export class NotificationService {
     const now = ctx.currentTime;
     bell(880, now);        // DING — La5
     bell(659, now + 0.35); // DONG — Mi5
+  }
+
+  /** Two fast high beeps — distinct from new-order bell. */
+  private playPrepDeadlineTone(ctx: AudioContext): void {
+    const g = ctx.createGain();
+    g.gain.value = 0.45;
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -8;
+    comp.ratio.value = 3;
+    g.connect(comp);
+    comp.connect(ctx.destination);
+
+    const beep = (freq: number, t0: number) => {
+      const osc = ctx.createOscillator();
+      const gn = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(freq, t0);
+      gn.gain.setValueAtTime(0, t0);
+      gn.gain.linearRampToValueAtTime(0.7, t0 + 0.01);
+      gn.gain.exponentialRampToValueAtTime(0.001, t0 + 0.12);
+      osc.connect(gn);
+      gn.connect(g);
+      osc.start(t0);
+      osc.stop(t0 + 0.13);
+    };
+
+    const t = ctx.currentTime;
+    beep(1200, t);
+    beep(1200, t + 0.18);
   }
 
   // ---------------------------------------------------------------------------

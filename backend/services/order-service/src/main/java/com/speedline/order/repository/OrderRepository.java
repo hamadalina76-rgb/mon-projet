@@ -60,6 +60,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             LocalDateTime from,
             LocalDateTime to);
 
+    @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o WHERE o.partnerId = :partnerId "
+            + "AND o.status = :status AND o.orderTime >= :from AND o.orderTime <= :to")
+    BigDecimal sumTotalByPartnerIdStatusAndOrderTimeBetween(
+            @Param("partnerId") Long partnerId,
+            @Param("status") OrderStatus status,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
     /** Recherche libre sur numéro de commande OU nom client */
     @Query("SELECT o FROM Order o WHERE o.partnerId = :partnerId AND (" +
            "LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
@@ -166,21 +174,27 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("search") String search,
             Pageable pageable);
 
-    /** Filtre statut précis — always provide non-null from/to. */
+    /**
+     * Filtre statut précis — always provide non-null from/to.
+     * {@code cancelledBy} : si non null, restreint aux annulations avec cet acteur (ex. PARTNER pour « refusées »).
+     */
     @Query(value = "SELECT o FROM Order o WHERE o.partnerId = :partnerId AND o.status = :status "
             + "AND o.orderTime >= :from AND o.orderTime <= :to "
             + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
-            + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%')))",
+            + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%'))) "
+            + "AND (:cancelledBy IS NULL OR o.cancelledBy = :cancelledBy)",
             countQuery = "SELECT COUNT(o) FROM Order o WHERE o.partnerId = :partnerId AND o.status = :status "
             + "AND o.orderTime >= :from AND o.orderTime <= :to "
             + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
-            + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%')))")
+            + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%'))) "
+            + "AND (:cancelledBy IS NULL OR o.cancelledBy = :cancelledBy)")
     Page<Order> findByPartnerIdAndStatusFiltered(
             @Param("partnerId") Long partnerId,
             @Param("status") OrderStatus status,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to,
             @Param("search") String search,
+            @Param("cancelledBy") String cancelledBy,
             Pageable pageable);
 
     // ==================== RECHERCHE PAR LIVREUR ====================

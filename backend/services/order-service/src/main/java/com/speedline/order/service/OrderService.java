@@ -3,6 +3,7 @@ package com.speedline.order.service;
 import com.speedline.order.domain.OrderStatus;
 import com.speedline.order.dto.CreateOrderRequest;
 import com.speedline.order.dto.OrderResponse;
+import com.speedline.order.dto.PartnerOrderHistorySummaryDTO;
 import com.speedline.order.dto.checkout.CheckoutOrderRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -318,6 +319,29 @@ public interface OrderService {
             Pageable pageable,
             String sortBy,
             LocalDateTime from,
+            LocalDateTime to,
+            String cancelledBy
+    );
+
+    /**
+     * Toutes les commandes correspondant aux filtres partenaire (tri {@code orderTime} desc),
+     * chargées par pages internes — pour export serveur.
+     */
+    List<OrderResponse> listAllPartnerOrdersForExport(
+            Long partnerId,
+            OrderStatus status,
+            String search,
+            LocalDateTime from,
+            LocalDateTime to,
+            String cancelledBy
+    );
+
+    /**
+     * Résumé KPI pour l’historique partenaire (total, CA livrées, annulations, taux).
+     */
+    PartnerOrderHistorySummaryDTO getPartnerOrderHistorySummary(
+            Long partnerId,
+            LocalDateTime from,
             LocalDateTime to
     );
 
@@ -346,6 +370,11 @@ public interface OrderService {
      * @param to   fin inclusive (null = sans borne haute)
      */
     java.util.Map<String, Long> getPartnerOrderCounts(Long partnerId, LocalDateTime from, LocalDateTime to);
+
+    /**
+     * Document HTML (ticket cuisine 80&nbsp;mm) pour impression — réservé au partenaire propriétaire.
+     */
+    String buildKitchenTicketHtml(Long orderId, Long partnerId);
 
     // ==================== STATS INTERNES ====================
 

@@ -3,6 +3,13 @@ import { Routes } from '@angular/router';
 
 export const ORDERS_ROUTES: Routes = [
   {
+    path: 'history',
+    loadComponent: () =>
+      import('./order-history/order-history.component').then(
+        (m) => m.OrderHistoryComponent
+      ),
+  },
+  {
     path: '',
     loadComponent: () =>
       import('./orders-list/orders-list.component').then(

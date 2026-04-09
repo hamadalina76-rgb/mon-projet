@@ -49,6 +49,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     long countByPartnerIdAndCategoryIdAndStatusNot(Long partnerId, Long categoryId, ProductStatus status);
 
     /**
+     * Comptage par catégorie en une seule requête — évite N+1 dans getCategories().
+     * Retourne [categoryId, count] pour toutes les catégories d'un partenaire (hors DELETED).
+     */
+    @Query("SELECT p.categoryId, COUNT(p) FROM Product p " +
+           "WHERE p.partnerId = :partnerId AND p.status <> :excludedStatus " +
+           "GROUP BY p.categoryId")
+    List<Object[]> countGroupedByCategoryForPartner(
+            @Param("partnerId") Long partnerId,
+            @Param("excludedStatus") ProductStatus excludedStatus);
+
+    /**
      * Dernier produit d'un partenaire (displayOrder le plus élevé) — pour l'auto-position (TC-18 pattern).
      */
     java.util.Optional<Product> findTopByPartnerIdAndStatusNotOrderByDisplayOrderDesc(

@@ -63,6 +63,49 @@
 }
 
 // ---------------------------------------------------------------------------
+// Prep countdown strip
+// ---------------------------------------------------------------------------
+@keyframes prepStripOverduePulse {
+  0%, 100% { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.35); }
+  50%       { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.55); }
+}
+
+.prep-timer-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $border-radius-lg;
+  border: 1px solid $gray-200;
+  background: rgba($info-color, 0.06);
+
+  .prep-timer-ico {
+    font-size: 1.15rem;
+    color: $info-color;
+  }
+
+  .prep-timer-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: $text-secondary;
+    margin-right: auto;
+  }
+
+  &.strip-overdue {
+    animation: prepStripOverduePulse 1s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &.strip-overdue {
+      animation: none;
+      background: rgba(239, 68, 68, 0.14);
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Action Bar
 // ---------------------------------------------------------------------------
 .action-bar {
@@ -126,6 +169,19 @@
 .btn-reject  { @extend %action-btn-base; background: $white; border: 1.5px solid rgba($error-color, 0.3); color: $error-dark; &:hover:not(:disabled) { background: rgba($error-color, 0.06); } }
 .btn-prepare { @extend %action-btn-base; background: $info-color; color: $white; &:hover:not(:disabled) { background: $info-dark; } }
 .btn-ready   { @extend %action-btn-base; background: $primary-color; color: $white; &:hover:not(:disabled) { background: $primary-dark; } }
+
+.btn-reprint-kitchen {
+  @extend %action-btn-base;
+  background: $white;
+  color: $text-secondary;
+  border: 1.5px solid $gray-300;
+  .material-icons { font-size: 1.1rem; }
+  &:hover:not(:disabled) {
+    background: $gray-50;
+    border-color: $gray-400;
+    color: $text-primary;
+  }
+}
 
 .spinner-sm {
   display: inline-block; width: 16px; height: 16px;
@@ -913,7 +969,7 @@
     .action-btns {
       flex-direction: column;
       width: 100%;
-      .btn-accept, .btn-reject, .btn-prepare, .btn-ready {
+      .btn-accept, .btn-reject, .btn-prepare, .btn-ready, .btn-reprint-kitchen {
         width: 100%;
         justify-content: center;
       }

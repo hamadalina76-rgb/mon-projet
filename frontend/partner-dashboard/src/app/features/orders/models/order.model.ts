@@ -84,7 +84,12 @@ export interface Order {
   deliveryFee: number;
   serviceFee?: number;
   discount?: number;
+  /** TVA (montant), exposé par l’API order-service. */
+  tax?: number;
   total: number;
+
+  /** Nom du livreur si assigné (API). */
+  courierName?: string;
 
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
