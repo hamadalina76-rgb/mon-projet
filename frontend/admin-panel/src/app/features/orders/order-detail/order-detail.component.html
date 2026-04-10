@@ -16,12 +16,18 @@
         <span class="header-date">{{ order.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
       </div>
     </div>
-    <span class="status-pill"
-          [style.color]="getStatusProp('color')"
-          [style.background]="getStatusProp('bg')">
-      <mat-icon class="pill-icon">{{ getStatusProp('icon') }}</mat-icon>
-      {{ 'orders.status.' + (order.status === 'READY_FOR_PICKUP' ? 'ready' : order.status === 'PICKED_UP' ? 'pickedUp' : order.status === 'IN_DELIVERY' ? 'delivering' : order.status.toLowerCase()) | translate }}
-    </span>
+    <div class="header-right">
+      <button mat-stroked-button class="refresh-btn" (click)="refresh()" [disabled]="refreshing">
+        <mat-icon [class.spin]="refreshing">refresh</mat-icon>
+        {{ 'orderDetail.refresh' | translate }}
+      </button>
+      <span class="status-pill"
+            [style.color]="getStatusProp('color')"
+            [style.background]="getStatusProp('bg')">
+        <mat-icon class="pill-icon">{{ getStatusProp('icon') }}</mat-icon>
+        {{ 'orders.status.' + (order.status === 'READY_FOR_PICKUP' ? 'ready' : order.status === 'PICKED_UP' ? 'pickedUp' : order.status === 'IN_DELIVERY' ? 'delivering' : order.status.toLowerCase()) | translate }}
+      </span>
+    </div>
   </header>
 
   <!-- ── Progress Pipeline ─────────────────────────────── -->
@@ -47,124 +53,482 @@
     </div>
   }
 
-  <div class="detail-grid">
+  <!-- ── Tab Group ─────────────────────────────────────── -->
+  <mat-tab-group [selectedIndex]="selectedTabIndex" (selectedTabChange)="onTabChange($event)" class="detail-tabs" animationDuration="200ms">
 
-    <!-- ── LEFT COLUMN ─────────────────────────────────── -->
-    <div class="main-col">
+    <!-- ── Tab 1: Résumé ─────────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">summarize</mat-icon>
+        {{ 'orderDetail.tabs.summary' | translate }}
+      </ng-template>
 
-      <!-- Order Items -->
-      <section class="card">
-        <h3 class="card-title">{{ 'orderDetail.items' | translate }}</h3>
-        @if (order.items?.length) {
-          <div class="items-list">
-            @for (item of order.items; track item.id) {
-              <div class="item-row">
-                <div class="item-qty">{{ item.quantity }}×</div>
-                <div class="item-info">
-                  <span class="item-name">{{ item.productName }}</span>
-                  @if (item.specialInstructions) {
-                    <span class="item-note">{{ item.specialInstructions }}</span>
-                  }
-                </div>
-                <span class="item-price">{{ item.subtotal | number:'1.2-2' }} TND</span>
-              </div>
+      <div class="tab-content summary-grid">
+        <!-- Customer -->
+        <section class="card info-card">
+          <h3 class="card-title"><mat-icon>person</mat-icon> {{ 'orderDetail.customer' | translate }}</h3>
+          <div class="info-row"><span class="info-label">{{ 'orderDetail.name' | translate }}</span><span>{{ order.customerName }}</span></div>
+          @if (order.customerPhone) {
+            <div class="info-row"><span class="info-label">{{ 'orderDetail.phone' | translate }}</span><span>{{ order.customerPhone }}</span></div>
+          }
+          @if (order.customerNotes) {
+            <div class="info-row"><span class="info-label">{{ 'orderDetail.notes' | translate }}</span><span class="note-text">{{ order.customerNotes }}</span></div>
+          }
+        </section>
+
+        <!-- Partner -->
+        <section class="card info-card">
+          <h3 class="card-title"><mat-icon>store</mat-icon> {{ 'orderDetail.partner' | translate }}</h3>
+          <div class="info-row"><span class="info-label">{{ 'orderDetail.name' | translate }}</span><span>{{ order.partnerName }}</span></div>
+          @if (order.partnerPhone) {
+            <div class="info-row"><span class="info-label">{{ 'orderDetail.phone' | translate }}</span><span>{{ order.partnerPhone }}</span></div>
+          }
+          @if (order.partnerAddress) {
+            <div class="info-row"><span class="info-label">{{ 'orderDetail.address' | translate }}</span><span>{{ order.partnerAddress }}</span></div>
+          }
+        </section>
+
+        <!-- Courier -->
+        <section class="card info-card">
+          <h3 class="card-title"><mat-icon>delivery_dining</mat-icon> {{ 'orderDetail.courier' | translate }}</h3>
+          @if (order.courierName) {
+            <div class="info-row"><span class="info-label">{{ 'orderDetail.name' | translate }}</span><span>{{ order.courierName }}</span></div>
+            @if (order.courierPhone) {
+              <div class="info-row"><span class="info-label">{{ 'orderDetail.phone' | translate }}</span><span>{{ order.courierPhone }}</span></div>
+            }
+          } @else {
+            <p class="empty-hint">{{ 'orders.noCourier' | translate }}</p>
+          }
+        </section>
+
+        <!-- Payment & Delivery -->
+        <section class="card info-card">
+          <h3 class="card-title"><mat-icon>payment</mat-icon> {{ 'orderDetail.paymentDelivery' | translate }}</h3>
+          <div class="info-row"><span class="info-label">{{ 'orderDetail.paymentMethod' | translate }}</span><span>{{ 'orders.payment.' + order.paymentMethod.toLowerCase() | translate }}</span></div>
+          <div class="info-row"><span class="info-label">{{ 'orderDetail.paymentStatus' | translate }}</span><span>{{ order.paymentStatus }}</span></div>
+          @if (order.estimatedDeliveryTime) {
+            <div class="info-row"><span class="info-label">{{ 'orderDetail.estimatedDelivery' | translate }}</span><span>{{ order.estimatedDeliveryTime | date:'HH:mm' }}</span></div>
+          }
+          @if (order.deliveryAddress?.formattedAddress) {
+            <div class="info-row"><span class="info-label">{{ 'orderDetail.deliveryAddress' | translate }}</span><span>{{ order.deliveryAddress!.formattedAddress }}</span></div>
+          }
+        </section>
+
+        <!-- Pricing -->
+        <section class="card info-card pricing-card">
+          <h3 class="card-title"><mat-icon>receipt_long</mat-icon> {{ 'orderDetail.pricing' | translate }}</h3>
+          <div class="totals-block">
+            <div class="total-line"><span>{{ 'orderDetail.subtotal' | translate }}</span><span>{{ order.subtotal | number:'1.2-2' }} TND</span></div>
+            <div class="total-line"><span>{{ 'orderDetail.deliveryFee' | translate }}</span><span>{{ order.deliveryFee | number:'1.2-2' }} TND</span></div>
+            @if (order.discount > 0) {
+              <div class="total-line discount"><span>{{ 'orderDetail.discount' | translate }}</span><span>-{{ order.discount | number:'1.2-2' }} TND</span></div>
+            }
+            @if (order.promoCode) {
+              <div class="total-line promo"><span>{{ 'orderDetail.promoCode' | translate }}</span><span>{{ order.promoCode }}</span></div>
+            }
+            <div class="total-line grand"><span>{{ 'orderDetail.total' | translate }}</span><span>{{ order.total | number:'1.2-2' }} TND</span></div>
+          </div>
+        </section>
+
+        <!-- Admin Actions -->
+        <section class="card info-card actions-card">
+          <h3 class="card-title"><mat-icon>admin_panel_settings</mat-icon> {{ 'orderDetail.actions' | translate }}</h3>
+          <div class="actions-grid">
+            @if (canCancel) {
+              <button mat-stroked-button color="warn" (click)="openCancelDialog()" matTooltip="{{ 'orderDetail.cancelOrder' | translate }}">
+                <mat-icon>cancel</mat-icon> {{ 'orderDetail.cancelOrder' | translate }}
+              </button>
+            }
+            @if (canRefund) {
+              <button mat-stroked-button (click)="openRefundDialog()" matTooltip="{{ 'orderDetail.refundOrder' | translate }}">
+                <mat-icon>currency_exchange</mat-icon> {{ 'orderDetail.refundOrder' | translate }}
+              </button>
+            }
+            @if (canForceStatus) {
+              <button mat-stroked-button color="primary" (click)="openForceStatusDialog()" matTooltip="{{ 'orderDetail.forceStatusTooltip' | translate }}">
+                <mat-icon>swap_vert</mat-icon> {{ 'orderDetail.forceStatus' | translate }}
+              </button>
+            }
+            @if (canAssignCourier) {
+              <button mat-stroked-button (click)="openAssignCourierDialog()" matTooltip="{{ 'orderDetail.assignCourierTooltip' | translate }}">
+                <mat-icon>person_add</mat-icon> {{ 'orderDetail.assignCourier' | translate }}
+              </button>
+            }
+            @if (canContact) {
+              <button mat-stroked-button (click)="openContactDialog('customer')" matTooltip="{{ 'orderDetail.contactTooltip' | translate }}">
+                <mat-icon>send</mat-icon> {{ 'orderDetail.contactUser' | translate }}
+              </button>
+            }
+            @if (canAddNote) {
+              <button mat-stroked-button (click)="openNoteDialog()" matTooltip="{{ 'orderDetail.addNoteTooltip' | translate }}">
+                <mat-icon>note_add</mat-icon> {{ 'orderDetail.addNote' | translate }}
+              </button>
             }
           </div>
-        }
-        <div class="totals-block">
-          <div class="total-line"><span>{{ 'orderDetail.subtotal' | translate }}</span><span>{{ order.subtotal | number:'1.2-2' }} TND</span></div>
-          <div class="total-line"><span>{{ 'orderDetail.deliveryFee' | translate }}</span><span>{{ order.deliveryFee | number:'1.2-2' }} TND</span></div>
-          @if (order.discount > 0) {
-            <div class="total-line discount"><span>{{ 'orderDetail.discount' | translate }}</span><span>-{{ order.discount | number:'1.2-2' }} TND</span></div>
-          }
-          <div class="total-line grand"><span>{{ 'orderDetail.total' | translate }}</span><span>{{ order.total | number:'1.2-2' }} TND</span></div>
-        </div>
-      </section>
+        </section>
+      </div>
+    </mat-tab>
 
-      <!-- Status Timeline -->
-      <section class="card">
-        <h3 class="card-title">{{ 'orderDetail.timeline' | translate }}</h3>
-        @if (order.statusHistory?.length) {
-          <div class="timeline">
-            @for (entry of order.statusHistory; track entry.timestamp; let last = $last) {
-              <div class="tl-entry">
-                <div class="tl-spine">
-                  <div class="tl-dot" [ngClass]="getTimelineDotClass(entry)"></div>
-                  @if (!last) { <div class="tl-line"></div> }
-                </div>
-                <div class="tl-body">
-                  <div class="tl-status">
-                    <mat-icon class="tl-icon">{{ getTimelineIcon(entry) }}</mat-icon>
-                    <span class="tl-label">{{ entry.description || entry.status }}</span>
-                  </div>
-                  <div class="tl-meta">
-                    <span>{{ entry.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}</span>
-                    @if (entry.updatedBy) { <span>• {{ entry.updatedBy }}</span> }
-                    @if (entry.notes) { <span class="tl-notes">{{ entry.notes }}</span> }
-                  </div>
-                </div>
+    <!-- ── Tab 2: Articles ───────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">shopping_bag</mat-icon>
+        {{ 'orderDetail.tabs.items' | translate }}
+      </ng-template>
+
+      <div class="tab-content">
+        <section class="card">
+          @if (order.items?.length) {
+            <div class="items-table">
+              <div class="items-header">
+                <span class="col-qty">#</span>
+                <span class="col-name">{{ 'orderDetail.productName' | translate }}</span>
+                <span class="col-unit">{{ 'orderDetail.unitPrice' | translate }}</span>
+                <span class="col-total">{{ 'orderDetail.lineTotal' | translate }}</span>
               </div>
+              @for (item of order.items; track item.id) {
+                <div class="item-row">
+                  <span class="col-qty item-qty">{{ item.quantity }}×</span>
+                  <div class="col-name item-info">
+                    <span class="item-name">{{ item.productName }}</span>
+                    @if (item.selectedOptions) {
+                      <div class="item-options">
+                        @for (opt of item.selectedOptions | keyvalue; track opt.key) {
+                          <span class="option-badge">{{ opt.key }}: {{ opt.value }}</span>
+                        }
+                      </div>
+                    }
+                    @if (item.selectedAddons?.length) {
+                      <div class="item-addons">
+                        @for (addon of item.selectedAddons; track addon) {
+                          <span class="addon-badge">+ {{ addon }}</span>
+                        }
+                      </div>
+                    }
+                    @if (item.specialInstructions) {
+                      <span class="item-note">{{ item.specialInstructions }}</span>
+                    }
+                  </div>
+                  <span class="col-unit">{{ item.unitPrice | number:'1.2-2' }} TND</span>
+                  <span class="col-total item-price">{{ item.subtotal | number:'1.2-2' }} TND</span>
+                </div>
+              }
+            </div>
+            <div class="totals-block">
+              <div class="total-line"><span>{{ 'orderDetail.subtotal' | translate }}</span><span>{{ order.subtotal | number:'1.2-2' }} TND</span></div>
+              <div class="total-line"><span>{{ 'orderDetail.deliveryFee' | translate }}</span><span>{{ order.deliveryFee | number:'1.2-2' }} TND</span></div>
+              @if (order.discount > 0) {
+                <div class="total-line discount"><span>{{ 'orderDetail.discount' | translate }}</span><span>-{{ order.discount | number:'1.2-2' }} TND</span></div>
+              }
+              <div class="total-line grand"><span>{{ 'orderDetail.total' | translate }}</span><span>{{ order.total | number:'1.2-2' }} TND</span></div>
+            </div>
+          } @else {
+            <p class="empty-hint">{{ 'orderDetail.noItems' | translate }}</p>
+          }
+        </section>
+      </div>
+    </mat-tab>
+
+    <!-- ── Tab 3: Carte & Livraison ──────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">map</mat-icon>
+        {{ 'orderDetail.tabs.map' | translate }}
+      </ng-template>
+
+      <div class="tab-content">
+        <section class="card map-card">
+          @if (order.status === 'IN_DELIVERY' && courierPosition) {
+            <div class="tracking-banner live">
+              <mat-icon>gps_fixed</mat-icon>
+              {{ 'orderDetail.courierLive' | translate }}
+            </div>
+          }
+          <div id="order-map" class="map-container"></div>
+          <div class="map-legend">
+            <span class="legend-item"><span class="legend-dot green"></span> {{ 'orderDetail.customer' | translate }}</span>
+            <span class="legend-item"><span class="legend-dot blue"></span> {{ 'orderDetail.courier' | translate }}</span>
+          </div>
+          @if (order.deliveryAddress?.formattedAddress) {
+            <div class="delivery-info-below">
+              <mat-icon>place</mat-icon>
+              <span>{{ order.deliveryAddress!.formattedAddress }}</span>
+            </div>
+          }
+        </section>
+      </div>
+    </mat-tab>
+
+    <!-- ── Tab 4: Timeline ───────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">timeline</mat-icon>
+        {{ 'orderDetail.tabs.timeline' | translate }}
+      </ng-template>
+
+      <div class="tab-content">
+        <section class="card">
+          @if (order.statusHistory?.length) {
+            <div class="timeline">
+              @for (entry of order.statusHistory; track entry.timestamp; let last = $last) {
+                <div class="tl-entry">
+                  <div class="tl-spine">
+                    <div class="tl-dot" [ngClass]="getTimelineDotClass(entry)"></div>
+                    @if (!last) { <div class="tl-line"></div> }
+                  </div>
+                  <div class="tl-body">
+                    <div class="tl-status">
+                      <mat-icon class="tl-icon">{{ getTimelineIcon(entry) }}</mat-icon>
+                      <span class="tl-label">{{ entry.description || entry.status }}</span>
+                    </div>
+                    <div class="tl-meta">
+                      <span>{{ entry.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}</span>
+                      @if (entry.actorType) { <span class="tl-actor">• {{ entry.actorType }}</span> }
+                      @if (entry.updatedBy) { <span>• {{ entry.updatedBy }}</span> }
+                      @if (entry.notes) { <span class="tl-notes">{{ entry.notes }}</span> }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="empty-hint">{{ 'orderDetail.noHistory' | translate }}</p>
+          }
+        </section>
+      </div>
+    </mat-tab>
+
+    <!-- ── Tab 5: Problèmes ──────────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">report_problem</mat-icon>
+        {{ 'orderDetail.tabs.issues' | translate }}
+      </ng-template>
+
+      <div class="tab-content">
+        <section class="card">
+          <div class="stub-content">
+            <mat-icon class="stub-icon">report_problem</mat-icon>
+            <p class="empty-hint">{{ 'orderDetail.noIssues' | translate }}</p>
+          </div>
+        </section>
+      </div>
+    </mat-tab>
+
+    <!-- ── Tab 6: Notes internes ─────────────────────── -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">sticky_note_2</mat-icon>
+        {{ 'orderDetail.tabs.notes' | translate }}
+        @if (notesCount > 0) {
+          <span class="tab-badge">{{ notesCount }}</span>
+        }
+      </ng-template>
+
+      <div class="tab-content notes-tab">
+        <section class="card notes-card">
+          <!-- Notes thread -->
+          <div class="notes-thread">
+            @if (notesLoading) {
+              <div class="notes-loading">
+                <mat-spinner diameter="28"></mat-spinner>
+              </div>
+            } @else if (notes.length === 0) {
+              <div class="notes-empty">
+                <mat-icon class="notes-empty-icon">sticky_note_2</mat-icon>
+                <p>{{ 'orderDetail.noNotesYet' | translate }}</p>
+              </div>
+            } @else {
+              @for (note of notes; track note.id || note.tempId) {
+                <div class="note-bubble" [class.pending]="note.isPending">
+                  <div class="note-header">
+                    <div class="note-avatar">
+                      <mat-icon>person</mat-icon>
+                    </div>
+                    <div class="note-meta">
+                      <span class="note-author">{{ note.authorName }}</span>
+                      <span class="note-role">{{ note.authorRole }}</span>
+                      <span class="note-visibility-badge" [class.admin-only]="note.visibility === 'ADMIN_ONLY'" [class.all-staff]="note.visibility === 'ALL_STAFF'">
+                        {{ note.visibility === 'ADMIN_ONLY' ? ('orderDetail.adminOnly' | translate) : ('orderDetail.allStaff' | translate) }}
+                      </span>
+                    </div>
+                    <span class="note-time">
+                      @if (note.isPending) {
+                        <mat-icon class="sending-icon">schedule</mat-icon>
+                        {{ 'orderDetail.sending' | translate }}
+                      } @else {
+                        {{ getRelativeTime(note.createdAt) }}
+                      }
+                    </span>
+                    @if (!note.isPending) {
+                      <button mat-icon-button class="note-delete" (click)="deleteNote(note.id)" matTooltip="{{ 'orderDetail.deleteNote' | translate }}">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    }
+                  </div>
+                  <div class="note-content">{{ note.content }}</div>
+                </div>
+              }
             }
           </div>
-        } @else {
-          <p class="empty-hint">{{ 'orderDetail.noHistory' | translate }}</p>
-        }
-      </section>
-    </div>
 
-    <!-- ── RIGHT COLUMN ────────────────────────────────── -->
-    <div class="side-col">
+          <!-- Note input area -->
+          <div class="note-input-area">
+            <div class="note-input-row">
+              <mat-form-field appearance="outline" class="note-field">
+                <textarea matInput
+                  [(ngModel)]="noteInputText"
+                  (keydown)="onNoteKeydown($event)"
+                  [placeholder]="'orderDetail.noteInputPlaceholder' | translate"
+                  rows="2"
+                  maxlength="2000"></textarea>
+              </mat-form-field>
+              <div class="note-input-actions">
+                <mat-form-field appearance="outline" class="visibility-select">
+                  <mat-select [(ngModel)]="noteInputVisibility">
+                    <mat-option value="ADMIN_ONLY">{{ 'orderDetail.adminOnly' | translate }}</mat-option>
+                    <mat-option value="ALL_STAFF">{{ 'orderDetail.allStaff' | translate }}</mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <button mat-flat-button color="primary" class="send-note-btn" (click)="sendNote()" [disabled]="!noteInputText.trim() || noteSending">
+                  @if (noteSending) { <mat-spinner diameter="16"></mat-spinner> }
+                  @else { <mat-icon>send</mat-icon> }
+                  {{ 'orderDetail.sendNote' | translate }}
+                </button>
+              </div>
+            </div>
+            <span class="note-hint">{{ 'orderDetail.noteHint' | translate }}</span>
+          </div>
+        </section>
+      </div>
+    </mat-tab>
 
-      <!-- Customer -->
-      <section class="card info-card">
-        <h3 class="card-title"><mat-icon>person</mat-icon> {{ 'orderDetail.customer' | translate }}</h3>
-        <div class="info-row"><span class="info-label">{{ 'orderDetail.name' | translate }}</span><span>{{ order.customerName }}</span></div>
-        @if (order.customerPhone) {
-          <div class="info-row"><span class="info-label">{{ 'orderDetail.phone' | translate }}</span><span>{{ order.customerPhone }}</span></div>
-        }
-        @if (order.customerNotes) {
-          <div class="info-row"><span class="info-label">{{ 'orderDetail.notes' | translate }}</span><span class="note-text">{{ order.customerNotes }}</span></div>
-        }
-      </section>
+  </mat-tab-group>
+</div>
+}
 
-      <!-- Partner -->
-      <section class="card info-card">
-        <h3 class="card-title"><mat-icon>store</mat-icon> {{ 'orderDetail.partner' | translate }}</h3>
-        <div class="info-row"><span class="info-label">{{ 'orderDetail.name' | translate }}</span><span>{{ order.partnerName }}</span></div>
-        @if (order.partnerPhone) {
-          <div class="info-row"><span class="info-label">{{ 'orderDetail.phone' | translate }}</span><span>{{ order.partnerPhone }}</span></div>
-        }
-        @if (order.partnerAddress) {
-          <div class="info-row"><span class="info-label">{{ 'orderDetail.address' | translate }}</span><span>{{ order.partnerAddress }}</span></div>
-        }
-      </section>
-
-      <!-- Courier -->
-      <section class="card info-card">
-        <h3 class="card-title"><mat-icon>delivery_dining</mat-icon> {{ 'orderDetail.courier' | translate }}</h3>
-        @if (order.courierName) {
-          <div class="info-row"><span class="info-label">{{ 'orderDetail.name' | translate }}</span><span>{{ order.courierName }}</span></div>
-          @if (order.courierPhone) {
-            <div class="info-row"><span class="info-label">{{ 'orderDetail.phone' | translate }}</span><span>{{ order.courierPhone }}</span></div>
-          }
-        } @else {
-          <p class="empty-hint">{{ 'orders.noCourier' | translate }}</p>
-        }
-      </section>
-
-      <!-- Payment & Delivery -->
-      <section class="card info-card">
-        <h3 class="card-title"><mat-icon>payment</mat-icon> {{ 'orderDetail.paymentDelivery' | translate }}</h3>
-        <div class="info-row"><span class="info-label">{{ 'orderDetail.paymentMethod' | translate }}</span><span>{{ 'orders.payment.' + order.paymentMethod?.toLowerCase() | translate }}</span></div>
-        <div class="info-row"><span class="info-label">{{ 'orderDetail.paymentStatus' | translate }}</span><span>{{ order.paymentStatus }}</span></div>
-        @if (order.estimatedDeliveryTime) {
-          <div class="info-row"><span class="info-label">{{ 'orderDetail.estimatedDelivery' | translate }}</span><span>{{ order.estimatedDeliveryTime | date:'HH:mm' }}</span></div>
-        }
-        @if (order.deliveryAddress?.formattedAddress) {
-          <div class="info-row"><span class="info-label">{{ 'orderDetail.deliveryAddress' | translate }}</span><span>{{ order.deliveryAddress.formattedAddress }}</span></div>
-        }
-      </section>
+<!-- ── Cancel Order Dialog ──────────────────────────── -->
+@if (showCancelDialog) {
+  <div class="dialog-backdrop" (click)="closeCancelDialog()">
+    <div class="dialog-box" (click)="$event.stopPropagation()">
+      <h3>{{ 'orderDetail.cancelOrder' | translate }}</h3>
+      <p>{{ 'orderDetail.cancelConfirm' | translate }}</p>
+      <mat-form-field appearance="outline" class="dialog-field">
+        <mat-label>{{ 'orderDetail.cancelReasonLabel' | translate }}</mat-label>
+        <textarea matInput [(ngModel)]="cancelReason" rows="3"></textarea>
+      </mat-form-field>
+      <div class="dialog-actions">
+        <button mat-button (click)="closeCancelDialog()">{{ 'common.cancel' | translate }}</button>
+        <button mat-flat-button color="warn" (click)="confirmCancel()" [disabled]="!cancelReason.trim() || actionLoading">
+          @if (actionLoading) { <mat-spinner diameter="18"></mat-spinner> }
+          {{ 'orderDetail.confirmCancel' | translate }}
+        </button>
+      </div>
     </div>
   </div>
-</div>
+}
+
+<!-- ── Refund Dialog ────────────────────────────────── -->
+@if (showRefundDialog) {
+  <div class="dialog-backdrop" (click)="closeRefundDialog()">
+    <div class="dialog-box" (click)="$event.stopPropagation()">
+      <h3>{{ 'orderDetail.refundOrder' | translate }}</h3>
+      <p>{{ 'orderDetail.refundConfirm' | translate }}</p>
+      <mat-form-field appearance="outline" class="dialog-field">
+        <mat-label>{{ 'orderDetail.refundAmountLabel' | translate }}</mat-label>
+        <input matInput type="number" [(ngModel)]="refundAmount" [max]="order?.total || 0" min="0.01" step="0.01">
+      </mat-form-field>
+      <div class="dialog-actions">
+        <button mat-button (click)="closeRefundDialog()">{{ 'common.cancel' | translate }}</button>
+        <button mat-flat-button color="primary" (click)="confirmRefund()" [disabled]="refundAmount <= 0 || actionLoading">
+          @if (actionLoading) { <mat-spinner diameter="18"></mat-spinner> }
+          {{ 'orderDetail.confirmRefund' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Force Status Dialog ─────────────────────────── -->
+@if (showForceStatusDialog) {
+  <div class="dialog-backdrop" (click)="closeForceStatusDialog()">
+    <div class="dialog-box" (click)="$event.stopPropagation()">
+      <h3>{{ 'orderDetail.forceStatus' | translate }}</h3>
+      <p>{{ 'orderDetail.forceStatusConfirm' | translate }}</p>
+      <mat-form-field appearance="outline" class="dialog-field">
+        <mat-label>{{ 'orderDetail.newStatusLabel' | translate }}</mat-label>
+        <mat-select [(ngModel)]="newStatus">
+          @for (s of availableTransitions; track s) {
+            <mat-option [value]="s">{{ 'orders.status.' + (s === 'READY_FOR_PICKUP' ? 'ready' : s === 'PICKED_UP' ? 'pickedUp' : s === 'IN_DELIVERY' ? 'delivering' : s.toLowerCase()) | translate }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="dialog-field">
+        <mat-label>{{ 'orderDetail.forceStatusNotesLabel' | translate }}</mat-label>
+        <textarea matInput [(ngModel)]="forceStatusNotes" rows="2"></textarea>
+      </mat-form-field>
+      <div class="dialog-actions">
+        <button mat-button (click)="closeForceStatusDialog()">{{ 'common.cancel' | translate }}</button>
+        <button mat-flat-button color="primary" (click)="confirmForceStatus()" [disabled]="actionLoading">
+          @if (actionLoading) { <mat-spinner diameter="18"></mat-spinner> }
+          {{ 'orderDetail.confirmForceStatus' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Assign Courier Dialog ───────────────────────── -->
+@if (showAssignCourierDialog) {
+  <div class="dialog-backdrop" (click)="closeAssignCourierDialog()">
+    <div class="dialog-box" (click)="$event.stopPropagation()">
+      <h3>{{ 'orderDetail.assignCourier' | translate }}</h3>
+      <p>{{ 'orderDetail.assignCourierConfirm' | translate }}</p>
+      <mat-form-field appearance="outline" class="dialog-field">
+        <mat-label>{{ 'orderDetail.courierIdLabel' | translate }}</mat-label>
+        <input matInput type="number" [(ngModel)]="newCourierId" min="1">
+      </mat-form-field>
+      <div class="dialog-actions">
+        <button mat-button (click)="closeAssignCourierDialog()">{{ 'common.cancel' | translate }}</button>
+        <button mat-flat-button color="primary" (click)="confirmAssignCourier()" [disabled]="!newCourierId || actionLoading">
+          @if (actionLoading) { <mat-spinner diameter="18"></mat-spinner> }
+          {{ 'orderDetail.confirmAssign' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Contact Dialog ──────────────────────────────── -->
+@if (showContactDialog) {
+  <div class="dialog-backdrop" (click)="closeContactDialog()">
+    <div class="dialog-box" (click)="$event.stopPropagation()">
+      <h3>{{ 'orderDetail.contactUser' | translate }}</h3>
+      <p>{{ 'orderDetail.contactConfirm' | translate }}</p>
+      <div class="contact-targets">
+        <button mat-stroked-button [class.active]="contactTarget === 'customer'" (click)="contactTarget = 'customer'">
+          <mat-icon>person</mat-icon> {{ 'orderDetail.customer' | translate }}
+        </button>
+        <button mat-stroked-button [class.active]="contactTarget === 'partner'" (click)="contactTarget = 'partner'">
+          <mat-icon>store</mat-icon> {{ 'orderDetail.partner' | translate }}
+        </button>
+        @if (order?.courierId) {
+          <button mat-stroked-button [class.active]="contactTarget === 'courier'" (click)="contactTarget = 'courier'">
+            <mat-icon>delivery_dining</mat-icon> {{ 'orderDetail.courier' | translate }}
+          </button>
+        }
+      </div>
+      <mat-form-field appearance="outline" class="dialog-field">
+        <mat-label>{{ 'orderDetail.messageLabel' | translate }}</mat-label>
+        <textarea matInput [(ngModel)]="contactMessage" rows="3"></textarea>
+      </mat-form-field>
+      <div class="dialog-actions">
+        <button mat-button (click)="closeContactDialog()">{{ 'common.cancel' | translate }}</button>
+        <button mat-flat-button color="primary" (click)="confirmContact()" [disabled]="!contactMessage.trim() || actionLoading">
+          @if (actionLoading) { <mat-spinner diameter="18"></mat-spinner> }
+          {{ 'orderDetail.sendMessage' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
 }
