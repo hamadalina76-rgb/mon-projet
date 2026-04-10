@@ -92,6 +92,23 @@ public class OrderCreatedNotificationService {
 
         notificationService.pushToPartnerTopic(partnerId, notification);
         log.info("ORDER_CREATED WebSocket push sent to partner {}", partnerId);
+
+        // Also notify admin in real-time about new order
+        Notification adminNotification = Notification.builder()
+                .userId(0L)
+                .type(NotificationType.ORDER)
+                .title("Nouvelle commande #" + (orderNumber != null ? orderNumber : orderId))
+                .message(message)
+                .data(data)
+                .channel(NotificationChannel.IN_APP)
+                .isRead(false)
+                .isSent(true)
+                .sentAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now())
+                .build();
+        adminNotification = notificationRepository.save(adminNotification);
+        notificationService.pushToAdminTopic(adminNotification);
+        log.info("ORDER_CREATED WebSocket push sent to admin topic");
     }
 
     private static String buildOrderMessage(int itemCount, BigDecimal total) {

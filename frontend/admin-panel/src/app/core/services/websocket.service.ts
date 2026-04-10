@@ -1,9 +1,9 @@
 // src/app/core/services/websocket.service.ts
 import { Injectable, signal, OnDestroy } from '@angular/core';
-import { Client, IMessage } from '@stomp/stompjs';
+import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { environment } from '../../../environments/environment';
-import { Subject } from 'rxjs';
+import { Subject, Observable } from 'rxjs';
 
 export interface WebSocketNotification {
   id: string;
@@ -16,6 +16,27 @@ export interface WebSocketNotification {
   channel: string;
   createdAt: string;
   readAt: string | null;
+}
+
+export interface CourierPositionEvent {
+  courierId: number;
+  lat: number;
+  lng: number;
+  heading?: number;
+  speed?: number;
+  estimatedArrivalMin?: number;
+  timestamp?: string;
+}
+
+export interface OrderNoteEvent {
+  id: number;
+  orderId: number;
+  content: string;
+  visibility: string;
+  authorId: number;
+  authorName: string;
+  authorRole: string;
+  createdAt: string;
 }
 
 @Injectable({
@@ -70,6 +91,72 @@ export class WebSocketService implements OnDestroy {
       this.client = null;
       this.connected.set(false);
     }
+  }
+
+  /**
+   * Subscribe to courier GPS position updates for a specific order.
+   * Returns an Observable that emits position events and a teardown function.
+   */
+  subscribeToCourierTracking(orderId: number): { positions$: Observable<CourierPositionEvent>; unsubscribe: () => void } {
+    const subject = new Subject<CourierPositionEvent>();
+    let subscription: StompSubscription | null = null;
+
+    const doSubscribe = () => {
+      if (!this.client?.active) return;
+      subscription = this.client.subscribe(`/topic/tracking/${orderId}`, (message: IMessage) => {
+        try {
+          const pos: CourierPositionEvent = JSON.parse(message.body);
+          subject.next(pos);
+        } catch (e) {
+          console.error('[WebSocket] Failed to parse courier position:', e);
+        }
+      });
+    };
+
+    if (this.client?.active) {
+      doSubscribe();
+    }
+
+    return {
+      positions$: subject.asObservable(),
+      unsubscribe: () => {
+        subscription?.unsubscribe();
+        subject.complete();
+      },
+    };
+  }
+
+  /**
+   * Subscribe to internal notes for a specific order.
+   * Returns an Observable that emits new notes and a teardown function.
+   */
+  subscribeToOrderNotes(orderId: number): { notes$: Observable<OrderNoteEvent>; unsubscribe: () => void } {
+    const subject = new Subject<OrderNoteEvent>();
+    let subscription: StompSubscription | null = null;
+
+    const doSubscribe = () => {
+      if (!this.client?.active) return;
+      subscription = this.client.subscribe(`/topic/orders/${orderId}/notes`, (message: IMessage) => {
+        try {
+          const note: OrderNoteEvent = JSON.parse(message.body);
+          subject.next(note);
+        } catch (e) {
+          console.error('[WebSocket] Failed to parse order note:', e);
+        }
+      });
+    };
+
+    if (this.client?.active) {
+      doSubscribe();
+    }
+
+    return {
+      notes$: subject.asObservable(),
+      unsubscribe: () => {
+        subscription?.unsubscribe();
+        subject.complete();
+      },
+    };
   }
 
   private subscribeToAdminNotifications(): void {

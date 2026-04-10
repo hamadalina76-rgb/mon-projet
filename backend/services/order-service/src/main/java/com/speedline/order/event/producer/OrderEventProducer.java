@@ -3,6 +3,7 @@ package com.speedline.order.event.producer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spring.pubsub.core.PubSubTemplate;
 import com.speedline.order.event.OrderCreatedEvent;
+import com.speedline.order.event.OrderStatusChangedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -55,6 +56,28 @@ public class OrderEventProducer {
                     orderEventsTopic, messageId, event.getOrderId());
         } catch (Exception ex) {
             log.warn("Impossible de publier ORDER_CREATED sur topic={} orderId={}",
+                    orderEventsTopic, event.getOrderId(), ex);
+        }
+    }
+
+    public void publishOrderStatusChanged(OrderStatusChangedEvent event) {
+        if (event == null) return;
+
+        final PubSubTemplate pubSubTemplate = pubSubTemplateProvider.getIfAvailable();
+        if (pubSubTemplate == null) {
+            log.warn("PubSubTemplate absent — ORDER_STATUS_CHANGED non publié orderId={}.", event.getOrderId());
+            return;
+        }
+
+        try {
+            final String payload = objectMapper.writeValueAsString(event);
+            final String messageId = pubSubTemplate.publish(orderEventsTopic, payload)
+                    .get(PUBLISH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            log.info("ORDER_STATUS_CHANGED published topic={} messageId={} orderId={} {}->{}",
+                    orderEventsTopic, messageId, event.getOrderId(),
+                    event.getPreviousStatus(), event.getNewStatus());
+        } catch (Exception ex) {
+            log.warn("Impossible de publier ORDER_STATUS_CHANGED sur topic={} orderId={}",
                     orderEventsTopic, event.getOrderId(), ex);
         }
     }

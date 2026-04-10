@@ -7,6 +7,7 @@ import com.google.cloud.spring.pubsub.integration.inbound.PubSubInboundChannelAd
 import com.google.cloud.spring.pubsub.support.BasicAcknowledgeablePubsubMessage;
 import com.google.cloud.spring.pubsub.support.GcpPubSubHeaders;
 import com.speedline.notification.service.OrderCreatedNotificationService;
+import com.speedline.notification.service.OrderStatusChangedNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -36,6 +37,7 @@ public class OrderEventConsumer {
     private static final String SUBSCRIPTION = "order-events-notification-sub";
 
     private final OrderCreatedNotificationService orderCreatedNotificationService;
+    private final OrderStatusChangedNotificationService orderStatusChangedNotificationService;
     private final ObjectMapper objectMapper;
     private final PubSubTemplate pubSubTemplate;
 
@@ -77,7 +79,12 @@ public class OrderEventConsumer {
                         new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}
                 );
 
-                orderCreatedNotificationService.handleOrderCreatedEvent(event);
+                // Route based on event type: STATUS_CHANGED events have "newStatus" field
+                if (event.containsKey("newStatus")) {
+                    orderStatusChangedNotificationService.handleOrderStatusChangedEvent(event);
+                } else {
+                    orderCreatedNotificationService.handleOrderCreatedEvent(event);
+                }
 
                 if (originalMessage != null) {
                     originalMessage.ack();

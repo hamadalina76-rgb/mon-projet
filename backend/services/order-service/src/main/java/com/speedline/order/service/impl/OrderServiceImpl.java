@@ -24,6 +24,7 @@ import com.speedline.order.dto.cart.CartItemPayload;
 import com.speedline.order.dto.cart.CartResponse;
 import com.speedline.order.dto.checkout.CheckoutOrderRequest;
 import com.speedline.order.event.OrderCreatedEvent;
+import com.speedline.order.event.OrderStatusChangedEvent;
 import com.speedline.order.event.producer.OrderEventProducer;
 import com.speedline.order.repository.OrderItemRepository;
 import com.speedline.order.repository.OrderRepository;
@@ -856,6 +857,23 @@ public class OrderServiceImpl implements OrderService {
                 .actorId(actorId)
                 .build());
 
+        // Publish status change event for real-time notifications
+        try {
+            orderEventProducer.publishOrderStatusChanged(
+                    OrderStatusChangedEvent.builder()
+                            .orderId(order.getId())
+                            .orderNumber(order.getOrderNumber())
+                            .customerId(order.getCustomerId())
+                            .partnerId(order.getPartnerId())
+                            .previousStatus(previousStatus)
+                            .newStatus(newStatus)
+                            .actorType(actorType)
+                            .description(description)
+                            .timestamp(LocalDateTime.now())
+                            .build());
+        } catch (Exception ex) {
+            log.warn("Failed to publish ORDER_STATUS_CHANGED for orderId={}", order.getId(), ex);
+        }
     }
 
     private void validateStatusTransition(OrderStatus fromStatus, OrderStatus toStatus) {

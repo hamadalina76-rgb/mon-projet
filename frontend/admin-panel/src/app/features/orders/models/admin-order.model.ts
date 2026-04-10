@@ -11,6 +11,49 @@ export type OrderStatus =
 export type PaymentMethod = 'CASH' | 'CARD' | 'WALLET' | 'CARD_ON_DELIVERY';
 export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
 
+export interface DeliveryAddress {
+  id?: number;
+  label?: string;
+  formattedAddress?: string;
+  street?: string;
+  city?: string;
+  postalCode?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface OrderItem {
+  id: number;
+  productId: number;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+  specialInstructions?: string;
+  selectedOptions?: Record<string, string>;
+  selectedAddons?: string[];
+}
+
+export interface StatusHistoryEntry {
+  status: OrderStatus;
+  previousStatus?: OrderStatus;
+  description?: string;
+  notes?: string;
+  updatedBy?: string;
+  actorType?: 'SYSTEM' | 'CUSTOMER' | 'PARTNER' | 'COURIER' | 'ADMIN';
+  timestamp: string;
+}
+
+export interface CourierPosition {
+  courierId?: number;
+  lat: number;
+  lng: number;
+  heading?: number;
+  speed?: number;
+  estimatedArrivalMin?: number;
+  timestamp?: string;
+}
+
 export interface AdminOrder {
   id: number;
   orderNumber: string;
@@ -19,6 +62,8 @@ export interface AdminOrder {
   customerPhone: string;
   partnerId: number;
   partnerName: string;
+  partnerAddress: string | null;
+  partnerPhone: string | null;
   courierId: number | null;
   courierName: string | null;
   courierPhone: string | null;
@@ -35,17 +80,41 @@ export interface AdminOrder {
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   deliveryCity: string | null;
-  deliveryAddress: string | null;
+  deliveryAddress: DeliveryAddress | null;
   deliveryLatitude: number | null;
   deliveryLongitude: number | null;
   customerNotes: string | null;
   cancellationReason: string | null;
   cancelledBy: string | null;
+  isCancellable?: boolean;
+  isCompleted?: boolean;
   estimatedDeliveryTime: string | null;
+  actualDeliveryTime: string | null;
+  scheduledDeliveryTime: string | null;
+  isScheduled?: boolean;
+  suggestedPreparationMinutes?: number;
+  deliveryInstructions: string | null;
   orderTime: string;
   createdAt: string;
   updatedAt: string;
   itemCount: number;
+  items?: OrderItem[];
+  statusHistory?: StatusHistoryEntry[];
+}
+
+export type NoteVisibility = 'ADMIN_ONLY' | 'ALL_STAFF';
+
+export interface InternalNote {
+  id: number;
+  orderId: number;
+  content: string;
+  visibility: NoteVisibility;
+  authorId: number;
+  authorName: string;
+  authorRole: string;
+  createdAt: string;
+  isPending?: boolean;
+  tempId?: string;
 }
 
 export interface OrderPageResponse {
