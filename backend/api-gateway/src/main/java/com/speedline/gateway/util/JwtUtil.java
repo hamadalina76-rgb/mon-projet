@@ -105,6 +105,15 @@ public class JwtUtil {
     }
 
     /**
+     * Extracts full name from JWT token
+     * @param token JWT token string
+     * @return full name or null
+     */
+    public String extractFullName(String token) {
+        return extractAllClaims(token).get("fullName", String.class);
+    }
+
+    /**
      * Extracts all claims from JWT token
      * @param token JWT token string
      * @return Claims object

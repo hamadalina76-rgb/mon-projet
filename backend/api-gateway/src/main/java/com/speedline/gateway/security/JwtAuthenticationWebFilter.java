@@ -102,6 +102,7 @@ public class JwtAuthenticationWebFilter implements WebFilter {
             String userId = jwtUtil.extractUserId(token);
             String role = jwtUtil.extractRole(token);
             String email = jwtUtil.extractEmail(token);
+            String fullName = jwtUtil.extractFullName(token);
 
             String normalizedRole = normalizeRole(role);
 
@@ -129,11 +130,14 @@ public class JwtAuthenticationWebFilter implements WebFilter {
             //   - X-User-Id: ID de l'utilisateur (pour les jointures BD, logs, etc.)
             //   - X-User-Role: Rôle de l'utilisateur (pour les logs, audit, etc.)
             //   - X-User-Email: Email de l'utilisateur (pour les logs, notifications, etc.)
-            ServerHttpRequest modifiedRequest = request.mutate()
+            ServerHttpRequest.Builder requestBuilder = request.mutate()
                 .header("X-User-Id", userId)
                 .header("X-User-Role", normalizedRole)
-                .header("X-User-Email", email)
-                .build();
+                .header("X-User-Email", email);
+            if (fullName != null && !fullName.isBlank()) {
+                requestBuilder.header("X-User-Name", fullName);
+            }
+            ServerHttpRequest modifiedRequest = requestBuilder.build();
 
             ServerWebExchange modifiedExchange = exchange.mutate()
                 .request(modifiedRequest)

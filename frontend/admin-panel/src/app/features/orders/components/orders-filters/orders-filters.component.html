@@ -1,0 +1,128 @@
+<div class="filters-wrapper" [formGroup]="filtersForm">
+
+  <!-- ── Row 1: Search + Date shortcuts ───────────────── -->
+  <div class="filters-row-top">
+    <div class="search-box">
+      <span class="material-icons-round search-icon">search</span>
+      <input type="text" class="search-input"
+             formControlName="search"
+             [placeholder]="'orders.filters.searchPlaceholder' | translate" />
+    </div>
+    <div class="date-shortcuts">
+      @for (sc of dateShortcuts; track sc.value) {
+        <button class="date-tag" type="button" (click)="applyDateShortcut(sc.value)">
+          <span class="material-icons-round tag-icon">{{ sc.icon }}</span>
+          {{ sc.label | translate }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- ── Row 2: Filter fields ─────────────────────────── -->
+  <div class="filters-row">
+    <!-- Partner Autocomplete -->
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>{{ 'orders.filters.partner' | translate }}</mat-label>
+      <input matInput [formControl]="partnerSearchCtrl" [matAutocomplete]="partnerAuto"
+             [placeholder]="'orders.filters.partnerPlaceholder' | translate" />
+      <mat-autocomplete #partnerAuto="matAutocomplete" (optionSelected)="onPartnerSelected($event.option.value)">
+        @for (p of filteredPartners$ | async; track p.id) {
+          <mat-option [value]="p">{{ p.businessName || p.name }}</mat-option>
+        }
+      </mat-autocomplete>
+      <mat-icon matSuffix>store</mat-icon>
+    </mat-form-field>
+
+    <!-- Courier Autocomplete -->
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>{{ 'orders.filters.courier' | translate }}</mat-label>
+      <input matInput [formControl]="courierSearchCtrl" [matAutocomplete]="courierAuto"
+             [placeholder]="'orders.filters.courierPlaceholder' | translate" />
+      <mat-autocomplete #courierAuto="matAutocomplete" (optionSelected)="onCourierSelected($event.option.value)">
+        @for (c of filteredCouriers$ | async; track c.id) {
+          <mat-option [value]="c">{{ c.firstName }} {{ c.lastName }}</mat-option>
+        }
+      </mat-autocomplete>
+      <mat-icon matSuffix>delivery_dining</mat-icon>
+    </mat-form-field>
+
+    <!-- Status Multi-select -->
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>{{ 'orders.filters.status' | translate }}</mat-label>
+      <mat-select formControlName="status" multiple>
+        @for (s of statuses; track s) {
+          <mat-option [value]="s">{{ 'orders.status.' + statusI18n[s] | translate }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Payment -->
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>{{ 'orders.filters.payment' | translate }}</mat-label>
+      <mat-select formControlName="paymentMethod">
+        <mat-option value="">{{ 'orders.filters.allPayments' | translate }}</mat-option>
+        <mat-option value="CASH">{{ 'orders.payment.cash' | translate }}</mat-option>
+        <mat-option value="CARD">{{ 'orders.payment.card' | translate }}</mat-option>
+        <mat-option value="WALLET">{{ 'orders.payment.wallet' | translate }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- ── Row 3: Dates + Amounts ───────────────────────── -->
+  <div class="filters-row">
+    <!-- Date Range -->
+    <mat-form-field appearance="outline" class="filter-field filter-field--date">
+      <mat-label>{{ 'orders.filters.dateFrom' | translate }}</mat-label>
+      <input matInput [matDatepicker]="pickerFrom" formControlName="dateFrom" />
+      <mat-datepicker-toggle matSuffix [for]="pickerFrom"></mat-datepicker-toggle>
+      <mat-datepicker #pickerFrom></mat-datepicker>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field filter-field--date">
+      <mat-label>{{ 'orders.filters.dateTo' | translate }}</mat-label>
+      <input matInput [matDatepicker]="pickerTo" formControlName="dateTo" />
+      <mat-datepicker-toggle matSuffix [for]="pickerTo"></mat-datepicker-toggle>
+      <mat-datepicker #pickerTo></mat-datepicker>
+    </mat-form-field>
+
+    <!-- Amount Range -->
+    <mat-form-field appearance="outline" class="filter-field filter-field--amount">
+      <mat-label>{{ 'orders.filters.amountMin' | translate }}</mat-label>
+      <input matInput type="number" formControlName="amountMin" min="0" />
+      <span matSuffix class="currency-suffix">TND</span>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field filter-field--amount">
+      <mat-label>{{ 'orders.filters.amountMax' | translate }}</mat-label>
+      <input matInput type="number" formControlName="amountMax" min="0" />
+      <span matSuffix class="currency-suffix">TND</span>
+    </mat-form-field>
+
+    <!-- Reset button -->
+    @if (hasActiveFilters) {
+      <button class="btn-reset" type="button" (click)="resetAll()"
+              [matTooltip]="'orders.filters.reset' | translate">
+        <span class="material-icons-round">restart_alt</span>
+        {{ 'orders.filters.reset' | translate }}
+      </button>
+    }
+  </div>
+
+  <!-- ── Active filter chips ──────────────────────────── -->
+  @if (activeChips.length > 0) {
+    <div class="active-chips">
+      <span class="chips-label">{{ 'orders.filters.activeFilters' | translate }}:</span>
+      @for (chip of activeChips; track chip.key) {
+        <span class="filter-chip">
+          {{ chip.label }}
+          <button class="chip-remove" (click)="removeChip(chip)">
+            <span class="material-icons-round">close</span>
+          </button>
+        </span>
+      }
+      <button class="chip-clear-all" (click)="resetAll()">
+        {{ 'orders.filters.clearAll' | translate }}
+      </button>
+    </div>
+  }
+</div>

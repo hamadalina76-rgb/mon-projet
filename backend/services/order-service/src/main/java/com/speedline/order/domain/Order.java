@@ -370,7 +370,6 @@ public class Order {
     public void calculateTotal() {
         this.total = subtotal
                 .add(deliveryFee)
-                .add(serviceFee)
                 .add(tax)
                 .add(tip)
                 .subtract(discount);

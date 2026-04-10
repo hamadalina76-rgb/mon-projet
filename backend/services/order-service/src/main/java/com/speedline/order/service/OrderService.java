@@ -8,6 +8,7 @@ import com.speedline.order.dto.checkout.CheckoutOrderRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -55,7 +56,7 @@ public interface OrderService {
     /**
      * Créer une commande à partir du payload checkout mobile (cartItems + paymentMethod).
      */
-    OrderResponse createOrderFromCheckout(Long customerId, CheckoutOrderRequest request);
+    OrderResponse createOrderFromCheckout(Long customerId, String customerName, CheckoutOrderRequest request);
 
     // ==================== LECTURE ====================
 
@@ -378,13 +379,16 @@ public interface OrderService {
 
     // ==================== STATS INTERNES ====================
 
-    /**
-     * Obtenir les stats journalières de commandes pour une liste de partenaires.
-     * Utilisé par partner-service pour les statistiques des catégories.
-     *
-     * @param partnerIds Liste des IDs de partenaires
-     * @param days       Nombre de jours dans le passé (ex: 30)
-     * @return Map: date "yyyy-MM-dd" → nombre de commandes ce jour
-     */
     java.util.Map<String, Long> getDailyStatsByPartners(List<Long> partnerIds, int days);
+
+    // ==================== ADMIN ====================
+
+    /**
+     * Liste paginée de toutes les commandes pour le admin panel.
+     */
+    Page<OrderResponse> getAdminOrders(OrderStatus status, String paymentMethod, String search,
+                                       LocalDateTime startDate, LocalDateTime endDate,
+                                       Long partnerId, Long courierId,
+                                       BigDecimal amountMin, BigDecimal amountMax,
+                                       Pageable pageable);
 }

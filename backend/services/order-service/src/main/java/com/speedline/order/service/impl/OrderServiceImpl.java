@@ -132,6 +132,7 @@ public class OrderServiceImpl implements OrderService {
 
         return createOrderInternal(
                 request.getCustomerId(),
+                null,
                 cartItems,
                 request.getPromoCode(),
                 addressId,
@@ -145,7 +146,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponse createOrderFromCheckout(Long customerId, CheckoutOrderRequest request) {
+    public OrderResponse createOrderFromCheckout(Long customerId, String customerName, CheckoutOrderRequest request) {
         if (customerId == null) {
             throw badRequest("L'identifiant client est obligatoire");
         }
@@ -161,6 +162,7 @@ public class OrderServiceImpl implements OrderService {
 
         return createOrderInternal(
                 customerId,
+                customerName,
                 cartItems,
                 request.getPromoCode(),
                 request.getAddressId(),
@@ -607,8 +609,32 @@ public class OrderServiceImpl implements OrderService {
         return result;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getAdminOrders(OrderStatus status, String paymentMethod, String search,
+                                              LocalDateTime startDate, LocalDateTime endDate,
+                                              Long partnerId, Long courierId,
+                                              BigDecimal amountMin, BigDecimal amountMax,
+                                              Pageable pageable) {
+        final Order.PaymentMethod pm = parsePaymentMethodOrNull(paymentMethod);
+        final String safeSearch = search == null ? "" : search.trim();
+        return orderRepository.findAllAdmin(status, pm, safeSearch, startDate, endDate,
+                partnerId, courierId, amountMin, amountMax, pageable)
+                .map(this::toResponse);
+    }
+
+    private Order.PaymentMethod parsePaymentMethodOrNull(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return Order.PaymentMethod.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     private OrderResponse createOrderInternal(
             Long customerId,
+            String customerName,
             List<CartItemPayload> cartItems,
             String promoCode,
             String addressId,
@@ -676,7 +702,6 @@ public class OrderServiceImpl implements OrderService {
         final BigDecimal total = scaleMoney(
                 subtotal
                         .add(deliveryFee)
-                        .add(serviceFee)
                         .add(tax)
                         .add(tip)
                         .subtract(discount)
@@ -830,6 +855,7 @@ public class OrderServiceImpl implements OrderService {
                 .actorType(actorType)
                 .actorId(actorId)
                 .build());
+
     }
 
     private void validateStatusTransition(OrderStatus fromStatus, OrderStatus toStatus) {
@@ -1137,19 +1163,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private BigDecimal calculateServiceFee(PartnerSnapshot partner, BigDecimal subtotal) {
-        final BigDecimal explicitServiceFee = partner.getServiceFee();
-        if (explicitServiceFee != null && explicitServiceFee.compareTo(BigDecimal.ZERO) > 0) {
-            return scaleMoney(explicitServiceFee);
-        }
-
-        final BigDecimal commissionRate = partner.getCommissionRate();
-        if (commissionRate == null || commissionRate.compareTo(BigDecimal.ZERO) <= 0) {
-            return ZERO;
-        }
-
-        return scaleMoney(subtotal
-                .multiply(commissionRate)
-                .divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP));
+        return ZERO;
     }
 
     private BigDecimal resolvePromoDiscount(
@@ -1196,7 +1210,7 @@ public class OrderServiceImpl implements OrderService {
                 discount = ZERO;
             }
 
-            final BigDecimal maxDiscount = subtotal.add(deliveryFee).add(serviceFee);
+            final BigDecimal maxDiscount = subtotal.add(deliveryFee);
             if (discount.compareTo(maxDiscount) > 0) {
                 discount = maxDiscount;
             }

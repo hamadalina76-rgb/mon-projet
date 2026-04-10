@@ -1,0 +1,221 @@
+<app-list-page
+  [title]="'orders.title'"
+  [loading]="loading"
+  [empty]="orders.length === 0"
+  [emptyMessage]="'orders.noOrders'"
+  emptyIcon="receipt_long"
+  [totalItems]="totalItems"
+  [currentPage]="currentPage"
+  [itemsPerPage]="itemsPerPage"
+  [itemsPerPageOptions]="[20, 50, 100]"
+  [showPagination]="totalItems > 0"
+  [itemsPerPageLabel]="'orders.itemsPerPage'"
+  [ofLabel]="'orders.of'"
+  (pageChange)="onPageChange($event)"
+>
+
+  <!-- ── Filters ──────────────────────────────────────── -->
+  <div filters class="filters-bar">
+
+    <!-- Date quick-picks -->
+    <div class="date-tags">
+      @for (tag of dateTags; track tag.value) {
+        <button class="dtag" [class.active]="selectedRange === tag.value"
+                (click)="onRangeChange(tag.value)">
+          <span class="material-icons-round dtag-ico">{{ tag.icon }}</span>
+          {{ tag.label | translate }}
+        </button>
+      }
+    </div>
+
+    <!-- Filter card -->
+    <div class="fcard">
+
+      <!-- Row 1 — search + dropdowns + toggle -->
+      <div class="frow">
+        <mat-form-field appearance="outline" class="ff ff--grow" subscriptSizing="dynamic">
+          <mat-icon matPrefix class="ff-ico">search</mat-icon>
+          <input matInput
+                 [(ngModel)]="searchText"
+                 (ngModelChange)="onSearchChange()"
+                 [placeholder]="'orders.filters.searchPlaceholder' | translate" />
+          @if (searchText) {
+            <button matSuffix mat-icon-button class="ff-clear" (click)="searchText=''; onSearchChange()">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="ff ff--fixed" subscriptSizing="dynamic">
+          <mat-label>{{ 'orders.filters.status' | translate }}</mat-label>
+          <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange()">
+            <mat-option value="">{{ 'orders.filters.allStatuses' | translate }}</mat-option>
+            @for (s of statuses; track s) {
+              <mat-option [value]="s">{{ getStatusLabel(s) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="ff ff--fixed" subscriptSizing="dynamic">
+          <mat-label>{{ 'orders.filters.payment' | translate }}</mat-label>
+          <mat-select [(ngModel)]="selectedPayment" (selectionChange)="onPaymentChange()">
+            <mat-option value="">{{ 'orders.filters.allPayments' | translate }}</mat-option>
+            <mat-option value="CASH">{{ 'orders.payment.cash' | translate }}</mat-option>
+            <mat-option value="CARD">{{ 'orders.payment.card' | translate }}</mat-option>
+            <mat-option value="WALLET">{{ 'orders.payment.wallet' | translate }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button class="toggle-btn" [class.open]="showAdvancedFilters"
+                (click)="showAdvancedFilters = !showAdvancedFilters"
+                [matTooltip]="showAdvancedFilters ? 'Masquer' : 'Plus de filtres'">
+          <span class="material-icons-round">tune</span>
+        </button>
+      </div>
+
+      <!-- Row 2 — advanced (collapsible) -->
+      @if (showAdvancedFilters) {
+        <div class="frow frow--adv">
+          <mat-form-field appearance="outline" class="ff ff--mid" subscriptSizing="dynamic">
+            <mat-label>{{ 'orders.filters.partner' | translate }}</mat-label>
+            <mat-icon matPrefix class="ff-ico">store</mat-icon>
+            <input matInput [formControl]="partnerSearchCtrl" [matAutocomplete]="partnerAuto" />
+            @if (selectedPartnerId) {
+              <button matSuffix mat-icon-button class="ff-clear" (click)="clearPartner(); $event.stopPropagation()">
+                <mat-icon>close</mat-icon>
+              </button>
+            }
+            <mat-autocomplete #partnerAuto="matAutocomplete"
+                              [displayWith]="displayPartner"
+                              (optionSelected)="onPartnerSelected($event)">
+              @for (p of filteredPartners$ | async; track p.id) {
+                <mat-option [value]="p">{{ p.businessName || p.name }}</mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="ff ff--mid" subscriptSizing="dynamic">
+            <mat-label>{{ 'orders.filters.courier' | translate }}</mat-label>
+            <mat-icon matPrefix class="ff-ico">delivery_dining</mat-icon>
+            <input matInput [formControl]="courierSearchCtrl" [matAutocomplete]="courierAuto" />
+            @if (selectedCourierId) {
+              <button matSuffix mat-icon-button class="ff-clear" (click)="clearCourier(); $event.stopPropagation()">
+                <mat-icon>close</mat-icon>
+              </button>
+            }
+            <mat-autocomplete #courierAuto="matAutocomplete"
+                              [displayWith]="displayCourier"
+                              (optionSelected)="onCourierSelected($event)">
+              @for (c of filteredCouriers$ | async; track c.id) {
+                <mat-option [value]="c">{{ c.firstName }} {{ c.lastName }}</mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+
+          <div class="amt-group">
+            <mat-form-field appearance="outline" class="ff ff--sm" subscriptSizing="dynamic">
+              <mat-label>{{ 'orders.filters.amountMin' | translate }}</mat-label>
+              <input matInput type="number" [(ngModel)]="amountMin" (change)="onAmountChange()" min="0" />
+              <span matTextSuffix class="ff-unit">TND</span>
+            </mat-form-field>
+            <span class="amt-dash">–</span>
+            <mat-form-field appearance="outline" class="ff ff--sm" subscriptSizing="dynamic">
+              <mat-label>{{ 'orders.filters.amountMax' | translate }}</mat-label>
+              <input matInput type="number" [(ngModel)]="amountMax" (change)="onAmountChange()" min="0" />
+              <span matTextSuffix class="ff-unit">TND</span>
+            </mat-form-field>
+          </div>
+
+          <mat-form-field appearance="outline" class="ff ff--date" subscriptSizing="dynamic">
+            <mat-label>{{ 'orders.filters.customRange' | translate }}</mat-label>
+            <mat-date-range-input [formGroup]="dateRange" [rangePicker]="picker">
+              <input matStartDate formControlName="start"
+                     [placeholder]="'orders.filters.dateFrom' | translate" />
+              <input matEndDate formControlName="end"
+                     [placeholder]="'orders.filters.dateTo' | translate"
+                     (dateChange)="onDateRangeChange()" />
+            </mat-date-range-input>
+            <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+            <mat-date-range-picker #picker></mat-date-range-picker>
+          </mat-form-field>
+        </div>
+      }
+    </div>
+
+    <!-- Active chips -->
+    @if (activeFilters.length > 0) {
+      <div class="chips-bar">
+        <span class="chips-ico material-icons-round">filter_list</span>
+        @for (chip of activeFilters; track chip.key) {
+          <span class="chip" (click)="removeFilter(chip.key)">
+            <span class="material-icons-round chip-i">{{ chip.icon }}</span>
+            {{ chip.label }}
+            <span class="material-icons-round chip-x">close</span>
+          </span>
+        }
+        <button class="reset-btn" (click)="resetFilters()">
+          <span class="material-icons-round">restart_alt</span>
+          {{ 'orders.filters.reset' | translate }}
+        </button>
+      </div>
+    }
+
+  </div>
+
+  <!-- ── Table ────────────────────────────────────────── -->
+  <table table class="data-table">
+    <thead>
+      <tr>
+        <th>{{ 'orders.orderId' | translate | uppercase }}</th>
+        <th>{{ 'orders.dateTime' | translate | uppercase }}</th>
+        <th>{{ 'orders.customer' | translate | uppercase }}</th>
+        <th>{{ 'orders.partner' | translate | uppercase }}</th>
+        <th>{{ 'orders.courier' | translate | uppercase }}</th>
+        <th>{{ 'orders.total' | translate | uppercase }}</th>
+        <th>{{ 'orders.paymentMethod' | translate | uppercase }}</th>
+        <th>{{ 'orders.statusLabel' | translate | uppercase }}</th>
+        <th class="col-actions"></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (order of orders; track order.id) {
+        <tr class="table-row" (click)="onRowClick(order)">
+          <td class="col-order-number">
+            <span class="order-number">{{ order.orderNumber }}</span>
+          </td>
+          <td class="col-date">{{ order.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+          <td class="col-customer">
+            <div class="cell-person">
+              <span class="person-avatar material-icons-round">person</span>
+              <div>
+                <span class="cell-name">{{ order.customerName || '—' }}</span>
+                @if (order.customerPhone) {
+                  <span class="cell-sub">{{ order.customerPhone }}</span>
+                }
+              </div>
+            </div>
+          </td>
+          <td>{{ order.partnerName }}</td>
+          <td>{{ order.courierName || ('orders.noCourier' | translate) }}</td>
+          <td class="col-total">{{ order.total | number:'1.2-2' }} TND</td>
+          <td>
+            <span class="payment-badge">{{ getPaymentLabel(order.paymentMethod) }}</span>
+          </td>
+          <td>
+            <span class="status-badge" [ngClass]="getStatusClass(order.status)">
+              {{ getStatusLabel(order.status) }}
+            </span>
+          </td>
+          <td class="col-actions">
+            <button class="action-btn" [routerLink]="['/orders', order.id]"
+                    [matTooltip]="'orders.viewDetail' | translate"
+                    (click)="$event.stopPropagation()">
+              <span class="material-icons-round">visibility</span>
+            </button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
+</app-list-page>
