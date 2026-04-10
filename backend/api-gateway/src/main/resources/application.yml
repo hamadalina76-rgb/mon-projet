@@ -106,11 +106,24 @@ spring:
             - AuthenticationFilter
             - RoleAuthorizationFilter
 
+        # Order Service - Admin Panel (v1 API)
+        - id: order-service-admin
+          uri: lb://order-service
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - StripPrefix=2
+            - AuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: orderServiceBreaker
+                fallbackUri: forward:/fallback/order
+
         # Order Service
         - id: order-service
           uri: lb://order-service
           predicates:
-            - Path=/api/orders/**
+            - Path=/api/orders, /api/orders/**
           filters:
             - StripPrefix=1
             - AuthenticationFilter
@@ -304,7 +317,8 @@ eureka:
     service-url:
       defaultZone: http://eureka:eureka123@localhost:8761/eureka/
   instance:
-    prefer-ip-address: true
+    prefer-ip-address: false
+    hostname: localhost
 
 jwt:
   secret: ${JWT_SECRET:speedline-super-secret-key-for-jwt-token-generation-minimum-256-bits}

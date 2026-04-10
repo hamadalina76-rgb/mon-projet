@@ -1,75 +1,170 @@
-<!-- Order Detail Component Template -->
-<div class="order-detail-page">
-  <header class="page-header">
+@if (loading) {
+  <div class="loading-center"><mat-spinner diameter="44"></mat-spinner></div>
+}
+
+@if (!loading && order) {
+<div class="detail-page">
+
+  <!-- ── Header ────────────────────────────────────────── -->
+  <header class="detail-header">
     <div class="header-left">
-      <button mat-icon-button routerLink="/orders">
+      <button mat-icon-button routerLink="/orders" class="back-btn">
         <mat-icon>arrow_back</mat-icon>
       </button>
-      <h1>Commande #{{ order?.orderNumber }}</h1>
+      <div>
+        <h1>{{ order.orderNumber }}</h1>
+        <span class="header-date">{{ order.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+      </div>
     </div>
-    <div class="header-actions">
-      <button mat-stroked-button color="warn" (click)="cancelOrder()">
-        Annuler
-      </button>
-      <button mat-stroked-button (click)="refundOrder()">
-        Rembourser
-      </button>
-    </div>
+    <span class="status-pill"
+          [style.color]="getStatusProp('color')"
+          [style.background]="getStatusProp('bg')">
+      <mat-icon class="pill-icon">{{ getStatusProp('icon') }}</mat-icon>
+      {{ 'orders.status.' + (order.status === 'READY_FOR_PICKUP' ? 'ready' : order.status === 'PICKED_UP' ? 'pickedUp' : order.status === 'IN_DELIVERY' ? 'delivering' : order.status.toLowerCase()) | translate }}
+    </span>
   </header>
 
-  <div class="order-content" *ngIf="order">
-    <div class="main-column">
-      <!-- Order Status -->
-      <mat-card class="status-card">
-        <h3>Statut de la commande</h3>
-        <mat-stepper linear>
-          <mat-step label="Confirmée"></mat-step>
-          <mat-step label="En préparation"></mat-step>
-          <mat-step label="Prête"></mat-step>
-          <mat-step label="En livraison"></mat-step>
-          <mat-step label="Livrée"></mat-step>
-        </mat-stepper>
-      </mat-card>
+  <!-- ── Progress Pipeline ─────────────────────────────── -->
+  @if (order.status !== 'CANCELLED') {
+    <div class="pipeline-card card">
+      <div class="pipeline">
+        @for (step of pipeline; track step; let i = $index) {
+          <div class="pipe-step" [class]="getStepState(i)">
+            <div class="pipe-dot">
+              @if (getStepState(i) === 'done') { <mat-icon class="pipe-check">check</mat-icon> }
+            </div>
+            @if (i < pipeline.length - 1) {
+              <div class="pipe-line" [class.filled]="getStepState(i) === 'done'"></div>
+            }
+          </div>
+        }
+      </div>
+      <div class="pipeline-labels">
+        @for (step of pipeline; track step) {
+          <span class="pipe-label">{{ 'orders.pipeline.' + step | translate }}</span>
+        }
+      </div>
+    </div>
+  }
+
+  <div class="detail-grid">
+
+    <!-- ── LEFT COLUMN ─────────────────────────────────── -->
+    <div class="main-col">
 
       <!-- Order Items -->
-      <mat-card class="items-card">
-        <h3>Articles</h3>
-        <mat-divider></mat-divider>
-        <div class="items-list">
-          <!-- Order items -->
+      <section class="card">
+        <h3 class="card-title">{{ 'orderDetail.items' | translate }}</h3>
+        @if (order.items?.length) {
+          <div class="items-list">
+            @for (item of order.items; track item.id) {
+              <div class="item-row">
+                <div class="item-qty">{{ item.quantity }}×</div>
+                <div class="item-info">
+                  <span class="item-name">{{ item.productName }}</span>
+                  @if (item.specialInstructions) {
+                    <span class="item-note">{{ item.specialInstructions }}</span>
+                  }
+                </div>
+                <span class="item-price">{{ item.subtotal | number:'1.2-2' }} TND</span>
+              </div>
+            }
+          </div>
+        }
+        <div class="totals-block">
+          <div class="total-line"><span>{{ 'orderDetail.subtotal' | translate }}</span><span>{{ order.subtotal | number:'1.2-2' }} TND</span></div>
+          <div class="total-line"><span>{{ 'orderDetail.deliveryFee' | translate }}</span><span>{{ order.deliveryFee | number:'1.2-2' }} TND</span></div>
+          @if (order.discount > 0) {
+            <div class="total-line discount"><span>{{ 'orderDetail.discount' | translate }}</span><span>-{{ order.discount | number:'1.2-2' }} TND</span></div>
+          }
+          <div class="total-line grand"><span>{{ 'orderDetail.total' | translate }}</span><span>{{ order.total | number:'1.2-2' }} TND</span></div>
         </div>
-        <mat-divider></mat-divider>
-        <div class="order-total">
-          <span>Total</span>
-          <span class="amount">{{ order.total | currency:'MAD' }}</span>
-        </div>
-      </mat-card>
+      </section>
+
+      <!-- Status Timeline -->
+      <section class="card">
+        <h3 class="card-title">{{ 'orderDetail.timeline' | translate }}</h3>
+        @if (order.statusHistory?.length) {
+          <div class="timeline">
+            @for (entry of order.statusHistory; track entry.timestamp; let last = $last) {
+              <div class="tl-entry">
+                <div class="tl-spine">
+                  <div class="tl-dot" [ngClass]="getTimelineDotClass(entry)"></div>
+                  @if (!last) { <div class="tl-line"></div> }
+                </div>
+                <div class="tl-body">
+                  <div class="tl-status">
+                    <mat-icon class="tl-icon">{{ getTimelineIcon(entry) }}</mat-icon>
+                    <span class="tl-label">{{ entry.description || entry.status }}</span>
+                  </div>
+                  <div class="tl-meta">
+                    <span>{{ entry.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}</span>
+                    @if (entry.updatedBy) { <span>• {{ entry.updatedBy }}</span> }
+                    @if (entry.notes) { <span class="tl-notes">{{ entry.notes }}</span> }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="empty-hint">{{ 'orderDetail.noHistory' | translate }}</p>
+        }
+      </section>
     </div>
 
-    <div class="side-column">
-      <!-- Customer Info -->
-      <mat-card class="info-card">
-        <h3>Client</h3>
-        <!-- Customer details -->
-      </mat-card>
+    <!-- ── RIGHT COLUMN ────────────────────────────────── -->
+    <div class="side-col">
 
-      <!-- Partner Info -->
-      <mat-card class="info-card">
-        <h3>Partenaire</h3>
-        <!-- Partner details -->
-      </mat-card>
+      <!-- Customer -->
+      <section class="card info-card">
+        <h3 class="card-title"><mat-icon>person</mat-icon> {{ 'orderDetail.customer' | translate }}</h3>
+        <div class="info-row"><span class="info-label">{{ 'orderDetail.name' | translate }}</span><span>{{ order.customerName }}</span></div>
+        @if (order.customerPhone) {
+          <div class="info-row"><span class="info-label">{{ 'orderDetail.phone' | translate }}</span><span>{{ order.customerPhone }}</span></div>
+        }
+        @if (order.customerNotes) {
+          <div class="info-row"><span class="info-label">{{ 'orderDetail.notes' | translate }}</span><span class="note-text">{{ order.customerNotes }}</span></div>
+        }
+      </section>
 
-      <!-- Courier Info -->
-      <mat-card class="info-card">
-        <h3>Livreur</h3>
-        <!-- Courier details -->
-      </mat-card>
+      <!-- Partner -->
+      <section class="card info-card">
+        <h3 class="card-title"><mat-icon>store</mat-icon> {{ 'orderDetail.partner' | translate }}</h3>
+        <div class="info-row"><span class="info-label">{{ 'orderDetail.name' | translate }}</span><span>{{ order.partnerName }}</span></div>
+        @if (order.partnerPhone) {
+          <div class="info-row"><span class="info-label">{{ 'orderDetail.phone' | translate }}</span><span>{{ order.partnerPhone }}</span></div>
+        }
+        @if (order.partnerAddress) {
+          <div class="info-row"><span class="info-label">{{ 'orderDetail.address' | translate }}</span><span>{{ order.partnerAddress }}</span></div>
+        }
+      </section>
 
-      <!-- Delivery Info -->
-      <mat-card class="info-card">
-        <h3>Livraison</h3>
-        <!-- Delivery address and map -->
-      </mat-card>
+      <!-- Courier -->
+      <section class="card info-card">
+        <h3 class="card-title"><mat-icon>delivery_dining</mat-icon> {{ 'orderDetail.courier' | translate }}</h3>
+        @if (order.courierName) {
+          <div class="info-row"><span class="info-label">{{ 'orderDetail.name' | translate }}</span><span>{{ order.courierName }}</span></div>
+          @if (order.courierPhone) {
+            <div class="info-row"><span class="info-label">{{ 'orderDetail.phone' | translate }}</span><span>{{ order.courierPhone }}</span></div>
+          }
+        } @else {
+          <p class="empty-hint">{{ 'orders.noCourier' | translate }}</p>
+        }
+      </section>
+
+      <!-- Payment & Delivery -->
+      <section class="card info-card">
+        <h3 class="card-title"><mat-icon>payment</mat-icon> {{ 'orderDetail.paymentDelivery' | translate }}</h3>
+        <div class="info-row"><span class="info-label">{{ 'orderDetail.paymentMethod' | translate }}</span><span>{{ 'orders.payment.' + order.paymentMethod?.toLowerCase() | translate }}</span></div>
+        <div class="info-row"><span class="info-label">{{ 'orderDetail.paymentStatus' | translate }}</span><span>{{ order.paymentStatus }}</span></div>
+        @if (order.estimatedDeliveryTime) {
+          <div class="info-row"><span class="info-label">{{ 'orderDetail.estimatedDelivery' | translate }}</span><span>{{ order.estimatedDeliveryTime | date:'HH:mm' }}</span></div>
+        }
+        @if (order.deliveryAddress?.formattedAddress) {
+          <div class="info-row"><span class="info-label">{{ 'orderDetail.deliveryAddress' | translate }}</span><span>{{ order.deliveryAddress.formattedAddress }}</span></div>
+        }
+      </section>
     </div>
   </div>
 </div>
+}

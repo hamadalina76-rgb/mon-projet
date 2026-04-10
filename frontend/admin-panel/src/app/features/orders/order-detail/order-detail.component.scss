@@ -1,79 +1,136 @@
-// Order Detail Component Styles
-@use '../../../../assets/styles/variables' as v;
+/* ── Order Detail ─────────────────────────────────── */
 
-.order-detail-page {
-  padding: 1.5rem;
+$red: #E31E24;
+$red-light: #fdeaea;
+$green: #2ecc71;
+$green-light: #eafaf1;
+$orange: #f39c12;
+$orange-light: #fef5e7;
+$blue: #3498db;
+$blue-light: #ebf5fb;
+$gray: #95a5a6;
+$gray-light: #f4f6f8;
+
+/* ── Loading ─────────────────────────────────────── */
+.loading-center {
+  display: flex; justify-content: center; align-items: center; min-height: 400px;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
+/* ── Page ────────────────────────────────────────── */
+.detail-page { padding: 0 0.5rem; }
+
+/* ── Header ──────────────────────────────────────── */
+.detail-header {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 1rem; margin-bottom: 1.5rem;
 
   .header-left {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    display: flex; align-items: center; gap: 0.75rem;
+    h1 { margin: 0; font-size: 1.35rem; font-weight: 700; line-height: 1.2; }
+    .header-date { font-size: 0.8rem; color: #888; }
   }
+  .back-btn { color: #555; }
+}
 
-  h1 {
-    margin: 0;
-    font-size: 1.5rem;
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.8rem; font-weight: 600; padding: 5px 14px; border-radius: 50px;
+  .pill-icon { font-size: 16px; width: 16px; height: 16px; }
+}
+
+/* ── Card ────────────────────────────────────────── */
+.card {
+  background: #fff; border-radius: 14px; padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.card-title {
+  margin: 0 0 1rem; font-size: 0.95rem; font-weight: 700; color: #333;
+  display: flex; align-items: center; gap: 8px;
+  mat-icon { font-size: 20px; width: 20px; height: 20px; color: $red; }
+}
+
+/* ── Pipeline ────────────────────────────────────── */
+.pipeline-card { margin-bottom: 1.25rem; padding: 1.5rem 2rem; }
+.pipeline {
+  display: flex; align-items: center;
+  .pipe-step { display: flex; align-items: center; flex: 1;
+    &:last-child { flex: 0; }
   }
-
-  .header-actions {
-    display: flex;
-    gap: 0.5rem;
+  .pipe-dot {
+    width: 28px; height: 28px; border-radius: 50%; background: #ddd;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: 0.25s;
   }
+  .pipe-check { font-size: 16px; width: 16px; height: 16px; color: #fff; }
+  .pipe-line { flex: 1; height: 3px; background: #ddd; margin: 0 4px; border-radius: 2px; transition: 0.25s; }
+  .pipe-line.filled { background: $green; }
+
+  .done .pipe-dot   { background: $green; }
+  .active .pipe-dot  { background: $red; box-shadow: 0 0 0 5px $red-light; }
+  .upcoming .pipe-dot { background: #ddd; }
 }
-
-.order-content {
-  display: grid;
-  grid-template-columns: 1fr 350px;
-  gap: 1.5rem;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
-  }
-}
-
-.main-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.side-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.status-card,
-.items-card,
-.info-card {
-  padding: 1.5rem;
-
-  h3 {
-    margin: 0 0 1rem;
-    font-size: 1rem;
-    font-weight: 600;
-  }
-}
-
-.items-list {
-  padding: 1rem 0;
-}
-
-.order-total {
-  display: flex;
-  justify-content: space-between;
-  padding-top: 1rem;
-  font-weight: 600;
-
-  .amount {
-    font-size: 1.25rem;
-    color: var(--primary);
+.pipeline-labels {
+  display: flex; margin-top: 8px;
+  .pipe-label { flex: 1; text-align: center; font-size: 0.65rem; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.3px;
+    &:last-child { flex: 0; white-space: nowrap; }
   }
 }
+
+/* ── Grid ────────────────────────────────────────── */
+.detail-grid {
+  display: grid; grid-template-columns: 1fr 340px; gap: 1.25rem;
+  @media (max-width: 1024px) { grid-template-columns: 1fr; }
+}
+.main-col, .side-col { display: flex; flex-direction: column; gap: 1.25rem; }
+
+/* ── Items ───────────────────────────────────────── */
+.items-list { display: flex; flex-direction: column; gap: 0; }
+.item-row {
+  display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem 0;
+  border-bottom: 1px solid #f0f0f0;
+  &:last-child { border-bottom: none; }
+}
+.item-qty { font-weight: 700; color: $red; min-width: 30px; text-align: center; font-size: 0.9rem; }
+.item-info { flex: 1; }
+.item-name { font-weight: 600; font-size: 0.88rem; display: block; }
+.item-note { font-size: 0.75rem; color: #999; display: block; margin-top: 2px; font-style: italic; }
+.item-price { font-weight: 700; font-size: 0.88rem; white-space: nowrap; }
+
+/* ── Totals ──────────────────────────────────────── */
+.totals-block { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 2px dashed #eee; }
+.total-line {
+  display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.85rem; color: #555;
+  &.discount { color: $green; }
+  &.grand { font-weight: 800; font-size: 1.05rem; color: #111; margin-top: 6px; padding-top: 8px; border-top: 1px solid #ddd; }
+}
+
+/* ── Timeline ────────────────────────────────────── */
+.timeline { padding: 0.5rem 0; }
+.tl-entry { display: flex; gap: 14px; }
+.tl-spine { display: flex; flex-direction: column; align-items: center; }
+.tl-dot {
+  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; margin-top: 3px;
+  &.dot-success  { background: $green; }
+  &.dot-danger   { background: $red; }
+  &.dot-warning  { background: $orange; }
+  &.dot-info     { background: $blue; }
+  &.dot-default  { background: $gray; }
+}
+.tl-line { width: 2px; flex: 1; background: #e0e0e0; min-height: 28px; }
+.tl-body { padding-bottom: 1.25rem; flex: 1; }
+.tl-status { display: flex; align-items: center; gap: 6px; }
+.tl-icon { font-size: 16px; width: 16px; height: 16px; color: #666; }
+.tl-label { font-weight: 600; font-size: 0.85rem; }
+.tl-meta { font-size: 0.75rem; color: #999; margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px; }
+.tl-notes { font-style: italic; display: block; width: 100%; margin-top: 2px; color: #777; }
+
+/* ── Info Cards ──────────────────────────────────── */
+.info-card { padding: 1rem 1.25rem; }
+.info-row {
+  display: flex; justify-content: space-between; padding: 5px 0; font-size: 0.84rem;
+  border-bottom: 1px solid #f5f5f5;
+  &:last-child { border-bottom: none; }
+}
+.info-label { color: #999; font-weight: 500; }
+.note-text { color: #555; font-style: italic; text-align: right; max-width: 60%; }
+.empty-hint { color: #bbb; font-size: 0.82rem; margin: 0; }

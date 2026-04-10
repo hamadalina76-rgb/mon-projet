@@ -21,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -57,10 +58,11 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(
             @RequestHeader(value = "X-User-Id", required = false) String authenticatedUserId,
+            @RequestHeader(value = "X-User-Name", required = false) String authenticatedUserName,
             @Valid @RequestBody CheckoutOrderRequest request
     ) {
         final Long customerId = extractAuthenticatedUserId(authenticatedUserId);
-        final OrderResponse created = orderService.createOrderFromCheckout(customerId, request);
+        final OrderResponse created = orderService.createOrderFromCheckout(customerId, authenticatedUserName, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -470,6 +472,57 @@ public class OrderController {
             @RequestParam(defaultValue = "30") int days
     ) {
         return ResponseEntity.ok(orderService.getDailyStatsByPartners(partnerIds, days));
+    }
+
+    /**
+     * Liste paginée de toutes les commandes (admin panel).
+     * GET /orders/admin?page=0&size=50&status=PENDING&paymentMethod=CASH&search=ORD&sort=createdAt,desc&startDate=2026-04-01T00:00:00&endDate=2026-04-09T23:59:59
+     */
+    @GetMapping("/admin")
+    public ResponseEntity<Page<OrderResponse>> getAdminOrders(
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false) String paymentMethod,
+            @RequestParam(required = false, defaultValue = "") String search,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) Long partnerId,
+            @RequestParam(required = false) Long courierId,
+            @RequestParam(required = false) BigDecimal amountMin,
+            @RequestParam(required = false) BigDecimal amountMax,
+            @RequestParam(defaultValue = "createdAt,desc") String sort,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size
+    ) {
+        final String[] sortParts = sort.split(",");
+        final String sortField = sanitizeAdminSortField(sortParts[0]);
+        final Sort.Direction dir = sortParts.length > 1 && "asc".equalsIgnoreCase(sortParts[1])
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(dir, sortField));
+        final LocalDateTime parsedStart = parseDateTime(startDate);
+        final LocalDateTime parsedEnd = parseDateTime(endDate);
+        return ResponseEntity.ok(orderService.getAdminOrders(status, paymentMethod, search,
+                parsedStart, parsedEnd, partnerId, courierId, amountMin, amountMax, pageable));
+    }
+
+    private static LocalDateTime parseDateTime(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return LocalDateTime.parse(raw.trim());
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    private static final Set<String> ALLOWED_ADMIN_SORT = Set.of(
+            "createdAt", "orderTime", "total", "orderNumber", "status"
+    );
+
+    private static String sanitizeAdminSortField(String raw) {
+        if (raw == null || raw.isBlank()) return "createdAt";
+        for (String allowed : ALLOWED_ADMIN_SORT) {
+            if (allowed.equalsIgnoreCase(raw.trim())) return allowed;
+        }
+        return "createdAt";
     }
 
     private Long extractAuthenticatedUserId(String authenticatedUserId) {

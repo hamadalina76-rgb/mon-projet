@@ -193,12 +193,7 @@
                 <span>{{ order().deliveryFee | number:'1.2-2' }} TND</span>
               </div>
             }
-            @if (order().serviceFee > 0) {
-              <div class="pricing-row">
-                <span>{{ 'ORDERS.DETAIL.SERVICE_FEE' | translate }}</span>
-                <span>{{ order().serviceFee | number:'1.2-2' }} TND</span>
-              </div>
-            }
+
             @if (order().discount > 0) {
               <div class="pricing-row discount">
                 <span>{{ 'ORDERS.DETAIL.DISCOUNT' | translate }}</span>

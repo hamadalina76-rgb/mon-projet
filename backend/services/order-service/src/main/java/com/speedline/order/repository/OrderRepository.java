@@ -215,6 +215,48 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     
     long countByStatus(OrderStatus status);
 
+    // ==================== ADMIN — TOUTES LES COMMANDES ====================
+
+    /**
+     * Liste admin paginée avec filtres optionnels (statut, recherche, paiement, plage de dates,
+     * partenaire, livreur, montant min/max).
+     */
+    @Query(value = "SELECT o FROM Order o WHERE "
+            + "(:status IS NULL OR o.status = :status) "
+            + "AND (:paymentMethod IS NULL OR o.paymentMethod = :paymentMethod) "
+            + "AND (CAST(:startDate AS timestamp) IS NULL OR o.createdAt >= :startDate) "
+            + "AND (CAST(:endDate AS timestamp) IS NULL OR o.createdAt <= :endDate) "
+            + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
+            + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%')) "
+            + "     OR LOWER(o.partnerName) LIKE LOWER(CONCAT('%', :search, '%'))) "
+            + "AND (:partnerId IS NULL OR o.partnerId = :partnerId) "
+            + "AND (:courierId IS NULL OR o.courierId = :courierId) "
+            + "AND (:amountMin IS NULL OR o.total >= :amountMin) "
+            + "AND (:amountMax IS NULL OR o.total <= :amountMax)",
+            countQuery = "SELECT COUNT(o) FROM Order o WHERE "
+            + "(:status IS NULL OR o.status = :status) "
+            + "AND (:paymentMethod IS NULL OR o.paymentMethod = :paymentMethod) "
+            + "AND (CAST(:startDate AS timestamp) IS NULL OR o.createdAt >= :startDate) "
+            + "AND (CAST(:endDate AS timestamp) IS NULL OR o.createdAt <= :endDate) "
+            + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
+            + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%')) "
+            + "     OR LOWER(o.partnerName) LIKE LOWER(CONCAT('%', :search, '%'))) "
+            + "AND (:partnerId IS NULL OR o.partnerId = :partnerId) "
+            + "AND (:courierId IS NULL OR o.courierId = :courierId) "
+            + "AND (:amountMin IS NULL OR o.total >= :amountMin) "
+            + "AND (:amountMax IS NULL OR o.total <= :amountMax)")
+    Page<Order> findAllAdmin(
+            @Param("status") OrderStatus status,
+            @Param("paymentMethod") Order.PaymentMethod paymentMethod,
+            @Param("search") String search,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("partnerId") Long partnerId,
+            @Param("courierId") Long courierId,
+            @Param("amountMin") BigDecimal amountMin,
+            @Param("amountMax") BigDecimal amountMax,
+            Pageable pageable);
+
     // ==================== RECHERCHE PAR DATE ====================
 
     @Query("SELECT o FROM Order o WHERE o.createdAt BETWEEN :start AND :end")
