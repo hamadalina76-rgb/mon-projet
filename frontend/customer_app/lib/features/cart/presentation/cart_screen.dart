@@ -5,10 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../config/routes/route_names.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/utils/media_url.dart';
+import '../../menu/presentation/screens/product_detail_screen.dart';
+import '../../partners/presentation/providers/nearby_partners_provider.dart';
 import '../../partners/presentation/screens/partner_details_screen.dart';
 import '../cart_providers.dart';
-import '../data/models/cart_item_model.dart';
-import '../data/repositories/cart_repository.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -21,6 +22,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   String? _loadedPartnerId;
   PartnerCartInfo? _partnerInfo;
   bool _isLoadingPartner = false;
+  final Map<String, String> _productImageByKey = <String, String>{};
+  final Set<String> _loadingProductImages = <String>{};
+  String? _editingItemKey;
 
   String _money(double value) {
     if ((value % 1).abs() < 0.0001) return '${value.toStringAsFixed(0)} DT';
@@ -86,6 +90,137 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         builder: (_) => PartnerDetailsScreen(partnerId: partnerId),
       ),
     );
+  }
+
+  String _productImageKey(CartItemModel item) {
+    return '${item.partnerId}::${item.productId}';
+  }
+
+  String _productImageUrl(CartItemModel item) {
+    final cached = _productImageByKey[_productImageKey(item)] ?? '';
+    if (cached.trim().isNotEmpty) return cached;
+    return resolveMediaUrl(item.productImageUrl);
+  }
+
+  Map<String, Set<String>> _buildInitialSelectedOptionIds(CartItemModel item) {
+    final initial = <String, Set<String>>{};
+    for (final option in item.selectedOptions) {
+      final groupId = option.optionId?.trim() ?? '';
+      final valueId = option.valueId?.trim() ?? '';
+      if (groupId.isEmpty || valueId.isEmpty) continue;
+
+      initial.putIfAbsent(groupId, () => <String>{}).add(valueId);
+    }
+    return initial;
+  }
+
+  List<CartItemSelectedOption> _mapSelections(ProductSelectionResult result) {
+    return result.selections
+        .expand(
+          (group) => group.options.map(
+            (option) => CartItemSelectedOption(
+              optionId: group.groupId,
+              optionName: group.groupName,
+              valueId: option.id,
+              valueName: option.name,
+              priceModifier: option.priceModifier,
+            ),
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> _openProductEditor(CartItemModel item) async {
+    if (_editingItemKey != null) return;
+
+    setState(() => _editingItemKey = item.uniqueKey);
+    try {
+      final api = ref.read(partnerApiServiceProvider);
+      final product = await api.fetchMenuProductDetails(
+        item.partnerId,
+        item.productId,
+      );
+
+      final resolvedImage = resolveMediaUrl(product.imageUrl);
+      if (mounted && resolvedImage.isNotEmpty) {
+        setState(() {
+          _productImageByKey[_productImageKey(item)] = resolvedImage;
+        });
+      }
+
+      if (!mounted) return;
+      final result = await Navigator.of(context).push<ProductSelectionResult>(
+        MaterialPageRoute<ProductSelectionResult>(
+          builder: (_) => ProductDetailScreen(
+            partnerId: item.partnerId,
+            initialProduct: product,
+            categoryName: product.categoryName,
+            initialQuantity: item.quantity,
+            initialKitchenNote: item.kitchenNote,
+            initialSelectedOptionIds: _buildInitialSelectedOptionIds(item),
+          ),
+        ),
+      );
+
+      if (!mounted || result == null) return;
+
+      final kitchenNote = result.kitchenNote?.trim();
+      final updatedItem = item.copyWith(
+        productName: result.productName,
+        unitPrice: result.unitPrice,
+        quantity: result.quantity,
+        selectedOptions: _mapSelections(result),
+        kitchenNote: kitchenNote,
+        clearKitchenNote: kitchenNote == null || kitchenNote.isEmpty,
+      );
+
+      await ref.read(cartNotifierProvider.notifier).replaceItem(
+            itemKey: item.uniqueKey,
+            updatedItem: updatedItem,
+          );
+    } catch (_) {
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.translate('partner_details_load_error')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _editingItemKey = null);
+      }
+    }
+  }
+
+  void _ensureProductImageLoaded(CartItemModel item) {
+    final key = _productImageKey(item);
+    if (_productImageByKey.containsKey(key) || _loadingProductImages.contains(key)) {
+      return;
+    }
+
+    _loadingProductImages.add(key);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        final product = await ref.read(partnerApiServiceProvider).fetchMenuProductDetails(
+              item.partnerId,
+              item.productId,
+            );
+
+        final image = resolveMediaUrl(product.imageUrl);
+        if (!mounted) return;
+        if (image.isNotEmpty) {
+          setState(() {
+            _productImageByKey[key] = image;
+          });
+        }
+      } catch (_) {
+        // Keep placeholder when image details cannot be loaded.
+      } finally {
+        _loadingProductImages.remove(key);
+      }
+    });
   }
 
   @override
@@ -159,18 +294,24 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 ),
                 const SizedBox(height: 10),
                 ...items.map(
-                  (item) => _CartLineItem(
-                    item: item,
-                    onQuantityChanged: (newQty) {
-                      ref.read(cartNotifierProvider.notifier).updateQuantity(
-                            itemKey: item.uniqueKey,
-                            quantity: newQty,
-                          );
-                    },
-                    onRemove: () {
-                      ref.read(cartNotifierProvider.notifier).removeItem(item.uniqueKey);
-                    },
-                  ),
+                  (item) {
+                    _ensureProductImageLoaded(item);
+                    return _CartLineItem(
+                      item: item,
+                      productImageUrl: _productImageUrl(item),
+                      isEditing: _editingItemKey == item.uniqueKey,
+                      onEdit: () => _openProductEditor(item),
+                      onQuantityChanged: (newQty) {
+                        ref.read(cartNotifierProvider.notifier).updateQuantity(
+                              itemKey: item.uniqueKey,
+                              quantity: newQty,
+                            );
+                      },
+                      onRemove: () {
+                        ref.read(cartNotifierProvider.notifier).removeItem(item.uniqueKey);
+                      },
+                    );
+                  },
                 ),
                 const SizedBox(height: 6),
                 OutlinedButton.icon(
@@ -393,11 +534,17 @@ class _PartnerBlock extends StatelessWidget {
 
 class _CartLineItem extends StatelessWidget {
   final CartItemModel item;
+  final String productImageUrl;
+  final bool isEditing;
+  final VoidCallback onEdit;
   final ValueChanged<int> onQuantityChanged;
   final VoidCallback onRemove;
 
   const _CartLineItem({
     required this.item,
+    required this.productImageUrl,
+    required this.isEditing,
+    required this.onEdit,
     required this.onQuantityChanged,
     required this.onRemove,
   });
@@ -410,94 +557,155 @@ class _CartLineItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final image = resolveMediaUrl(productImageUrl);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    item.productName,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: isEditing ? null : onEdit,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: image.isEmpty
+                    ? Container(
+                        width: 76,
+                        height: 76,
+                        color: const Color(0xFFF3F3F3),
+                        child: const Icon(Icons.fastfood_rounded, color: Colors.black38),
+                      )
+                    : CachedNetworkImage(
+                        imageUrl: image,
+                        width: 76,
+                        height: 76,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => Container(
+                          width: 76,
+                          height: 76,
+                          color: const Color(0xFFF3F3F3),
+                          child: const Icon(Icons.fastfood_rounded, color: Colors.black38),
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.productName,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        if (isEditing)
+                          const SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Center(
+                              child: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          )
+                        else
+                          const SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Center(
+                              child: Icon(
+                                Icons.edit_outlined,
+                                size: 18,
+                                color: Colors.black45,
+                              ),
+                            ),
+                          ),
+                        IconButton(
+                          onPressed: onRemove,
+                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: onRemove,
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                ),
-              ],
-            ),
-            if (item.selectedOptions.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  item.selectedOptionsDisplay.join(', '),
-                  style: const TextStyle(color: Colors.black54),
+                    if (item.selectedOptions.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          item.selectedOptionsDisplay.join(', '),
+                          style: const TextStyle(color: Colors.black54),
+                        ),
+                      ),
+                    if ((item.kitchenNote ?? '').trim().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Text(
+                          '${l10n.translate('kitchen_note')}: ${item.kitchenNote}',
+                          style: const TextStyle(color: Colors.black54),
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.black12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () {
+                                  final next = item.quantity - 1;
+                                  if (next <= 0) {
+                                    onRemove();
+                                  } else {
+                                    onQuantityChanged(next);
+                                  }
+                                },
+                                icon: const Icon(Icons.remove),
+                              ),
+                              Text(
+                                '${item.quantity}',
+                                style: const TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                              IconButton(
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => onQuantityChanged(item.quantity + 1),
+                                icon: const Icon(Icons.add),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          _money(item.lineTotal),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                  ],
                 ),
               ),
-            if ((item.kitchenNote ?? '').trim().isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
-                  '${l10n.translate('kitchen_note')}: ${item.kitchenNote}',
-                  style: const TextStyle(color: Colors.black54),
-                ),
-              ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () {
-                          final next = item.quantity - 1;
-                          if (next <= 0) {
-                            onRemove();
-                          } else {
-                            onQuantityChanged(next);
-                          }
-                        },
-                        icon: const Icon(Icons.remove),
-                      ),
-                      Text(
-                        '${item.quantity}',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () => onQuantityChanged(item.quantity + 1),
-                        icon: const Icon(Icons.add),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  _money(item.lineTotal),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

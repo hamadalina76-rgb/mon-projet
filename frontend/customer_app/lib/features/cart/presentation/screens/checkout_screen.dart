@@ -13,8 +13,6 @@ import '../../../location/presentation/providers/location_provider.dart';
 import '../../../profile/data/models/address_model.dart';
 import '../../../profile/presentation/providers/address_provider.dart';
 import '../../cart_providers.dart';
-import '../../data/models/cart_item_model.dart';
-import '../../data/repositories/cart_repository.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
@@ -880,6 +878,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
   }
 
+  void _goToCartForEdit() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+    context.go(RouteNames.cart);
+  }
+
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
@@ -971,8 +978,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               children: [
                 _SectionCard(
                   title: '${l10n.translate('order_section_title')} ($itemCount $orderItemsLabel)',
-                  trailing: items.length > 2
-                      ? TextButton(
+                  trailing: Wrap(
+                    spacing: 2,
+                    children: [
+                      TextButton.icon(
+                        onPressed: _goToCartForEdit,
+                        icon: const Icon(Icons.edit_outlined, size: 16),
+                        label: Text(l10n.translate('edit')),
+                      ),
+                      if (items.length > 2)
+                        TextButton(
                           onPressed: () {
                             setState(() => _showAllItems = !_showAllItems);
                           },
@@ -981,8 +996,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                 ? l10n.translate('collapse')
                                 : l10n.translate('show_all'),
                           ),
-                        )
-                      : null,
+                        ),
+                    ],
+                  ),
                   child: Column(
                     children: [
                       ...displayedItems.map(
