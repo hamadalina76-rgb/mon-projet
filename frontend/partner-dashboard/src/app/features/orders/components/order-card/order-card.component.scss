@@ -137,6 +137,51 @@ $status-cancelled: $gray-400;           // #A0AEC0
   justify-content: flex-end;
 }
 
+.scheduled-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.15rem 0.45rem;
+  border-radius: $border-radius-full;
+  background: rgba($info-color, 0.12);
+  color: $info-dark;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border: 1px solid rgba($info-color, 0.28);
+  .material-icons {
+    font-size: 0.85rem;
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+}
+
+.scheduled-slot-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 16px;
+  background: rgba($info-color, 0.06);
+  border-bottom: 1px solid $gray-200;
+  font-size: 0.82rem;
+  .material-icons {
+    font-size: 1rem;
+    color: $info-color;
+    width: 1rem;
+    height: 1rem;
+  }
+  .scheduled-label {
+    color: $text-secondary;
+    font-weight: 600;
+  }
+  .scheduled-value {
+    font-weight: 700;
+    color: $text-primary;
+  }
+}
+
 .prep-timer-wrap {
   padding: 2px 8px;
   border-radius: $border-radius-md;

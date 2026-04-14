@@ -11,6 +11,12 @@
       <span class="order-time">{{ order().createdAt | timeAgo }}</span>
     </div>
     <div class="header-right">
+      @if (order().isScheduled && order().scheduledDeliveryTime) {
+        <span class="scheduled-chip" [title]="order().scheduledDeliveryTime">
+          <span class="material-icons">event</span>
+          {{ 'ORDERS.CARD.SCHEDULED_BADGE' | translate }}
+        </span>
+      }
       @if (isPending()) {
         <span class="urgent-indicator">
           <span class="urgent-dot"></span>
@@ -31,6 +37,14 @@
       <app-order-status-badge [status]="order().status"></app-order-status-badge>
     </div>
   </div>
+
+  @if (order().isScheduled && order().scheduledDeliveryTime) {
+    <div class="scheduled-slot-row">
+      <span class="material-icons">schedule</span>
+      <span class="scheduled-label">{{ 'ORDERS.CARD.SCHEDULED_DELIVERY' | translate }}</span>
+      <span class="scheduled-value">{{ order().scheduledDeliveryTime | date:'EEE d MMM, HH:mm' }}</span>
+    </div>
+  }
 
   <!-- Customer -->
   <div class="customer-section">

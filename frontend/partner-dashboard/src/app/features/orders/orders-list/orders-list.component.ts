@@ -17,6 +17,8 @@ import { OrdersService } from '../services/orders.service';
 import { OrdersStoreService } from '../services/orders-store.service';
 import { WebSocketService, ConnectionStatus } from '@core/services/websocket.service';
 import { NotificationService } from '@core/services/notification.service';
+import { ScheduledOrderReminderService } from '@core/services/scheduled-order-reminder.service';
+import { formatScheduledSlot } from '@core/utils/format-scheduled-slot';
 import { OrderStatusBadgeComponent } from '../components/order-status-badge/order-status-badge.component';
 import { OrderCardComponent } from '../components/order-card/order-card.component';
 import { LoadingSpinnerComponent } from '@shared/components/loading-spinner/loading-spinner.component';
@@ -103,6 +105,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
   private translate     = inject(TranslateService);
   private prepTimerSession = inject(PrepTimerSessionService);
   private kitchenPrint   = inject(KitchenPrintService);
+  private scheduledReminders = inject(ScheduledOrderReminderService);
   private destroy$      = new Subject<void>();
 
   private searchInput$ = new Subject<string>();
@@ -322,6 +325,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
         this.ordersStore.setOrders(orders);
         this.notifService.updateTabTitle(this.counts()['PENDING'] ?? 0);
         this.loading.set(false);
+        this.scheduledReminders.refreshFromActiveApi();
       },
       error: () => this.loading.set(false),
     });
@@ -375,6 +379,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
         this.notifService.updateTabTitle(this.counts()['PENDING'] ?? 0);
         this.loading.set(false);
         this.loadingMore.set(false);
+        if (reset) this.scheduledReminders.refreshFromActiveApi();
         setTimeout(() => this.setupMobileInfiniteScroll(), 100);
       },
       error: () => {
@@ -537,6 +542,8 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
           orderId: o.id,
           suggestedFromProductsMinutes: showHint ? suggested : undefined,
           showProductPrepHint: showHint,
+          isScheduled: o.isScheduled === true,
+          scheduledDeliveryTime: o.scheduledDeliveryTime,
         },
         panelClass: 'sl-dialog-panel',
         maxWidth: '90vw',
@@ -594,11 +601,11 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
         if (ctx) this.prepTimerSession.save(orderId, ctx);
         this.kitchenPrint.printKitchenTicket(String(orderId));
         this.loadCounts();
-        this.snackBar.open(
-          this.translate.instant('ORDERS.TOAST.ACCEPTED', { minutes: prepTime }),
-          undefined,
-          { duration: 3000, panelClass: ['sl-snack-success'] },
-        );
+        this.snackBar.open(this.acceptSuccessToast(u as Order, prepTime), undefined, {
+          duration: 5000,
+          panelClass: ['sl-snack-success'],
+        });
+        this.scheduledReminders.refreshFromActiveApi();
       },
       error: () => {
         this.ordersStore.rollbackStatus(orderId, prev);
@@ -606,6 +613,17 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
         this.snackBar.open(this.translate.instant('ORDERS.TOAST.CONFIRM_ERROR'), 'OK', { duration: 3000 });
       },
     });
+  }
+
+  private acceptSuccessToast(updated: Order, prepTime: number): string {
+    if (updated.isScheduled && updated.scheduledDeliveryTime) {
+      const slot = formatScheduledSlot(
+        updated.scheduledDeliveryTime,
+        this.translate.currentLang || 'fr',
+      );
+      return this.translate.instant('ORDERS.TOAST.ACCEPTED_SCHEDULED', { minutes: prepTime, slot });
+    }
+    return this.translate.instant('ORDERS.TOAST.ACCEPTED', { minutes: prepTime });
   }
 
   private executeReject(orderId: string, reason: string): void {
@@ -733,6 +751,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
               this.translate.instant('ORDERS.NOTIF_NEW_ORDER'),
               `#${fullOrder.orderNumber}`,
             );
+            this.scheduledReminders.refreshFromActiveApi();
           },
           // On error fall back to partial data so the row at least appears
           error: () => {
@@ -758,6 +777,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
             }
             this.loadCounts();
             this.notifService.newOrderAlert(fallback.orderNumber ?? '');
+            this.scheduledReminders.refreshFromActiveApi();
           },
         });
       });

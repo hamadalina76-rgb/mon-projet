@@ -62,6 +62,91 @@
   .meta-sep  { color: $gray-300; }
 }
 
+.scheduled-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-sm;
+  padding: $spacing-md;
+  border-radius: $border-radius-lg;
+  border: 1px solid rgba($info-color, 0.28);
+  background: rgba($info-color, 0.08);
+}
+
+.scheduled-banner-ico {
+  font-size: 1.35rem;
+  color: $info-color;
+  flex-shrink: 0;
+}
+
+.scheduled-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.scheduled-banner-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: $info-dark;
+}
+
+.scheduled-banner-slot {
+  font-size: 1rem;
+  font-weight: 700;
+  color: $text-primary;
+}
+
+.scheduled-banner-placed {
+  font-size: 0.8125rem;
+  color: $text-muted;
+}
+
+// ---------------------------------------------------------------------------
+// Prep countdown strip
+// ---------------------------------------------------------------------------
+@keyframes prepStripOverduePulse {
+  0%, 100% { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.35); }
+  50%       { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.55); }
+}
+
+.prep-timer-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $border-radius-lg;
+  border: 1px solid $gray-200;
+  background: rgba($info-color, 0.06);
+
+  .prep-timer-ico {
+    font-size: 1.15rem;
+    color: $info-color;
+  }
+
+  .prep-timer-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: $text-secondary;
+    margin-right: auto;
+  }
+
+  &.strip-overdue {
+    animation: prepStripOverduePulse 1s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &.strip-overdue {
+      animation: none;
+      background: rgba(239, 68, 68, 0.14);
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Prep countdown strip
 // ---------------------------------------------------------------------------

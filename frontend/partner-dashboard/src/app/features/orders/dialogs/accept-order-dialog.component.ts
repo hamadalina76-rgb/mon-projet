@@ -13,6 +13,9 @@ export interface AcceptOrderDialogData {
   suggestedFromProductsMinutes?: number;
   /** Afficher la ligne d’aide « d’après vos fiches produits ». */
   showProductPrepHint?: boolean;
+  /** Créneau livraison client (commande planifiée). */
+  isScheduled?: boolean;
+  scheduledDeliveryTime?: string;
 }
 
 export interface AcceptOrderDialogResult {
@@ -40,6 +43,16 @@ export interface AcceptOrderDialogResult {
       </div>
 
       <div class="dialog-body">
+        @if (data.isScheduled && data.scheduledDeliveryTime) {
+          <div class="scheduled-dialog-note">
+            <span class="material-icons">event</span>
+            <div class="scheduled-dialog-note-inner">
+              <span class="scheduled-dialog-label">{{ 'ORDERS.ACCEPT_DIALOG.SCHEDULED_LABEL' | translate }}</span>
+              <span class="scheduled-dialog-slot">{{ data.scheduledDeliveryTime | date:'EEEE d MMM yyyy, HH:mm' }}</span>
+              <p class="scheduled-dialog-hint">{{ 'ORDERS.ACCEPT_DIALOG.SCHEDULED_HINT' | translate }}</p>
+            </div>
+          </div>
+        }
         <p class="body-hint">{{ 'ORDERS.ACCEPT_DIALOG.HINT' | translate }}</p>
         @if (data.showProductPrepHint && data.suggestedFromProductsMinutes != null && data.suggestedFromProductsMinutes > 0) {
           <p class="product-prep-hint">
@@ -133,6 +146,22 @@ export interface AcceptOrderDialogResult {
 
     .dialog-body {
       padding: 20px;
+    }
+
+    .scheduled-dialog-note {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 12px 14px; margin-bottom: 14px;
+      border-radius: 10px; border: 1px solid rgba(59, 130, 246, 0.35);
+      background: rgba(59, 130, 246, 0.08);
+      .material-icons { font-size: 1.25rem; color: #2563EB; flex-shrink: 0; }
+    }
+    .scheduled-dialog-note-inner { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .scheduled-dialog-label {
+      font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #1D4ED8;
+    }
+    .scheduled-dialog-slot { font-size: 0.95rem; font-weight: 700; color: #1A202C; }
+    .scheduled-dialog-hint {
+      margin: 4px 0 0; font-size: 0.8rem; color: #4A5568; line-height: 1.4;
     }
 
     .body-hint {

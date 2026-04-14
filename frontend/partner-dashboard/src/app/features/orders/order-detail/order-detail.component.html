@@ -26,6 +26,18 @@
       </div>
     </div>
 
+    @if (order().isScheduled && order().scheduledDeliveryTime) {
+      <div class="scheduled-banner">
+        <span class="material-icons scheduled-banner-ico">event</span>
+        <div class="scheduled-banner-text">
+          <span class="scheduled-banner-title">{{ 'ORDERS.DETAIL.SCHEDULED_TITLE' | translate }}</span>
+          <span class="scheduled-banner-slot">{{ order().scheduledDeliveryTime | date:'EEEE d MMMM yyyy, HH:mm' }}</span>
+          <span class="scheduled-banner-placed">{{ 'ORDERS.DETAIL.ORDER_PLACED_AT' | translate }}
+            {{ order().createdAt | date:'dd MMM yyyy, HH:mm' }}</span>
+        </div>
+      </div>
+    }
+
     @if (prepTimerDetailContext(); as pctx) {
       <div class="prep-timer-strip" [class.strip-overdue]="detailPrepOverdue()">
         <span class="material-icons prep-timer-ico">timer</span>
@@ -193,7 +205,12 @@
                 <span>{{ order().deliveryFee | number:'1.2-2' }} TND</span>
               </div>
             }
-
+            @if (order().serviceFee > 0) {
+              <div class="pricing-row">
+                <span>{{ 'ORDERS.DETAIL.SERVICE_FEE' | translate }}</span>
+                <span>{{ order().serviceFee | number:'1.2-2' }} TND</span>
+              </div>
+            }
             @if (order().discount > 0) {
               <div class="pricing-row discount">
                 <span>{{ 'ORDERS.DETAIL.DISCOUNT' | translate }}</span>

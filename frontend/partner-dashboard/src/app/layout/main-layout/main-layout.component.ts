@@ -13,6 +13,7 @@ import { AuthService } from '@core/services/auth.service';
 import { PartnerService } from '@core/services/partner.service';
 import { Subject, takeUntil, filter } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
+import { ScheduledOrderReminderService } from '@core/services/scheduled-order-reminder.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -36,6 +37,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private breakpointObserver = inject(BreakpointObserver);
   private router = inject(Router);
   private translate = inject(TranslateService);
+  private scheduledReminders = inject(ScheduledOrderReminderService);
   loadingService = inject(LoadingService);
 
   sidebarCollapsed = signal(false);
@@ -57,6 +59,11 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     this.requestNotificationPermission();
     this.initResponsive();
     this.initRouterCloseSidebar();
+    setTimeout(() => {
+      if (this.authService.getPartnerId() != null) {
+        this.scheduledReminders.refreshFromActiveApi();
+      }
+    }, 2500);
   }
 
   private initResponsive(): void {
@@ -112,6 +119,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       .subscribe((notif: any) => {
         const newStatus = notif?.data?.['newStatus'];
         if (newStatus) this.partnerStatus.set(newStatus);
+
+        if (notif?.data?.['action'] === 'ORDER_SCHEDULED_PREP_REMINDER') {
+          this.notificationService.showScheduledPrepReminderFromServer({
+            title: notif?.title,
+            message: notif?.message,
+          });
+        }
       });
   }
 

@@ -1196,7 +1196,10 @@
       "DELIVERED": "Livrée",
       "CANCELLED": "Annulée"
     },
+    "COL_TIME_SCHEDULED": "Livraison prévue",
     "CARD": {
+      "SCHEDULED_BADGE": "Programmée",
+      "SCHEDULED_DELIVERY": "Livraison prévue",
       "NEW": "Nouveau",
       "ITEM": "article",
       "ITEMS": "articles",
@@ -1219,6 +1222,8 @@
     },
     "ACCEPT_DIALOG": {
       "TITLE": "Accepter la commande",
+      "SCHEDULED_LABEL": "Créneau choisi par le client",
+      "SCHEDULED_HINT": "Préparez la commande pour être prête en temps utile avant ce créneau.",
       "HINT": "Sélectionnez le temps de préparation estimé (modifiable).",
       "PRODUCT_HINT_PREFIX": "D’après vos fiches produits :",
       "CUSTOM_LABEL": "Autre (minutes)",
@@ -1244,6 +1249,8 @@
     },
     "DETAIL": {
       "BACK_LIST": "Commandes",
+      "SCHEDULED_TITLE": "Livraison planifiée",
+      "ORDER_PLACED_AT": "Commande passée le",
       "PENDING_HINT": "Commande en attente de votre confirmation",
       "REJECT": "Refuser",
       "ACCEPT_ORDER": "Accepter la commande",
@@ -1336,8 +1343,13 @@
       "FAILED": "Échoué",
       "REFUNDED": "Remboursé"
     },
+    "SCHEDULED_REMINDER": {
+      "TITLE": "Rappel — livraison planifiée",
+      "BODY": "Commande #{{orderNumber}} — le client attend vers {{slot}} (dans {{minutes}} min). Pensez à lancer la préparation."
+    },
     "TOAST": {
       "ACCEPTED": "✓ Commande acceptée · {{minutes}} min",
+      "ACCEPTED_SCHEDULED": "✓ Commande acceptée · {{minutes}} min — Livraison prévue : {{slot}}",
       "CONFIRM_ERROR": "Erreur confirmation",
       "REJECTED": "Commande refusée",
       "REJECT_ERROR": "Erreur lors du refus",
@@ -1349,6 +1361,7 @@
       "ERROR": "Erreur"
     },
     "NOTIF_NEW_ORDER": "Nouvelle commande !",
+    "NOTIF_SCHEDULED_PREP_TITLE": "Préparation — commande planifiée",
     "NOTIF_BROWSER_BODY": "Commande #{{orderNumber}} reçue",
     "BANNER_VIEW": "Voir",
     "DEFAULT_CUSTOMER_NAME": "Client",

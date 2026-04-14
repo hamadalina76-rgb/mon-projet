@@ -1196,7 +1196,10 @@
       "DELIVERED": "Delivered",
       "CANCELLED": "Cancelled"
     },
+    "COL_TIME_SCHEDULED": "Scheduled delivery",
     "CARD": {
+      "SCHEDULED_BADGE": "Scheduled",
+      "SCHEDULED_DELIVERY": "Scheduled delivery",
       "NEW": "New",
       "ITEM": "item",
       "ITEMS": "items",
@@ -1219,6 +1222,8 @@
     },
     "ACCEPT_DIALOG": {
       "TITLE": "Accept order",
+      "SCHEDULED_LABEL": "Customer’s delivery slot",
+      "SCHEDULED_HINT": "Prepare the order so it is ready in good time before this slot.",
       "HINT": "Choose estimated prep time (editable).",
       "PRODUCT_HINT_PREFIX": "From your product sheets:",
       "CUSTOM_LABEL": "Other (minutes)",
@@ -1244,6 +1249,8 @@
     },
     "DETAIL": {
       "BACK_LIST": "Orders",
+      "SCHEDULED_TITLE": "Scheduled delivery",
+      "ORDER_PLACED_AT": "Order placed on",
       "PENDING_HINT": "Order awaiting your confirmation",
       "REJECT": "Decline",
       "ACCEPT_ORDER": "Accept order",
@@ -1336,8 +1343,13 @@
       "FAILED": "Failed",
       "REFUNDED": "Refunded"
     },
+    "SCHEDULED_REMINDER": {
+      "TITLE": "Reminder — scheduled delivery",
+      "BODY": "Order #{{orderNumber}} — customer expects delivery around {{slot}} (in {{minutes}} min). Start prep in good time."
+    },
     "TOAST": {
       "ACCEPTED": "✓ Order accepted · {{minutes}} min",
+      "ACCEPTED_SCHEDULED": "✓ Order accepted · {{minutes}} min — Scheduled delivery: {{slot}}",
       "CONFIRM_ERROR": "Confirmation error",
       "REJECTED": "Order declined",
       "REJECT_ERROR": "Error declining order",
@@ -1349,6 +1361,7 @@
       "ERROR": "Error"
     },
     "NOTIF_NEW_ORDER": "New order!",
+    "NOTIF_SCHEDULED_PREP_TITLE": "Prep — scheduled order",
     "NOTIF_BROWSER_BODY": "Order #{{orderNumber}} received",
     "BANNER_VIEW": "View",
     "DEFAULT_CUSTOMER_NAME": "Customer",

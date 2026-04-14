@@ -273,6 +273,13 @@ public class Order {
      */
     private LocalDateTime scheduledDeliveryTime;
 
+    /**
+     * Rappel backend (Pub/Sub → notification-service) déjà envoyé pour le créneau planifié.
+     */
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean scheduledPrepReminderSent = false;
+
     // ==================== NOTES ====================
 
     /**

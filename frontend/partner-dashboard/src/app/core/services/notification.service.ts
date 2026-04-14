@@ -291,4 +291,21 @@ export class NotificationService {
       });
     }
   }
+
+  /** Rappel émis par le serveur (15 min + prépa avant le créneau). */
+  showScheduledPrepReminderFromServer(notif: { title?: string; message?: string }): void {
+    this.playPrepDeadlineSound();
+    const title =
+      (notif.title && notif.title.trim()) ||
+      this.translate.instant('ORDERS.NOTIF_SCHEDULED_PREP_TITLE');
+    const message = (notif.message && notif.message.trim()) || '';
+    const line = message ? `${title} — ${message}` : title;
+    this.snackBar.open(line, undefined, {
+      duration: 10_000,
+      horizontalPosition: 'right',
+      verticalPosition: 'top',
+      panelClass: ['sl-snack-scheduled-reminder'],
+    });
+    this.showBrowserNotification(title, message);
+  }
 }

@@ -33,6 +33,8 @@ import {
   buildPrepTimerContextAfterAccept,
 } from '../utils/prep-timer.utils';
 import { KitchenPrintService } from '../services/kitchen-print.service';
+import { ScheduledOrderReminderService } from '@core/services/scheduled-order-reminder.service';
+import { formatScheduledSlot } from '@core/utils/format-scheduled-slot';
 
 @Component({
   selector: 'app-order-detail',
@@ -64,6 +66,7 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
   private destroyRef    = inject(DestroyRef);
   private prepTimerSession = inject(PrepTimerSessionService);
   private kitchenPrint     = inject(KitchenPrintService);
+  private scheduledReminders = inject(ScheduledOrderReminderService);
 
   order   = signal<any>(null);
   /** Bandeau minuteur en surbrillance quand l’échéance est dépassée. */
@@ -189,6 +192,7 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
         this.loading.set(false);
         this.historyPageIndex.set(0);
         this.loadHistory();
+        this.scheduledReminders.refreshFromActiveApi();
       },
       error: () => this.loading.set(false),
     });
@@ -277,6 +281,8 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
         orderId: o.id,
         suggestedFromProductsMinutes: showHint ? suggested : undefined,
         showProductPrepHint: showHint,
+        isScheduled: o.isScheduled === true,
+        scheduledDeliveryTime: o.scheduledDeliveryTime,
       },
       panelClass: 'sl-dialog-panel',
       maxWidth: '90vw',
@@ -316,11 +322,11 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
         this.kitchenPrint.printKitchenTicket(String(id));
         this.actionLoading.set(false);
         this.refreshHistoryAfterAction();
-        this.snackBar.open(
-          this.translate.instant('ORDERS.TOAST.ACCEPTED', { minutes: prepTime }),
-          undefined,
-          { duration: 3000, panelClass: ['sl-snack-success'] },
-        );
+        this.snackBar.open(this.acceptSuccessToast(updated as Order, prepTime), undefined, {
+          duration: 5000,
+          panelClass: ['sl-snack-success'],
+        });
+        this.scheduledReminders.refreshFromActiveApi();
       },
       error: () => {
         this.order.update(o => ({ ...o, status: prevStatus }));
@@ -329,6 +335,17 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
         this.snackBar.open(this.translate.instant('ORDERS.TOAST.ACCEPT_ERROR'), 'OK', { duration: 4000 });
       },
     });
+  }
+
+  private acceptSuccessToast(updated: Order, prepTime: number): string {
+    if (updated.isScheduled && updated.scheduledDeliveryTime) {
+      const slot = formatScheduledSlot(
+        updated.scheduledDeliveryTime,
+        this.translate.currentLang || 'fr',
+      );
+      return this.translate.instant('ORDERS.TOAST.ACCEPTED_SCHEDULED', { minutes: prepTime, slot });
+    }
+    return this.translate.instant('ORDERS.TOAST.ACCEPTED', { minutes: prepTime });
   }
 
   private doReject(id: string, reason: string): void {

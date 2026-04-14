@@ -555,6 +555,15 @@
   display: flex; flex-direction: column; gap: 2px;
   .time-ago { font-size: 0.8rem; color: $text-secondary; font-weight: 500; }
   .time-abs { font-size: 0.75rem; color: $text-muted; }
+  .time-scheduled-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: $info-color;
+  }
+  .time-scheduled-abs { font-size: 0.8rem; font-weight: 700; color: $text-primary; }
+  .time-ordered-muted { font-size: 0.72rem; color: $text-muted; }
 }
 
 // Cell: Actions

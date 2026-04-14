@@ -10,6 +10,8 @@ import com.speedline.order.client.dto.promotion.PromotionValidateResponse;
 import com.speedline.order.dto.cart.CartItemPayload;
 import com.speedline.order.dto.cart.CartResponse;
 import com.speedline.order.event.producer.OrderEventProducer;
+import com.speedline.order.domain.Order;
+import com.speedline.order.domain.OrderStatus;
 import com.speedline.order.repository.OrderItemRepository;
 import com.speedline.order.repository.OrderRepository;
 import com.speedline.order.repository.OrderStatusHistoryRepository;
@@ -20,11 +22,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -238,6 +243,54 @@ class OrderControllerIntegrationTest {
                 .andExpect(status().isConflict());
 
         assertThat(orderRepository.count()).isZero();
+    }
+
+    @Test
+    void partnerListDateFilterIncludesScheduledDeliveryWindow() {
+        final long partnerId = 42L;
+        final LocalDate today = LocalDate.now();
+        final LocalDateTime windowStart = today.atStartOfDay();
+        final LocalDateTime windowEnd = today.atTime(23, 59, 59);
+        final LocalDateTime orderPlacedYesterday = today.minusDays(1).atTime(10, 0);
+        final LocalDateTime slotToday = today.atTime(14, 30);
+
+        orderRepository.save(Order.builder()
+                .orderNumber("ORD-SCHED-IN-WINDOW")
+                .customerId(1L)
+                .partnerId(partnerId)
+                .status(OrderStatus.PENDING)
+                .total(BigDecimal.valueOf(25.00))
+                .subtotal(BigDecimal.valueOf(25.00))
+                .orderTime(orderPlacedYesterday)
+                .isScheduled(true)
+                .scheduledDeliveryTime(slotToday)
+                .paymentMethod(Order.PaymentMethod.CASH)
+                .build());
+
+        orderRepository.save(Order.builder()
+                .orderNumber("ORD-NOT-IN-WINDOW")
+                .customerId(1L)
+                .partnerId(partnerId)
+                .status(OrderStatus.PENDING)
+                .total(BigDecimal.TEN)
+                .subtotal(BigDecimal.TEN)
+                .orderTime(orderPlacedYesterday)
+                .isScheduled(false)
+                .scheduledDeliveryTime(null)
+                .paymentMethod(Order.PaymentMethod.CASH)
+                .build());
+
+        var page = orderRepository.findByPartnerIdPriority(
+                partnerId, windowStart, windowEnd, "", PageRequest.of(0, 20));
+
+        assertThat(page.getContent())
+                .extracting(Order::getOrderNumber)
+                .contains("ORD-SCHED-IN-WINDOW")
+                .doesNotContain("ORD-NOT-IN-WINDOW");
+
+        long pendingCount = orderRepository.countByPartnerIdAndStatusAndOrderTimeBetween(
+                partnerId, OrderStatus.PENDING, windowStart, windowEnd);
+        assertThat(pendingCount).isEqualTo(1L);
     }
 
     private PartnerSnapshot openPartner() {
