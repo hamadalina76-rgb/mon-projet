@@ -23,6 +23,8 @@ import '../../features/profile/data/models/address_model.dart';
 import '../../features/partners/presentation/screens/nearby_partners_screen.dart';
 import '../../features/cart/presentation/cart_screen.dart';
 import '../../features/cart/presentation/screens/checkout_screen.dart';
+import '../../features/orders/presentation/screens/order_confirmation_screen.dart';
+import '../../features/orders/presentation/screens/order_tracking_screen.dart';
 import 'route_names.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -163,6 +165,33 @@ final appRouter = GoRouter(
       path: RouteNames.checkout,
       builder: (context, state) => const CheckoutScreen(),
     ),
+    GoRoute(
+      path: RouteNames.orderConfirmation,
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        final orderId = extra['orderId']?.toString() ?? '';
+        final orderNumber = extra['orderNumber']?.toString();
+        final partnerName = extra['partnerName']?.toString();
+        final estimatedDeliveryRaw = extra['estimatedDeliveryTime']?.toString();
+        final estimatedDeliveryTime = estimatedDeliveryRaw == null
+            ? null
+            : DateTime.tryParse(estimatedDeliveryRaw);
+
+        return OrderConfirmationScreen(
+          orderId: orderId,
+          orderNumber: orderNumber,
+          partnerName: partnerName,
+          estimatedDeliveryTime: estimatedDeliveryTime,
+        );
+      },
+    ),
+    GoRoute(
+      path: RouteNames.orderTrackingTemplate,
+      builder: (context, state) {
+        final orderId = state.pathParameters['orderId'] ?? '';
+        return OrderTrackingScreen(orderId: orderId);
+      },
+    ),
 
     // Main App Screens with Bottom Navigation
     ShellRoute(
@@ -174,7 +203,7 @@ final appRouter = GoRouter(
         GoRoute(
           path: RouteNames.explore,
           pageBuilder: (context, state) =>
-              NoTransitionPage(child: const ExploreScreen()),
+            const NoTransitionPage(child: ExploreScreen()),
         ),
         GoRoute(
           path: RouteNames.search,
@@ -203,12 +232,12 @@ final appRouter = GoRouter(
         GoRoute(
           path: RouteNames.orders,
           pageBuilder: (context, state) =>
-              const NoTransitionPage(child: const OrdersScreen()),
+            const NoTransitionPage(child: OrdersScreen()),
         ),
         GoRoute(
           path: RouteNames.profile,
           pageBuilder: (context, state) =>
-              NoTransitionPage(child: const ProfileScreen()),
+            const NoTransitionPage(child: ProfileScreen()),
         ),
       ],
     ),

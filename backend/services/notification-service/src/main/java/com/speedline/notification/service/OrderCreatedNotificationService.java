@@ -111,6 +111,58 @@ public class OrderCreatedNotificationService {
         log.info("ORDER_CREATED WebSocket push sent to admin topic");
     }
 
+    public void handleOrderStatusChangedEvent(Map<String, Object> event) {
+        final String eventType = parseString(event.get("eventType"));
+        final String actorType = parseString(event.get("actorType"));
+        final String status = parseString(event.get("status"));
+
+        // Partner acceptance is represented by PREPARING status, often sent as ORDER_ACCEPTED.
+        if (!"PREPARING".equalsIgnoreCase(status)) {
+            log.debug("Skipping order status event that is not a partner acceptance: {}", event);
+            return;
+        }
+
+        final Long orderId = parseLong(event.get("orderId"));
+        final Long customerId = parseLong(event.get("customerId"));
+        if (orderId == null || customerId == null) {
+            log.warn("ORDER_ACCEPTED event missing orderId/customerId, skipping. event={}", event);
+            return;
+        }
+
+        final String orderNumber = parseString(event.get("orderNumber"));
+        final Long partnerId = parseLong(event.get("partnerId"));
+        final String estimatedDeliveryTime = parseString(event.get("estimatedDeliveryTime"));
+
+        final String orderLabel = orderNumber != null ? "#" + orderNumber : "#" + orderId;
+        final String title = "Commande acceptee";
+        String message = "Votre commande " + orderLabel + " a ete acceptee par le partenaire.";
+        if (estimatedDeliveryTime != null) {
+            message += " Livraison estimee: " + estimatedDeliveryTime + ".";
+        }
+
+        final Map<String, Object> data = new HashMap<>();
+        data.put("id", orderId);
+        data.put("orderId", orderId);
+        data.put("orderNumber", orderNumber != null ? orderNumber : "");
+        data.put("customerId", customerId);
+        data.put("partnerId", partnerId);
+        data.put("status", status);
+        data.put("actorType", actorType != null ? actorType : "PARTNER");
+        data.put("eventType", eventType != null ? eventType : "ORDER_ACCEPTED");
+        data.put("action", "ORDER_ACCEPTED");
+
+        notificationService.sendNotification(
+                customerId,
+                NotificationType.ORDER,
+                title,
+                message,
+                data,
+                NotificationChannel.PUSH
+        );
+
+        log.info("ORDER_ACCEPTED notification sent to customer {} for order {}", customerId, orderId);
+    }
+
     private static String buildOrderMessage(int itemCount, BigDecimal total) {
         String itemLabel = itemCount == 1 ? "article" : "articles";
         if (total != null) {
@@ -134,5 +186,27 @@ public class OrderCreatedNotificationService {
         } catch (NumberFormatException e) {
             return BigDecimal.ZERO;
         }
+    }
+
+    private static Long parseLong(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        try {
+            return Long.parseLong(value.toString().trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static String parseString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        final String normalized = value.toString().trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

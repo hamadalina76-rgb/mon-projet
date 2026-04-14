@@ -268,86 +268,111 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
 
   Widget _buildPageContent(OnboardingPage page) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: ResponsiveUtils.getResponsiveSpacing(context, AppConstants.horizontalPadding),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Logo SpeedLine
-          Container(
-            width: ResponsiveUtils.getResponsiveWidth(context, 0.32).clamp(100.0, 150.0),
-            height: ResponsiveUtils.getResponsiveWidth(context, 0.32).clamp(100.0, 150.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
+    final horizontalPadding =
+        ResponsiveUtils.getResponsiveSpacing(context, AppConstants.horizontalPadding);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompactHeight = constraints.maxHeight < 460;
+        final logoSize = ResponsiveUtils.getResponsiveWidth(context, 0.32)
+            .clamp(isCompactHeight ? 90.0 : 100.0, isCompactHeight ? 120.0 : 150.0)
+            .toDouble();
+        final titleFontSize =
+            ResponsiveUtils.getResponsiveFontSize(context, isCompactHeight ? 28 : 32);
+
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
             child: Padding(
-              padding: EdgeInsets.all(ResponsiveUtils.getResponsiveSpacing(context, 20)),
-              child: Image.asset(
-                'assets/images/speedline_logo.png',
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Icon(
-                    Icons.delivery_dining,
-                    size: ResponsiveUtils.getResponsiveSize(context, 60),
-                    color: AppColors.primary,
-                  );
-                },
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Keep content centered on tall screens, but prevent overflow on short ones.
+                  SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, isCompactHeight ? 12 : 24)),
+
+                  // Logo SpeedLine
+                  Container(
+                    width: logoSize,
+                    height: logoSize,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.2),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(
+                        ResponsiveUtils.getResponsiveSpacing(context, isCompactHeight ? 14 : 20),
+                      ),
+                      child: Image.asset(
+                        'assets/images/speedline_logo.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(
+                            Icons.delivery_dining,
+                            size: ResponsiveUtils.getResponsiveSize(context, isCompactHeight ? 48 : 60),
+                            color: AppColors.primary,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, isCompactHeight ? 24 : 60)),
+
+                  // Title
+                  Column(
+                    children: [
+                      Text(
+                        context.tr(page.title),
+                        style: TextStyle(
+                          fontSize: titleFontSize,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 4)),
+                      Text(
+                        context.tr(page.highlightedTitle),
+                        style: TextStyle(
+                          fontSize: titleFontSize,
+                          fontWeight: FontWeight.bold,
+                          fontStyle: FontStyle.italic,
+                          color: AppColors.primary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, isCompactHeight ? 16 : 24)),
+
+                  // Description
+                  Text(
+                    context.tr(page.description),
+                    style: TextStyle(
+                      fontSize: ResponsiveUtils.getResponsiveFontSize(context, isCompactHeight ? 15 : 16),
+                      color: AppColors.textSecondary,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+
+                  SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, isCompactHeight ? 12 : 24)),
+                ],
               ),
             ),
           ),
-
-          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 60)),
-
-          // Title
-          Column(
-            children: [
-              Text(
-                context.tr(page.title),
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 32),
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 4)),
-              Text(
-                context.tr(page.highlightedTitle),
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 32),
-                  fontWeight: FontWeight.bold,
-                  fontStyle: FontStyle.italic,
-                  color: AppColors.primary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-
-          SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
-
-          // Description
-          Text(
-            context.tr(page.description),
-            style: TextStyle(
-              fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
-              color: AppColors.textSecondary,
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

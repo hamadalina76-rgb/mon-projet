@@ -29,6 +29,32 @@ class PromoValidationResult {
   });
 }
 
+class PlacedOrderSummary {
+  final String orderId;
+  final String? orderNumber;
+  final String? partnerName;
+  final DateTime? estimatedDeliveryTime;
+  final int? deliveryTimeMinutes;
+
+  const PlacedOrderSummary({
+    required this.orderId,
+    this.orderNumber,
+    this.partnerName,
+    this.estimatedDeliveryTime,
+    this.deliveryTimeMinutes,
+  });
+
+  Map<String, dynamic> toRouteExtra() {
+    return {
+      'orderId': orderId,
+      'orderNumber': orderNumber,
+      'partnerName': partnerName,
+      'estimatedDeliveryTime': estimatedDeliveryTime?.toIso8601String(),
+      'deliveryTimeMinutes': deliveryTimeMinutes,
+    };
+  }
+}
+
 class PartnerOpeningHour {
   final String dayOfWeek;
   final String? openTime;
@@ -337,7 +363,7 @@ class CartRepository {
     );
   }
 
-  Future<void> placeOrder({
+  Future<PlacedOrderSummary> placeOrder({
     required List<CartItemModel> cartItems,
     String? promoCode,
     String? addressId,
@@ -371,9 +397,25 @@ class CartRepository {
       payload['scheduledTime'] = _formatTime(scheduledDeliveryTime);
     }
 
-    await _dio.post(
+    final response = await _dio.post(
       ApiEndpoints.ORDER_BASE,
       data: payload,
+    );
+
+    final responseMap = _extractMap(response.data);
+    final estimatedDeliveryTime = DateTime.tryParse(
+      responseMap['estimatedDeliveryTime']?.toString() ?? '',
+    );
+
+    return PlacedOrderSummary(
+      orderId:
+          responseMap['id']?.toString() ??
+          responseMap['orderId']?.toString() ??
+          '',
+      orderNumber: responseMap['orderNumber']?.toString(),
+      partnerName: responseMap['partnerName']?.toString(),
+      estimatedDeliveryTime: estimatedDeliveryTime,
+      deliveryTimeMinutes: _toInt(responseMap['deliveryTimeMinutes']),
     );
   }
 
@@ -568,6 +610,25 @@ class CartRepository {
       if (message != null) return message.toString();
     }
     return e.message ?? '';
+  }
+
+  Map<String, dynamic> _extractMap(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      if (data['data'] is Map<String, dynamic>) {
+        return data['data'] as Map<String, dynamic>;
+      }
+      return data;
+    }
+
+    if (data is Map) {
+      final normalized = Map<String, dynamic>.from(data);
+      if (normalized['data'] is Map) {
+        return Map<String, dynamic>.from(normalized['data'] as Map);
+      }
+      return normalized;
+    }
+
+    return const <String, dynamic>{};
   }
 
   double? _toDouble(dynamic value) {

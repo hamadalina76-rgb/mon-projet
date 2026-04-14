@@ -66,6 +66,8 @@ class ApiEndpoints {
 
   // ==================== ORDERS ====================
   static const String ORDER_BASE = '/api/orders';
+    static String customerOrders(String customerId) =>
+            '$ORDER_BASE/customers/$customerId/orders';
   static String orderById(String id) => '$ORDER_BASE/$id';
   static String cancelOrder(String id) => '$ORDER_BASE/$id/cancel';
   static String trackOrder(String id) => '$ORDER_BASE/$id/track';

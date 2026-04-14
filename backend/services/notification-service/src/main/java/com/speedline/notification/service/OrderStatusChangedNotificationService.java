@@ -3,13 +3,11 @@ package com.speedline.notification.service;
 import com.speedline.notification.domain.Notification;
 import com.speedline.notification.domain.NotificationChannel;
 import com.speedline.notification.domain.NotificationType;
-import com.speedline.notification.repository.NotificationRepository;
 import com.speedline.notification.service.impl.NotificationServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,24 +26,30 @@ public class OrderStatusChangedNotificationService {
             "CANCELLED", "Votre commande a été annulée"
     );
 
-    private final NotificationRepository notificationRepository;
     private final NotificationServiceImpl notificationService;
 
     public void handleOrderStatusChangedEvent(Map<String, Object> event) {
-        Number orderIdNum = (Number) event.get("orderId");
-        String orderNumber = (String) event.get("orderNumber");
-        Number customerIdNum = (Number) event.get("customerId");
-        Number partnerIdNum = (Number) event.get("partnerId");
-        String newStatus = (String) event.get("newStatus");
-        String previousStatus = (String) event.get("previousStatus");
-        String actorType = (String) event.get("actorType");
+        final Long orderId = parseLong(event.get("orderId"));
+        final String orderNumber = parseString(event.get("orderNumber"));
+        final Long customerId = parseLong(event.get("customerId"));
+        final Long partnerId = parseLong(event.get("partnerId"));
+        final String previousStatus = parseString(event.get("previousStatus"));
+        final String actorType = parseString(event.get("actorType"));
 
-        Long orderId = orderIdNum != null ? orderIdNum.longValue() : null;
-        Long customerId = customerIdNum != null ? customerIdNum.longValue() : null;
-        Long partnerId = partnerIdNum != null ? partnerIdNum.longValue() : null;
+        // Some producers send "status" while others send "newStatus".
+        final String newStatus = firstNonBlank(
+                parseString(event.get("newStatus")),
+                parseString(event.get("status"))
+        );
 
         if (orderId == null || customerId == null || newStatus == null) {
             log.warn("ORDER_STATUS_CHANGED missing required fields, skipping. event={}", event);
+            return;
+        }
+
+        // PREPARING transitions are already emitted as ORDER_ACCEPTED to avoid duplicates.
+        if ("PREPARING".equalsIgnoreCase(newStatus)) {
+            log.debug("Skipping PREPARING ORDER_STATUS_CHANGED event (handled by ORDER_ACCEPTED). event={}", event);
             return;
         }
 
@@ -58,10 +62,15 @@ public class OrderStatusChangedNotificationService {
                 "Le statut de votre commande a changé : " + newStatus);
 
         Map<String, Object> data = new HashMap<>();
+        data.put("id", orderId);
         data.put("orderId", orderId);
         data.put("orderNumber", orderNumber != null ? orderNumber : "");
+        data.put("partnerId", partnerId);
         data.put("previousStatus", previousStatus);
+        data.put("status", newStatus);
         data.put("newStatus", newStatus);
+        data.put("actorType", actorType != null ? actorType : "SYSTEM");
+        data.put("eventType", "ORDER_STATUS_CHANGED");
         data.put("action", "ORDER_STATUS_CHANGED");
 
         // Customer notification (real-time via WebSocket + FCM push)
@@ -75,4 +84,36 @@ public class OrderStatusChangedNotificationService {
         );
         log.info("ORDER_STATUS_CHANGED notification sent to customer {} for order {}", customerId, orderId);
     }
+
+        private static Long parseLong(Object value) {
+                if (value == null) {
+                        return null;
+                }
+                if (value instanceof Number number) {
+                        return number.longValue();
+                }
+                try {
+                        return Long.parseLong(value.toString().trim());
+                } catch (NumberFormatException e) {
+                        return null;
+                }
+        }
+
+        private static String parseString(Object value) {
+                if (value == null) {
+                        return null;
+                }
+                final String normalized = value.toString().trim();
+                return normalized.isEmpty() ? null : normalized;
+        }
+
+        private static String firstNonBlank(String first, String second) {
+                if (first != null && !first.isBlank()) {
+                        return first;
+                }
+                if (second != null && !second.isBlank()) {
+                        return second;
+                }
+                return null;
+        }
 }

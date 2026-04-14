@@ -215,6 +215,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         final Order order = getOrderOrThrow(orderId);
+        final OrderStatus previousStatus = order.getStatus();
         final String normalizedActorType = normalizeActorType(actorType);
         applyStatusTransition(
                 order,
@@ -224,6 +225,7 @@ public class OrderServiceImpl implements OrderService {
                 notes,
                 "Statut mis à jour"
         );
+            maybePublishOrderAcceptedEvent(order, previousStatus, normalizedActorType, actorId);
         return toResponse(order);
     }
 
@@ -236,6 +238,7 @@ public class OrderServiceImpl implements OrderService {
 
         final Order order = getOrderOrThrow(orderId);
         assertPartnerOwnsOrder(order, partnerId);
+        final OrderStatus previousStatus = order.getStatus();
 
         final String historyNotes;
         if (estimatedPrepTime != null && estimatedPrepTime > 0) {
@@ -259,6 +262,8 @@ public class OrderServiceImpl implements OrderService {
             order.setEstimatedDeliveryTime(LocalDateTime.now().plusMinutes(prepMinutes + 15L));
             orderRepository.save(order);
         }
+
+        maybePublishOrderAcceptedEvent(order, previousStatus, "PARTNER", partnerId);
 
         return toResponse(order);
     }
@@ -1333,6 +1338,42 @@ public class OrderServiceImpl implements OrderService {
         } catch (Exception ex) {
             // Event publication should never fail order creation.
             log.warn("Impossible de publier ORDER_CREATED pour orderId={}", order.getId(), ex);
+        }
+    }
+
+    private void maybePublishOrderAcceptedEvent(Order order, OrderStatus previousStatus, String actorType, Long actorId) {
+        if (order == null || previousStatus == null) {
+            return;
+        }
+        if (order.getStatus() != OrderStatus.PREPARING) {
+            return;
+        }
+        if (previousStatus == OrderStatus.PREPARING) {
+            return;
+        }
+
+        final String normalizedActorType = actorType == null || actorType.isBlank()
+                ? "PARTNER"
+                : actorType.trim().toUpperCase(Locale.ROOT);
+
+        try {
+            final OrderStatusChangedEvent event = OrderStatusChangedEvent.builder()
+                    .eventType("ORDER_ACCEPTED")
+                    .orderId(order.getId())
+                    .orderNumber(order.getOrderNumber())
+                    .customerId(order.getCustomerId())
+                    .partnerId(order.getPartnerId())
+                    .previousStatus(previousStatus)
+                    .status(order.getStatus())
+                    .actorType(normalizedActorType)
+                    .actorId(actorId)
+                    .estimatedDeliveryTime(order.getEstimatedDeliveryTime())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+
+            orderEventProducer.publishOrderStatusChanged(event);
+        } catch (Exception ex) {
+            log.warn("Impossible de publier ORDER_ACCEPTED pour orderId={}", order.getId(), ex);
         }
     }
 
