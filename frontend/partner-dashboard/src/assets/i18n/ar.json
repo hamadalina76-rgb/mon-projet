@@ -1195,7 +1195,10 @@
       "DELIVERED": "تم التسليم",
       "CANCELLED": "ملغاة"
     },
+    "COL_TIME_SCHEDULED": "التسليم المجدول",
     "CARD": {
+      "SCHEDULED_BADGE": "مجدولة",
+      "SCHEDULED_DELIVERY": "التسليم المجدول",
       "NEW": "جديد",
       "ITEM": "صنف",
       "ITEMS": "أصناف",
@@ -1218,6 +1221,8 @@
     },
     "ACCEPT_DIALOG": {
       "TITLE": "قبول الطلب",
+      "SCHEDULED_LABEL": "الموعد الذي اختاره العميل",
+      "SCHEDULED_HINT": "حضّر الطلب ليكون جاهزاً في الوقت المناسب قبل هذا الموعد.",
       "HINT": "اختر وقت التحضير المقدر (قابل للتعديل).",
       "PRODUCT_HINT_PREFIX": "حسب بطاقات منتجاتك:",
       "CUSTOM_LABEL": "أخرى (بالدقائق)",
@@ -1243,6 +1248,8 @@
     },
     "DETAIL": {
       "BACK_LIST": "الطلبات",
+      "SCHEDULED_TITLE": "تسليم مجدول",
+      "ORDER_PLACED_AT": "تم تقديم الطلب في",
       "PENDING_HINT": "الطلب في انتظار تأكيدك",
       "REJECT": "رفض",
       "ACCEPT_ORDER": "قبول الطلب",
@@ -1335,8 +1342,13 @@
       "FAILED": "فشل",
       "REFUNDED": "مسترد"
     },
+    "SCHEDULED_REMINDER": {
+      "TITLE": "تذكير — تسليم مجدول",
+      "BODY": "طلب #{{orderNumber}} — العميل يتوقع التسليم نحو {{slot}} (خلال {{minutes}} د). ابدأ التحضير في الوقت المناسب."
+    },
     "TOAST": {
       "ACCEPTED": "✓ تم قبول الطلب · {{minutes}} د",
+      "ACCEPTED_SCHEDULED": "✓ تم قبول الطلب · {{minutes}} د — التسليم المجدول: {{slot}}",
       "CONFIRM_ERROR": "خطأ في التأكيد",
       "REJECTED": "تم رفض الطلب",
       "REJECT_ERROR": "خطأ عند الرفض",
@@ -1348,6 +1360,7 @@
       "ERROR": "خطأ"
     },
     "NOTIF_NEW_ORDER": "طلب جديد!",
+    "NOTIF_SCHEDULED_PREP_TITLE": "تحضير — طلب مجدول",
     "NOTIF_BROWSER_BODY": "تم استلام الطلب #{{orderNumber}}",
     "BANNER_VIEW": "عرض",
     "DEFAULT_CUSTOMER_NAME": "عميل",

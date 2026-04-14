@@ -304,6 +304,16 @@ button[mat-stroked-button] {
   }
 }
 
+.sl-snack-scheduled-reminder {
+  &.mat-mdc-snack-bar-container {
+    --mdc-snackbar-container-color: #1e3a5f;
+    --mdc-snackbar-supporting-text-color: #f8fafc;
+    border-left: 4px solid #3b82f6;
+    border-radius: 8px !important;
+    max-width: min(420px, 96vw);
+  }
+}
+
 /* Scrollbar
    ========================================================================== */
 ::-webkit-scrollbar {

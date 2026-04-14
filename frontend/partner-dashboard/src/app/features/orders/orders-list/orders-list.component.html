@@ -187,8 +187,14 @@
             <th mat-header-cell *matHeaderCellDef mat-sort-header="time">{{ 'ORDERS.COL_TIME' | translate }}</th>
             <td mat-cell *matCellDef="let row">
               <div class="cell-time">
-                <span class="time-ago">{{ row.createdAt | timeAgo }}</span>
-                <span class="time-abs">{{ row.createdAt | date:'HH:mm' }}</span>
+                @if (row.isScheduled && row.scheduledDeliveryTime) {
+                  <span class="time-scheduled-label">{{ 'ORDERS.COL_TIME_SCHEDULED' | translate }}</span>
+                  <span class="time-scheduled-abs">{{ row.scheduledDeliveryTime | date:'EEE d MMM, HH:mm' }}</span>
+                  <span class="time-ordered-muted">{{ row.createdAt | timeAgo }}</span>
+                } @else {
+                  <span class="time-ago">{{ row.createdAt | timeAgo }}</span>
+                  <span class="time-abs">{{ row.createdAt | date:'HH:mm' }}</span>
+                }
               </div>
             </td>
           </ng-container>

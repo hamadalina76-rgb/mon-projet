@@ -244,6 +244,7 @@ public class OrderServiceImpl implements OrderService {
         if (estimatedPrepTime != null && estimatedPrepTime > 0) {
             final int prepMinutes = Math.max(10, estimatedPrepTime);
             historyNotes = "PREP_MINUTES:" + prepMinutes;
+            order.setSuggestedPreparationMinutes(prepMinutes);
         } else {
             historyNotes = null;
         }

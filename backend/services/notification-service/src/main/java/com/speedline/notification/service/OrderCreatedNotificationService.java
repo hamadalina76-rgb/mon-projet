@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,6 +28,12 @@ public class OrderCreatedNotificationService {
     private final NotificationServiceImpl notificationService;
 
     public void handleOrderCreatedEvent(Map<String, Object> event) {
+        final Object eventType = event.get("eventType");
+        if ("ORDER_SCHEDULED_PREP_REMINDER".equals(eventType)) {
+            handleScheduledPrepReminder(event);
+            return;
+        }
+
         Number orderIdNum = (Number) event.get("orderId");
         String orderNumber = (String) event.get("orderNumber");
         Number partnerIdNum = (Number) event.get("partnerId");
@@ -109,6 +116,77 @@ public class OrderCreatedNotificationService {
         adminNotification = notificationRepository.save(adminNotification);
         notificationService.pushToAdminTopic(adminNotification);
         log.info("ORDER_CREATED WebSocket push sent to admin topic");
+    }
+
+    private void handleScheduledPrepReminder(Map<String, Object> event) {
+        Number orderIdNum = (Number) event.get("orderId");
+        String orderNumber = (String) event.get("orderNumber");
+        Number partnerIdNum = (Number) event.get("partnerId");
+        Number partnerUserIdNum = (Number) event.get("partnerUserId");
+        Number prepLeadNum = (Number) event.get("prepLeadMinutes");
+        String scheduledRaw = event.get("scheduledDeliveryTime") != null
+                ? event.get("scheduledDeliveryTime").toString()
+                : null;
+
+        Long orderId = orderIdNum != null ? orderIdNum.longValue() : null;
+        Long partnerId = partnerIdNum != null ? partnerIdNum.longValue() : null;
+        Long partnerUserId = partnerUserIdNum != null ? partnerUserIdNum.longValue() : null;
+        int prepLead = prepLeadNum != null ? prepLeadNum.intValue() : 30;
+
+        if (partnerId == null || orderId == null) {
+            log.warn("ORDER_SCHEDULED_PREP_REMINDER missing partnerId or orderId, skipping. event={}", event);
+            return;
+        }
+
+        final Long notificationUserId = partnerUserId != null ? partnerUserId : partnerId;
+
+        String slotLabel = scheduledRaw != null ? scheduledRaw : "";
+        if (scheduledRaw != null) {
+            try {
+                LocalDateTime slot = LocalDateTime.parse(scheduledRaw);
+                slotLabel = slot.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            } catch (Exception ignored) {
+                // garder la valeur brute
+            }
+        }
+
+        String title = "Commande planifiée — préparation";
+        String message = String.format(
+                "La commande #%s a un créneau à %s. Prévoyez %d min (prépa + marge).",
+                orderNumber != null ? orderNumber : orderId,
+                slotLabel,
+                prepLead
+        );
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", orderId);
+        data.put("orderId", orderId);
+        data.put("orderNumber", orderNumber != null ? orderNumber : "");
+        data.put("partnerId", partnerId);
+        if (partnerUserId != null) {
+            data.put("partnerUserId", partnerUserId);
+        }
+        data.put("scheduledDeliveryTime", scheduledRaw != null ? scheduledRaw : "");
+        data.put("prepLeadMinutes", prepLead);
+        data.put("action", "ORDER_SCHEDULED_PREP_REMINDER");
+        data.put("status", event.getOrDefault("status", "PENDING"));
+
+        Notification notification = Notification.builder()
+                .userId(notificationUserId)
+                .type(NotificationType.ORDER)
+                .title(title)
+                .message(message)
+                .data(data)
+                .channel(NotificationChannel.IN_APP)
+                .isRead(false)
+                .isSent(true)
+                .sentAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        notification = notificationRepository.save(notification);
+        notificationService.pushToPartnerTopic(partnerId, notification);
+        log.info("ORDER_SCHEDULED_PREP_REMINDER pushed partnerId={} orderId={}", partnerId, orderId);
     }
 
     public void handleOrderStatusChangedEvent(Map<String, Object> event) {

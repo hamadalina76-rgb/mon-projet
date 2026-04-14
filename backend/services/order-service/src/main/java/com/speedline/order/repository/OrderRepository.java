@@ -48,17 +48,27 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     long countByPartnerIdAndStatus(Long partnerId, OrderStatus status);
 
-    /** Compte sur {@code orderTime} inclusif (même sémantique que la liste partenaire). */
+    /**
+     * Compte partenaire : même fenêtre que la liste (date de commande OU créneau livraison planifiée).
+     */
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.partnerId = :partnerId AND ("
+            + "(o.orderTime >= :from AND o.orderTime <= :to) OR "
+            + "(o.isScheduled = true AND o.scheduledDeliveryTime IS NOT NULL "
+            + "AND o.scheduledDeliveryTime >= :from AND o.scheduledDeliveryTime <= :to))")
     long countByPartnerIdAndOrderTimeBetween(
-            Long partnerId,
-            LocalDateTime from,
-            LocalDateTime to);
+            @Param("partnerId") Long partnerId,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
 
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.partnerId = :partnerId AND o.status = :status AND ("
+            + "(o.orderTime >= :from AND o.orderTime <= :to) OR "
+            + "(o.isScheduled = true AND o.scheduledDeliveryTime IS NOT NULL "
+            + "AND o.scheduledDeliveryTime >= :from AND o.scheduledDeliveryTime <= :to))")
     long countByPartnerIdAndStatusAndOrderTimeBetween(
-            Long partnerId,
-            OrderStatus status,
-            LocalDateTime from,
-            LocalDateTime to);
+            @Param("partnerId") Long partnerId,
+            @Param("status") OrderStatus status,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
 
     @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o WHERE o.partnerId = :partnerId "
             + "AND o.status = :status AND o.orderTime >= :from AND o.orderTime <= :to")
@@ -134,7 +144,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      * PostgreSQL cannot infer the type of a NULL-bound parameter in IS NULL checks.
      */
     @Query(value = "SELECT o FROM Order o WHERE o.partnerId = :partnerId "
-            + "AND o.orderTime >= :from AND o.orderTime <= :to "
+            + "AND ((o.orderTime >= :from AND o.orderTime <= :to) OR "
+            + "(o.isScheduled = true AND o.scheduledDeliveryTime IS NOT NULL "
+            + "AND o.scheduledDeliveryTime >= :from AND o.scheduledDeliveryTime <= :to)) "
             + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
             + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%'))) "
             + "ORDER BY CASE "
@@ -148,7 +160,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             + "WHEN o.status = com.speedline.order.domain.OrderStatus.CANCELLED THEN 7 "
             + "ELSE 8 END ASC, o.orderTime DESC",
             countQuery = "SELECT COUNT(o) FROM Order o WHERE o.partnerId = :partnerId "
-            + "AND o.orderTime >= :from AND o.orderTime <= :to "
+            + "AND ((o.orderTime >= :from AND o.orderTime <= :to) OR "
+            + "(o.isScheduled = true AND o.scheduledDeliveryTime IS NOT NULL "
+            + "AND o.scheduledDeliveryTime >= :from AND o.scheduledDeliveryTime <= :to)) "
             + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
             + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Order> findByPartnerIdPriority(
@@ -160,11 +174,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     /** Tous statuts — always provide non-null from/to. */
     @Query(value = "SELECT o FROM Order o WHERE o.partnerId = :partnerId "
-            + "AND o.orderTime >= :from AND o.orderTime <= :to "
+            + "AND ((o.orderTime >= :from AND o.orderTime <= :to) OR "
+            + "(o.isScheduled = true AND o.scheduledDeliveryTime IS NOT NULL "
+            + "AND o.scheduledDeliveryTime >= :from AND o.scheduledDeliveryTime <= :to)) "
             + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
             + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%')))",
             countQuery = "SELECT COUNT(o) FROM Order o WHERE o.partnerId = :partnerId "
-            + "AND o.orderTime >= :from AND o.orderTime <= :to "
+            + "AND ((o.orderTime >= :from AND o.orderTime <= :to) OR "
+            + "(o.isScheduled = true AND o.scheduledDeliveryTime IS NOT NULL "
+            + "AND o.scheduledDeliveryTime >= :from AND o.scheduledDeliveryTime <= :to)) "
             + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
             + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Order> findByPartnerIdAllStatuses(
@@ -179,12 +197,16 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      * {@code cancelledBy} : si non null, restreint aux annulations avec cet acteur (ex. PARTNER pour « refusées »).
      */
     @Query(value = "SELECT o FROM Order o WHERE o.partnerId = :partnerId AND o.status = :status "
-            + "AND o.orderTime >= :from AND o.orderTime <= :to "
+            + "AND ((o.orderTime >= :from AND o.orderTime <= :to) OR "
+            + "(o.isScheduled = true AND o.scheduledDeliveryTime IS NOT NULL "
+            + "AND o.scheduledDeliveryTime >= :from AND o.scheduledDeliveryTime <= :to)) "
             + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
             + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%'))) "
             + "AND (:cancelledBy IS NULL OR o.cancelledBy = :cancelledBy)",
             countQuery = "SELECT COUNT(o) FROM Order o WHERE o.partnerId = :partnerId AND o.status = :status "
-            + "AND o.orderTime >= :from AND o.orderTime <= :to "
+            + "AND ((o.orderTime >= :from AND o.orderTime <= :to) OR "
+            + "(o.isScheduled = true AND o.scheduledDeliveryTime IS NOT NULL "
+            + "AND o.scheduledDeliveryTime >= :from AND o.scheduledDeliveryTime <= :to)) "
             + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
             + "     OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :search, '%'))) "
             + "AND (:cancelledBy IS NULL OR o.cancelledBy = :cancelledBy)")
@@ -348,6 +370,25 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT COUNT(o) FROM Order o WHERE o.status = 'DELIVERED' AND o.createdAt >= :since")
     long countCompletedOrdersSince(@Param("since") LocalDateTime since);
+
+    /**
+     * Commandes planifiées dont l’instant d’alerte est atteint : {@code créneau ≤ now + (prépa + buffer)}.
+     * À exécuter dans une transaction : verrouillage ligne pour éviter les doublons multi-instances.
+     */
+    @Query(value = """
+            SELECT * FROM orders o
+            WHERE COALESCE(o.is_scheduled, false) = true
+            AND COALESCE(o.scheduled_prep_reminder_sent, false) = false
+            AND o.scheduled_delivery_time IS NOT NULL
+            AND o.scheduled_delivery_time > :now
+            AND o.status IN ('PENDING', 'CONFIRMED', 'PREPARING')
+            AND o.scheduled_delivery_time <= :now
+                + ((COALESCE(o.suggested_preparation_minutes, 15) + :bufferMinutes) * INTERVAL '1 minute')
+            FOR UPDATE SKIP LOCKED
+            """, nativeQuery = true)
+    List<Order> findScheduledOrdersDueForPrepReminder(
+            @Param("now") LocalDateTime now,
+            @Param("bufferMinutes") int bufferMinutes);
 
     // ==================== STATS INTERNES (usage: partner-service stats catégories) ====================
 

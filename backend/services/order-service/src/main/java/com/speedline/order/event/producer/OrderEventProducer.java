@@ -10,6 +10,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -55,30 +56,63 @@ public class OrderEventProducer {
         if (pubSubTemplate == null) {
             log.warn(
                     "PubSubTemplate absent (spring.cloud.gcp.pubsub.enabled=false ou GCP mal configuré) — "
-                    + "{} non publie orderId={}. "
+                            + "{} non publie orderId={}. "
                             + "En local : démarrez l'émulateur Pub/Sub et utilisez PUBSUB_EMULATOR_HOST=localhost:8090.",
-                eventName,
-                orderId);
+                    eventName,
+                    orderId);
             return;
         }
 
         try {
-            final String payload = objectMapper.writeValueAsString(payloadObject);
+            final String json = objectMapper.writeValueAsString(payloadObject);
 
-            final String messageId = pubSubTemplate.publish(orderEventsTopic, payload)
+            final String messageId = pubSubTemplate.publish(orderEventsTopic, json)
                     .get(PUBLISH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
             log.info("{} published topic={} messageId={} orderId={}",
-                eventName,
-                orderEventsTopic,
-                messageId,
-                orderId);
+                    eventName,
+                    orderEventsTopic,
+                    messageId,
+                    orderId);
         } catch (Exception ex) {
             log.warn("Impossible de publier {} sur topic={} orderId={}",
-                eventName,
-                orderEventsTopic,
-                orderId,
-                ex);
+                    eventName,
+                    orderEventsTopic,
+                    orderId,
+                    ex);
+        }
+    }
+
+    /**
+     * Publie un événement générique (ex. {@code ORDER_SCHEDULED_PREP_REMINDER}) sur le même topic que {@link OrderCreatedEvent}.
+     */
+    public void publishOrderPayload(Map<String, Object> payload) {
+        if (payload == null || payload.isEmpty()) {
+            return;
+        }
+
+        final PubSubTemplate pubSubTemplate = pubSubTemplateProvider.getIfAvailable();
+        if (pubSubTemplate == null) {
+            log.warn(
+                    "PubSubTemplate absent — événement commande non publié payload={}",
+                    payload.get("eventType"));
+            return;
+        }
+
+        try {
+            final String json = objectMapper.writeValueAsString(payload);
+
+            final String messageId = pubSubTemplate.publish(orderEventsTopic, json)
+                    .get(PUBLISH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+
+            log.info("Order event published topic={} messageId={} eventType={} orderId={}",
+                    orderEventsTopic,
+                    messageId,
+                    payload.get("eventType"),
+                    payload.get("orderId"));
+        } catch (Exception ex) {
+            log.warn("Impossible de publier événement commande sur topic={} payload={}",
+                    orderEventsTopic, payload.get("eventType"), ex);
         }
     }
 }

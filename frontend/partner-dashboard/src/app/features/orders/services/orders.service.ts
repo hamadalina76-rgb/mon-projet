@@ -396,6 +396,18 @@ export class OrdersService {
     );
   }
 
+  /** Toutes les commandes actives (non livrées / non annulées), normalisées — rappels créneau, etc. */
+  getPartnerActiveOrders(): Observable<Order[]> {
+    const partnerId = this.auth.getPartnerId();
+    if (partnerId == null) return of([]);
+    return this.api.get<any[]>(`orders/partners/${partnerId}/active`).pipe(
+      map((list) =>
+        (Array.isArray(list) ? list : []).map((o) => this.normalizeOrder(o) as Order)
+      ),
+      catchError(() => of([]))
+    );
+  }
+
   private normalizeOrder(o: any): any {
     if (!o) return o;
 
@@ -420,6 +432,9 @@ export class OrdersService {
       ...o,
       id:           o.id != null ? String(o.id) : o.id,
       status,
+      isScheduled: o.isScheduled === true,
+      scheduledDeliveryTime: o.scheduledDeliveryTime ?? undefined,
+      estimatedDeliveryTime: o.estimatedDeliveryTime ?? undefined,
       createdAt:    o.orderTime         ?? o.createdAt,
       orderType:    o.type              ?? o.orderType,
       notes:        o.customerNotes     ?? o.notes,

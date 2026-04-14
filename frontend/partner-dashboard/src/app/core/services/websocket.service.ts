@@ -167,6 +167,10 @@ export class WebSocketService implements OnDestroy {
    * so consumers (OrdersListComponent, MainLayoutComponent) receive typed order data.
    */
   private routeOrderNotification(notification: PartnerNotification): void {
+    const action = notification.data?.['action'];
+    if (action === 'ORDER_SCHEDULED_PREP_REMINDER') {
+      return;
+    }
     if (notification.type === 'ORDER' || notification.type === 'ORDER_NEW') {
       const orderPayload = {
         ...(notification.data || {}),

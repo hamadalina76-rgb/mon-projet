@@ -101,6 +101,13 @@ export interface Order {
 
   statusHistory?: StatusHistoryEntry[];
 
+  /** Commande avec créneau de livraison choisi par le client. */
+  isScheduled?: boolean;
+  /** ISO local datetime — livraison prévue (si planifiée). */
+  scheduledDeliveryTime?: string;
+  /** ISO — ETA exposée par l’API (souvent = créneau si planifié). */
+  estimatedDeliveryTime?: string;
+
   createdAt: Date | string;
   confirmedAt?: Date | string;
   preparingAt?: Date | string;

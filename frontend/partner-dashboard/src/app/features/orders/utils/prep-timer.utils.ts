@@ -42,14 +42,53 @@ export function getPrepCommitTimestampIso(order: Order): string | null {
   return toIsoTimestamp(order.confirmedAt as string | undefined) ?? toIsoTimestamp(order.preparingAt as string | undefined);
 }
 
+function resolvePrepDurationMinutes(order: Order): number | null {
+  const fromOrder = order.prepTime != null && order.prepTime > 0 ? order.prepTime : null;
+  const fromHistory = getEstimatedPrepMinutesFromHistory(order);
+  const d = fromOrder ?? fromHistory;
+  return d != null && d > 0 ? d : null;
+}
+
+/**
+ * Commande planifiée : le compteur arrive à 0 à
+ * {@code scheduledDeliveryTime - prepMinutes} (fin de la fenêtre de prépa avant le créneau client).
+ * Fenêtre affichée : [deadline - prep, deadline] (même durée en minutes que le temps annoncé).
+ */
+export function computeScheduledPrepTimerContext(
+  scheduledDeliveryIso: string,
+  prepMinutes: number,
+): PrepTimerContext | null {
+  if (prepMinutes <= 0) return null;
+  const schedMs = Date.parse(scheduledDeliveryIso);
+  if (Number.isNaN(schedMs)) return null;
+
+  const deadlineMs = schedMs - prepMinutes * 60_000;
+  const now = Date.now();
+
+  if (deadlineMs <= now) {
+    return {
+      startTimeIso: new Date(now).toISOString(),
+      durationMinutes: prepMinutes,
+    };
+  }
+
+  const startMs = deadlineMs - prepMinutes * 60_000;
+  return {
+    startTimeIso: new Date(startMs).toISOString(),
+    durationMinutes: prepMinutes,
+  };
+}
+
 /** Context from API/history only (no session). */
 export function resolvePrepTimerFromOrder(order: Order): PrepTimerContext | null {
   if (!isPrepTimerActiveStatus(order.status)) return null;
-  const duration =
-    order.prepTime != null && order.prepTime > 0
-      ? order.prepTime
-      : getEstimatedPrepMinutesFromHistory(order);
-  if (duration == null || duration <= 0) return null;
+  const duration = resolvePrepDurationMinutes(order);
+  if (duration == null) return null;
+
+  if (order.isScheduled === true && order.scheduledDeliveryTime) {
+    return computeScheduledPrepTimerContext(order.scheduledDeliveryTime, duration);
+  }
+
   const start = getPrepCommitTimestampIso(order);
   if (!start) return null;
   return { startTimeIso: start, durationMinutes: duration };
@@ -75,12 +114,18 @@ export function buildPrepTimerContextAfterAccept(
   order: Order,
   prepMinutesFromPartner: number,
 ): PrepTimerContext | null {
-  const start =
-    getPrepCommitTimestampIso(order) ?? new Date().toISOString();
   const duration =
     prepMinutesFromPartner > 0
       ? prepMinutesFromPartner
       : getEstimatedPrepMinutesFromHistory(order) ?? 0;
   if (duration <= 0) return null;
+
+  if (order.isScheduled === true && order.scheduledDeliveryTime) {
+    const ctx = computeScheduledPrepTimerContext(order.scheduledDeliveryTime, duration);
+    if (ctx) return ctx;
+  }
+
+  const start =
+    getPrepCommitTimestampIso(order) ?? new Date().toISOString();
   return { startTimeIso: start, durationMinutes: duration };
 }
