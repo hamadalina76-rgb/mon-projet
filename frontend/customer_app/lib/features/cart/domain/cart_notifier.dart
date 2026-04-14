@@ -212,16 +212,16 @@ class CartNotifier extends StateNotifier<CartState> {
     await _syncNow();
   }
 
-  Future<void> placeOrder({
+  Future<PlacedOrderSummary?> placeOrder({
     String? promoCode,
     String? addressId,
     Map<String, dynamic>? deliveryAddressDetails,
     String paymentMethod = 'CASH',
     DateTime? scheduledDeliveryTime,
   }) async {
-    if (state.items.isEmpty) return;
+    if (state.items.isEmpty) return null;
 
-    await _repository.placeOrder(
+    return _repository.placeOrder(
       cartItems: state.items,
       promoCode: promoCode,
       addressId: addressId,
@@ -229,8 +229,6 @@ class CartNotifier extends StateNotifier<CartState> {
       paymentMethod: paymentMethod,
       scheduledDeliveryTime: scheduledDeliveryTime,
     );
-
-    await clearCart();
   }
 
   bool _hasDifferentPartner(String partnerId) {

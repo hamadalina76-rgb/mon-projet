@@ -18,6 +18,7 @@ import org.springframework.integration.channel.DirectChannel;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -79,9 +80,11 @@ public class OrderEventConsumer {
                         new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}
                 );
 
-                // Route based on event type: STATUS_CHANGED events have "newStatus" field
-                if (event.containsKey("newStatus")) {
+                final String eventType = resolveEventType(event);
+                if ("ORDER_STATUS_CHANGED".equals(eventType)) {
                     orderStatusChangedNotificationService.handleOrderStatusChangedEvent(event);
+                } else if ("ORDER_ACCEPTED".equals(eventType)) {
+                    orderCreatedNotificationService.handleOrderStatusChangedEvent(event);
                 } else {
                     orderCreatedNotificationService.handleOrderCreatedEvent(event);
                 }
@@ -98,5 +101,22 @@ public class OrderEventConsumer {
                 }
             }
         };
+    }
+
+    private static String resolveEventType(Map<String, Object> event) {
+        final Object rawType = event.get("eventType");
+        if (rawType != null) {
+            final String normalized = rawType.toString().trim();
+            if (!normalized.isEmpty()) {
+                return normalized.toUpperCase(Locale.ROOT);
+            }
+        }
+
+        final String status = String.valueOf(event.getOrDefault("status", ""));
+        if ("PREPARING".equalsIgnoreCase(status) && event.get("customerId") != null) {
+            return "ORDER_ACCEPTED";
+        }
+
+        return "ORDER_CREATED";
     }
 }

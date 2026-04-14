@@ -50,9 +50,9 @@ dependencies:
   badges: ^3.1.2
   dotted_border: ^2.1.0
   
-  # Firebase (temporairement commenté pour éviter erreurs de compilation web)
-  # firebase_core: ^2.24.2
-  # firebase_messaging: ^14.7.9
+  # Firebase
+  firebase_core: ^4.6.0
+  firebase_messaging: ^16.1.3
   # firebase_analytics: ^10.8.0
   # firebase_crashlytics: ^3.4.9
   # firebase_auth: ^4.16.0
@@ -82,6 +82,7 @@ dependencies:
   
   # WebSocket
   web_socket_channel: ^2.4.0
+  stomp_dart_client: ^3.0.1
   
   # Image Picker
   image_picker: ^1.0.4
@@ -127,6 +128,7 @@ flutter:
     - assets/icons/promotion.png
     
     - assets/icons/google_logo.png
+    - assets/lottie/
     - assets/animations/
     - .env.development
     - .env.staging

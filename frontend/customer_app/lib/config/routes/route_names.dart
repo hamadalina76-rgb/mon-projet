@@ -19,6 +19,10 @@ class RouteNames {
   static const String profile = '/profile';
   static const String cart = '/cart';
   static const String checkout = '/checkout';
+  static const String orderConfirmation = '/order-confirmation';
+  static const String orderTrackingTemplate = '/tracking/:orderId';
+
+  static String orderTracking(String orderId) => '/tracking/$orderId';
 
   // Profile Settings
   static const String settings = '/settings';

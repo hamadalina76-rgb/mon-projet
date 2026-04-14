@@ -843,7 +843,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         mapLocation: mapLocation,
       );
 
-      await ref.read(cartNotifierProvider.notifier).placeOrder(
+      final placedOrder = await ref.read(cartNotifierProvider.notifier).placeOrder(
             promoCode: _appliedPromoCode,
             addressId: _useMapAddress ? null : effectiveSavedAddress?.id.toString(),
             deliveryAddressDetails: deliveryAddressDetails,
@@ -862,7 +862,17 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           backgroundColor: Colors.green,
         ),
       );
-      context.go(RouteNames.orders);
+      if (placedOrder == null || placedOrder.orderId.isEmpty) {
+        await ref.read(cartNotifierProvider.notifier).clearCart();
+        if (!mounted) return;
+        context.go(RouteNames.orders);
+        return;
+      }
+
+      context.go(
+        RouteNames.orderConfirmation,
+        extra: placedOrder.toRouteExtra(),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
