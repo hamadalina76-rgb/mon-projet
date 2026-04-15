@@ -1,11 +1,9 @@
 // src/app/shared/components/sidebar/sidebar.component.ts - Angular 19
-import { Component, input, output, signal, inject, computed, OnInit } from '@angular/core';
+import { Component, input, output, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { AuthService } from '@core/services/auth.service';
-import { PartnerService } from '@core/services/partner.service';
 
 interface MenuItem {
   label: string;
@@ -22,10 +20,7 @@ interface MenuItem {
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss'],
 })
-export class SidebarComponent implements OnInit {
-  private authService = inject(AuthService);
-  private partnerService = inject(PartnerService);
-  private router = inject(Router);
+export class SidebarComponent {
   private translate = inject(TranslateService);
 
   // Angular 19 Signal Input/Output
@@ -34,7 +29,11 @@ export class SidebarComponent implements OnInit {
   isMobile = input(false);
   collapsedChange = output<boolean>();
 
-  partnerStatus = signal<string>('PENDING');
+  /**
+   * Statut API (synchronisé depuis MainLayout : polling + WebSocket).
+   * Source unique pour éviter un menu encore « ouvert » après désactivation admin sans F5.
+   */
+  partnerStatus = input<string>('');
 
   // Computed: check if partner is active
   isPartnerActive = computed(() => {
@@ -42,10 +41,17 @@ export class SidebarComponent implements OnInit {
     // Exclude documents_missing, pending, rejected, suspended, inactive, deactivated
     return status === 'active' || status === 'approved';
   });
-  
-  // Computed: check if partner status is documents_missing
-  isDocumentsMissing = computed(() => {
-    return this.partnerStatus().toLowerCase() === 'documents_missing';
+
+  /** Compte fermé côté admin : tout le menu doit être verrouillé (y compris tableau de bord et profil). */
+  isPartnerAccountRestricted = computed(() => {
+    const s = this.partnerStatus().toLowerCase();
+    return (
+      s === 'suspended' ||
+      s === 'inactive' ||
+      s === 'deactivated' ||
+      s === 'rejected' ||
+      s === 'closed'
+    );
   });
 
   menuItems: MenuItem[] = [
@@ -55,32 +61,14 @@ export class SidebarComponent implements OnInit {
     { label: 'nav.menu', icon: 'restaurant_menu', route: '/menu', requiresActive: true },
     { label: 'nav.analytics', icon: 'analytics', route: '/analytics', requiresActive: true },
     { label: 'nav.reviews', icon: 'star', route: '/reviews', requiresActive: true },
-    { label: 'nav.promotions', icon: 'local_offer', route: '/promotions', requiresActive: true },
     { label: 'nav.profile', icon: 'store', route: '/profile', requiresActive: false },
     { label: 'nav.finance', icon: 'account_balance', route: '/finance', requiresActive: true },
   ];
 
-  ngOnInit(): void {
-    this.loadPartnerStatus();
-  }
-
-  private loadPartnerStatus(): void {
-    const user = this.authService.currentUser();
-    const partnerId = user?.partnerId;
-
-    if (partnerId) {
-      this.partnerService.getPartner(partnerId).subscribe({
-        next: (partner: any) => {
-          this.partnerStatus.set(partner.status || 'PENDING');
-        },
-        error: () => {
-          this.partnerStatus.set('PENDING');
-        }
-      });
-    }
-  }
-
   isItemLocked(item: MenuItem): boolean {
+    if (this.isPartnerAccountRestricted()) {
+      return true;
+    }
     return item.requiresActive === true && !this.isPartnerActive();
   }
 

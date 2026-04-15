@@ -11,7 +11,16 @@ import { NotificationService } from '@core/services/notification.service';
 import { LoadingService } from '@core/services/loading.service';
 import { AuthService } from '@core/services/auth.service';
 import { PartnerService } from '@core/services/partner.service';
-import { Subject, takeUntil, filter } from 'rxjs';
+import {
+  Subject,
+  takeUntil,
+  filter,
+  merge,
+  interval,
+  fromEvent,
+  distinctUntilChanged,
+  skip,
+} from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 import { ScheduledOrderReminderService } from '@core/services/scheduled-order-reminder.service';
 
@@ -55,6 +64,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadPartnerStatus();
+    this.initPartnerStatusPolling();
     this.initWebSocket();
     this.requestNotificationPermission();
     this.initResponsive();
@@ -97,6 +107,40 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Re-fetch partner status on an interval and when the tab becomes visible so
+   * suspend/deactivate from the admin app is reflected even if Pub/Sub → WebSocket did not deliver.
+   */
+  private initPartnerStatusPolling(): void {
+    const partnerId = this.authService.getPartnerId();
+    if (!partnerId) return;
+
+    merge(
+      interval(30_000),
+      fromEvent(document, 'visibilitychange').pipe(filter(() => document.visibilityState === 'visible')),
+      this.wsService.getConnectionStatus().pipe(
+        distinctUntilChanged(),
+        filter((s) => s === 'connected'),
+        skip(1)
+      )
+    )
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.loadPartnerStatus());
+  }
+
+  private parseNotificationData(raw: unknown): Record<string, unknown> | null {
+    if (raw == null) return null;
+    if (typeof raw === 'string') {
+      try {
+        return JSON.parse(raw) as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    }
+    if (typeof raw === 'object') return raw as Record<string, unknown>;
+    return null;
+  }
+
   private initWebSocket(): void {
     this.wsService.connect();
 
@@ -117,10 +161,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     this.wsService.onPartnerNotification
       .pipe(takeUntil(this.destroy$))
       .subscribe((notif: any) => {
-        const newStatus = notif?.data?.['newStatus'];
-        if (newStatus) this.partnerStatus.set(newStatus);
+        const data = this.parseNotificationData(notif?.data) ?? notif?.data;
+        const newStatus = data?.['newStatus'];
+        if (typeof newStatus === 'string' && newStatus.length > 0) {
+          this.partnerStatus.set(newStatus);
+        }
 
-        if (notif?.data?.['action'] === 'ORDER_SCHEDULED_PREP_REMINDER') {
+        if (data?.['action'] === 'ORDER_SCHEDULED_PREP_REMINDER') {
           this.notificationService.showScheduledPrepReminderFromServer({
             title: notif?.title,
             message: notif?.message,
