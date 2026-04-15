@@ -1,13 +1,19 @@
 @use 'sass:color';
 @use 'assets/styles/variables' as *;
+@use 'assets/styles/mixins' as *;
 
 .store-profile-page {
   padding: 0 $spacing-lg 2rem;
   max-width: 1100px;
   margin: 0 auto;
   min-height: 60vh;
-  @media (max-width: $breakpoint-tablet) {
-    padding: 0 $spacing-md 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
+
+  @include mobile {
+    padding: 0 calc(#{$spacing-md} + env(safe-area-inset-right, 0px))
+      calc(1.5rem + env(safe-area-inset-bottom, 0px))
+      calc(#{$spacing-md} + env(safe-area-inset-left, 0px));
   }
 }
 
@@ -49,6 +55,22 @@
   .header-actions {
     flex-shrink: 0;
   }
+
+  @include mobile {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    margin-bottom: 1.125rem;
+
+    h1 {
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+    }
+
+    .header-actions {
+      width: 100%;
+    }
+  }
 }
 
 .search-wrap {
@@ -86,6 +108,18 @@
       color: $text-muted;
     }
   }
+
+  @include mobile {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 14px;
+    padding: 0.55rem 0.875rem;
+
+    .search-input {
+      font-size: 1rem;
+    }
+  }
 }
 
 // Tabs (Compte, Entreprise, Horaires)
@@ -94,6 +128,25 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
+
+  @include mobile {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 0.45rem;
+    margin-bottom: 1.125rem;
+    margin-left: calc(-1 * (#{$spacing-md} + env(safe-area-inset-left, 0px)));
+    margin-right: calc(-1 * (#{$spacing-md} + env(safe-area-inset-right, 0px)));
+    padding: 0.125rem calc(#{$spacing-md} + env(safe-area-inset-left, 0px)) 0.35rem
+      calc(#{$spacing-md} + env(safe-area-inset-right, 0px));
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
 }
 
 .tab-item {
@@ -131,6 +184,21 @@
     border-color: $primary-color;
     mat-icon { color: $white; }
   }
+
+  @include mobile {
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    padding: 0.55rem 1rem;
+    font-size: 0.8125rem;
+    border-radius: 999px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+
+    mat-icon {
+      font-size: 1.125rem;
+      width: 1.125rem;
+      height: 1.125rem;
+    }
+  }
 }
 
 // Carte identité boutique (logo + nom + type + ACTIF)
@@ -144,9 +212,13 @@
   border: 1px solid $gray-200;
   box-shadow: $shadow-sm;
   margin-bottom: 1.5rem;
-  @media (max-width: $breakpoint-tablet) {
-    flex-wrap: wrap;
-    padding: 1.25rem;
+  @include mobile {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.25rem 1rem;
+    gap: 1rem;
+    border-radius: 16px;
   }
 }
 
@@ -161,6 +233,12 @@
   border-radius: $border-radius-md;
   border: 1px solid $gray-200;
   background: $gray-50;
+
+  @include mobile {
+    width: 80px;
+    height: 80px;
+    border-radius: 18px;
+  }
 }
 
 .store-logo-placeholder {
@@ -179,6 +257,12 @@
     height: 2.5rem;
     color: $gray-500;
   }
+
+  @include mobile {
+    width: 80px;
+    height: 80px;
+    border-radius: 18px;
+  }
 }
 
 .store-identity-info {
@@ -192,6 +276,11 @@
   font-weight: 700;
   color: $text-primary;
   letter-spacing: -0.02em;
+
+  @include mobile {
+    font-size: 1.25rem;
+    line-height: 1.25;
+  }
 }
 
 .store-type {
@@ -244,6 +333,20 @@
     display: inline-block;
     vertical-align: middle;
   }
+
+  @include mobile {
+    align-items: center;
+    max-width: 100%;
+
+    mat-slide-toggle {
+      align-self: center;
+    }
+
+    .open-status-hint {
+      max-width: 280px;
+      text-align: center;
+    }
+  }
 }
 
 // Loading / Error
@@ -272,7 +375,7 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 1.25rem;
 
-  @media (max-width: $breakpoint-tablet) {
+  @include mobile {
     grid-template-columns: 1fr;
   }
 
@@ -291,6 +394,15 @@
 
   &:hover {
     box-shadow: $shadow-md;
+  }
+
+  @include mobile {
+    padding: 1rem 1.125rem;
+    border-radius: 16px;
+
+    &:hover {
+      box-shadow: $shadow-sm;
+    }
   }
 
   .card-head {
@@ -382,6 +494,24 @@
       word-break: break-word;
       line-height: 1.5;
     }
+
+    @include mobile {
+      grid-template-columns: 1fr;
+      gap: 0.2rem;
+      padding: 0.55rem 0;
+      border-bottom: 1px solid $gray-100;
+      font-size: 0.9375rem;
+
+      &:last-of-type {
+        border-bottom: none;
+      }
+
+      .label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+    }
   }
 
   .empty-hint {
@@ -419,6 +549,20 @@
     .hours {
       color: $text-secondary;
       &.closed { color: $text-muted; font-style: italic; }
+    }
+
+    @include mobile {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.2rem;
+      padding: 0.65rem 0;
+
+      .hours {
+        font-size: 0.875rem;
+        line-height: 1.4;
+        text-align: left;
+        width: 100%;
+      }
     }
   }
 }

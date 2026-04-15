@@ -1,8 +1,16 @@
 // Payouts Component Styles
 @use 'assets/styles/variables' as *;
+@use 'assets/styles/mixins' as *;
 
 .payouts-page {
   padding: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  @include mobile {
+    padding: 1rem $spacing-md;
+  }
 }
 
 .page-header {
@@ -12,16 +20,20 @@
     margin: 0;
     font-size: 1.5rem;
     font-weight: 600;
+
+    @include mobile {
+      font-size: 1.25rem;
+    }
   }
 }
 
 .content-grid {
   display: grid;
-  grid-template-columns: 350px 1fr;
+  grid-template-columns: 1fr;
   gap: 1.5rem;
 
-  @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
+  @include desktop-up {
+    grid-template-columns: minmax(0, 350px) 1fr;
   }
 }
 
@@ -73,6 +85,16 @@
   justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 1rem;
+  flex-wrap: wrap;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: stretch;
+
+    button {
+      width: 100%;
+    }
+  }
 }
 
 .bank-card {
@@ -139,6 +161,12 @@
 .payouts-table-card {
   padding: 0;
   overflow: hidden;
+  max-width: 100%;
+
+  @include mobile {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
   h3 {
     margin: 0;
@@ -146,10 +174,19 @@
     font-size: 1rem;
     font-weight: 600;
     border-bottom: 1px solid var(--border-color);
+
+    @include mobile {
+      padding: 1rem $spacing-md;
+    }
   }
 
   table {
     width: 100%;
+    min-width: 520px;
+
+    @include tablet-up {
+      min-width: 0;
+    }
   }
 }
 

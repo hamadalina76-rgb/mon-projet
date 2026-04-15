@@ -1,5 +1,6 @@
 // order-history.component.scss
 @use 'assets/styles/variables' as *;
+@use 'assets/styles/mixins' as *;
 
 // ---------------------------------------------------------------------------
 // Shell (sidenav wrapper)
@@ -19,6 +20,14 @@
   gap: $spacing-md;
   padding: $spacing-lg;
   min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  @include mobile {
+    padding: $spacing-md calc(#{$spacing-sm} + env(safe-area-inset-right, 0px)) $spacing-md calc(#{$spacing-sm} + env(safe-area-inset-left, 0px));
+    gap: $spacing-sm;
+  }
 }
 
 // ---------------------------------------------------------------------------

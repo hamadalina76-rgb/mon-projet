@@ -1,5 +1,6 @@
 // orders-list.component.scss
 @use 'assets/styles/variables' as *;
+@use 'assets/styles/mixins' as *;
 
 // ---------------------------------------------------------------------------
 // Animations
@@ -29,6 +30,14 @@
   gap: $spacing-md;
   padding: $spacing-lg;
   min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  @include mobile {
+    padding: $spacing-md calc(#{$spacing-sm} + env(safe-area-inset-right, 0px)) $spacing-md calc(#{$spacing-sm} + env(safe-area-inset-left, 0px));
+    gap: $spacing-sm;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -692,17 +701,13 @@ mat-paginator {
 // ---------------------------------------------------------------------------
 // Responsive
 // ---------------------------------------------------------------------------
-@media (max-width: 767px) {
-  .orders-page {
-    padding: $spacing-md $spacing-sm;
-    gap: $spacing-sm;
-  }
+@include mobile {
   .page-title { font-size: 1.25rem; }
   .btn-label  { display: none; }
-  .outline-btn { width: 40px; padding: 0; justify-content: center; }
+  .outline-btn { width: 44px; min-height: 44px; padding: 0; justify-content: center; }
   .status-chip {
     padding: 0.45rem 0.65rem;
-    min-height: 40px;
+    min-height: 44px;
     /* Libellés toujours visibles sur mobile pour comprendre les filtres */
     .chip-label { font-size: 0.7rem; max-width: 72px; line-height: 1.15; text-align: center; }
     .chip-count { font-size: 0.95rem; }

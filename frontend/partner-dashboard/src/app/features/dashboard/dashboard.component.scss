@@ -1,13 +1,18 @@
 // Dashboard Component Styles
 @use 'assets/styles/variables' as *;
+@use 'assets/styles/mixins' as *;
 
 // ==================== Layout ====================
 .dashboard-page {
   padding: $spacing-lg;
   min-height: calc(100vh - #{$header-height});
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 
-  @media (max-width: $breakpoint-tablet) {
+  @include mobile {
     padding: $spacing-md;
+    min-height: calc(100vh - #{$header-height} - env(safe-area-inset-top, 0px));
   }
 }
 

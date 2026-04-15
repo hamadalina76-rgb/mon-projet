@@ -1,8 +1,16 @@
 // Earnings Component Styles
 @use 'assets/styles/variables' as *;
+@use 'assets/styles/mixins' as *;
 
 .earnings-page {
   padding: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  @include mobile {
+    padding: 1rem $spacing-md;
+  }
 }
 
 .page-header {
@@ -13,16 +21,34 @@
   flex-wrap: wrap;
   gap: 1rem;
 
+  @include mobile {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   h1 {
     margin: 0;
     font-size: 1.5rem;
     font-weight: 600;
+
+    @include mobile {
+      font-size: 1.25rem;
+    }
   }
 
   .header-actions {
     display: flex;
     gap: 1rem;
     align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
+
+    @include mobile {
+      mat-form-field {
+        flex: 1 1 100%;
+        min-width: 0;
+      }
+    }
   }
 }
 
@@ -32,11 +58,11 @@
   gap: 1rem;
   margin-bottom: 1.5rem;
 
-  @media (max-width: 1024px) {
+  @include tablet {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  @media (max-width: 600px) {
+  @include mobile {
     grid-template-columns: 1fr;
   }
 }
@@ -95,6 +121,12 @@
 .chart-card {
   padding: 1.5rem;
   margin-bottom: 1.5rem;
+  min-width: 0;
+  overflow: hidden;
+
+  @include mobile {
+    padding: 1rem;
+  }
 
   h3 {
     margin: 0 0 1rem;
@@ -104,12 +136,22 @@
 
   .chart-container {
     height: 300px;
+
+    @include mobile {
+      height: 240px;
+    }
   }
 }
 
 .table-card {
   padding: 0;
   overflow: hidden;
+  max-width: 100%;
+
+  @include mobile {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
   h3 {
     margin: 0;
@@ -121,6 +163,11 @@
 
   table {
     width: 100%;
+    min-width: 480px;
+
+    @include tablet-up {
+      min-width: 0;
+    }
   }
 }
 

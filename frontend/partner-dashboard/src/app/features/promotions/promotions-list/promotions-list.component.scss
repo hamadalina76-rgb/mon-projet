@@ -1,8 +1,16 @@
 // Promotions List Component Styles
 @use 'assets/styles/variables' as *;
+@use 'assets/styles/mixins' as *;
 
 .promotions-page {
   padding: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  @include mobile {
+    padding: 1rem $spacing-md;
+  }
 }
 
 .page-header {
@@ -10,11 +18,22 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: $spacing-md;
+
+  @include mobile {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 
   h1 {
     margin: 0;
     font-size: 1.5rem;
     font-weight: 600;
+
+    @include mobile {
+      font-size: 1.25rem;
+    }
   }
 }
 
@@ -22,6 +41,10 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1rem;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
 }
 
 .promo-card {

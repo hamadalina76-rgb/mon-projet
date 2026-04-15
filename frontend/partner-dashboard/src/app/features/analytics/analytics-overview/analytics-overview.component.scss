@@ -1,8 +1,16 @@
 // Analytics Overview Component Styles
 @use 'assets/styles/variables' as *;
+@use 'assets/styles/mixins' as *;
 
 .analytics-page {
   padding: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  @include mobile {
+    padding: 1rem $spacing-md;
+  }
 }
 
 .page-header {
@@ -13,16 +21,35 @@
   flex-wrap: wrap;
   gap: 1rem;
 
+  @include mobile {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   h1 {
     margin: 0;
     font-size: 1.5rem;
     font-weight: 600;
+
+    @include mobile {
+      font-size: 1.25rem;
+    }
   }
 
   .header-actions {
     display: flex;
     gap: 1rem;
     align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
+
+    @include mobile {
+      justify-content: stretch;
+      mat-form-field {
+        flex: 1 1 100%;
+        min-width: 0;
+      }
+    }
   }
 }
 
@@ -31,6 +58,11 @@
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+    gap: $spacing-md;
+  }
 }
 
 .stat-card {
@@ -110,18 +142,28 @@
 
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 1rem;
   margin-bottom: 1.5rem;
 
-  @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
+  @include desktop-up {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @include mobile {
+    gap: $spacing-md;
   }
 }
 
 .chart-card,
 .performance-card {
   padding: 1.5rem;
+  min-width: 0;
+  overflow: hidden;
+
+  @include mobile {
+    padding: 1rem;
+  }
 
   h3 {
     margin: 0 0 1rem;

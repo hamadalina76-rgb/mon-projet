@@ -23,7 +23,9 @@
   &.mobile {
     left: 0 !important;
     right: 0;
-    padding: 0 $spacing-md;
+    padding: env(safe-area-inset-top, 0px) calc(#{$spacing-md} + env(safe-area-inset-right, 0px)) 0 calc(#{$spacing-md} + env(safe-area-inset-left, 0px));
+    height: calc(#{$header-height} + env(safe-area-inset-top, 0px));
+    box-sizing: border-box;
   }
 }
 
@@ -87,6 +89,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+
+  @include mobile {
+    width: 48px;
+    height: 48px;
+  }
 
   &:hover {
     background: $gray-100;
@@ -106,6 +115,12 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  border-radius: $border-radius-full;
+
+  @include mobile {
+    min-height: 48px;
+    padding: 0 $spacing-sm;
+  }
 
   .material-icons {
     font-size: 18px;

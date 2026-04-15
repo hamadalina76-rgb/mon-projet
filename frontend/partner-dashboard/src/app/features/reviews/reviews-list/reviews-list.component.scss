@@ -1,8 +1,16 @@
 // Reviews List Component Styles
 @use 'assets/styles/variables' as *;
+@use 'assets/styles/mixins' as *;
 
 .reviews-page {
   padding: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  @include mobile {
+    padding: 1rem $spacing-md;
+  }
 }
 
 .page-header {
@@ -12,6 +20,10 @@
     margin: 0;
     font-size: 1.5rem;
     font-weight: 600;
+
+    @include mobile {
+      font-size: 1.25rem;
+    }
   }
 }
 
@@ -20,6 +32,11 @@
 
   mat-form-field {
     width: 200px;
+    max-width: 100%;
+
+    @include mobile {
+      width: 100%;
+    }
   }
 }
 

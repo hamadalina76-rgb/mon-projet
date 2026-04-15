@@ -1,9 +1,18 @@
 // Table Component Styles
 @use 'assets/styles/variables' as *;
+@use 'assets/styles/mixins' as *;
 
 .table-container {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+
+  @include mobile {
+    margin: 0 calc(-1 * #{$spacing-xs});
+    padding: 0 $spacing-xs;
+  }
 }
 
 table {
@@ -13,17 +22,37 @@ table {
 .table-row {
   cursor: pointer;
   transition: background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+
+  @include mobile {
+    min-height: 44px;
+  }
 
   &:hover {
     background: var(--bg-hover);
   }
 }
 
-th.mat-header-cell {
+th.mat-header-cell,
+th.mat-mdc-header-cell {
   font-weight: 600;
   color: var(--text-secondary);
+  white-space: nowrap;
+
+  @include mobile {
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 0.8125rem;
+  }
 }
 
-td.mat-cell {
+td.mat-cell,
+td.mat-mdc-cell {
   color: var(--text-primary);
+
+  @include mobile {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    font-size: 0.875rem;
+  }
 }
