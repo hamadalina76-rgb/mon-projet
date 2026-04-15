@@ -10,8 +10,23 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/speedline_app_bar.dart';
 import '../../../location/data/models/saved_location.dart';
 import '../../../location/presentation/providers/location_provider.dart';
+import '../../../orders/domain/entities/order.dart';
+import '../../../orders/presentation/providers/order_provider.dart';
+import '../../../partners/data/models/partner_nearby_dto.dart';
+import '../../../partners/presentation/providers/nearby_partners_provider.dart';
 import '../../data/models/address_model.dart';
 import '../providers/address_provider.dart';
+
+final _orderPartnerPreviewProvider =
+    FutureProvider.family<PartnerNearbyDto?, String>((ref, partnerId) async {
+      try {
+        return await ref
+            .read(partnerApiServiceProvider)
+            .fetchPartnerById(partnerId);
+      } catch (_) {
+        return null;
+      }
+    });
 
 /// Profile Screen
 /// Displays user information, delivery locations, payment methods, order history
@@ -23,23 +38,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  // Mock data for demonstration
-  final List<Map<String, dynamic>> _mockOrders = [
-    {
-      'restaurant': 'Bella Pizza & Pasta',
-      'date': 'Oct 24, 2023',
-      'amount': '\$32.50',
-      'status': 'DELIVERED',
-      'icon': '🍕',
-    },
-    {
-      'restaurant': 'Burger Empire',
-      'date': 'Oct 21, 2023',
-      'amount': '\$18.90',
-      'status': 'DELIVERED',
-      'icon': '🍔',
-    },
-  ];
+  bool _showAllRecentOrders = false;
 
   @override
   void initState() {
@@ -94,6 +93,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _buildProfileContent(User user) {
     final l10n = AppLocalizations.of(context)!;
+    final recentOrdersAsync = ref.watch(customerOrdersProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: SpeedlineAppBar(
@@ -288,13 +289,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               title: 'order_history',
               action: 'view_all',
               onAction: () {
-                // TODO: Navigate to full order history
+                context.push(RouteNames.orders);
               },
-              child: Column(
-                children: _mockOrders
-                    .map((order) => _buildOrderItem(order, l10n))
-                    .toList(),
-              ),
+              child: _buildRecentOrdersSection(l10n, recentOrdersAsync),
             ),
 
             const SizedBox(height: 24),
@@ -708,6 +705,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildPaymentCard() {
+    final l10n = AppLocalizations.of(context)!;
+
     return Container(
       height: 180,
       decoration: BoxDecoration(
@@ -751,8 +750,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     AppConstants.borderRadiusMedium,
                   ),
                 ),
-                child: const Text(
-                  'Primary',
+                child: Text(
+                  l10n.translate('default_label'),
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -825,9 +824,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'ALEX JOHNSON',
-                style: TextStyle(
+              Text(
+                l10n.translate('cardholder_placeholder'),
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -849,56 +848,159 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildOrderItem(Map<String, dynamic> order, AppLocalizations l10n) {
+  String _orderMoney(double value) {
+    return '${value.toStringAsFixed(2)} TND';
+  }
+
+  LinearGradient _statusGradient(Order order) {
+    if (order.isCancelled) {
+      return const LinearGradient(
+        colors: [AppColors.primaryDark, AppColors.primary],
+      );
+    }
+    if (order.isDelivered) {
+      return const LinearGradient(
+        colors: [AppColors.primary2, AppColors.primary],
+      );
+    }
+    if (order.waitingPartnerAcceptance) {
+      return const LinearGradient(
+        colors: [AppColors.secondaryDark, AppColors.primary],
+      );
+    }
+    return const LinearGradient(
+      colors: [AppColors.secondary3, AppColors.primary],
+    );
+  }
+
+  String _formatOrderDate(Order order) {
+    final date = (order.orderTime ?? order.createdAt)?.toLocal();
+    if (date == null) return '--';
+    final dd = date.day.toString().padLeft(2, '0');
+    final mm = date.month.toString().padLeft(2, '0');
+    final hh = date.hour.toString().padLeft(2, '0');
+    final min = date.minute.toString().padLeft(2, '0');
+    return '$dd/$mm • $hh:$min';
+  }
+
+  Widget _buildRecentOrdersSection(
+    AppLocalizations l10n,
+    AsyncValue<List<Order>> ordersAsync,
+  ) {
+    return ordersAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      error: (_, __) =>
+          _buildOrderPlaceholder(l10n.translate('no_validated_orders')),
+      data: (orders) {
+        if (orders.isEmpty) {
+          return _buildOrderPlaceholder(l10n.translate('no_validated_orders'));
+        }
+
+        final sorted = List<Order>.from(orders)
+          ..sort((a, b) {
+            final ad = a.orderTime ?? a.createdAt;
+            final bd = b.orderTime ?? b.createdAt;
+            if (ad == null && bd == null) return 0;
+            if (ad == null) return 1;
+            if (bd == null) return -1;
+            return bd.compareTo(ad);
+          });
+
+        final recent = _showAllRecentOrders ? sorted : sorted.take(1).toList();
+        return Column(
+          children: [
+            ...recent.map((order) => _buildRecentOrderCard(order, l10n)),
+            if (sorted.length > 1)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    setState(() => _showAllRecentOrders = !_showAllRecentOrders);
+                  },
+                  icon: Icon(
+                    _showAllRecentOrders
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.primary,
+                  ),
+                  label: Text(
+                    _showAllRecentOrders
+                        ? l10n.translate('collapse')
+                        : '${l10n.translate('show_all')} (${sorted.length - 1})',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildOrderPlaceholder(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(text, style: const TextStyle(color: AppColors.textSecondary)),
+    );
+  }
+
+  Widget _buildRecentOrderCard(Order order, AppLocalizations l10n) {
+    final badgeGradient = _statusGradient(order);
+    final partnerId = order.partnerId?.trim();
+    final partnerPreview = partnerId == null || partnerId.isEmpty
+        ? const AsyncValue<PartnerNearbyDto?>.data(null)
+        : ref.watch(_orderPartnerPreviewProvider(partnerId));
+
     return Container(
       margin: const EdgeInsets.only(bottom: AppConstants.verticalPadding),
       padding: const EdgeInsets.all(AppConstants.verticalPadding),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Restaurant Icon
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(
-                    AppConstants.borderRadiusMedium,
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    order['icon'],
-                    style: const TextStyle(fontSize: 32),
-                  ),
-                ),
-              ),
+              _buildPartnerAvatar(order, partnerPreview),
               const SizedBox(width: 16),
 
-              // Order Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      order['restaurant'],
+                      order.partnerName?.trim().isNotEmpty == true
+                          ? order.partnerName!.trim()
+                          : l10n.translate('partner'),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
                         Text(
-                          order['date'],
+                          _formatOrderDate(order),
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.grey[600],
@@ -908,7 +1010,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         Text('•', style: TextStyle(color: Colors.grey[400])),
                         const SizedBox(width: 8),
                         Text(
-                          order['amount'],
+                          _orderMoney(order.total),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -920,121 +1022,98 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
               ),
-
-              // Status Badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppConstants.borderRadiusMedium,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.green[50],
-                  borderRadius: BorderRadius.circular(AppConstants.cardPadding),
-                ),
-                child: Text(
-                  l10n.translate('delivered'),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green[700],
-                  ),
-                ),
-              ),
             ],
           ),
 
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.borderRadiusMedium,
+                vertical: 6,
+              ),
+              decoration: BoxDecoration(
+                gradient: badgeGradient,
+                borderRadius: BorderRadius.circular(AppConstants.cardPadding),
+              ),
+              child: Text(
+                order.displayStatus,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+
           const SizedBox(height: 12),
-
-          // Action Buttons
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isCompact = constraints.maxWidth < 360;
-
-              Widget reorderButton = SizedBox(
-                height: 40,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Reorder
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        AppConstants.borderRadiusSmall,
-                      ),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.refresh, size: 18),
-                        const SizedBox(width: 6),
-                        Text(
-                          l10n.translate('reorder'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => context.push(RouteNames.orderTracking(order.id)),
+              icon: const Icon(Icons.route_rounded, size: 18),
+              label: Text(l10n.translate('track_order')),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.black,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              );
-
-              Widget detailsButton = SizedBox(
-                height: 40,
-                child: OutlinedButton(
-                  onPressed: () {
-                    // TODO: View details
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.grey[700],
-                    side: BorderSide(color: Colors.grey[300]!),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        AppConstants.borderRadiusSmall,
-                      ),
-                    ),
-                  ),
-                  child: Text(
-                    l10n.translate('view_details'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              );
-
-              if (isCompact) {
-                return Column(
-                  children: [
-                    SizedBox(width: double.infinity, child: reorderButton),
-                    const SizedBox(height: 8),
-                    SizedBox(width: double.infinity, child: detailsButton),
-                  ],
-                );
-              }
-
-              return Row(
-                children: [
-                  Expanded(child: reorderButton),
-                  const SizedBox(width: 12),
-                  Expanded(child: detailsButton),
-                ],
-              );
-            },
+              ),
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPartnerAvatar(
+    Order order,
+    AsyncValue<PartnerNearbyDto?> partnerPreview,
+  ) {
+    final partnerName = order.partnerName?.trim();
+    final initials = partnerName != null && partnerName.isNotEmpty
+        ? partnerName.characters.take(1).toString().toUpperCase()
+        : 'S';
+
+    return SizedBox(
+      width: 56,
+      height: 56,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+        child: partnerPreview.when(
+          data: (partner) {
+            final logoUrl = partner?.logo?.trim() ?? '';
+            if (logoUrl.isNotEmpty) {
+              return Image.network(
+                logoUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _partnerAvatarFallback(initials),
+              );
+            }
+            return _partnerAvatarFallback(initials);
+          },
+          loading: () => _partnerAvatarFallback(initials),
+          error: (_, __) => _partnerAvatarFallback(initials),
+        ),
+      ),
+    );
+  }
+
+  Widget _partnerAvatarFallback(String initials) {
+    return Container(
+      color: AppColors.primary.withOpacity(0.14),
+      child: Center(
+        child: Text(
+          initials,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: AppColors.primary,
+          ),
+        ),
       ),
     );
   }

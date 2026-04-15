@@ -1,6 +1,7 @@
 class Order {
   final String id;
   final String? orderNumber;
+  final String? partnerId;
   final String? partnerName;
   final String status;
   final String? statusLabel;
@@ -9,11 +10,15 @@ class Order {
   final DateTime? orderTime;
   final DateTime? estimatedDeliveryTime;
   final int? deliveryTimeMinutes;
+  final DateTime? partnerAcceptedAt;
+  final int? suggestedPreparationMinutes;
+  final int? partnerAcceptedPrepMinutes;
 
   const Order({
     required this.id,
     required this.status,
     this.orderNumber,
+    this.partnerId,
     this.partnerName,
     this.statusLabel,
     this.total = 0,
@@ -21,6 +26,9 @@ class Order {
     this.orderTime,
     this.estimatedDeliveryTime,
     this.deliveryTimeMinutes,
+    this.partnerAcceptedAt,
+    this.suggestedPreparationMinutes,
+    this.partnerAcceptedPrepMinutes,
   });
 
   static String normalizeStatus(String value) => value.trim().toUpperCase();
