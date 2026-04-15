@@ -393,6 +393,27 @@
         </div>
 
         <div class="form-group">
+          <label>{{ 'zones.serviceFee' | translate }} (TND)</label>
+          <div class="fee-input-wrap" [class.input-error]="zoneForm.get('serviceFee')?.invalid && zoneForm.get('serviceFee')?.touched">
+            <input
+              type="number"
+              formControlName="serviceFee"
+              class="form-input fee-input"
+              step="0.500"
+              min="0"
+              max="999.999"
+              placeholder="0.000"
+            />
+            <span class="fee-suffix">TND</span>
+          </div>
+          @if (zoneForm.get('serviceFee')?.touched) {
+            @if (zoneForm.get('serviceFee')?.hasError('min')) {
+              <span class="field-error"><span class="material-symbols-outlined">error</span>{{ 'zones.editor.validation.serviceFeeMin' | translate }}</span>
+            }
+          }
+        </div>
+
+        <div class="form-group">
           <label>{{ 'zones.editor.deliveryRadius' | translate }}</label>
           <div class="fee-input-wrap" [class.input-error]="zoneForm.get('radiusKm')?.invalid && zoneForm.get('radiusKm')?.touched">
             <input

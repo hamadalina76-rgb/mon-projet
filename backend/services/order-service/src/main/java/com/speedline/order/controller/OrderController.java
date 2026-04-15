@@ -1,11 +1,14 @@
 package com.speedline.order.controller;
 
 import com.speedline.order.domain.OrderStatus;
+import com.speedline.order.dto.AdminLogDTO;
 import com.speedline.order.dto.OrderResponse;
+import com.speedline.order.dto.OrderStatsResponse;
 import com.speedline.order.dto.PartnerOrderHistorySummaryDTO;
 import com.speedline.order.dto.checkout.CheckoutOrderRequest;
 import jakarta.validation.Valid;
 import com.speedline.order.service.OrderService;
+import com.speedline.order.service.export.AdminOrderExportService;
 import com.speedline.order.service.export.PartnerOrderExportService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +57,7 @@ public class OrderController {
 
     private final OrderService orderService;
     private final PartnerOrderExportService partnerOrderExportService;
+    private final AdminOrderExportService adminOrderExportService;
 
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(
@@ -482,6 +486,7 @@ public class OrderController {
     public ResponseEntity<Page<OrderResponse>> getAdminOrders(
             @RequestParam(required = false) OrderStatus status,
             @RequestParam(required = false) String paymentMethod,
+            @RequestParam(required = false) String paymentStatus,
             @RequestParam(required = false, defaultValue = "") String search,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
@@ -500,8 +505,113 @@ public class OrderController {
         Pageable pageable = PageRequest.of(page, size, Sort.by(dir, sortField));
         final LocalDateTime parsedStart = parseDateTime(startDate);
         final LocalDateTime parsedEnd = parseDateTime(endDate);
-        return ResponseEntity.ok(orderService.getAdminOrders(status, paymentMethod, search,
-                parsedStart, parsedEnd, partnerId, courierId, amountMin, amountMax, pageable));
+        return ResponseEntity.ok(orderService.getAdminOrders(status, paymentMethod, paymentStatus,
+                search, parsedStart, parsedEnd, partnerId, courierId, amountMin, amountMax, pageable));
+    }
+
+    /**
+     * Statistiques admin : KPIs + graphique horaire ou journalier.
+     * GET /orders/admin/stats?date=2026-04-10&granularity=HOUR
+     */
+    @GetMapping("/admin/stats")
+    public ResponseEntity<OrderStatsResponse> getAdminStats(
+            @RequestParam(required = false) String date,
+            @RequestParam(defaultValue = "HOUR") String granularity
+    ) {
+        LocalDate d = LocalDate.now();
+        if (date != null && !date.isBlank()) {
+            try { d = LocalDate.parse(date.trim()); } catch (Exception ignored) {}
+        }
+        return ResponseEntity.ok(orderService.getAdminStats(d, granularity));
+    }
+
+    /**
+     * Logs admin : historique de toutes les modifications.
+     * GET /orders/admin/logs?page=0&size=20&actorType=ADMIN&status=DELIVERED&orderId=123&startDate=...&endDate=...
+     */
+    @GetMapping("/admin/logs")
+    public ResponseEntity<Page<AdminLogDTO>> getAdminLogs(
+            @RequestParam(required = false) String actorType,
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false) Long orderId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(orderService.getAdminLogs(
+                actorType, status, orderId, parseDateTime(startDate), parseDateTime(endDate), pageable));
+    }
+
+    /**
+     * Rembourser une commande (total ou partiel).
+     * POST /orders/{id}/refund  { "amount": 25.00 }
+     */
+    @PostMapping("/{id}/refund")
+    public ResponseEntity<OrderResponse> refundOrder(
+            @PathVariable Long id,
+            @RequestBody RefundRequest request
+    ) {
+        return ResponseEntity.ok(orderService.refundOrder(id, request.getAmount()));
+    }
+
+    /**
+     * Export admin Excel.
+     * GET /orders/admin/export/excel?status=...&search=...&lang=fr
+     */
+    @GetMapping("/admin/export/excel")
+    public ResponseEntity<byte[]> exportAdminExcel(
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false) String paymentMethod,
+            @RequestParam(required = false) String paymentStatus,
+            @RequestParam(required = false, defaultValue = "") String search,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) Long partnerId,
+            @RequestParam(required = false) Long courierId,
+            @RequestParam(required = false) BigDecimal amountMin,
+            @RequestParam(required = false) BigDecimal amountMax,
+            @RequestParam(defaultValue = "fr") String lang
+    ) {
+        byte[] bytes = adminOrderExportService.exportExcel(
+                status, paymentMethod, paymentStatus, search,
+                parseDateTime(startDate), parseDateTime(endDate),
+                partnerId, courierId, amountMin, amountMax, lang);
+        String filename = "commandes-admin-" + LocalDate.now() + ".xlsx";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        headers.setContentDisposition(ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build());
+        return new ResponseEntity<>(bytes, headers, HttpStatus.OK);
+    }
+
+    /**
+     * Export admin PDF.
+     * GET /orders/admin/export/pdf?status=...&search=...&lang=fr
+     */
+    @GetMapping("/admin/export/pdf")
+    public ResponseEntity<byte[]> exportAdminPdf(
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false) String paymentMethod,
+            @RequestParam(required = false) String paymentStatus,
+            @RequestParam(required = false, defaultValue = "") String search,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) Long partnerId,
+            @RequestParam(required = false) Long courierId,
+            @RequestParam(required = false) BigDecimal amountMin,
+            @RequestParam(required = false) BigDecimal amountMax,
+            @RequestParam(defaultValue = "fr") String lang
+    ) {
+        byte[] bytes = adminOrderExportService.exportPdf(
+                status, paymentMethod, paymentStatus, search,
+                parseDateTime(startDate), parseDateTime(endDate),
+                partnerId, courierId, amountMin, amountMax, lang);
+        String filename = "commandes-admin-" + LocalDate.now() + ".pdf";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build());
+        return new ResponseEntity<>(bytes, headers, HttpStatus.OK);
     }
 
     private static LocalDateTime parseDateTime(String raw) {
@@ -599,5 +709,10 @@ public class OrderController {
         private String cancelledBy;
         private Long actorId;
         private String reason;
+    }
+
+    @Data
+    public static class RefundRequest {
+        private BigDecimal amount;
     }
 }

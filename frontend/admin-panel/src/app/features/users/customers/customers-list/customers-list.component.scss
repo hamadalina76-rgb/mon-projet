@@ -52,6 +52,12 @@
 
 .export-btn {
   margin-left: auto;
+  border-color: #EF4444 !important;
+  color: #EF4444 !important;
+
+  &:hover {
+    background: rgba(#EF4444, .06) !important;
+  }
 }
 
 // Table responsive : largeurs min pour éviter troncature des en-têtes

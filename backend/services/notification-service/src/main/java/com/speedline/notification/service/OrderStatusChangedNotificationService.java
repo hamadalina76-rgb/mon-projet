@@ -6,6 +6,7 @@ import com.speedline.notification.domain.NotificationType;
 import com.speedline.notification.service.impl.NotificationServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -27,6 +28,7 @@ public class OrderStatusChangedNotificationService {
     );
 
     private final NotificationServiceImpl notificationService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public void handleOrderStatusChangedEvent(Map<String, Object> event) {
         final Long orderId = parseLong(event.get("orderId"));
@@ -83,6 +85,23 @@ public class OrderStatusChangedNotificationService {
                 NotificationChannel.IN_APP
         );
         log.info("ORDER_STATUS_CHANGED notification sent to customer {} for order {}", customerId, orderId);
+
+        // Broadcast timeline event to admin-panel via WebSocket
+        String description = (String) event.get("description");
+        Map<String, Object> timelineEntry = new HashMap<>();
+        timelineEntry.put("orderId", orderId);
+        timelineEntry.put("status", newStatus);
+        timelineEntry.put("previousStatus", previousStatus);
+        timelineEntry.put("description", description != null ? description : message);
+        timelineEntry.put("actorType", actorType);
+        timelineEntry.put("timestamp", LocalDateTime.now().toString());
+
+        try {
+            messagingTemplate.convertAndSend("/topic/orders/" + orderId + "/timeline", timelineEntry);
+            log.info("Timeline broadcast sent to /topic/orders/{}/timeline: {} -> {}", orderId, previousStatus, newStatus);
+        } catch (Exception ex) {
+            log.warn("Failed to broadcast timeline for orderId={}: {}", orderId, ex.getMessage());
+        }
     }
 
         private static Long parseLong(Object value) {

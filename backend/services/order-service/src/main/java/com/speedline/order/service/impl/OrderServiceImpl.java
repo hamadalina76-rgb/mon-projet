@@ -6,6 +6,9 @@ import com.speedline.order.client.PartnerServiceClient;
 import com.speedline.order.client.PromotionServiceClient;
 import com.speedline.order.client.UserServiceClient;
 import com.speedline.order.client.dto.CustomerSnapshot;
+import com.speedline.order.client.dto.AddressSnapshot;
+import com.speedline.order.client.LocationServiceClient;
+import com.speedline.order.client.dto.ZoneSnapshot;
 import com.speedline.order.client.dto.PartnerSnapshot;
 import com.speedline.order.client.dto.ProductSnapshot;
 import com.speedline.order.client.dto.promotion.PromotionApiResponse;
@@ -19,6 +22,8 @@ import com.speedline.order.domain.OrderStatusHistory;
 import com.speedline.order.dto.CreateOrderRequest;
 import com.speedline.order.dto.OrderItemDTO;
 import com.speedline.order.dto.OrderResponse;
+import com.speedline.order.dto.AdminLogDTO;
+import com.speedline.order.dto.OrderStatsResponse;
 import com.speedline.order.dto.PartnerOrderHistorySummaryDTO;
 import com.speedline.order.dto.cart.CartItemPayload;
 import com.speedline.order.dto.cart.CartResponse;
@@ -48,6 +53,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -97,6 +103,7 @@ public class OrderServiceImpl implements OrderService {
     private final PartnerServiceClient partnerServiceClient;
     private final PromotionServiceClient promotionServiceClient;
     private final UserServiceClient userServiceClient;
+    private final LocationServiceClient locationServiceClient;
     private final OrderEventProducer orderEventProducer;
     private final ObjectMapper objectMapper;
 
@@ -618,14 +625,16 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponse> getAdminOrders(OrderStatus status, String paymentMethod, String search,
+    public Page<OrderResponse> getAdminOrders(OrderStatus status, String paymentMethod, String paymentStatus,
+                                              String search,
                                               LocalDateTime startDate, LocalDateTime endDate,
                                               Long partnerId, Long courierId,
                                               BigDecimal amountMin, BigDecimal amountMax,
                                               Pageable pageable) {
         final Order.PaymentMethod pm = parsePaymentMethodOrNull(paymentMethod);
+        final Order.PaymentStatus ps = parsePaymentStatusOrNull(paymentStatus);
         final String safeSearch = search == null ? "" : search.trim();
-        return orderRepository.findAllAdmin(status, pm, safeSearch, startDate, endDate,
+        return orderRepository.findAllAdmin(status, pm, ps, safeSearch, startDate, endDate,
                 partnerId, courierId, amountMin, amountMax, pageable)
                 .map(this::toResponse);
     }
@@ -637,6 +646,162 @@ public class OrderServiceImpl implements OrderService {
         } catch (IllegalArgumentException e) {
             return null;
         }
+    }
+
+    private Order.PaymentStatus parsePaymentStatusOrNull(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return Order.PaymentStatus.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderStatsResponse getAdminStats(LocalDate date, String granularity) {
+        final LocalDateTime dayStart = date.atStartOfDay();
+        final LocalDateTime dayEnd = date.atTime(23, 59, 59);
+
+        // KPIs — current period
+        long total = orderRepository.countByCreatedAtBetween(dayStart, dayEnd);
+        long active = orderRepository.countActiveOrders();
+        long cancelled = orderRepository.countByStatusAndCreatedAtBetween(OrderStatus.CANCELLED, dayStart, dayEnd);
+        double cancelRate = total > 0 ? (cancelled * 100.0 / total) : 0;
+        Double avgMinRaw = orderRepository.avgDeliveryMinutesByDateRange(dayStart, dayEnd);
+        double avgMin = avgMinRaw != null ? avgMinRaw : 0.0;
+        BigDecimal revenue = orderRepository.sumRevenueByDateRange(dayStart, dayEnd);
+
+        // KPIs — previous period (yesterday) for trend comparison
+        LocalDate prevDate = date.minusDays(1);
+        final LocalDateTime prevStart = prevDate.atStartOfDay();
+        final LocalDateTime prevEnd = prevDate.atTime(23, 59, 59);
+        long prevTotal = orderRepository.countByCreatedAtBetween(prevStart, prevEnd);
+        long prevCancelled = orderRepository.countByStatusAndCreatedAtBetween(OrderStatus.CANCELLED, prevStart, prevEnd);
+        double prevCancelRate = prevTotal > 0 ? (prevCancelled * 100.0 / prevTotal) : 0;
+        Double prevAvgMinRaw = orderRepository.avgDeliveryMinutesByDateRange(prevStart, prevEnd);
+        double prevAvgMin = prevAvgMinRaw != null ? prevAvgMinRaw : 0.0;
+        BigDecimal prevRevenue = orderRepository.sumRevenueByDateRange(prevStart, prevEnd);
+
+        OrderStatsResponse.KpiData kpis = OrderStatsResponse.KpiData.builder()
+                .totalOrders(total)
+                .activeOrders(active)
+                .cancelRate(Math.round(cancelRate * 10.0) / 10.0)
+                .avgDeliveryMinutes(Math.round(avgMin * 10.0) / 10.0)
+                .totalRevenueTND(revenue != null ? revenue : BigDecimal.ZERO)
+                .prevTotalOrders(prevTotal)
+                .prevCancelRate(Math.round(prevCancelRate * 10.0) / 10.0)
+                .prevAvgDeliveryMinutes(Math.round(prevAvgMin * 10.0) / 10.0)
+                .prevRevenueTND(prevRevenue != null ? prevRevenue : BigDecimal.ZERO)
+                .build();
+
+        // Distribution — order status breakdown for the selected day
+        OrderStatsResponse.DistributionData distribution = buildDistribution(dayStart, dayEnd);
+
+        // Chart data
+        OrderStatsResponse.ChartData chart;
+        if ("DAY".equalsIgnoreCase(granularity)) {
+            LocalDateTime weekStart = date.minusDays(6).atStartOfDay();
+            chart = buildDailyChart(weekStart, dayEnd);
+        } else {
+            chart = buildHourlyChart(dayStart, dayEnd);
+        }
+
+        return OrderStatsResponse.builder().kpis(kpis).chart(chart).distribution(distribution).build();
+    }
+
+    private OrderStatsResponse.DistributionData buildDistribution(LocalDateTime from, LocalDateTime to) {
+        List<Object[]> rows = orderRepository.countByStatusGrouped(from, to);
+        long pending = 0, confirmed = 0, preparing = 0, inDelivery = 0, delivered = 0, cancelled = 0;
+        for (Object[] row : rows) {
+            String status = (String) row[0];
+            long count = ((Number) row[1]).longValue();
+            switch (status) {
+                case "PENDING" -> pending = count;
+                case "CONFIRMED" -> confirmed = count;
+                case "PREPARING", "READY_FOR_PICKUP", "PICKED_UP" -> preparing += count;
+                case "IN_DELIVERY" -> inDelivery = count;
+                case "DELIVERED" -> delivered = count;
+                case "CANCELLED" -> cancelled = count;
+            }
+        }
+        return OrderStatsResponse.DistributionData.builder()
+                .pending(pending).confirmed(confirmed).preparing(preparing)
+                .inDelivery(inDelivery).delivered(delivered).cancelled(cancelled)
+                .build();
+    }
+
+    private OrderStatsResponse.ChartData buildHourlyChart(LocalDateTime from, LocalDateTime to) {
+        List<Object[]> rows = orderRepository.countByHourAndStatus(from, to);
+        Map<Integer, long[]> map = new LinkedHashMap<>();
+        for (int h = 0; h < 24; h++) map.put(h, new long[3]); // [new, delivered, cancelled]
+
+        for (Object[] row : rows) {
+            int hour = ((Number) row[0]).intValue();
+            String status = (String) row[1];
+            long count = ((Number) row[2]).longValue();
+            long[] arr = map.get(hour);
+            if (arr == null) continue;
+            if ("DELIVERED".equals(status)) arr[1] += count;
+            else if ("CANCELLED".equals(status)) arr[2] += count;
+            else arr[0] += count;
+        }
+
+        List<String> labels = new ArrayList<>();
+        List<Long> newOrders = new ArrayList<>();
+        List<Long> delivered = new ArrayList<>();
+        List<Long> cancelled = new ArrayList<>();
+        for (Map.Entry<Integer, long[]> e : map.entrySet()) {
+            labels.add(String.format("%02d:00", e.getKey()));
+            newOrders.add(e.getValue()[0]);
+            delivered.add(e.getValue()[1]);
+            cancelled.add(e.getValue()[2]);
+        }
+        return OrderStatsResponse.ChartData.builder()
+                .labels(labels).newOrders(newOrders)
+                .deliveredOrders(delivered).cancelledOrders(cancelled).build();
+    }
+
+    private OrderStatsResponse.ChartData buildDailyChart(LocalDateTime from, LocalDateTime to) {
+        List<Object[]> rows = orderRepository.countByDayAndStatus(from, to);
+        Map<LocalDate, long[]> map = new LinkedHashMap<>();
+        LocalDate d = from.toLocalDate();
+        LocalDate end = to.toLocalDate();
+        while (!d.isAfter(end)) {
+            map.put(d, new long[3]);
+            d = d.plusDays(1);
+        }
+
+        for (Object[] row : rows) {
+            LocalDate day;
+            if (row[0] instanceof java.sql.Date) {
+                day = ((java.sql.Date) row[0]).toLocalDate();
+            } else {
+                day = LocalDate.parse(row[0].toString());
+            }
+            String status = (String) row[1];
+            long count = ((Number) row[2]).longValue();
+            long[] arr = map.get(day);
+            if (arr == null) continue;
+            if ("DELIVERED".equals(status)) arr[1] += count;
+            else if ("CANCELLED".equals(status)) arr[2] += count;
+            else arr[0] += count;
+        }
+
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM");
+        List<String> labels = new ArrayList<>();
+        List<Long> newOrders = new ArrayList<>();
+        List<Long> delivered = new ArrayList<>();
+        List<Long> cancelled = new ArrayList<>();
+        for (Map.Entry<LocalDate, long[]> e : map.entrySet()) {
+            labels.add(e.getKey().format(fmt));
+            newOrders.add(e.getValue()[0]);
+            delivered.add(e.getValue()[1]);
+            cancelled.add(e.getValue()[2]);
+        }
+        return OrderStatsResponse.ChartData.builder()
+                .labels(labels).newOrders(newOrders)
+                .deliveredOrders(delivered).cancelledOrders(cancelled).build();
     }
 
     private OrderResponse createOrderInternal(
@@ -690,8 +855,19 @@ public class OrderServiceImpl implements OrderService {
         validateMinimumOrder(partner, subtotal);
 
         final String normalizedPromoCode = trimToNull(promoCode);
-        final BigDecimal deliveryFee = scaleMoney(partner.getDeliveryFee());
-        final BigDecimal serviceFee = calculateServiceFee(partner, subtotal);
+
+        final ResolvedCustomerInfo customerInfo = resolveCustomerInfo(customerId);
+        final ResolvedDeliveryAddress resolvedDeliveryAddress = resolveDeliveryAddress(addressId, deliveryAddressDetails);
+
+        final ZoneSnapshot zoneSnapshot = resolveZone(
+                resolvedDeliveryAddress.deliveryLatitude(),
+                resolvedDeliveryAddress.deliveryLongitude());
+        final BigDecimal deliveryFee = zoneSnapshot != null && zoneSnapshot.getDeliveryFee() != null
+                ? scaleMoney(zoneSnapshot.getDeliveryFee())
+                : scaleMoney(partner.getDeliveryFee());
+        final BigDecimal serviceFee = zoneSnapshot != null && zoneSnapshot.getServiceFee() != null
+                ? scaleMoney(zoneSnapshot.getServiceFee())
+                : ZERO;
         final BigDecimal tax = ZERO;
         final BigDecimal discount = normalizedPromoCode == null
             ? ZERO
@@ -709,6 +885,7 @@ public class OrderServiceImpl implements OrderService {
         final BigDecimal total = scaleMoney(
                 subtotal
                         .add(deliveryFee)
+                        .add(serviceFee)
                         .add(tax)
                         .add(tip)
                         .subtract(discount)
@@ -720,9 +897,6 @@ public class OrderServiceImpl implements OrderService {
                 .mapToInt(Integer::intValue)
                 .max()
                 .orElse(20);
-
-        final ResolvedCustomerInfo customerInfo = resolveCustomerInfo(customerId);
-        final ResolvedDeliveryAddress resolvedDeliveryAddress = resolveDeliveryAddress(addressId, deliveryAddressDetails);
 
         final Order order = Order.builder()
                 .customerId(customerId)
@@ -1186,8 +1360,16 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    private BigDecimal calculateServiceFee(PartnerSnapshot partner, BigDecimal subtotal) {
-        return ZERO;
+    private ZoneSnapshot resolveZone(BigDecimal latitude, BigDecimal longitude) {
+        if (latitude == null || longitude == null) {
+            return null;
+        }
+        try {
+            return locationServiceClient.findZoneForPoint(latitude, longitude);
+        } catch (Exception ex) {
+            log.warn("Impossible de récupérer la zone pour lat={}, lon={}: {}", latitude, longitude, ex.getMessage());
+            return null;
+        }
     }
 
     private BigDecimal resolvePromoDiscount(
@@ -1632,21 +1814,81 @@ public class OrderServiceImpl implements OrderService {
                     deliveryAddressDetails.getLongitude()
             );
 
-            if (latitude != null) {
-                payload.put("deliveryLatitude", latitude);
-                payload.put("latitude", latitude);
+            // Si lat/lon manquent mais addressId présent → chercher dans user-service
+            BigDecimal resolvedLat = latitude;
+            BigDecimal resolvedLon = longitude;
+            if ((resolvedLat == null || resolvedLon == null) && normalizedAddressId != null) {
+                try {
+                    Long addrId = Long.parseLong(normalizedAddressId);
+                    AddressSnapshot addr = userServiceClient.getAddressById(addrId);
+                    if (addr != null) {
+                        if (resolvedLat == null) resolvedLat = addr.getLatitude();
+                        if (resolvedLon == null) resolvedLon = addr.getLongitude();
+                        if (!payload.containsKey("formattedAddress") && addr.getFormattedAddress() != null) {
+                            payload.put("formattedAddress", addr.getFormattedAddress());
+                        }
+                        if (!payload.containsKey("street") && addr.getStreet() != null) {
+                            payload.put("street", addr.getStreet());
+                        }
+                        if (!payload.containsKey("city") && addr.getCity() != null) {
+                            payload.put("city", addr.getCity());
+                        }
+                    }
+                } catch (Exception ex) {
+                    log.warn("Impossible de récupérer l'adresse ID={}: {}", normalizedAddressId, ex.getMessage());
+                }
             }
-            if (longitude != null) {
-                payload.put("deliveryLongitude", longitude);
-                payload.put("longitude", longitude);
+
+            if (resolvedLat != null) {
+                payload.put("deliveryLatitude", resolvedLat);
+                payload.put("latitude", resolvedLat);
+            }
+            if (resolvedLon != null) {
+                payload.put("deliveryLongitude", resolvedLon);
+                payload.put("longitude", resolvedLon);
             }
 
             return new ResolvedDeliveryAddress(
                     payload.isEmpty() ? null : writeJson(payload),
-                    latitude,
-                    longitude,
+                    resolvedLat,
+                    resolvedLon,
                     trimToNull(deliveryAddressDetails.getDeliveryInstructions())
             );
+        }
+
+        // Pas de deliveryAddressDetails mais addressId présent → chercher dans user-service
+        if (normalizedAddressId != null) {
+            try {
+                Long addrId = Long.parseLong(normalizedAddressId);
+                AddressSnapshot addr = userServiceClient.getAddressById(addrId);
+                if (addr != null) {
+                    if (addr.getLatitude() != null) {
+                        payload.put("deliveryLatitude", addr.getLatitude());
+                        payload.put("latitude", addr.getLatitude());
+                    }
+                    if (addr.getLongitude() != null) {
+                        payload.put("deliveryLongitude", addr.getLongitude());
+                        payload.put("longitude", addr.getLongitude());
+                    }
+                    if (addr.getFormattedAddress() != null) {
+                        payload.put("formattedAddress", addr.getFormattedAddress());
+                    }
+                    if (addr.getStreet() != null) {
+                        payload.put("street", addr.getStreet());
+                    }
+                    if (addr.getCity() != null) {
+                        payload.put("city", addr.getCity());
+                    }
+                    return new ResolvedDeliveryAddress(
+                            writeJson(payload),
+                            addr.getLatitude(),
+                            addr.getLongitude(),
+                            addr.getDeliveryInstructions()
+                    );
+                }
+            } catch (Exception ex) {
+                log.warn("Impossible de récupérer l'adresse ID={}: {}", normalizedAddressId, ex.getMessage());
+            }
         }
 
         if (payload.isEmpty()) {
@@ -2241,4 +2483,85 @@ public class OrderServiceImpl implements OrderService {
             BigDecimal deliveryLongitude,
             String deliveryInstructions
     ) {}
+
+    // ==================== REFUND ====================
+
+    @Override
+    @Transactional
+    public OrderResponse refundOrder(Long orderId, BigDecimal amount) {
+        Order order = getOrderOrThrow(orderId);
+        if (order.getStatus() != OrderStatus.DELIVERED && order.getStatus() != OrderStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Le remboursement n'est possible que pour les commandes livrées ou annulées");
+        }
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw badRequest("Le montant du remboursement doit être supérieur à 0");
+        }
+        if (amount.compareTo(order.getTotal()) > 0) {
+            throw badRequest("Le montant du remboursement ne peut pas dépasser le total de la commande");
+        }
+        boolean isPartial = amount.compareTo(order.getTotal()) < 0;
+        order.setPaymentStatus(isPartial ? Order.PaymentStatus.PARTIALLY_REFUNDED : Order.PaymentStatus.REFUNDED);
+        orderRepository.save(order);
+
+        orderStatusHistoryRepository.save(OrderStatusHistory.builder()
+                .orderId(order.getId())
+                .previousStatus(order.getStatus())
+                .status(order.getStatus())
+                .description(isPartial ? "Remboursement partiel" : "Remboursement total")
+                .notes("Montant remboursé : " + scaleMoney(amount).toPlainString() + " TND")
+                .updatedBy("ADMIN")
+                .actorType("ADMIN")
+                .build());
+
+        return toResponse(order);
+    }
+
+    // ==================== ADMIN EXPORT ====================
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderResponse> listAllAdminOrdersForExport(
+            OrderStatus status, String paymentMethod, String paymentStatus,
+            String search, LocalDateTime startDate, LocalDateTime endDate,
+            Long partnerId, Long courierId, BigDecimal amountMin, BigDecimal amountMax) {
+        final List<OrderResponse> out = new ArrayList<>();
+        int page = 0;
+        while (true) {
+            final Pageable pageable = PageRequest.of(page, EXPORT_PAGE_SIZE, Sort.by(Sort.Direction.DESC, "createdAt"));
+            final Page<OrderResponse> chunk = getAdminOrders(status, paymentMethod, paymentStatus,
+                    search, startDate, endDate, partnerId, courierId, amountMin, amountMax, pageable);
+            out.addAll(chunk.getContent());
+            if (!chunk.hasNext()) break;
+            page++;
+        }
+        return out;
+    }
+
+    // ==================== ADMIN LOGS ====================
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AdminLogDTO> getAdminLogs(String actorType, OrderStatus status, Long orderId,
+                                          LocalDateTime from, LocalDateTime to, Pageable pageable) {
+        final String actor = (actorType != null && !actorType.isBlank()) ? actorType.trim().toUpperCase(Locale.ROOT) : null;
+        Page<OrderStatusHistory> page = orderStatusHistoryRepository.findAllLogs(actor, status, from, to, orderId, pageable);
+        return page.map(h -> {
+            String orderNumber = orderRepository.findById(h.getOrderId())
+                    .map(com.speedline.order.domain.Order::getOrderNumber).orElse(null);
+            return AdminLogDTO.builder()
+                    .id(h.getId())
+                    .orderId(h.getOrderId())
+                    .orderNumber(orderNumber)
+                    .status(h.getStatus())
+                    .previousStatus(h.getPreviousStatus())
+                    .description(h.getDescription())
+                    .notes(h.getNotes())
+                    .actorType(h.getActorType())
+                    .actorId(h.getActorId())
+                    .updatedBy(h.getUpdatedBy())
+                    .timestamp(h.getTimestamp())
+                    .build();
+        });
+    }
 }

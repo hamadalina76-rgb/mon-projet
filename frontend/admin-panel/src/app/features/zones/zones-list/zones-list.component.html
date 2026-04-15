@@ -63,6 +63,7 @@
         <th class="col-city">{{ 'zones.city' | translate | uppercase }}</th>
         <th class="col-type">{{ 'zones.type' | translate | uppercase }}</th>
         <th class="col-fee">{{ 'zones.feeTnd' | translate | uppercase }}</th>
+        <th class="col-service-fee">{{ 'zones.serviceFee' | translate | uppercase }}</th>
         <th class="col-radius">{{ 'zones.editor.deliveryRadius' | translate | uppercase }}</th>
         <th class="col-status">{{ 'zones.status' | translate | uppercase }}</th>
         <th class="col-actions">{{ 'common.actions' | translate | uppercase }}</th>
@@ -79,6 +80,7 @@
             </span>
           </td>
           <td class="col-fee">{{ zone.deliveryFee ?? 0 }}</td>
+          <td class="col-service-fee">{{ zone.serviceFee ?? 0 }}</td>
           <td class="col-radius">{{ zone.radiusKm != null ? (zone.radiusKm + ' km') : '-' }}</td>
           <td class="col-status">
             <span class="status-badge" [class.active]="zone.isActive">

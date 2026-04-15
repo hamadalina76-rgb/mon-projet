@@ -85,6 +85,7 @@ public class ZoneController {
                 request.getType(),
                 request.getBoundaryJson(),
                 request.getDeliveryFee(),
+                request.getServiceFee(),
                 request.getMinDeliveryTime(),
                 request.getMaxDeliveryTime(),
                 request.getRadiusKm()
@@ -105,6 +106,7 @@ public class ZoneController {
                 request.getName(),
                 request.getDescription(),
                 request.getDeliveryFee(),
+                request.getServiceFee(),
                 request.getBoundaryJson(),
                 request.getRadiusKm()
         );

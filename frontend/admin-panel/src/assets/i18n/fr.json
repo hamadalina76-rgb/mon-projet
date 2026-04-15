@@ -824,6 +824,14 @@
       "dateTo": "Au",
       "reset": "Réinitialiser"
     },
+    "quick": {
+      "all": "Toutes",
+      "pendingUrgent": "En attente",
+      "noCourier": "Sans livreur",
+      "lateDelivery": "En livraison",
+      "cancelled": "Annulées",
+      "paymentFailed": "Paiement échoué"
+    },
     "payment": {
       "cash": "Espèces",
       "card": "Carte",
@@ -837,12 +845,64 @@
       "PICKED_UP": "Récupérée",
       "IN_DELIVERY": "Livraison",
       "DELIVERED": "Livrée"
+    },
+    "stats": {
+      "title": "Statistiques",
+      "show": "Voir les statistiques",
+      "hourly": "Par heure",
+      "weekly": "Par jour",
+      "totalOrders": "Total commandes",
+      "activeOrders": "Commandes actives",
+      "cancelRate": "Taux d'annulation",
+      "avgDelivery": "Temps moyen livraison",
+      "revenue": "Revenu du jour",
+      "today": "Aujourd'hui",
+      "refresh": "Rafraîchir",
+      "errorTitle": "Impossible de charger les statistiques",
+      "errorDesc": "Le serveur ne répond pas. Vérifiez que les services backend sont démarrés puis réessayez.",
+      "chartTitleHour": "Commandes par heure",
+      "chartTitleDay": "Commandes par jour",
+      "chart": {
+        "newOrders": "Nouvelles",
+        "delivered": "Livrées",
+        "cancelled": "Annulées"
+      },
+      "distribution": "Répartition des commandes",
+      "dist": {
+        "pending": "En attente",
+        "confirmed": "Confirmées",
+        "preparing": "En préparation",
+        "inDelivery": "En livraison",
+        "delivered": "Livrées",
+        "cancelled": "Annulées"
+      }
+    },
+    "export": {
+      "title": "Exporter",
+      "excel": "Exporter Excel",
+      "pdf": "Exporter PDF",
+      "error": "Erreur lors de l'export"
+    },
+    "logs": {
+      "title": "Historique",
+      "noLogs": "Aucun log trouvé",
+      "actorType": "Type d'acteur",
+      "status": "Statut",
+      "orderId": "ID commande",
+      "filter": "Filtrer",
+      "date": "Date",
+      "order": "Commande",
+      "change": "Changement",
+      "description": "Description",
+      "actor": "Acteur",
+      "notes": "Notes"
     }
   },
   "orderDetail": {
     "items": "Articles",
     "subtotal": "Sous-total",
     "deliveryFee": "Frais de livraison",
+    "serviceFee": "Frais de service",
     "discount": "Remise",
     "total": "Total",
     "pricing": "Tarification",
@@ -1281,6 +1341,7 @@
     "status": "Statut",
     "type": "Type",
     "deliveryFee": "Frais de livraison",
+    "serviceFee": "Frais de service",
     "feeTnd": "Frais (TND)",
     "minimumOrder": "Commande minimum",
     "active": "Active",
@@ -1370,6 +1431,7 @@
         "feeRequired": "Les frais de livraison sont obligatoires",
         "feeMin": "Les frais de livraison ne peuvent pas être négatifs",
         "feeMax": "Les frais de livraison ne peuvent pas dépasser 999.999 TND",
+        "serviceFeeMin": "Les frais de service ne peuvent pas être négatifs",
         "radiusMin": "Le rayon doit être supérieur à 0.1 km",
         "radiusMax": "Le rayon ne peut pas dépasser 500 km"
       },

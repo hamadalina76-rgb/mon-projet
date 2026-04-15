@@ -13,6 +13,7 @@ export interface Zone {
   type: ZoneType;
   boundaryJson: string; // Format: [[lat,lon],[lat,lon],...]
   deliveryFee?: number;
+  serviceFee?: number;
   minDeliveryTime?: number;
   maxDeliveryTime?: number;
   isActive: boolean;
@@ -34,6 +35,7 @@ export interface ZoneCreateRequest {
   type: ZoneType;
   boundaryJson: string;
   deliveryFee?: number;
+  serviceFee?: number;
   minDeliveryTime?: number;
   maxDeliveryTime?: number;
   isActive?: boolean;
@@ -47,6 +49,7 @@ export interface ZoneUpdateRequest {
   type?: ZoneType;
   boundaryJson?: string;
   deliveryFee?: number;
+  serviceFee?: number;
   minDeliveryTime?: number;
   maxDeliveryTime?: number;
   isActive?: boolean;

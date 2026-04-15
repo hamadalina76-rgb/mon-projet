@@ -1,6 +1,8 @@
 package com.speedline.order.service;
 
 import com.speedline.order.domain.OrderStatus;
+import com.speedline.order.dto.AdminLogDTO;
+import com.speedline.order.dto.OrderStatsResponse;
 import com.speedline.order.dto.CreateOrderRequest;
 import com.speedline.order.dto.OrderResponse;
 import com.speedline.order.dto.PartnerOrderHistorySummaryDTO;
@@ -9,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -386,9 +389,34 @@ public interface OrderService {
     /**
      * Liste paginée de toutes les commandes pour le admin panel.
      */
-    Page<OrderResponse> getAdminOrders(OrderStatus status, String paymentMethod, String search,
+    Page<OrderResponse> getAdminOrders(OrderStatus status, String paymentMethod, String paymentStatus,
+                                       String search,
                                        LocalDateTime startDate, LocalDateTime endDate,
                                        Long partnerId, Long courierId,
                                        BigDecimal amountMin, BigDecimal amountMax,
                                        Pageable pageable);
+
+    /**
+     * Statistiques admin : KPIs + ventilation horaire ou journalière.
+     */
+    OrderStatsResponse getAdminStats(LocalDate date, String granularity);
+
+    /**
+     * Rembourser une commande (total ou partiel).
+     */
+    OrderResponse refundOrder(Long orderId, BigDecimal amount);
+
+    /**
+     * Toutes les commandes admin (sans pagination) pour export.
+     */
+    List<OrderResponse> listAllAdminOrdersForExport(
+            OrderStatus status, String paymentMethod, String paymentStatus,
+            String search, LocalDateTime startDate, LocalDateTime endDate,
+            Long partnerId, Long courierId, BigDecimal amountMin, BigDecimal amountMax);
+
+    /**
+     * Logs admin paginés : historique de toutes les modifications.
+     */
+    Page<AdminLogDTO> getAdminLogs(String actorType, OrderStatus status, Long orderId,
+                                   LocalDateTime from, LocalDateTime to, Pageable pageable);
 }

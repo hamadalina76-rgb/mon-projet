@@ -1,0 +1,166 @@
+@use 'sass:color';
+
+$red: #E31E24;
+$dark: #1E293B;
+$muted: #64748B;
+$border: #E2E8F0;
+$bg-card: #F8FAFC;
+$radius: 12px;
+$ease: cubic-bezier(.4, 0, .2, 1);
+
+:host ::ng-deep {
+
+  /* ─── FILTERS ──────────────────────────────────────── */
+  .filters-bar {
+    padding: 16px 1.5rem 8px;
+  }
+
+  .filter-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .filter-field {
+    flex: 0 0 180px;
+
+    .mat-mdc-form-field-subscript-wrapper { display: none; }
+  }
+
+  .btn-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 16px;
+    border: 1.5px solid $red;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba($red, .06), rgba($red, .02));
+    color: $red;
+    font: 600 .8rem/1 inherit;
+    cursor: pointer;
+    transition: all .22s $ease;
+
+    .material-icons-round { font-size: 18px; }
+
+    &:hover {
+      background: rgba($red, .10);
+      box-shadow: 0 2px 8px rgba($red, .18);
+    }
+  }
+
+  .btn-reset {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid $border;
+    border-radius: 10px;
+    background: #fff;
+    color: $muted;
+    cursor: pointer;
+    transition: all .2s $ease;
+
+    .material-icons-round { font-size: 20px; }
+
+    &:hover {
+      color: $red;
+      border-color: $red;
+    }
+  }
+
+  /* ─── TABLE — component-specific columns ───────────── */
+  .col-date {
+    white-space: nowrap;
+
+    .date-main {
+      display: block;
+      font-weight: 600;
+      font-size: .82rem;
+    }
+
+    .date-time {
+      font-size: .72rem;
+      color: $muted;
+    }
+  }
+
+  .order-link {
+    color: $red;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity .2s;
+
+    &:hover { opacity: .7; }
+  }
+
+  .col-change {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: nowrap;
+
+    .arrow {
+      font-size: 16px;
+      color: $muted;
+    }
+  }
+
+  .status-pending          { background: #FFF7ED; color: #C2410C; }
+  .status-confirmed        { background: #EFF6FF; color: #1D4ED8; }
+  .status-preparing        { background: #FDF4FF; color: #7C3AED; }
+  .status-ready-for-pickup { background: #ECFDF5; color: #047857; }
+  .status-picked-up        { background: #F0FDF4; color: #15803D; }
+  .status-in-delivery      { background: #EFF6FF; color: #2563EB; }
+  .status-delivered        { background: #ECFDF5; color: #059669; }
+  .status-cancelled        { background: #FEF2F2; color: #DC2626; }
+
+  .col-desc {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .actor-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 8px;
+    background: #F1F5F9;
+    font-size: .72rem;
+    font-weight: 600;
+    color: $dark;
+    white-space: nowrap;
+
+    .material-icons-round { font-size: 16px; color: $muted; }
+  }
+
+  .notes-text {
+    display: block;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .78rem;
+    color: $muted;
+  }
+
+  .muted { color: $muted; }
+
+  /* ─── RESPONSIVE ───────────────────────────────────── */
+  @media (max-width: 768px) {
+    .filter-field { flex: 1 1 140px; }
+
+    .data-table th:nth-child(6),
+    .data-table td:nth-child(6) { display: none; }
+  }
+
+  @media (max-width: 480px) {
+    .filter-row { gap: 8px; }
+    .filter-field { flex: 1 1 100%; }
+  }
+}

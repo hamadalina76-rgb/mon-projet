@@ -83,11 +83,6 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
     Page<Zone> searchByNameOrCityAndIsActive(@Param("search") String search, @Param("isActive") boolean isActive, Pageable pageable);
 
     /**
-     * Trouver les zones par ville
-     */
-    List<Zone> findByCityAndIsActiveTrue(String city);
-
-    /**
      * Vérifier si une zone chevauche d'autres zones actives
      * Utilise PostGIS ST_Overlaps ou ST_Intersects
      */

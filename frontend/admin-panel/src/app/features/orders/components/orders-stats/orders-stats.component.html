@@ -1,0 +1,218 @@
+<div class="stats-page" [class.is-loading]="firstLoad">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <a class="btn-back" routerLink="/orders" [matTooltip]="'common.back' | translate">
+        <span class="material-icons-round">arrow_back</span>
+      </a>
+      <div class="header-title-group">
+        <h1 class="page-title">{{ 'orders.stats.title' | translate }}</h1>
+        <span class="last-refresh">
+          <span class="material-icons-round refresh-ico">schedule</span>
+          {{ lastRefresh | date:'HH:mm:ss' }}
+        </span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <mat-button-toggle-group [(ngModel)]="granularity" (change)="onGranularityChange()">
+        <mat-button-toggle value="HOUR">
+          <span class="material-icons-round toggle-ico">schedule</span>
+          {{ 'orders.stats.hourly' | translate }}
+        </mat-button-toggle>
+        <mat-button-toggle value="DAY">
+          <span class="material-icons-round toggle-ico">calendar_today</span>
+          {{ 'orders.stats.weekly' | translate }}
+        </mat-button-toggle>
+      </mat-button-toggle-group>
+
+      <div class="date-nav">
+        <mat-form-field appearance="outline" class="date-field" subscriptSizing="dynamic">
+          <input matInput [matDatepicker]="statsPicker"
+                 [(ngModel)]="selectedDate"
+                 [max]="maxDate"
+                 (dateChange)="onDateChange()" />
+          <mat-datepicker-toggle matIconSuffix [for]="statsPicker"></mat-datepicker-toggle>
+          <mat-datepicker #statsPicker></mat-datepicker>
+        </mat-form-field>
+        @if (!isToday) {
+          <button class="btn-today" (click)="goToday()" [matTooltip]="'orders.stats.today' | translate">
+            <span class="material-icons-round">today</span>
+          </button>
+        }
+      </div>
+
+      <button class="btn-refresh" (click)="refresh()" [class.spinning]="loading"
+              [matTooltip]="'orders.stats.refresh' | translate">
+        <span class="material-icons-round">refresh</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Error state -->
+  @if (hasError && !loading) {
+    <div class="error-state">
+      <div class="error-icon-wrap">
+        <span class="material-icons-round">cloud_off</span>
+      </div>
+      <h2 class="error-title">{{ 'orders.stats.errorTitle' | translate }}</h2>
+      <p class="error-desc">{{ 'orders.stats.errorDesc' | translate }}</p>
+      <button class="btn-retry-large" (click)="refresh()">
+        <span class="material-icons-round">refresh</span>
+        {{ 'common.retry' | translate }}
+      </button>
+    </div>
+  }
+
+  <!-- Content (hidden on error) -->
+  @if (!hasError || loading) {
+  <div class="kpi-grid">
+    <!-- Total Orders -->
+    <div class="kpi-card kpi-card--total">
+      <div class="kpi-icon-wrap kpi-icon-blue">
+        <span class="material-icons-round">receipt_long</span>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-value">{{ display.totalOrders }}</span>
+        <span class="kpi-label">{{ 'orders.stats.totalOrders' | translate }}</span>
+      </div>
+      @if (trends['totalOrders'].direction !== 'flat') {
+        <span class="kpi-trend" [class.trend-up]="trends['totalOrders'].positive" [class.trend-down]="!trends['totalOrders'].positive">
+          <span class="material-icons-round trend-arrow">{{ trends['totalOrders'].direction === 'up' ? 'trending_up' : 'trending_down' }}</span>
+          {{ trends['totalOrders'].percent }}%
+        </span>
+      }
+    </div>
+
+    <!-- Active Orders -->
+    <div class="kpi-card kpi-card--active">
+      <div class="kpi-icon-wrap kpi-icon-indigo">
+        <span class="material-icons-round">pending_actions</span>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-value">{{ display.activeOrders }}</span>
+        <span class="kpi-label">{{ 'orders.stats.activeOrders' | translate }}</span>
+      </div>
+      <span class="kpi-live-dot"></span>
+    </div>
+
+    <!-- Cancel Rate -->
+    <div class="kpi-card" [class.kpi-alert]="kpis.cancelRate > 10">
+      <div class="kpi-icon-wrap" [class.kpi-icon-green]="kpis.cancelRate <= 10" [class.kpi-icon-red]="kpis.cancelRate > 10">
+        <span class="material-icons-round">{{ kpis.cancelRate > 10 ? 'warning' : 'check_circle' }}</span>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-value">{{ display.cancelRate }}<small>%</small></span>
+        <span class="kpi-label">{{ 'orders.stats.cancelRate' | translate }}</span>
+      </div>
+      @if (trends['cancelRate'].direction !== 'flat') {
+        <span class="kpi-trend" [class.trend-up]="trends['cancelRate'].positive" [class.trend-down]="!trends['cancelRate'].positive">
+          <span class="material-icons-round trend-arrow">{{ trends['cancelRate'].direction === 'up' ? 'trending_up' : 'trending_down' }}</span>
+          {{ trends['cancelRate'].percent }}%
+        </span>
+      }
+    </div>
+
+    <!-- Avg Delivery -->
+    <div class="kpi-card">
+      <div class="kpi-icon-wrap" [class.kpi-icon-green]="kpis.avgDeliveryMinutes < 35" [class.kpi-icon-orange]="kpis.avgDeliveryMinutes >= 35">
+        <span class="material-icons-round">timer</span>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-value">{{ display.avgDeliveryMinutes }} <small>min</small></span>
+        <span class="kpi-label">{{ 'orders.stats.avgDelivery' | translate }}</span>
+      </div>
+      @if (trends['avgDelivery'].direction !== 'flat') {
+        <span class="kpi-trend" [class.trend-up]="trends['avgDelivery'].positive" [class.trend-down]="!trends['avgDelivery'].positive">
+          <span class="material-icons-round trend-arrow">{{ trends['avgDelivery'].direction === 'up' ? 'trending_up' : 'trending_down' }}</span>
+          {{ trends['avgDelivery'].percent }}%
+        </span>
+      }
+    </div>
+
+    <!-- Revenue -->
+    <div class="kpi-card kpi-card--revenue">
+      <div class="kpi-icon-wrap kpi-icon-green">
+        <span class="material-icons-round">payments</span>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-value">{{ display.totalRevenueTND | number:'1.2-2' }} <small>TND</small></span>
+        <span class="kpi-label">{{ 'orders.stats.revenue' | translate }}</span>
+      </div>
+      @if (trends['revenue'].direction !== 'flat') {
+        <span class="kpi-trend" [class.trend-up]="trends['revenue'].positive" [class.trend-down]="!trends['revenue'].positive">
+          <span class="material-icons-round trend-arrow">{{ trends['revenue'].direction === 'up' ? 'trending_up' : 'trending_down' }}</span>
+          {{ trends['revenue'].percent }}%
+        </span>
+      }
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="charts-row">
+    <!-- Bar Chart -->
+    <div class="chart-card chart-bar">
+      <div class="chart-header">
+        <h2 class="chart-title">
+          <span class="material-icons-round chart-title-ico">bar_chart</span>
+          {{ (granularity === 'HOUR' ? 'orders.stats.chartTitleHour' : 'orders.stats.chartTitleDay') | translate }}
+        </h2>
+        @if (loading) {
+          <mat-spinner diameter="18"></mat-spinner>
+        }
+      </div>
+      <div class="chart-body">
+        <canvas #barChart baseChart
+                [data]="chartData"
+                [options]="chartOptions"
+                type="bar">
+        </canvas>
+      </div>
+    </div>
+
+    <!-- Doughnut Chart -->
+    <div class="chart-card chart-doughnut">
+      <div class="chart-header">
+        <h2 class="chart-title">
+          <span class="material-icons-round chart-title-ico">donut_large</span>
+          {{ 'orders.stats.distribution' | translate }}
+        </h2>
+      </div>
+      <div class="doughnut-body">
+        <div class="doughnut-canvas-wrap">
+          <canvas #doughnutChart baseChart
+                  [data]="doughnutData"
+                  [options]="doughnutOptions"
+                  type="doughnut">
+          </canvas>
+          <div class="doughnut-center">
+            <span class="doughnut-total">{{ distributionTotal }}</span>
+            <span class="doughnut-total-label">{{ 'orders.stats.totalOrders' | translate }}</span>
+          </div>
+        </div>
+        <div class="doughnut-legend">
+          @for (item of [
+            { label: 'orders.stats.dist.pending',    value: distribution.pending,    color: '#F59E0B' },
+            { label: 'orders.stats.dist.confirmed',  value: distribution.confirmed,  color: '#6366F1' },
+            { label: 'orders.stats.dist.preparing',  value: distribution.preparing,  color: '#3B82F6' },
+            { label: 'orders.stats.dist.inDelivery', value: distribution.inDelivery, color: '#8B5CF6' },
+            { label: 'orders.stats.dist.delivered',  value: distribution.delivered,  color: '#10B981' },
+            { label: 'orders.stats.dist.cancelled',  value: distribution.cancelled,  color: '#EF4444' }
+          ]; track item.label) {
+            <div class="legend-item">
+              <span class="legend-dot" [style.background]="item.color"></span>
+              <span class="legend-label">{{ item.label | translate }}</span>
+              <span class="legend-value">{{ item.value }}</span>
+              @if (distributionTotal > 0) {
+                <span class="legend-pct">{{ (item.value / distributionTotal * 100) | number:'1.0-0' }}%</span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+  } <!-- end @if !hasError -->
+
+</div>
