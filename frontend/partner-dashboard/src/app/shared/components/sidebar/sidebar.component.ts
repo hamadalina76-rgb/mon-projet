@@ -57,6 +57,7 @@ export class SidebarComponent {
   menuItems: MenuItem[] = [
     { label: 'nav.dashboard', icon: 'dashboard', route: '/dashboard', requiresActive: false },
     { label: 'nav.orders', icon: 'shopping_bag', route: '/orders', requiresActive: true },
+    { label: 'nav.adminOrderMessages', icon: 'mark_unread_chat_alt', route: '/orders/admin-messages', requiresActive: true },
     { label: 'nav.orderHistory', icon: 'history', route: '/orders/history', requiresActive: true },
     { label: 'nav.menu', icon: 'restaurant_menu', route: '/menu', requiresActive: true },
     { label: 'nav.analytics', icon: 'analytics', route: '/analytics', requiresActive: true },

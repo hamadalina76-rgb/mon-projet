@@ -1,14 +1,13 @@
 package com.speedline.notification.service;
 
-import com.speedline.notification.domain.Notification;
 import com.speedline.notification.domain.NotificationChannel;
 import com.speedline.notification.domain.NotificationType;
-import com.speedline.notification.service.impl.NotificationServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,7 +26,7 @@ public class OrderStatusChangedNotificationService {
             "CANCELLED", "Votre commande a été annulée"
     );
 
-    private final NotificationServiceImpl notificationService;
+    private final NotificationService notificationService;
     private final SimpMessagingTemplate messagingTemplate;
 
     public void handleOrderStatusChangedEvent(Map<String, Object> event) {
@@ -85,6 +84,10 @@ public class OrderStatusChangedNotificationService {
                 NotificationChannel.IN_APP
         );
         log.info("ORDER_STATUS_CHANGED notification sent to customer {} for order {}", customerId, orderId);
+
+        // Admin panel: live orders list (same WebSocket topic as ORDER_NEW)
+        notificationService.sendAdminBroadcast(NotificationType.ORDER, title, message, data);
+        log.info("ORDER_STATUS_CHANGED broadcast sent to admin topic for order {}", orderId);
 
         // Broadcast timeline event to admin-panel via WebSocket
         String description = (String) event.get("description");

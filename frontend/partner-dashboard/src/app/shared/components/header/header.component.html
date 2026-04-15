@@ -58,7 +58,7 @@
                      (click)="onNotificationClick(notif)">
                   <div class="notif-icon-wrapper">
                     <span class="material-icons">
-                      {{ notif.type === 'ORDER' ? 'shopping_bag' : (notif.type === 'PARTNER' || notif.data['action'] === 'PARTNER_APPROVED') ? 'check_circle' : 'notifications' }}
+                      {{ notif.data?.['action'] === 'ADMIN_CONTACT' ? 'mark_unread_chat_alt' : notif.type === 'ORDER' ? 'shopping_bag' : (notif.type === 'PARTNER' || notif.data?.['action'] === 'PARTNER_APPROVED') ? 'check_circle' : 'notifications' }}
                     </span>
                     @if (!notif.isRead) {
                       <span class="unread-dot"></span>

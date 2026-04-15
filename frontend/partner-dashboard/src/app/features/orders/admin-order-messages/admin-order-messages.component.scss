@@ -1,0 +1,127 @@
+.aom-page {
+  padding: 1.25rem 1.5rem 2rem;
+  max-width: 900px;
+}
+
+.aom-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  h1 {
+    margin: 0 0 0.35rem;
+    font-size: 1.35rem;
+    font-weight: 600;
+  }
+}
+
+.aom-sub {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.aom-loading {
+  display: flex;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.aom-empty {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: #888;
+
+  .material-icons {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 0.75rem;
+    opacity: 0.5;
+  }
+
+  &.aom-error {
+    color: #c62828;
+  }
+}
+
+.aom-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.aom-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e8e8e8;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+
+  &.unread {
+    border-left: 4px solid #3f51b5;
+    background: #fafbff;
+  }
+}
+
+.aom-card-main {
+  display: flex;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.aom-icon {
+  color: #3f51b5;
+  font-size: 28px;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.aom-text {
+  min-width: 0;
+}
+
+.aom-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.aom-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.aom-date {
+  font-size: 0.78rem;
+  color: #888;
+}
+
+.aom-msg {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #444;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.aom-ord {
+  display: inline-block;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: #666;
+  font-weight: 500;
+}

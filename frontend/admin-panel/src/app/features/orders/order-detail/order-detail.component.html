@@ -323,13 +323,28 @@
       <ng-template mat-tab-label>
         <mat-icon class="tab-icon">sticky_note_2</mat-icon>
         {{ 'orderDetail.tabs.notes' | translate }}
-        @if (notesCount > 0) {
-          <span class="tab-badge">{{ notesCount }}</span>
+        @if (notesTabBadgeCount > 0) {
+          <span class="tab-badge">{{ notesTabBadgeCount }}</span>
         }
       </ng-template>
 
       <div class="tab-content notes-tab">
         <section class="card notes-card">
+          @if (adminOutboundMessages.length > 0) {
+            <div class="outbound-messages">
+              <h4 class="outbound-title">{{ 'orderDetail.outboundMessagesTitle' | translate }}</h4>
+              <p class="outbound-hint">{{ 'orderDetail.outboundMessagesHint' | translate }}</p>
+              @for (m of adminOutboundMessages; track $index) {
+                <div class="outbound-row">
+                  <span class="outbound-meta">
+                    <mat-icon class="outbound-ico">forward_to_inbox</mat-icon>
+                    {{ m.targetLabel }} · {{ m.sentAt | date:'dd/MM HH:mm' }}
+                  </span>
+                  <div class="outbound-body">{{ m.body }}</div>
+                </div>
+              }
+            </div>
+          }
           <!-- Notes thread -->
           <div class="notes-thread">
             @if (notesLoading) {

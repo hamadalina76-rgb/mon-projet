@@ -933,9 +933,18 @@
     "backToLogin": "Retour à la connexion",
     "home": "Accueil"
   },
+  "adminOrderMessages": {
+    "title": "Messages administrateur",
+    "subtitle": "Tous les messages envoyés par l’administration sur vos commandes.",
+    "refresh": "Actualiser",
+    "loadError": "Impossible de charger les messages.",
+    "empty": "Aucun message administrateur pour le moment.",
+    "openOrder": "Voir la commande"
+  },
   "nav": {
     "dashboard": "Tableau de bord",
     "orders": "Commandes",
+    "adminOrderMessages": "Messages admin",
     "orderHistory": "Historique",
     "menu": "Menu",
     "analytics": "Analytiques",

@@ -20,7 +20,7 @@ import { AdminOrder, OrderFilters, ORDER_STATUS_CONFIG, OrderStatus, PaymentMeth
 import { OrdersService } from '../services/orders.service';
 import { PartnersService } from '../../partners/services/partners.service';
 import { CouriersService } from '../../users/couriers/services/couriers.service';
-import { WebSocketService } from '@core/services/websocket.service';
+import { WebSocketService, WebSocketNotification } from '@core/services/websocket.service';
 import { ListPageComponent } from '@shared/components/list-page/list-page.component';
 
 type DateRange = 'today' | '7days' | '30days' | 'all' | 'custom';
@@ -159,10 +159,13 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
     this.loadOrders();
     this.loadBadgeCounts();
 
-    // WebSocket: refresh badge counts on any admin notification
+    // WebSocket: badge counts + live orders table (ORDER_NEW / ORDER_STATUS_CHANGED)
     this.wsSub = this.wsService.onAdminNotification
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.loadBadgeCounts());
+      .subscribe((n) => {
+        this.loadBadgeCounts();
+        this.applyOrderRealtimeFromWs(n);
+      });
   }
 
   ngOnDestroy(): void {
@@ -462,6 +465,116 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
         this.snackBar.open(this.translate.instant('orders.export.error'), '✕', { duration: 3000 });
       },
     });
+  }
+
+  /**
+   * Met à jour la liste des commandes depuis le topic admin (même principe que le partner-dashboard).
+   */
+  private applyOrderRealtimeFromWs(n: WebSocketNotification): void {
+    if (n.type !== 'ORDER') return;
+    const action = n.data?.['action'] as string | undefined;
+    if (action === 'ORDER_SCHEDULED_PREP_REMINDER') return;
+
+    const rawId = n.data?.['orderId'] ?? n.data?.['id'];
+    const orderId = rawId != null ? Number(rawId) : NaN;
+    if (!Number.isFinite(orderId)) return;
+
+    if (action === 'ORDER_NEW') {
+      this.ordersService.getOrder(orderId).pipe(takeUntil(this.destroy$)).subscribe({
+        next: (full) => this.mergeNewOrderFromApi(full),
+        error: () => { /* garde le comportement actuel : rien sans GET */ },
+      });
+      return;
+    }
+
+    if (action === 'ORDER_STATUS_CHANGED' || action === 'ORDER_ACCEPTED') {
+      this.ordersService.getOrder(orderId).pipe(takeUntil(this.destroy$)).subscribe({
+        next: (full) => this.mergeOrderUpdateFromApi(full),
+        error: () => this.mergeOrderStatusFallback(orderId, n.data),
+      });
+    }
+  }
+
+  private mergeNewOrderFromApi(full: AdminOrder): void {
+    if (!this.orderMatchesCurrentFilters(full)) return;
+
+    const already = this.orders.some((o) => o.id === full.id);
+    if (this.currentPage === 1) {
+      if (!already) {
+        const next = [full, ...this.orders.filter((o) => o.id !== full.id)];
+        this.orders = next.slice(0, this.itemsPerPage);
+      } else {
+        this.orders = this.orders.map((o) => (o.id === full.id ? full : o));
+      }
+    }
+    if (!already) {
+      this.totalItems += 1;
+    }
+  }
+
+  private mergeOrderUpdateFromApi(full: AdminOrder): void {
+    const idx = this.orders.findIndex((o) => o.id === full.id);
+    const visible = idx !== -1;
+    const matches = this.orderMatchesCurrentFilters(full);
+
+    if (visible && matches) {
+      this.orders = this.orders.map((o) => (o.id === full.id ? full : o));
+      return;
+    }
+    if (visible && !matches) {
+      this.orders = this.orders.filter((o) => o.id !== full.id);
+      this.totalItems = Math.max(0, this.totalItems - 1);
+      return;
+    }
+    if (!visible && matches && this.currentPage === 1) {
+      const next = [full, ...this.orders.filter((o) => o.id !== full.id)];
+      this.orders = next.slice(0, this.itemsPerPage);
+      this.totalItems += 1;
+    }
+  }
+
+  private mergeOrderStatusFallback(orderId: number, data: Record<string, any> | undefined): void {
+    const st = (data?.['status'] ?? data?.['newStatus']) as OrderStatus | undefined;
+    if (!st) return;
+    const idx = this.orders.findIndex((o) => o.id === orderId);
+    if (idx === -1) return;
+    const o = this.orders[idx];
+    const patched = { ...o, status: st };
+    if (!this.orderMatchesCurrentFilters(patched as AdminOrder)) {
+      this.orders = this.orders.filter((x) => x.id !== orderId);
+      this.totalItems = Math.max(0, this.totalItems - 1);
+      return;
+    }
+    this.orders = this.orders.map((x) => (x.id === orderId ? patched as AdminOrder : x));
+  }
+
+  private orderMatchesCurrentFilters(o: AdminOrder): boolean {
+    if (this.searchText) {
+      const q = this.searchText.toLowerCase().trim();
+      const num = String(o.orderNumber || '').toLowerCase();
+      const name = String(o.customerName || '').toLowerCase();
+      const idStr = String(o.id);
+      if (!num.includes(q) && !name.includes(q) && !idStr.includes(q)) return false;
+    }
+    if (this.selectedStatus && o.status !== this.selectedStatus) return false;
+    if (this.selectedPayment && o.paymentMethod !== this.selectedPayment) return false;
+    if (this.selectedPartnerId != null && o.partnerId !== this.selectedPartnerId) return false;
+    if (this.selectedCourierId != null && o.courierId !== this.selectedCourierId) return false;
+    if (this.amountMin != null && o.total < this.amountMin) return false;
+    if (this.amountMax != null && o.total > this.amountMax) return false;
+
+    const activeQf = this.quickFilters.find((q) => q.id === this.activeQuickFilter);
+    if (activeQf?.filters.status && o.status !== activeQf.filters.status) return false;
+    if (activeQf?.filters.paymentStatus && o.paymentStatus !== activeQf.filters.paymentStatus) return false;
+
+    const df = this.getDateFilters();
+    if (df.startDate && o.createdAt) {
+      if (new Date(o.createdAt) < new Date(df.startDate)) return false;
+    }
+    if (df.endDate && o.createdAt) {
+      if (new Date(o.createdAt) > new Date(df.endDate)) return false;
+    }
+    return true;
   }
 
   private buildCurrentFilters(): OrderFilters {

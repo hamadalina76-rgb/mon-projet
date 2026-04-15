@@ -13,12 +13,14 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { Subscription } from 'rxjs';
+import { Subscription, EMPTY } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import mapboxgl from 'mapbox-gl';
 import { environment } from '@environments/environment';
 import { OrdersService } from '../services/orders.service';
-import { WebSocketService, CourierPositionEvent, OrderNoteEvent, OrderTimelineEvent } from '@core/services/websocket.service';
-import { AdminOrder, CourierPosition, InternalNote, NoteVisibility, ORDER_STATUS_CONFIG, OrderStatus, StatusHistoryEntry } from '../models/admin-order.model';
+import { PartnersService } from '../../partners/services/partners.service';
+import { WebSocketService, CourierPositionEvent, OrderNoteEvent, OrderTimelineEvent, WebSocketNotification } from '@core/services/websocket.service';
+import { AdminOrder, CourierPosition, InternalNote, NoteVisibility, ORDER_STATUS_CONFIG, OrderStatus } from '../models/admin-order.model';
 
 @Component({
   selector: 'app-order-detail',
@@ -36,6 +38,7 @@ import { AdminOrder, CourierPosition, InternalNote, NoteVisibility, ORDER_STATUS
 export class OrderDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private ordersService = inject(OrdersService);
+  private partnersService = inject(PartnersService);
   private wsService = inject(WebSocketService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
@@ -81,6 +84,9 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   noteSending = false;
   notesCount = 0;
 
+  /** Messages « Contacter » envoyés depuis cette page (affichage admin ; les notifs partenaire sont côté dashboard). */
+  adminOutboundMessages: { targetLabel: string; body: string; sentAt: string }[] = [];
+
   // WS notes subscription
   private notesSub: Subscription | null = null;
   private notesUnsubscribe: (() => void) | null = null;
@@ -88,6 +94,12 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   // WS timeline subscription (real-time status updates)
   private timelineSub: Subscription | null = null;
   private timelineUnsubscribe: (() => void) | null = null;
+
+  /** Ré-abonne timeline / notes / tracking après connexion STOMP (ou tout de suite si déjà connecté). */
+  private wsAfterConnectCleanup: (() => void) | null = null;
+
+  /** File d’attente admin : même flux que la liste (ORDER_ACCEPTED, etc.) si le topic timeline a raté. */
+  private adminOrderSub: Subscription | null = null;
 
   /** Allowed status transitions for admin force-status */
   readonly ALLOWED_TRANSITIONS: Record<string, OrderStatus[]> = {
@@ -133,12 +145,17 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     this.notesUnsubscribe?.();
     this.timelineSub?.unsubscribe();
     this.timelineUnsubscribe?.();
+    this.wsAfterConnectCleanup?.();
+    this.wsAfterConnectCleanup = null;
+    this.adminOrderSub?.unsubscribe();
+    this.adminOrderSub = null;
   }
 
   loadOrder(id: string): void {
     this.loading = true;
     this.ordersService.getOrder(+id).subscribe({
       next: (order) => {
+        this.adminOutboundMessages = [];
         this.order = order;
         this.loading = false;
         this.refreshing = false;
@@ -154,10 +171,9 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
         }
         // Load notes
         this.loadNotes(order.id);
-        // Subscribe to real-time notes from other admins
-        this.subscribeToNotes(order.id);
-        // Subscribe to real-time timeline (status changes)
-        this.subscribeToTimeline(order.id);
+        this.wsAfterConnectCleanup?.();
+        this.wsAfterConnectCleanup = this.wsService.afterStompConnect(() => this.resubscribeOrderLiveChannels());
+        this.subscribeToAdminOrderStream(order.id);
       },
       error: () => { this.loading = false; this.refreshing = false; },
     });
@@ -398,6 +414,10 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     return !!this.order;
   }
 
+  get notesTabBadgeCount(): number {
+    return this.notesCount + this.adminOutboundMessages.length;
+  }
+
   openCancelDialog(): void {
     this.cancelReason = '';
     this.showCancelDialog = true;
@@ -519,11 +539,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
 
   confirmContact(): void {
     if (!this.order || !this.contactMessage.trim()) return;
-    let targetUserId = 0;
-    if (this.contactTarget === 'customer') targetUserId = this.order.customerId;
-    else if (this.contactTarget === 'partner') targetUserId = this.order.partnerId;
-    else if (this.contactTarget === 'courier') targetUserId = this.order.courierId || 0;
-
+    const message = this.contactMessage.trim();
     const title = this.translate.instant('orderDetail.adminMessageTitle', {
       orderNumber: this.order.orderNumber,
     });
@@ -532,18 +548,64 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
       orderNumber: this.order.orderNumber,
       action: 'ADMIN_CONTACT',
       senderRole: 'ADMIN',
+      partnerId: this.order.partnerId,
     };
+
+    const targetLabel = this.translate.instant(
+      this.contactTarget === 'customer'
+        ? 'orderDetail.customer'
+        : this.contactTarget === 'partner'
+          ? 'orderDetail.partner'
+          : 'orderDetail.courier',
+    );
+
+    const onSuccess = (): void => {
+      this.actionLoading = false;
+      this.showContactDialog = false;
+      this.adminOutboundMessages = [
+        { targetLabel, body: message, sentAt: new Date().toISOString() },
+        ...this.adminOutboundMessages,
+      ];
+      this.snackBar.open(this.translate.instant('orderDetail.contactSuccess'), '✕', { duration: 3000 });
+    };
+    const onError = (): void => {
+      this.actionLoading = false;
+      this.snackBar.open(this.translate.instant('orderDetail.contactError'), '✕', { duration: 3000 });
+    };
+
     this.actionLoading = true;
-    this.ordersService.sendNotification(targetUserId, title, this.contactMessage, data).subscribe({
-      next: () => {
-        this.actionLoading = false;
-        this.showContactDialog = false;
-        this.snackBar.open(this.translate.instant('orderDetail.contactSuccess'), '✕', { duration: 3000 });
-      },
-      error: () => {
-        this.actionLoading = false;
-        this.snackBar.open(this.translate.instant('orderDetail.contactError'), '✕', { duration: 3000 });
-      },
+
+    if (this.contactTarget === 'partner') {
+      this.partnersService.getPartner(String(this.order.partnerId)).pipe(
+        switchMap((p: { userId?: number | null }) => {
+          const uid = p?.userId;
+          if (uid == null || Number(uid) <= 0) {
+            this.actionLoading = false;
+            this.snackBar.open(this.translate.instant('orderDetail.contactPartnerNoUser'), 'OK', { duration: 6000 });
+            return EMPTY;
+          }
+          return this.ordersService.sendNotification(Number(uid), title, message, data);
+        }),
+      ).subscribe({ next: onSuccess, error: onError });
+      return;
+    }
+
+    let targetUserId = 0;
+    if (this.contactTarget === 'customer') {
+      targetUserId = this.order.customerId;
+    } else {
+      targetUserId = this.order.courierId || 0;
+    }
+
+    if (targetUserId <= 0) {
+      this.actionLoading = false;
+      this.snackBar.open(this.translate.instant('orderDetail.contactError'), '✕', { duration: 3000 });
+      return;
+    }
+
+    this.ordersService.sendNotification(targetUserId, title, message, data).subscribe({
+      next: onSuccess,
+      error: onError,
     });
   }
 
@@ -568,6 +630,38 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** Notes + timeline + tracking (rappelé à chaque connexion WebSocket). */
+  private resubscribeOrderLiveChannels(): void {
+    if (!this.order) return;
+    const id = this.order.id;
+    this.subscribeToNotes(id);
+    this.subscribeToTimeline(id);
+    if (this.order.status === 'IN_DELIVERY' && this.order.courierId) {
+      this.startTracking(id, this.order.courierId);
+    } else {
+      this.stopTracking();
+    }
+  }
+
+  /** Recharge la commande depuis l’API (statut, livreur, historique à jour). */
+  private applyRealtimeOrderRefresh(): void {
+    if (!this.order) return;
+    this.ordersService.getOrder(this.order.id).subscribe({
+      next: (full) => {
+        this.order = full;
+        if (full.status === 'IN_DELIVERY' && full.courierId) {
+          this.startTracking(full.id, full.courierId);
+        } else {
+          this.stopTracking();
+        }
+        if (this.selectedTabIndex === 2 && this.mapInitialized) {
+          setTimeout(() => this.setupMapMarkers(), 100);
+        }
+      },
+      error: () => { /* garder l’affichage actuel */ },
+    });
+  }
+
   // ── Real-time Timeline (status changes via WebSocket) ──
   private subscribeToTimeline(orderId: number): void {
     this.timelineSub?.unsubscribe();
@@ -576,34 +670,22 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     const ws = this.wsService.subscribeToOrderTimeline(orderId);
     this.timelineUnsubscribe = ws.unsubscribe;
     this.timelineSub = ws.timeline$.subscribe((event: OrderTimelineEvent) => {
-      if (!this.order) return;
+      if (!this.order || event.orderId !== this.order.id) return;
+      this.applyRealtimeOrderRefresh();
+    });
+  }
 
-      // 1. Update order status + pipeline
-      this.order = {
-        ...this.order,
-        status: event.status as OrderStatus,
-      };
-
-      // 2. Append to timeline history
-      const entry: StatusHistoryEntry = {
-        status: event.status as OrderStatus,
-        previousStatus: event.previousStatus as OrderStatus | undefined,
-        description: event.description,
-        actorType: event.actorType as StatusHistoryEntry['actorType'],
-        timestamp: event.timestamp,
-      };
-
-      this.order.statusHistory = [
-        ...(this.order.statusHistory || []),
-        entry,
-      ];
-
-      // 3. Start/stop courier tracking if status changed to/from IN_DELIVERY
-      if (event.status === 'IN_DELIVERY' && this.order.courierId) {
-        this.startTracking(this.order.id, this.order.courierId);
-      } else if (event.status === 'DELIVERED' || event.status === 'CANCELLED') {
-        this.stopTracking();
-      }
+  /** Topic admin : ORDER_ACCEPTED (partenaire), ORDER_STATUS_CHANGED, etc. */
+  private subscribeToAdminOrderStream(orderId: number): void {
+    this.adminOrderSub?.unsubscribe();
+    this.adminOrderSub = this.wsService.onAdminNotification.subscribe((n: WebSocketNotification) => {
+      if (this.order?.id !== orderId) return;
+      if (n.type !== 'ORDER') return;
+      const oid = Number(n.data?.['orderId'] ?? n.data?.['id']);
+      if (oid !== orderId) return;
+      const action = n.data?.['action'] as string | undefined;
+      if (!action || !['ORDER_NEW', 'ORDER_STATUS_CHANGED', 'ORDER_ACCEPTED'].includes(action)) return;
+      this.applyRealtimeOrderRefresh();
     });
   }
 
