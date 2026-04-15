@@ -63,6 +63,12 @@ public class Zone {
     private BigDecimal deliveryFee;
 
     /**
+     * Frais de service pour cette zone
+     */
+    @Column(name = "service_fee", precision = 10, scale = 2)
+    private BigDecimal serviceFee;
+
+    /**
      * Temps de livraison minimum estimé (minutes)
      */
     private Integer minDeliveryTime;

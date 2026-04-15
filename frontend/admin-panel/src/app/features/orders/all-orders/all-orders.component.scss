@@ -16,12 +16,211 @@ $field-h: 40px;
 
 :host ::ng-deep {
 
+  /* ─── STATS NAV BUTTON ─────────────────────────────── */
+  .stats-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 36px;
+    padding: 0 16px;
+    border: 1.5px solid $red;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba($red, .06), rgba($red, .02));
+    color: $red;
+    font: 600 .8rem/1 inherit;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all .22s $ease;
+    white-space: nowrap;
+
+    .material-icons-round { font-size: 18px; }
+
+    &:hover {
+      background: rgba($red, .10);
+      box-shadow: 0 2px 10px $red-glow;
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 4px $red-glow;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .stats-nav-label { display: none; }
+    .stats-nav-btn { padding: 0 10px; }
+    .logs-nav-label { display: none; }
+    .logs-nav-btn { padding: 0 10px; }
+    .export-nav-label { display: none; }
+    .export-nav-btn { padding: 0 10px; }
+  }
+
+  /* ─── LOGS NAV BUTTON ──────────────────────────────── */
+  .logs-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 36px;
+    padding: 0 16px;
+    border: 1.5px solid $red;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba($red, .06), rgba($red, .02));
+    color: $red;
+    font: 600 .8rem/1 inherit;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all .22s $ease;
+    white-space: nowrap;
+
+    .material-icons-round { font-size: 18px; }
+
+    &:hover {
+      background: rgba($red, .10);
+      box-shadow: 0 2px 10px $red-glow;
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  /* ─── EXPORT NAV BUTTON ────────────────────────────── */
+  .export-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 36px;
+    padding: 0 16px;
+    border: 1.5px solid $red;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba($red, .06), rgba($red, .02));
+    color: $red;
+    font: 600 .8rem/1 inherit;
+    cursor: pointer;
+    transition: all .22s $ease;
+    white-space: nowrap;
+
+    .material-icons-round { font-size: 18px; }
+
+    &:hover:not(:disabled) {
+      background: rgba($red, .10);
+      box-shadow: 0 2px 10px $red-glow;
+      transform: translateY(-1px);
+    }
+
+    &:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+
+    .spin {
+      animation: exportSpin .8s linear infinite;
+    }
+  }
+
+  @keyframes exportSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* ─── TOP BAR (quick filters + date tags — single row) ─── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .bar-divider {
+    width: 1px;
+    height: 22px;
+    background: $border;
+    flex-shrink: 0;
+  }
+
+  /* ─── QUICK FILTERS ─────────────────────────────────── */
+  .quick-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .qf-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    padding: 0 12px;
+    border: 1.5px solid $border;
+    border-radius: 50px;
+    font: 600 .76rem/1 inherit;
+    color: $muted;
+    background: #fff;
+    cursor: pointer;
+    transition: all .2s $ease;
+    white-space: nowrap;
+    user-select: none;
+
+    .qf-ico { font-size: 15px; }
+
+    &:hover {
+      border-color: #CBD5E1;
+      background: $bg-card;
+    }
+
+    &.active {
+      border-color: $red;
+      color: $red;
+      background: $red-light;
+      box-shadow: 0 1px 6px $red-glow;
+    }
+
+    &.warn:not(.active) {
+      border-color: #FBBF24;
+      color: #D97706;
+      background: rgba(245, 158, 11, .06);
+    }
+
+    &.warn.active {
+      border-color: #F59E0B;
+      color: #D97706;
+      background: rgba(245, 158, 11, .12);
+      box-shadow: 0 1px 6px rgba(245, 158, 11, .18);
+    }
+  }
+
+  .qf-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 50px;
+    font: 700 .62rem/1 inherit;
+    background: rgba($muted, .12);
+    color: $muted;
+
+    .active & {
+      background: rgba($red, .15);
+      color: $red;
+    }
+
+    .warn & {
+      background: rgba(245, 158, 11, .15);
+      color: #D97706;
+    }
+  }
+
   /* ─── DATE QUICK-PICKS ──────────────────────────────── */
   .date-tags {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    margin-bottom: 12px;
+    margin-left: auto;
   }
 
   .dtag {

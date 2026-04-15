@@ -135,8 +135,44 @@ export interface OrderFilters {
   startDate?: string;
   endDate?: string;
   paymentMethod?: PaymentMethod | '';
+  paymentStatus?: PaymentStatus | '';
   amountMin?: number | null;
   amountMax?: number | null;
+}
+
+// ── Order Stats ──────────────────────────────────────────
+export interface OrderStatsKpis {
+  totalOrders: number;
+  activeOrders: number;
+  cancelRate: number;
+  avgDeliveryMinutes: number;
+  totalRevenueTND: number;
+  prevTotalOrders: number;
+  prevCancelRate: number;
+  prevAvgDeliveryMinutes: number;
+  prevRevenueTND: number;
+}
+
+export interface OrderStatsChart {
+  labels: string[];
+  newOrders: number[];
+  deliveredOrders: number[];
+  cancelledOrders: number[];
+}
+
+export interface OrderStatsDistribution {
+  pending: number;
+  confirmed: number;
+  preparing: number;
+  inDelivery: number;
+  delivered: number;
+  cancelled: number;
+}
+
+export interface OrderStatsResponse {
+  kpis: OrderStatsKpis;
+  chart: OrderStatsChart;
+  distribution?: OrderStatsDistribution;
 }
 
 export const ORDER_STATUS_CONFIG: Record<OrderStatus, { color: string; bg: string; icon: string }> = {

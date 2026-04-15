@@ -38,6 +38,11 @@ public class ZoneCreateRequest {
     @Digits(integer = 3, fraction = 3, message = "Format invalide : max 3 entiers et 3 décimales")
     private BigDecimal deliveryFee;
 
+    @DecimalMin(value = "0.0", inclusive = true, message = "Les frais de service ne peuvent pas être négatifs")
+    @DecimalMax(value = "999.999", inclusive = true, message = "Les frais de service ne peuvent pas dépasser 999.999 TND")
+    @Digits(integer = 3, fraction = 3, message = "Format invalide : max 3 entiers et 3 décimales")
+    private BigDecimal serviceFee;
+
     private Integer minDeliveryTime;
 
     private Integer maxDeliveryTime;

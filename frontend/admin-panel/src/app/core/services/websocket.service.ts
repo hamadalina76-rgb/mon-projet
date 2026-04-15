@@ -39,6 +39,15 @@ export interface OrderNoteEvent {
   createdAt: string;
 }
 
+export interface OrderTimelineEvent {
+  orderId: number;
+  status: string;
+  previousStatus?: string;
+  description?: string;
+  actorType?: string;
+  timestamp: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -152,6 +161,39 @@ export class WebSocketService implements OnDestroy {
 
     return {
       notes$: subject.asObservable(),
+      unsubscribe: () => {
+        subscription?.unsubscribe();
+        subject.complete();
+      },
+    };
+  }
+
+  /**
+   * Subscribe to order timeline (status changes) for a specific order.
+   * Returns an Observable that emits timeline events and a teardown function.
+   */
+  subscribeToOrderTimeline(orderId: number): { timeline$: Observable<OrderTimelineEvent>; unsubscribe: () => void } {
+    const subject = new Subject<OrderTimelineEvent>();
+    let subscription: StompSubscription | null = null;
+
+    const doSubscribe = () => {
+      if (!this.client?.active) return;
+      subscription = this.client.subscribe(`/topic/orders/${orderId}/timeline`, (message: IMessage) => {
+        try {
+          const event: OrderTimelineEvent = JSON.parse(message.body);
+          subject.next(event);
+        } catch (e) {
+          console.error('[WebSocket] Failed to parse timeline event:', e);
+        }
+      });
+    };
+
+    if (this.client?.active) {
+      doSubscribe();
+    }
+
+    return {
+      timeline$: subject.asObservable(),
       unsubscribe: () => {
         subscription?.unsubscribe();
         subject.complete();

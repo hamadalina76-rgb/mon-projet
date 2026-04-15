@@ -120,6 +120,9 @@
           <div class="totals-block">
             <div class="total-line"><span>{{ 'orderDetail.subtotal' | translate }}</span><span>{{ order.subtotal | number:'1.2-2' }} TND</span></div>
             <div class="total-line"><span>{{ 'orderDetail.deliveryFee' | translate }}</span><span>{{ order.deliveryFee | number:'1.2-2' }} TND</span></div>
+            @if (order.serviceFee > 0) {
+              <div class="total-line"><span>{{ 'orderDetail.serviceFee' | translate }}</span><span>{{ order.serviceFee | number:'1.2-2' }} TND</span></div>
+            }
             @if (order.discount > 0) {
               <div class="total-line discount"><span>{{ 'orderDetail.discount' | translate }}</span><span>-{{ order.discount | number:'1.2-2' }} TND</span></div>
             }

@@ -24,6 +24,7 @@ public class ZoneDTO {
     private Zone.ZoneType type;
     private String boundaryJson;
     private BigDecimal deliveryFee;
+    private BigDecimal serviceFee;
     private Integer minDeliveryTime;
     private Integer maxDeliveryTime;
     private Boolean isActive;

@@ -14,18 +14,73 @@
   (pageChange)="onPageChange($event)"
 >
 
+  <!-- Stats page link -->
+  <a headerAction class="stats-nav-btn" routerLink="/orders/stats"
+     [matTooltip]="'orders.stats.show' | translate">
+    <span class="material-icons-round">analytics</span>
+    <span class="stats-nav-label">{{ 'orders.stats.title' | translate }}</span>
+  </a>
+
+  <!-- Logs page link -->
+  <a headerAction class="logs-nav-btn" routerLink="/orders/logs"
+     [matTooltip]="'orders.logs.title' | translate">
+    <span class="material-icons-round">history</span>
+    <span class="logs-nav-label">{{ 'orders.logs.title' | translate }}</span>
+  </a>
+
+  <!-- Export menu -->
+  <button headerAction class="export-nav-btn" [matMenuTriggerFor]="exportMenu"
+          [matTooltip]="'orders.export.title' | translate"
+          [disabled]="exportLoading">
+    @if (exportLoading) {
+      <span class="material-icons-round spin">sync</span>
+    } @else {
+      <span class="material-icons-round">file_download</span>
+    }
+    <span class="export-nav-label">{{ 'orders.export.title' | translate }}</span>
+  </button>
+  <mat-menu #exportMenu="matMenu">
+    <button mat-menu-item (click)="exportExcel()">
+      <span class="material-icons-round" style="color:#217346;margin-right:8px">description</span>
+      {{ 'orders.export.excel' | translate }}
+    </button>
+    <button mat-menu-item (click)="exportPdf()">
+      <span class="material-icons-round" style="color:#E31E24;margin-right:8px">picture_as_pdf</span>
+      {{ 'orders.export.pdf' | translate }}
+    </button>
+  </mat-menu>
+
   <!-- ── Filters ──────────────────────────────────────── -->
   <div filters class="filters-bar">
 
-    <!-- Date quick-picks -->
-    <div class="date-tags">
-      @for (tag of dateTags; track tag.value) {
-        <button class="dtag" [class.active]="selectedRange === tag.value"
-                (click)="onRangeChange(tag.value)">
-          <span class="material-icons-round dtag-ico">{{ tag.icon }}</span>
-          {{ tag.label | translate }}
-        </button>
-      }
+    <!-- Quick filters + Date tags — single compact row -->
+    <div class="top-bar">
+      <div class="quick-filters">
+        @for (qf of quickFilters; track qf.id) {
+          <button class="qf-chip"
+                  [class.active]="activeQuickFilter === qf.id"
+                  [class.warn]="qf.color === 'warn' && qf.count !== null && qf.count > 0"
+                  (click)="selectQuickFilter(qf)">
+            <span class="material-icons-round qf-ico">{{ qf.icon }}</span>
+            {{ qf.labelKey | translate }}
+            @if (qf.count !== null && qf.count > 0) {
+              <span class="qf-badge">{{ qf.count }}</span>
+            }
+          </button>
+        }
+      </div>
+
+      <span class="bar-divider"></span>
+
+      <div class="date-tags">
+        @for (tag of dateTags; track tag.value) {
+          <button class="dtag" [class.active]="selectedRange === tag.value"
+                  (click)="onRangeChange(tag.value)">
+            <span class="material-icons-round dtag-ico">{{ tag.icon }}</span>
+            {{ tag.label | translate }}
+          </button>
+        }
+      </div>
     </div>
 
     <!-- Filter card -->

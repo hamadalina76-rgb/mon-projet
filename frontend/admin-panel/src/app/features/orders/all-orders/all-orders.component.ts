@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
-import { Subject, Observable, of } from 'rxjs';
+import { Subject, Observable, of, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil, switchMap, map, startWith, catchError } from 'rxjs/operators';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
@@ -13,11 +13,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { AdminOrder, OrderFilters, ORDER_STATUS_CONFIG, OrderStatus, PaymentMethod } from '../models/admin-order.model';
+import { AdminOrder, OrderFilters, ORDER_STATUS_CONFIG, OrderStatus, PaymentMethod, PaymentStatus } from '../models/admin-order.model';
 import { OrdersService } from '../services/orders.service';
 import { PartnersService } from '../../partners/services/partners.service';
 import { CouriersService } from '../../users/couriers/services/couriers.service';
+import { WebSocketService } from '@core/services/websocket.service';
 import { ListPageComponent } from '@shared/components/list-page/list-page.component';
 
 type DateRange = 'today' | '7days' | '30days' | 'all' | 'custom';
@@ -28,6 +31,15 @@ interface ActiveFilter {
   icon: string;
 }
 
+interface QuickFilter {
+  id: string;
+  labelKey: string;
+  icon: string;
+  color?: 'warn' | 'default';
+  filters: Partial<OrderFilters>;
+  count: number | null;
+}
+
 @Component({
   selector: 'app-all-orders',
   standalone: true,
@@ -35,7 +47,7 @@ interface ActiveFilter {
     CommonModule, RouterModule, FormsModule, ReactiveFormsModule,
     MatFormFieldModule, MatSelectModule, MatTooltipModule,
     MatAutocompleteModule, MatInputModule, MatButtonModule, MatIconModule,
-    MatDatepickerModule, MatNativeDateModule,
+    MatDatepickerModule, MatNativeDateModule, MatMenuModule, MatSnackBarModule,
     TranslateModule, ListPageComponent,
   ],
   templateUrl: './all-orders.component.html',
@@ -47,8 +59,11 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
   private couriersService = inject(CouriersService);
   private router = inject(Router);
   private translate = inject(TranslateService);
+  private wsService = inject(WebSocketService);
+  private snackBar = inject(MatSnackBar);
   private destroy$ = new Subject<void>();
   private searchInput$ = new Subject<string>();
+  private wsSub?: Subscription;
 
   orders: AdminOrder[] = [];
   loading = false;
@@ -79,6 +94,18 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
   });
 
   statusConfig = ORDER_STATUS_CONFIG;
+
+  // ── Quick filters ────────────────────────────────
+  activeQuickFilter = 'all';
+
+  quickFilters: QuickFilter[] = [
+    { id: 'all',            labelKey: 'orders.quick.all',           icon: 'list_alt',        filters: {},                                                count: null },
+    { id: 'pending_urgent', labelKey: 'orders.quick.pendingUrgent', icon: 'schedule',        color: 'warn', filters: { status: 'PENDING' as OrderStatus },  count: null },
+    { id: 'no_courier',     labelKey: 'orders.quick.noCourier',     icon: 'person_off',      filters: { status: 'CONFIRMED' as OrderStatus },              count: null },
+    { id: 'late_delivery',  labelKey: 'orders.quick.lateDelivery',  icon: 'timer_off',       color: 'warn', filters: { status: 'IN_DELIVERY' as OrderStatus }, count: null },
+    { id: 'cancelled',      labelKey: 'orders.quick.cancelled',     icon: 'cancel',          filters: { status: 'CANCELLED' as OrderStatus },              count: null },
+    { id: 'payment_failed', labelKey: 'orders.quick.paymentFailed', icon: 'credit_card_off', color: 'warn', filters: { paymentStatus: 'FAILED' as PaymentStatus }, count: null },
+  ];
 
   dateTags: { value: DateRange; label: string; icon: string }[] = [
     { value: 'today',  label: 'orders.filters.today',      icon: 'today' },
@@ -130,9 +157,16 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
     );
 
     this.loadOrders();
+    this.loadBadgeCounts();
+
+    // WebSocket: refresh badge counts on any admin notification
+    this.wsSub = this.wsService.onAdminNotification
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.loadBadgeCounts());
   }
 
   ngOnDestroy(): void {
+    this.wsSub?.unsubscribe();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -154,6 +188,20 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
     if (range !== 'custom') {
       this.dateRange.reset();
     }
+    this.applyFilters();
+  }
+
+  selectQuickFilter(qf: QuickFilter): void {
+    this.activeQuickFilter = qf.id;
+    if (qf.id === 'all') {
+      this.resetFilters();
+      return;
+    }
+    // Apply quick-filter preset on top of current advanced filters
+    this.selectedStatus = (qf.filters.status as OrderStatus) || '';
+    this.selectedPayment = '';
+    this.selectedRange = 'all';
+    this.dateRange.reset();
     this.applyFilters();
   }
 
@@ -319,6 +367,11 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
       ...(this.amountMin != null ? { amountMin: this.amountMin } : {}),
       ...(this.amountMax != null ? { amountMax: this.amountMax } : {}),
     };
+    // Merge quick-filter paymentStatus if active
+    const activeQf = this.quickFilters.find(q => q.id === this.activeQuickFilter);
+    if (activeQf?.filters.paymentStatus) {
+      filters.paymentStatus = activeQf.filters.paymentStatus;
+    }
     this.ordersService.getOrders(this.currentPage - 1, this.itemsPerPage, filters, 'createdAt,desc').subscribe({
       next: (res) => {
         this.orders = res.content || [];
@@ -361,5 +414,71 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
   private toLocalISO(d: Date): string {
     const pad = (n: number) => n.toString().padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+
+  private loadBadgeCounts(): void {
+    this.quickFilters.forEach(qf => {
+      if (qf.id === 'all') return;
+      const filters: OrderFilters = { ...qf.filters };
+      this.ordersService.getOrders(0, 1, filters).subscribe({
+        next: (res) => { qf.count = res.totalElements || 0; },
+        error: () => { qf.count = 0; },
+      });
+    });
+  }
+
+  // ── Export ────────────────────────────────────────
+  exportLoading = false;
+
+  exportExcel(): void {
+    this.doExport('excel');
+  }
+
+  exportPdf(): void {
+    this.doExport('pdf');
+  }
+
+  private doExport(format: 'excel' | 'pdf'): void {
+    this.exportLoading = true;
+    const filters = this.buildCurrentFilters();
+    const lang = this.translate.currentLang || 'fr';
+    const obs = format === 'excel'
+      ? this.ordersService.exportExcel(filters, lang)
+      : this.ordersService.exportPdf(filters, lang);
+
+    obs.subscribe({
+      next: (blob) => {
+        const ext = format === 'excel' ? 'xlsx' : 'pdf';
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `commandes-${new Date().toISOString().slice(0, 10)}.${ext}`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        this.exportLoading = false;
+      },
+      error: () => {
+        this.exportLoading = false;
+        this.snackBar.open(this.translate.instant('orders.export.error'), '✕', { duration: 3000 });
+      },
+    });
+  }
+
+  private buildCurrentFilters(): OrderFilters {
+    const filters: OrderFilters = {
+      ...this.getDateFilters(),
+      ...(this.searchText ? { search: this.searchText } : {}),
+      ...(this.selectedStatus ? { status: this.selectedStatus } : {}),
+      ...(this.selectedPayment ? { paymentMethod: this.selectedPayment } : {}),
+      ...(this.selectedPartnerId ? { partnerId: this.selectedPartnerId } : {}),
+      ...(this.selectedCourierId ? { courierId: this.selectedCourierId } : {}),
+      ...(this.amountMin != null ? { amountMin: this.amountMin } : {}),
+      ...(this.amountMax != null ? { amountMax: this.amountMax } : {}),
+    };
+    const activeQf = this.quickFilters.find(q => q.id === this.activeQuickFilter);
+    if (activeQf?.filters.paymentStatus) {
+      filters.paymentStatus = activeQf.filters.paymentStatus;
+    }
+    return filters;
   }
 }

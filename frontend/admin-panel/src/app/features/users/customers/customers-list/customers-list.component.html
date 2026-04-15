@@ -36,7 +36,7 @@
         <mat-option value="DELETED">{{ 'users.customers.status.deleted' | translate }}</mat-option>
       </mat-select>
     </mat-form-field>
-    <button mat-stroked-button (click)="exportCustomers('xlsx')" class="export-btn">
+    <button mat-stroked-button color="warn" (click)="exportCustomers('xlsx')" class="export-btn">
       <span class="material-icons-round">download</span>
       {{ 'common.export' | translate }} Excel
     </button>

@@ -246,6 +246,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query(value = "SELECT o FROM Order o WHERE "
             + "(:status IS NULL OR o.status = :status) "
             + "AND (:paymentMethod IS NULL OR o.paymentMethod = :paymentMethod) "
+            + "AND (:paymentStatus IS NULL OR o.paymentStatus = :paymentStatus) "
             + "AND (CAST(:startDate AS timestamp) IS NULL OR o.createdAt >= :startDate) "
             + "AND (CAST(:endDate AS timestamp) IS NULL OR o.createdAt <= :endDate) "
             + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
@@ -258,6 +259,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             countQuery = "SELECT COUNT(o) FROM Order o WHERE "
             + "(:status IS NULL OR o.status = :status) "
             + "AND (:paymentMethod IS NULL OR o.paymentMethod = :paymentMethod) "
+            + "AND (:paymentStatus IS NULL OR o.paymentStatus = :paymentStatus) "
             + "AND (CAST(:startDate AS timestamp) IS NULL OR o.createdAt >= :startDate) "
             + "AND (CAST(:endDate AS timestamp) IS NULL OR o.createdAt <= :endDate) "
             + "AND (:search = '' OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :search, '%')) "
@@ -270,6 +272,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findAllAdmin(
             @Param("status") OrderStatus status,
             @Param("paymentMethod") Order.PaymentMethod paymentMethod,
+            @Param("paymentStatus") PaymentStatus paymentStatus,
             @Param("search") String search,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
@@ -356,6 +359,48 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     );
 
     // ==================== STATISTIQUES ====================
+
+    /** Count all orders in a date range. */
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.createdAt >= :from AND o.createdAt <= :to")
+    long countByCreatedAtBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** Count orders with a given status in a date range. */
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.status = :status AND o.createdAt >= :from AND o.createdAt <= :to")
+    long countByStatusAndCreatedAtBetween(@Param("status") OrderStatus status,
+                                          @Param("from") LocalDateTime from,
+                                          @Param("to") LocalDateTime to);
+
+    /** Count currently active orders (not DELIVERED / CANCELLED). */
+    @Query(value = "SELECT COUNT(*) FROM orders o WHERE o.status NOT IN ('DELIVERED', 'CANCELLED')", nativeQuery = true)
+    long countActiveOrders();
+
+    /** Revenue (sum of total) for DELIVERED orders in a date range. */
+    @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o WHERE o.status = 'DELIVERED' AND o.createdAt >= :from AND o.createdAt <= :to")
+    BigDecimal sumRevenueByDateRange(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** Avg delivery time in minutes for DELIVERED orders in a date range (PostgreSQL). */
+    @Query(value = "SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (o.actual_delivery_time - o.order_time)) / 60.0), 0) " +
+                   "FROM orders o WHERE o.status = 'DELIVERED' AND o.actual_delivery_time IS NOT NULL " +
+                   "AND o.created_at >= :from AND o.created_at <= :to", nativeQuery = true)
+    Double avgDeliveryMinutesByDateRange(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** Hourly breakdown: returns rows [hour (int 0-23), status (String), count (long)]. */
+    @Query(value = "SELECT CAST(EXTRACT(HOUR FROM o.created_at) AS INTEGER) AS hr, o.status, COUNT(*) " +
+                   "FROM orders o WHERE o.created_at >= :from AND o.created_at <= :to " +
+                   "GROUP BY hr, o.status ORDER BY hr", nativeQuery = true)
+    List<Object[]> countByHourAndStatus(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** Daily breakdown: returns rows [day (date), status (String), count (long)]. */
+    @Query(value = "SELECT DATE(o.created_at) AS day, o.status, COUNT(*) " +
+                   "FROM orders o WHERE o.created_at >= :from AND o.created_at <= :to " +
+                   "GROUP BY day, o.status ORDER BY day", nativeQuery = true)
+    List<Object[]> countByDayAndStatus(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** Distribution: count orders per status in a date range. Returns rows [status (String), count (long)]. */
+    @Query(value = "SELECT o.status, COUNT(*) FROM orders o " +
+                   "WHERE o.created_at >= :from AND o.created_at <= :to " +
+                   "GROUP BY o.status", nativeQuery = true)
+    List<Object[]> countByStatusGrouped(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
     @Query("SELECT SUM(o.total) FROM Order o WHERE o.partnerId = :partnerId AND o.status = 'DELIVERED'")
     BigDecimal getTotalRevenueByPartner(@Param("partnerId") Long partnerId);

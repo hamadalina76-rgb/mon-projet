@@ -771,6 +771,14 @@
       "dateTo": "إلى",
       "reset": "إعادة تعيين"
     },
+    "quick": {
+      "all": "الكل",
+      "pendingUrgent": "قيد الانتظار",
+      "noCourier": "بدون ساعي",
+      "lateDelivery": "قيد التوصيل",
+      "cancelled": "ملغاة",
+      "paymentFailed": "فشل الدفع"
+    },
     "payment": {
       "cash": "نقدي",
       "card": "بطاقة",
@@ -784,12 +792,64 @@
       "PICKED_UP": "تم الاستلام",
       "IN_DELIVERY": "توصيل",
       "DELIVERED": "تم التوصيل"
+    },
+    "stats": {
+      "title": "الإحصائيات",
+      "hourly": "بالساعة",
+      "weekly": "باليوم",
+      "totalOrders": "إجمالي الطلبات",
+      "activeOrders": "الطلبات النشطة",
+      "cancelRate": "نسبة الإلغاء",
+      "avgDelivery": "متوسط وقت التوصيل",
+      "revenue": "إيرادات اليوم",
+      "today": "اليوم",
+      "refresh": "تحديث",
+      "chartTitleHour": "الطلبات حسب الساعة",
+      "chartTitleDay": "الطلبات حسب اليوم",
+      "chart": {
+        "newOrders": "جديدة",
+        "delivered": "تم التوصيل",
+        "cancelled": "ملغاة"
+      },
+      "distribution": "توزيع الطلبات",
+      "dist": {
+        "pending": "قيد الانتظار",
+        "confirmed": "مؤكدة",
+        "preparing": "قيد التحضير",
+        "inDelivery": "قيد التوصيل",
+        "delivered": "تم التوصيل",
+        "cancelled": "ملغاة"
+      },
+      "show": "عرض الإحصائيات",
+      "errorTitle": "تعذّر تحميل الإحصائيات",
+      "errorDesc": "الخادم لا يستجيب. تحقّق من تشغيل خدمات الواجهة الخلفية ثم أعد المحاولة."
+    },
+    "export": {
+      "title": "تصدير",
+      "excel": "تصدير Excel",
+      "pdf": "تصدير PDF",
+      "error": "فشل التصدير"
+    },
+    "logs": {
+      "title": "السجل",
+      "noLogs": "لا توجد سجلات",
+      "actorType": "نوع الفاعل",
+      "status": "الحالة",
+      "orderId": "معرف الطلب",
+      "filter": "تصفية",
+      "date": "التاريخ",
+      "order": "الطلب",
+      "change": "التغيير",
+      "description": "الوصف",
+      "actor": "الفاعل",
+      "notes": "ملاحظات"
     }
   },
   "orderDetail": {
     "items": "المنتجات",
     "subtotal": "المجموع الفرعي",
     "deliveryFee": "رسوم التوصيل",
+    "serviceFee": "رسوم الخدمة",
     "discount": "الخصم",
     "total": "المجموع",
     "pricing": "التسعير",
@@ -1225,6 +1285,7 @@
     "status": "الحالة",
     "type": "النوع",
     "deliveryFee": "رسوم التوصيل",
+    "serviceFee": "رسوم الخدمة",
     "feeTnd": "الرسوم (د.ت)",
     "minimumOrder": "الحد الأدنى للطلب",
     "active": "نشطة",
@@ -1314,6 +1375,7 @@
         "feeRequired": "رسوم التوصيل مطلوبة",
         "feeMin": "لا يمكن أن تكون رسوم التوصيل سالبة",
         "feeMax": "لا يمكن أن تتجاوز رسوم التوصيل 999.999 دينار",
+        "serviceFeeMin": "لا يمكن أن تكون رسوم الخدمة سالبة",
         "radiusMin": "يجب أن يكون نصف القطر أكبر من 0.1 كم",
         "radiusMax": "لا يمكن أن يتجاوز نصف القطر 500 كم"
       },

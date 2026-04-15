@@ -67,6 +67,26 @@ import { ToastrService } from 'ngx-toastr';
                 <textarea matInput formControlName="description" rows="4"></textarea>
               </mat-form-field>
 
+              <div class="fee-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ 'zones.deliveryFee' | translate }}</mat-label>
+                  <input matInput type="number" formControlName="deliveryFee" min="0" step="0.01" />
+                  <span matSuffix>TND</span>
+                  @if (zoneForm.get('deliveryFee')?.hasError('min')) {
+                    <mat-error>{{ 'zones.editor.validation.feeMin' | translate }}</mat-error>
+                  }
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ 'zones.serviceFee' | translate }}</mat-label>
+                  <input matInput type="number" formControlName="serviceFee" min="0" step="0.01" />
+                  <span matSuffix>TND</span>
+                  @if (zoneForm.get('serviceFee')?.hasError('min')) {
+                    <mat-error>{{ 'zones.editor.validation.serviceFeeMin' | translate }}</mat-error>
+                  }
+                </mat-form-field>
+              </div>
+
               <mat-slide-toggle formControlName="isActive" class="toggle-field">
                 {{ 'zones.activeStatus' | translate }}
               </mat-slide-toggle>
@@ -125,6 +145,16 @@ import { ToastrService } from 'ngx-toastr';
       margin-bottom: 1.5rem;
     }
 
+    .fee-row {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+
+      mat-form-field {
+        flex: 1;
+      }
+    }
+
     .form-actions {
       display: flex;
       justify-content: flex-end;
@@ -147,6 +177,8 @@ export class ZoneEditorComponent implements OnInit {
         name: ['', Validators.required],
         city: ['', Validators.required],
         description: [''],
+        deliveryFee: [0, [Validators.min(0)]],
+        serviceFee: [0, [Validators.min(0)]],
         isActive: [true],
     });
 

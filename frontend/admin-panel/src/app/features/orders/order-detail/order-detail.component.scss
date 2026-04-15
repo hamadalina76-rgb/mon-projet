@@ -36,9 +36,9 @@ $gray-light: #f4f6f8;
 }
 
 .refresh-btn {
-  font-size: 0.82rem; border-color: #ddd;
+  font-size: 0.82rem; border-color: $red; color: $red;
   mat-icon { font-size: 18px; width: 18px; height: 18px; margin-right: 4px; }
-  &:hover { border-color: $red; color: $red; }
+  &:hover { background: $red-light; }
 }
 
 .spin { animation: spin 0.8s linear infinite; }
@@ -130,6 +130,17 @@ $gray-light: #f4f6f8;
   display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
   @media (max-width: 600px) { grid-template-columns: 1fr; }
   button { display: flex; align-items: center; gap: 6px; justify-content: center; }
+
+  button[mat-stroked-button] {
+    border-color: $red;
+    color: $red;
+
+    &:hover {
+      background: $red-light;
+    }
+
+    mat-icon { color: $red; }
+  }
 }
 
 .contact-targets {

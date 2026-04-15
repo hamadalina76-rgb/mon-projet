@@ -17,8 +17,8 @@ import { Subscription } from 'rxjs';
 import mapboxgl from 'mapbox-gl';
 import { environment } from '@environments/environment';
 import { OrdersService } from '../services/orders.service';
-import { WebSocketService, CourierPositionEvent, OrderNoteEvent } from '@core/services/websocket.service';
-import { AdminOrder, CourierPosition, InternalNote, NoteVisibility, ORDER_STATUS_CONFIG, OrderStatus } from '../models/admin-order.model';
+import { WebSocketService, CourierPositionEvent, OrderNoteEvent, OrderTimelineEvent } from '@core/services/websocket.service';
+import { AdminOrder, CourierPosition, InternalNote, NoteVisibility, ORDER_STATUS_CONFIG, OrderStatus, StatusHistoryEntry } from '../models/admin-order.model';
 
 @Component({
   selector: 'app-order-detail',
@@ -85,6 +85,10 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   private notesSub: Subscription | null = null;
   private notesUnsubscribe: (() => void) | null = null;
 
+  // WS timeline subscription (real-time status updates)
+  private timelineSub: Subscription | null = null;
+  private timelineUnsubscribe: (() => void) | null = null;
+
   /** Allowed status transitions for admin force-status */
   readonly ALLOWED_TRANSITIONS: Record<string, OrderStatus[]> = {
     PENDING: ['CONFIRMED', 'PREPARING', 'CANCELLED'],
@@ -127,6 +131,8 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     this.stopTracking();
     this.notesSub?.unsubscribe();
     this.notesUnsubscribe?.();
+    this.timelineSub?.unsubscribe();
+    this.timelineUnsubscribe?.();
   }
 
   loadOrder(id: string): void {
@@ -150,6 +156,8 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
         this.loadNotes(order.id);
         // Subscribe to real-time notes from other admins
         this.subscribeToNotes(order.id);
+        // Subscribe to real-time timeline (status changes)
+        this.subscribeToTimeline(order.id);
       },
       error: () => { this.loading = false; this.refreshing = false; },
     });
@@ -559,6 +567,46 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
       }
     });
   }
+
+  // ── Real-time Timeline (status changes via WebSocket) ──
+  private subscribeToTimeline(orderId: number): void {
+    this.timelineSub?.unsubscribe();
+    this.timelineUnsubscribe?.();
+
+    const ws = this.wsService.subscribeToOrderTimeline(orderId);
+    this.timelineUnsubscribe = ws.unsubscribe;
+    this.timelineSub = ws.timeline$.subscribe((event: OrderTimelineEvent) => {
+      if (!this.order) return;
+
+      // 1. Update order status + pipeline
+      this.order = {
+        ...this.order,
+        status: event.status as OrderStatus,
+      };
+
+      // 2. Append to timeline history
+      const entry: StatusHistoryEntry = {
+        status: event.status as OrderStatus,
+        previousStatus: event.previousStatus as OrderStatus | undefined,
+        description: event.description,
+        actorType: event.actorType as StatusHistoryEntry['actorType'],
+        timestamp: event.timestamp,
+      };
+
+      this.order.statusHistory = [
+        ...(this.order.statusHistory || []),
+        entry,
+      ];
+
+      // 3. Start/stop courier tracking if status changed to/from IN_DELIVERY
+      if (event.status === 'IN_DELIVERY' && this.order.courierId) {
+        this.startTracking(this.order.id, this.order.courierId);
+      } else if (event.status === 'DELIVERED' || event.status === 'CANCELLED') {
+        this.stopTracking();
+      }
+    });
+  }
+
 
   loadNotes(orderId: number): void {
     this.notesLoading = true;

@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { ApiService } from '@core/services/api.service';
 import { environment } from '@environments/environment';
-import { AdminOrder, CourierPosition, InternalNote, OrderFilters, OrderPageResponse, OrderStatus } from '../models/admin-order.model';
+import { AdminOrder, CourierPosition, InternalNote, OrderFilters, OrderPageResponse, OrderStatsResponse, OrderStatus } from '../models/admin-order.model';
 
 @Injectable({
   providedIn: 'root',
@@ -31,6 +31,11 @@ export class OrdersService {
 
   getOrder(id: number): Observable<AdminOrder> {
     return this.api.get<AdminOrder>(`orders/${id}`);
+  }
+
+  getStats(date: string, granularity: 'HOUR' | 'DAY'): Observable<OrderStatsResponse> {
+    const params = new HttpParams().set('date', date).set('granularity', granularity);
+    return this.api.get<OrderStatsResponse>('orders/admin/stats', params);
   }
 
   getCourierPosition(courierId: number): Observable<CourierPosition> {
@@ -77,6 +82,44 @@ export class OrdersService {
       data: data || {},
       channel: 'IN_APP',
     });
+  }
+
+  // ── Export ─────────────────────────────────────────
+  exportExcel(filters?: OrderFilters, lang: string = 'fr'): Observable<Blob> {
+    let params = new HttpParams().set('lang', lang);
+    if (filters) {
+      Object.entries(filters).forEach(([key, val]) => {
+        if (val !== undefined && val !== null && val !== '') {
+          params = params.set(key, val.toString());
+        }
+      });
+    }
+    return this.http.get(`${this.apiUrl}/orders/admin/export/excel`, { params, responseType: 'blob' });
+  }
+
+  exportPdf(filters?: OrderFilters, lang: string = 'fr'): Observable<Blob> {
+    let params = new HttpParams().set('lang', lang);
+    if (filters) {
+      Object.entries(filters).forEach(([key, val]) => {
+        if (val !== undefined && val !== null && val !== '') {
+          params = params.set(key, val.toString());
+        }
+      });
+    }
+    return this.http.get(`${this.apiUrl}/orders/admin/export/pdf`, { params, responseType: 'blob' });
+  }
+
+  // ── Logs ──────────────────────────────────────────
+  getLogs(page: number, size: number, filters?: { actorType?: string; status?: string; orderId?: number; startDate?: string; endDate?: string }): Observable<any> {
+    let params = new HttpParams().set('page', page.toString()).set('size', size.toString());
+    if (filters) {
+      Object.entries(filters).forEach(([key, val]) => {
+        if (val !== undefined && val !== null && val !== '') {
+          params = params.set(key, val.toString());
+        }
+      });
+    }
+    return this.api.get('orders/admin/logs', params);
   }
 
   // ── Internal Notes ────────────────────────────────

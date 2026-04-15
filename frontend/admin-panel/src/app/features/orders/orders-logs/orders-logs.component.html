@@ -1,0 +1,112 @@
+<app-list-page
+  [title]="'orders.logs.title'"
+  [showBackButton]="true"
+  backLink="/orders"
+  [loading]="loading"
+  [empty]="logs.length === 0"
+  [emptyMessage]="'orders.logs.noLogs'"
+  emptyIcon="history"
+  [totalItems]="totalItems"
+  [currentPage]="currentPage"
+  [itemsPerPage]="itemsPerPage"
+  [itemsPerPageOptions]="[20, 50, 100]"
+  [showPagination]="totalItems > 0"
+  [itemsPerPageLabel]="'orders.itemsPerPage'"
+  [ofLabel]="'orders.of'"
+  (pageChange)="onPageChange($event)"
+>
+
+  <!-- ── Filters ──────────────────────────────────── -->
+  <div filters class="filters-bar">
+    <div class="filter-row">
+
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>{{ 'orders.logs.actorType' | translate }}</mat-label>
+        <mat-select [(ngModel)]="selectedActorType" (selectionChange)="applyFilters()">
+          <mat-option value="">{{ 'common.all' | translate }}</mat-option>
+          @for (at of actorTypes; track at) {
+            <mat-option [value]="at">{{ at }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>{{ 'orders.logs.status' | translate }}</mat-label>
+        <mat-select [(ngModel)]="selectedStatus" (selectionChange)="applyFilters()">
+          <mat-option value="">{{ 'common.all' | translate }}</mat-option>
+          @for (s of statuses; track s) {
+            <mat-option [value]="s">{{ s }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>{{ 'orders.logs.orderId' | translate }}</mat-label>
+        <input matInput type="number" [(ngModel)]="searchOrderId" (keyup.enter)="applyFilters()"
+               placeholder="ID">
+      </mat-form-field>
+
+      <button class="btn-filter" (click)="applyFilters()">
+        <span class="material-icons-round">filter_list</span>
+        {{ 'orders.logs.filter' | translate }}
+      </button>
+
+      <button class="btn-reset" (click)="resetFilters()">
+        <span class="material-icons-round">clear_all</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Table ────────────────────────────────────── -->
+  <table table class="data-table">
+    <thead>
+      <tr>
+        <th>{{ 'orders.logs.date' | translate }}</th>
+        <th>{{ 'orders.logs.order' | translate }}</th>
+        <th>{{ 'orders.logs.change' | translate }}</th>
+        <th>{{ 'orders.logs.description' | translate }}</th>
+        <th>{{ 'orders.logs.actor' | translate }}</th>
+        <th>{{ 'orders.logs.notes' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (log of logs; track log.id) {
+        <tr>
+          <td class="col-date">
+            <span class="date-main">{{ log.timestamp | date:'dd/MM/yyyy' }}</span>
+            <span class="date-time">{{ log.timestamp | date:'HH:mm:ss' }}</span>
+          </td>
+          <td>
+            @if (log.orderNumber) {
+              <a class="order-link" [routerLink]="['/orders', log.orderId]">{{ log.orderNumber }}</a>
+            } @else {
+              <span class="muted">#{{ log.orderId }}</span>
+            }
+          </td>
+          <td class="col-change">
+            @if (log.previousStatus) {
+              <span class="status-badge {{ getStatusClass(log.previousStatus) }}">{{ log.previousStatus }}</span>
+              <span class="material-icons-round arrow">arrow_forward</span>
+            }
+            <span class="status-badge {{ getStatusClass(log.status) }}">{{ log.status }}</span>
+          </td>
+          <td class="col-desc">{{ log.description || '—' }}</td>
+          <td class="col-actor">
+            <span class="actor-chip">
+              <span class="material-icons-round">{{ getActorIcon(log.actorType) }}</span>
+              {{ log.actorType || 'SYSTEM' }}
+            </span>
+          </td>
+          <td class="col-notes">
+            @if (log.notes) {
+              <span class="notes-text">{{ log.notes }}</span>
+            } @else {
+              <span class="muted">—</span>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
+</app-list-page>

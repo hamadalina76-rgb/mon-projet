@@ -45,7 +45,7 @@ public class ZoneServiceImpl implements ZoneService {
     @Override
     @Transactional
     public ZoneDTO createZone(String name, String description, String city, Zone.ZoneType type,
-                             String boundaryJson, BigDecimal deliveryFee,
+                             String boundaryJson, BigDecimal deliveryFee, BigDecimal serviceFee,
                              Integer minDeliveryTime, Integer maxDeliveryTime,
                              Integer radiusKm) {
         log.info("Création d'une nouvelle zone: {}", name);
@@ -73,6 +73,7 @@ public class ZoneServiceImpl implements ZoneService {
                 .type(type)
                 .boundaryJson(geoJsonBoundary)
                 .deliveryFee(deliveryFee)
+                .serviceFee(serviceFee)
                 .minDeliveryTime(minDeliveryTime)
                 .maxDeliveryTime(maxDeliveryTime)
                 .radiusKm(radiusKm)
@@ -97,8 +98,8 @@ public class ZoneServiceImpl implements ZoneService {
     @Override
     @Transactional
     public ZoneDTO updateZone(Long zoneId, String name, String description,
-                              BigDecimal deliveryFee, String boundaryJson,
-                              Integer radiusKm) {
+                              BigDecimal deliveryFee, BigDecimal serviceFee,
+                              String boundaryJson, Integer radiusKm) {
         log.info("Mise à jour de la zone ID: {}", zoneId);
         
         Zone zone = zoneRepository.findById(zoneId)
@@ -124,6 +125,9 @@ public class ZoneServiceImpl implements ZoneService {
         }
         if (deliveryFee != null) {
             zone.setDeliveryFee(deliveryFee);
+        }
+        if (serviceFee != null) {
+            zone.setServiceFee(serviceFee);
         }
         if (radiusKm != null) {
             zone.setRadiusKm(radiusKm);
@@ -351,6 +355,7 @@ public class ZoneServiceImpl implements ZoneService {
                 .type(zone.getType())
                 .boundaryJson(zone.getBoundaryJson())
                 .deliveryFee(zone.getDeliveryFee())
+                .serviceFee(zone.getServiceFee())
                 .minDeliveryTime(zone.getMinDeliveryTime())
                 .maxDeliveryTime(zone.getMaxDeliveryTime())
                 .radiusKm(zone.getRadiusKm())
@@ -379,6 +384,7 @@ public class ZoneServiceImpl implements ZoneService {
                             .type(zone.getType())
                             .boundaryJson(zone.getBoundaryJson())
                             .deliveryFee(zone.getDeliveryFee())
+                            .serviceFee(zone.getServiceFee())
                             .minDeliveryTime(zone.getMinDeliveryTime())
                             .maxDeliveryTime(zone.getMaxDeliveryTime())
                             .radiusKm(zone.getRadiusKm())
@@ -507,7 +513,7 @@ public class ZoneServiceImpl implements ZoneService {
                         } catch (Exception ignored) {}
                     }
                     boolean isActive = props.get("isActive") == null || Boolean.TRUE.equals(props.get("isActive"));
-                    createZone(name, null, city, type, boundaryJson, deliveryFee, 30, 60, radiusKm);
+                    createZone(name, null, city, type, boundaryJson, deliveryFee, BigDecimal.ZERO, 30, 60, radiusKm);
                     created++;
                 } catch (Exception e) {
                     log.warn("Échec import d'une feature: {}", e.getMessage());

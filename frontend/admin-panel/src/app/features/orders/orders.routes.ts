@@ -17,6 +17,20 @@ export const ORDERS_ROUTES: Routes = [
       ),
   },
   {
+    path: 'stats',
+    loadComponent: () =>
+      import('./components/orders-stats/orders-stats.component').then(
+        (m) => m.OrdersStatsComponent
+      ),
+  },
+  {
+    path: 'logs',
+    loadComponent: () =>
+      import('./orders-logs/orders-logs.component').then(
+        (m) => m.OrdersLogsComponent
+      ),
+  },
+  {
     path: ':id',
     loadComponent: () =>
       import('./order-detail/order-detail.component').then(

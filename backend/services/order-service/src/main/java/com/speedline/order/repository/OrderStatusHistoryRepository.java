@@ -2,6 +2,8 @@ package com.speedline.order.repository;
 
 import com.speedline.order.domain.OrderStatus;
 import com.speedline.order.domain.OrderStatusHistory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -56,4 +58,22 @@ public interface OrderStatusHistoryRepository extends JpaRepository<OrderStatusH
      * Trouver les changements de statut dans une période
      */
     List<OrderStatusHistory> findByTimestampBetween(LocalDateTime start, LocalDateTime end);
+
+    /**
+     * Liste paginée de tous les logs admin (avec filtres optionnels).
+     */
+    @Query("SELECT h FROM OrderStatusHistory h " +
+           "WHERE (:actorType IS NULL OR h.actorType = :actorType) " +
+           "AND (:status IS NULL OR h.status = :status) " +
+           "AND (CAST(:from AS timestamp) IS NULL OR h.timestamp >= :from) " +
+           "AND (CAST(:to AS timestamp) IS NULL OR h.timestamp <= :to) " +
+           "AND (:orderId IS NULL OR h.orderId = :orderId) " +
+           "ORDER BY h.timestamp DESC")
+    Page<OrderStatusHistory> findAllLogs(
+            @Param("actorType") String actorType,
+            @Param("status") OrderStatus status,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            @Param("orderId") Long orderId,
+            Pageable pageable);
 }
