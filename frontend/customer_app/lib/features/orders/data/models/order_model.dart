@@ -5,6 +5,7 @@ class OrderModel extends Order {
     required super.id,
     required super.status,
     super.orderNumber,
+    super.partnerId,
     super.partnerName,
     super.statusLabel,
     super.total,
@@ -12,14 +13,19 @@ class OrderModel extends Order {
     super.orderTime,
     super.estimatedDeliveryTime,
     super.deliveryTimeMinutes,
+    super.partnerAcceptedAt,
+    super.suggestedPreparationMinutes,
+    super.partnerAcceptedPrepMinutes,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     final payload = _extractMap(json);
+    final statusHistory = payload['statusHistory'];
 
     return OrderModel(
       id: (payload['id'] ?? payload['orderId'] ?? '').toString(),
       orderNumber: _nullableString(payload['orderNumber']),
+      partnerId: _nullableString(payload['partnerId']),
       partnerName: _nullableString(payload['partnerName']),
       status: (payload['status'] ?? payload['statusLabel'] ?? 'PENDING')
           .toString(),
@@ -29,6 +35,13 @@ class OrderModel extends Order {
       orderTime: _parseDate(payload['orderTime']),
       estimatedDeliveryTime: _parseDate(payload['estimatedDeliveryTime']),
       deliveryTimeMinutes: _toInt(payload['deliveryTimeMinutes']),
+      partnerAcceptedAt:
+          _parseDate(payload['partnerAcceptedAt']) ??
+          _extractAcceptedTimestamp(statusHistory),
+      suggestedPreparationMinutes: _toInt(payload['suggestedPreparationMinutes']),
+      partnerAcceptedPrepMinutes:
+          _toInt(payload['estimatedPrepMinutes']) ??
+          _extractAcceptedPrepMinutes(statusHistory),
     );
   }
 
@@ -104,5 +117,41 @@ class OrderModel extends Order {
     if (raw is num) return raw.toInt();
     if (raw == null) return null;
     return int.tryParse(raw.toString());
+  }
+
+  static DateTime? _extractAcceptedTimestamp(dynamic statusHistory) {
+    DateTime? best;
+    if (statusHistory is! List) return null;
+
+    for (final raw in statusHistory) {
+      if (raw is! Map) continue;
+      final item = Map<String, dynamic>.from(raw);
+      final status = (item['status'] ?? '').toString().trim().toUpperCase();
+      if (status != 'PREPARING' && status != 'CONFIRMED') continue;
+
+      final candidate = _parseDate(item['timestamp']);
+      if (candidate == null) continue;
+      if (best == null || candidate.isBefore(best)) {
+        best = candidate;
+      }
+    }
+
+    return best;
+  }
+
+  static int? _extractAcceptedPrepMinutes(dynamic statusHistory) {
+    if (statusHistory is! List) return null;
+
+    for (final raw in statusHistory) {
+      if (raw is! Map) continue;
+      final item = Map<String, dynamic>.from(raw);
+      final status = (item['status'] ?? '').toString().trim().toUpperCase();
+      if (status != 'PREPARING' && status != 'CONFIRMED') continue;
+
+      final prep = _toInt(item['estimatedPrepMinutes']) ?? _toInt(item['prepMinutes']);
+      if (prep != null && prep > 0) return prep;
+    }
+
+    return null;
   }
 }

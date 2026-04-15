@@ -718,7 +718,7 @@ class _PartnerDetailsScreenState extends ConsumerState<PartnerDetailsScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '$partnerItemCount article${partnerItemCount > 1 ? 's' : ''}',
+                              '$partnerItemCount ${partnerItemCount > 1 ? l10n.translate('items_plural') : l10n.translate('item_singular')}',
                               style: const TextStyle(
                                 color: Colors.white70,
                                 fontWeight: FontWeight.w600,
@@ -750,9 +750,9 @@ class _PartnerDetailsScreenState extends ConsumerState<PartnerDetailsScreen>
                             elevation: 0,
                           ),
                           icon: const Icon(Icons.payment_rounded, size: 18),
-                          label: const Text(
-                            'Payer',
-                            style: TextStyle(fontWeight: FontWeight.w700),
+                          label: Text(
+                            l10n.translate('pay_action'),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ),
                       ),

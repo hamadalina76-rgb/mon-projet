@@ -2,7 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
+import '../../../../core/constants/app_colors.dart';
 import '../../../config/routes/route_names.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/utils/media_url.dart';
@@ -268,8 +268,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               onPressed: _confirmClearCart,
               child: Text(
                 l10n.translate('clear_cart_action'),
-                style: TextStyle(
-                  color: Colors.red,
+                style:const TextStyle(
+                  color: AppColors.primary,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -324,7 +324,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   children: [
                     Text(
                       l10n.translate('products_total'),
-                      style: TextStyle(
+                      style:const TextStyle(
                         fontSize: 15,
                         color: Colors.black54,
                       ),
@@ -386,6 +386,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             SizedBox(
                               height: 46,
                               child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: AppColors.surface,
+                                ),
                                 onPressed: () => context.push(RouteNames.checkout),
                                 child: Text(
                                   l10n.translate('proceed_to_checkout'),
@@ -426,6 +430,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               child: SizedBox(
                                 height: 48,
                                 child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: AppColors.surface,
+                                  ),
                                   onPressed: () => context.push(RouteNames.checkout),
                                   child: Text(
                                     l10n.translate('proceed_to_checkout'),

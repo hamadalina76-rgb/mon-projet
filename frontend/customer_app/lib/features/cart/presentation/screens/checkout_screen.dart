@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../config/dependency_injection/injection.dart';
 import '../../../../config/routes/route_names.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/utils/delivery_zone_utils.dart';
 import '../../../location/data/models/saved_location.dart';
@@ -265,7 +268,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       final formatted = mapLocation.formattedAddress.trim();
       final customLabel = mapLocation.customLabel?.trim();
       return {
-        'label': (customLabel == null || customLabel.isEmpty) ? 'Adresse map' : customLabel,
+        'label': (customLabel == null || customLabel.isEmpty)
+            ? AppLocalizations.of(context).translate('map_address_title')
+            : customLabel,
         'deliveryAddress': formatted,
         'deliveryLocation': formatted,
         'street': mapLocation.street,
@@ -561,11 +566,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
   List<DateTime> _currentWeekDates() {
     final today = _stripTime(DateTime.now());
-    final startOfWeek = today.subtract(Duration(days: today.weekday - DateTime.monday));
 
     return List<DateTime>.generate(
       7,
-      (index) => startOfWeek.add(Duration(days: index)),
+      (index) => today.add(Duration(days: index)),
     );
   }
 
@@ -711,6 +715,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                               return ChoiceChip(
                                 label: Text(_formatScheduleDayLabel(date)),
                                 selected: isSelected,
+                                selectedColor: isSelected ? AppColors.secondary3 : null,
                                 onSelected: (_) {
                                   setModalState(() {
                                     selectedDate = date;
@@ -741,6 +746,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                               return ChoiceChip(
                                 label: Text(_formatHalfHourInterval(interval)),
                                 selected: isSelected,
+                                selectedColor: isSelected ? AppColors.secondary3 : null,
                                 onSelected: (_) {
                                   setModalState(() {
                                     selectedIntervalStart = interval.startMinutes;
@@ -852,16 +858,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            needsSchedule
-                ? '${l10n.translate('order_scheduled_for')} ${_formatScheduleDateTime(_scheduledDateTime!)}.'
-                : l10n.translate('order_success'),
-          ),
-          backgroundColor: Colors.green,
-        ),
-      );
       if (placedOrder == null || placedOrder.orderId.isEmpty) {
         await ref.read(cartNotifierProvider.notifier).clearCart();
         if (!mounted) return;
@@ -869,10 +865,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         return;
       }
 
-      context.go(
-        RouteNames.orderConfirmation,
-        extra: placedOrder.toRouteExtra(),
-      );
+      await ref.read(cartNotifierProvider.notifier).clearCart();
+      if (!mounted) return;
+
+      await _showOrderSuccessPopup(placedOrder);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -886,6 +882,58 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         setState(() => _isPlacingOrder = false);
       }
     }
+  }
+
+  Future<void> _showOrderSuccessPopup(PlacedOrderSummary placedOrder) async {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
+
+    await showGeneralDialog<void>(
+      context: context,
+      barrierLabel: l10n.translate('order_confirmation'),
+      barrierDismissible: false,
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 280),
+      pageBuilder: (dialogContext, _, __) {
+        return _CheckoutOrderSuccessPopup(
+          orderNumber: placedOrder.orderNumber,
+          partnerName: placedOrder.partnerName,
+          estimatedDeliveryTime: placedOrder.estimatedDeliveryTime,
+          onTrackNow: () {
+            Navigator.of(dialogContext).pop();
+            if (!mounted) return;
+
+            final orderId = placedOrder.orderId.trim();
+            if (orderId.isEmpty) {
+              context.go(RouteNames.orders);
+              return;
+            }
+
+            context.go(RouteNames.orderTracking(orderId));
+          },
+          onContinueShopping: () {
+            Navigator.of(dialogContext).pop();
+            if (!mounted) return;
+            context.go(RouteNames.explore);
+          },
+        );
+      },
+      transitionBuilder: (context, animation, _, child) {
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+          reverseCurve: Curves.easeInCubic,
+        );
+
+        return FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.92, end: 1).animate(curve),
+            child: child,
+          ),
+        );
+      },
+    );
   }
 
   void _goToCartForEdit() {
@@ -983,11 +1031,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 horizontalPadding,
                 14,
                 horizontalPadding,
-                130 + media.padding.bottom,
+                92 + media.padding.bottom,
               ),
               children: [
-                _SectionCard(
+                _WavySeparator(
                   title: '${l10n.translate('order_section_title')} ($itemCount $orderItemsLabel)',
+                  topSpacing: 0,
+                ),
+                _SectionCard(
                   trailing: Wrap(
                     spacing: 2,
                     children: [
@@ -1064,9 +1115,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
-                _SectionCard(
+                _WavySeparator(
                   title: l10n.translate('delivery_address'),
+                  topSpacing: 16,
+                ),
+                _SectionCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1122,9 +1175,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
-                _SectionCard(
+                _WavySeparator(
                   title: l10n.translate('delivery'),
+                  topSpacing: 16,
+                ),
+                _SectionCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1143,9 +1198,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFF4E6),
+                            color:AppColors.secondary2,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFF3D1A5)),
+                            border: Border.all(color:AppColors.secondary),
                           ),
                           child: Text(
                             l10n.translate('partner_closed_schedule_only'),
@@ -1237,9 +1292,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
-                _SectionCard(
+                _WavySeparator(
                   title: l10n.translate('payment_and_promo'),
+                  topSpacing: 16,
+                ),
+                _SectionCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1281,6 +1338,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           );
 
                           final applyButton = ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: AppColors.primary,
+                              elevation: 0,
+                              side: const BorderSide(color: Colors.black),
+                            ),
                             onPressed: () => _applyPromo(subtotal),
                             child: Text(l10n.translate('apply')),
                           );
@@ -1319,9 +1382,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
-                _SectionCard(
+                _WavySeparator(
                   title: l10n.translate('final_summary'),
+                  topSpacing: 16,
+                ),
+                _SectionCard(
                   child: Column(
                     children: [
                       _SummaryRow(label: l10n.translate('products_label'), value: _money(subtotal)),
@@ -1382,6 +1447,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               child: SizedBox(
                 height: 50,
                 child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
                   onPressed: canSubmit
                       ? () => _submitOrder(
                             items: items,
@@ -1409,13 +1478,86 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 }
 
-class _SectionCard extends StatelessWidget {
+class _WavySeparator extends StatelessWidget {
   final String title;
+  final double topSpacing;
+  final double bottomSpacing;
+
+  const _WavySeparator({
+    required this.title,
+    this.topSpacing = 10,
+    this.bottomSpacing = 6,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(top: topSpacing, bottom: bottomSpacing),
+      child: SizedBox(
+        height: 28,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Positioned.fill(
+              child: CustomPaint(painter: _WavyPainter()),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: const Color(0xFFD0D4DC)),
+              ),
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WavyPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFD0D4DC)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    const waveHeight = 4.0;
+    const waveWidth = 8.0;
+
+    path.moveTo(0, size.height / 2);
+
+    for (double i = 0; i < size.width; i += waveWidth) {
+      path.quadraticBezierTo(
+        i + waveWidth / 2,
+        size.height / 2 - waveHeight,
+        i + waveWidth,
+        size.height / 2,
+      );
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _SectionCard extends StatelessWidget {
   final Widget child;
   final Widget? trailing;
 
   const _SectionCard({
-    required this.title,
     required this.child,
     this.trailing,
   });
@@ -1430,21 +1572,12 @@ class _SectionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                if (trailing != null) trailing!,
-              ],
-            ),
-            const SizedBox(height: 8),
+            if (trailing != null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: trailing!,
+              ),
+            if (trailing != null) const SizedBox(height: 8),
             child,
           ],
         ),
@@ -1580,4 +1713,363 @@ class _HalfHourInterval {
     required this.startMinutes,
     required this.endMinutes,
   });
+}
+
+class _CheckoutOrderSuccessPopup extends StatefulWidget {
+  final String? orderNumber;
+  final String? partnerName;
+  final DateTime? estimatedDeliveryTime;
+  final VoidCallback onTrackNow;
+  final VoidCallback onContinueShopping;
+
+  const _CheckoutOrderSuccessPopup({
+    this.orderNumber,
+    this.partnerName,
+    this.estimatedDeliveryTime,
+    required this.onTrackNow,
+    required this.onContinueShopping,
+  });
+
+  @override
+  State<_CheckoutOrderSuccessPopup> createState() =>
+      _CheckoutOrderSuccessPopupState();
+}
+
+class _CheckoutOrderSuccessPopupState extends State<_CheckoutOrderSuccessPopup>
+    with SingleTickerProviderStateMixin {
+  static const int _autoRedirectSeconds = 5;
+
+  Timer? _timer;
+  late final AnimationController _iconController;
+  int _countdown = _autoRedirectSeconds;
+  bool _handled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _iconController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2100),
+    )..repeat();
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+
+      if (_countdown <= 1) {
+        setState(() => _countdown = 0);
+        timer.cancel();
+        _handleTrackNow();
+        return;
+      }
+
+      setState(() => _countdown -= 1);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _iconController.dispose();
+    super.dispose();
+  }
+
+  void _handleTrackNow() {
+    if (_handled) return;
+    _handled = true;
+    _timer?.cancel();
+    widget.onTrackNow();
+  }
+
+  void _handleContinueShopping() {
+    if (_handled) return;
+    _handled = true;
+    _timer?.cancel();
+    widget.onContinueShopping();
+  }
+
+  String _formatEta(DateTime? value, AppLocalizations l10n) {
+    if (value == null) return l10n.translate('order_confirmation_eta_soon');
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final progress = (_countdown / _autoRedirectSeconds).clamp(0.0, 1.0);
+    final compact = MediaQuery.of(context).size.height < 700;
+    final cardMaxWidth = MediaQuery.of(context).size.width < 390 ? 332.0 : 348.0;
+
+    return Material(
+      color: Colors.transparent,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 13, sigmaY: 13),
+              child: Container(
+                color: AppColors.black.withOpacity(0.38),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: cardMaxWidth),
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.surface, AppColors.surfaceLight],
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppColors.softGrey),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: AppColors.shadow,
+                          blurRadius: 22,
+                          offset: Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AnimatedBuilder(
+                          animation: _iconController,
+                          builder: (context, child) {
+                            final t = _iconController.value;
+                            final pulse = 0.96 + (0.04 * math.sin(t * math.pi * 2));
+                            final floatY = 2.2 * math.sin(t * math.pi * 2);
+
+                            return Transform.translate(
+                              offset: Offset(0, floatY),
+                              child: Transform.scale(
+                                scale: pulse,
+                                child: SizedBox(
+                                  width: 80,
+                                  height: 80,
+                                  child: CustomPaint(
+                                    painter: _FloatingBandsPainter(progress: t),
+                                    child: Center(
+                                      child: Container(
+                                        width: 58,
+                                        height: 58,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: AppColors.secondary2,
+                                          border: Border.all(
+                                            color: AppColors.primary,
+                                            width: 1.3,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.celebration_rounded,
+                                          color: AppColors.primary,
+                                          size: 26,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          l10n.translate('order_confirmation_success_title'),
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.orderNumber == null || widget.orderNumber!.trim().isEmpty
+                              ? l10n.translate('order_confirmation_success_message')
+                              : '${l10n.translate('order_number_prefix')}${widget.orderNumber} ${l10n.translate('order_confirmation_success_suffix')}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                            height: 1.25,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondary2,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if ((widget.partnerName ?? '').trim().isNotEmpty)
+                                Text(
+                                  widget.partnerName!.trim(),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              if ((widget.partnerName ?? '').trim().isNotEmpty)
+                                const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.schedule_rounded,
+                                    color: AppColors.primary,
+                                    size: 15,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    '${l10n.translate('order_confirmation_estimated_delivery')}: ${_formatEta(widget.estimatedDeliveryTime, l10n)}',
+                                    style: const TextStyle(
+                                      fontSize: 12.8,
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          '${l10n.translate('order_confirmation_opening_tracking_in')} $_countdown ${l10n.translate('sec')}',
+                          style: const TextStyle(
+                            fontSize: 12.8,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            minHeight: 6,
+                            value: progress,
+                            backgroundColor: AppColors.softGrey,
+                            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _handleContinueShopping,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.textPrimary,
+                                  side: const BorderSide(color: AppColors.border),
+                                  minimumSize: Size.fromHeight(compact ? 44 : 45),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: Text(l10n.translate('continue_shopping')),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: FilledButton.icon(
+                                onPressed: _handleTrackNow,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: AppColors.surface,
+                                  minimumSize: Size.fromHeight(compact ? 44 : 45),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.my_location_rounded, size: 17),
+                                label: Text(l10n.translate('track_order')),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FloatingBandsPainter extends CustomPainter {
+  final double progress;
+
+  const _FloatingBandsPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final ringPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    final radii = <double>[29, 33, 37];
+    final base = progress * math.pi * 2;
+
+    for (var i = 0; i < radii.length; i++) {
+      final wave = 0.5 + (0.5 * math.sin(base + (i * 1.35)));
+      final opacity = (0.16 + (wave * 0.32)).clamp(0.16, 0.48).toDouble();
+
+      ringPaint.color = AppColors.primary.withOpacity(opacity);
+      final start = base + (i * 1.7);
+
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radii[i]),
+        start,
+        0.58,
+        false,
+        ringPaint,
+      );
+    }
+
+    final dotPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = AppColors.primary.withOpacity(0.5);
+
+    final dots = <Offset>[
+      Offset(center.dx + (math.cos(base) * 35), center.dy + (math.sin(base) * 24)),
+      Offset(
+        center.dx + (math.cos(base + 2.2) * 33),
+        center.dy + (math.sin(base + 2.2) * 22),
+      ),
+      Offset(
+        center.dx + (math.cos(base + 4.1) * 31),
+        center.dy + (math.sin(base + 4.1) * 20),
+      ),
+    ];
+
+    for (final dot in dots) {
+      canvas.drawCircle(dot, 2.1, dotPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _FloatingBandsPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
 }

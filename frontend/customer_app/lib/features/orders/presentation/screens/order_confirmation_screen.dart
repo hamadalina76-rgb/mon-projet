@@ -7,6 +7,8 @@ import 'package:lottie/lottie.dart';
 
 import '../../../cart/cart_providers.dart';
 import '../../../../config/routes/route_names.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/localization/app_localizations.dart';
 
 final orderConfirmationCountdownProvider = StateNotifierProvider.autoDispose
     .family<_OrderConfirmationCountdownNotifier, int, int>((ref, initialValue) {
@@ -78,8 +80,8 @@ class _OrderConfirmationScreenState
     context.go(RouteNames.orderTracking(widget.orderId));
   }
 
-  String _formatEta(DateTime? value) {
-    if (value == null) return 'Soon';
+  String _formatEta(DateTime? value, AppLocalizations l10n) {
+    if (value == null) return l10n.translate('order_confirmation_eta_soon');
     final hour = value.hour.toString().padLeft(2, '0');
     final minute = value.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
@@ -87,6 +89,7 @@ class _OrderConfirmationScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     ref.listen<int>(
       orderConfirmationCountdownProvider(_autoRedirectSeconds),
       (previous, next) {
@@ -98,132 +101,162 @@ class _OrderConfirmationScreenState
 
     final countdown =
         ref.watch(orderConfirmationCountdownProvider(_autoRedirectSeconds));
+    final progress =
+        (countdown / _autoRedirectSeconds).clamp(0.0, 1.0).toDouble();
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFE8FFF6), Color(0xFFF8FBFF)],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    side: const BorderSide(color: Color(0xFFE4E8EE)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Lottie.asset(
-                          'assets/lottie/success.json',
-                          width: 170,
-                          height: 170,
-                          repeat: true,
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Order Confirmed',
-                          style: TextStyle(
-                            fontSize: 27,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          widget.orderNumber == null ||
-                                  widget.orderNumber!.trim().isEmpty
-                              ? 'Your order has been placed successfully.'
-                              : 'Order #${widget.orderNumber} has been placed.',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: Color(0xFF4F5B67),
-                            height: 1.35,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF4F7FB),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: AppColors.black.withOpacity(0.5),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: AppColors.shadow,
+                      blurRadius: 24,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Lottie.asset(
+                      'assets/lottie/success.json',
+                      width: 150,
+                      height: 150,
+                      repeat: true,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.translate('order_confirmation_success_title'),
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.orderNumber == null ||
+                              widget.orderNumber!.trim().isEmpty
+                          ? l10n.translate('order_confirmation_success_message')
+                          : '${l10n.translate('order_number_prefix')}${widget.orderNumber} ${l10n.translate('order_confirmation_success_suffix')}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: AppColors.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary2,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if ((widget.partnerName ?? '').trim().isNotEmpty)
+                            Text(
+                              widget.partnerName!.trim(),
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          if ((widget.partnerName ?? '').trim().isNotEmpty)
+                            const SizedBox(height: 6),
+                          Row(
                             children: [
-                              if ((widget.partnerName ?? '').trim().isNotEmpty)
-                                Text(
-                                  widget.partnerName!.trim(),
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              if ((widget.partnerName ?? '').trim().isNotEmpty)
-                                const SizedBox(height: 8),
+                              const Icon(
+                                Icons.schedule_rounded,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 6),
                               Text(
-                                'Estimated delivery: ${_formatEta(widget.estimatedDeliveryTime)}',
+                                '${l10n.translate('order_confirmation_estimated_delivery')}: ${_formatEta(widget.estimatedDeliveryTime, l10n)}',
                                 style: const TextStyle(
                                   fontSize: 14,
-                                  color: Color(0xFF4F5B67),
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'Opening tracking in $countdown s',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF4F5B67),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: _goToTracking,
-                            icon: const Icon(Icons.my_location_rounded),
-                            label: const Text('Track now'),
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size.fromHeight(52),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: () => context.go(RouteNames.explore),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(52),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: const Text('Continue shopping'),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    Text(
+                      '${l10n.translate('order_confirmation_opening_tracking_in')} $countdown ${l10n.translate('sec')}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        minHeight: 7,
+                        value: progress,
+                        backgroundColor: AppColors.softGrey,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppColors.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _goToTracking,
+                        icon: const Icon(Icons.my_location_rounded),
+                        label: Text(l10n.translate('track_order')),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.surface,
+                          minimumSize: const Size.fromHeight(50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () => context.go(RouteNames.explore),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textPrimary,
+                          side: const BorderSide(color: AppColors.border),
+                          minimumSize: const Size.fromHeight(48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(l10n.translate('continue_shopping')),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
