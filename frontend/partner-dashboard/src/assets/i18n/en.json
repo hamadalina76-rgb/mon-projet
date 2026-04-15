@@ -933,9 +933,18 @@
     "backToLogin": "Back to login",
     "home": "Home"
   },
+  "adminOrderMessages": {
+    "title": "Admin messages",
+    "subtitle": "All messages sent by the administration about your orders.",
+    "refresh": "Refresh",
+    "loadError": "Could not load messages.",
+    "empty": "No admin messages yet.",
+    "openOrder": "View order"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "orders": "Orders",
+    "adminOrderMessages": "Admin messages",
     "orderHistory": "History",
     "menu": "Menu",
     "analytics": "Analytics",

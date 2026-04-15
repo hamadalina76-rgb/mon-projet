@@ -10,6 +10,13 @@ export const ORDERS_ROUTES: Routes = [
       ),
   },
   {
+    path: 'admin-messages',
+    loadComponent: () =>
+      import('./admin-order-messages/admin-order-messages.component').then(
+        (m) => m.AdminOrderMessagesComponent
+      ),
+  },
+  {
     path: '',
     loadComponent: () =>
       import('./orders-list/orders-list.component').then(

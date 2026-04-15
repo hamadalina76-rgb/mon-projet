@@ -296,6 +296,42 @@ $gray-light: #f4f6f8;
 }
 
 /* ── Notes Thread ────────────────────────────────── */
+.outbound-messages {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
+}
+.outbound-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.outbound-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  color: #777;
+}
+.outbound-row {
+  margin-bottom: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  background: #f5f8ff;
+  border-radius: 8px;
+  border-left: 3px solid #3f51b5;
+}
+.outbound-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: #555;
+  .outbound-ico { font-size: 16px; width: 16px; height: 16px; }
+}
+.outbound-body {
+  margin-top: 0.35rem;
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+}
+
 .notes-card {
   display: flex; flex-direction: column; height: 100%; min-height: 500px;
   padding: 0; overflow: hidden;

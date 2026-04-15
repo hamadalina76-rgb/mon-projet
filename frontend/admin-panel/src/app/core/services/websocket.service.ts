@@ -55,6 +55,9 @@ export class WebSocketService implements OnDestroy {
   private client: Client | null = null;
   private connected = signal(false);
 
+  /** Run after each STOMP connect (and immediately if the socket is already active). */
+  private stompConnectHandlers: Array<() => void> = [];
+
   // Observable subjects for notifications
   private adminNotification$ = new Subject<WebSocketNotification>();
 
@@ -64,6 +67,25 @@ export class WebSocketService implements OnDestroy {
 
   get onAdminNotification() {
     return this.adminNotification$.asObservable();
+  }
+
+  /**
+   * Enregistre une callback exécutée à chaque connexion STOMP (y compris reconnexion).
+   * Utile pour s'abonner à `/topic/orders/{id}/timeline` si la page s'est chargée avant le connect.
+   */
+  afterStompConnect(handler: () => void): () => void {
+    this.stompConnectHandlers.push(handler);
+    if (this.client?.active) {
+      try {
+        handler();
+      } catch (e) {
+        console.error('[WebSocket] afterStompConnect immediate run:', e);
+      }
+    }
+    return () => {
+      const i = this.stompConnectHandlers.indexOf(handler);
+      if (i >= 0) this.stompConnectHandlers.splice(i, 1);
+    };
   }
 
   connect(): void {
@@ -81,6 +103,13 @@ export class WebSocketService implements OnDestroy {
         this.connected.set(true);
         console.log('[WebSocket] Connected to notification service');
         this.subscribeToAdminNotifications();
+        for (const h of [...this.stompConnectHandlers]) {
+          try {
+            h();
+          } catch (e) {
+            console.error('[WebSocket] stompConnectHandler:', e);
+          }
+        }
       },
       onDisconnect: () => {
         this.connected.set(false);

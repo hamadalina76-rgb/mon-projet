@@ -76,7 +76,7 @@ export class OrdersService {
   sendNotification(userId: number, title: string, message: string, data?: Record<string, any>): Observable<any> {
     return this.http.post(`${this.apiUrl}/notifications/send`, {
       userId,
-      type: 'ORDER',
+      type: 'SYSTEM',
       title,
       message,
       data: data || {},

@@ -7,6 +7,7 @@ import com.speedline.notification.repository.NotificationRepository;
 import com.speedline.notification.service.impl.NotificationServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -26,6 +27,7 @@ public class OrderCreatedNotificationService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationServiceImpl notificationService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public void handleOrderCreatedEvent(Map<String, Object> event) {
         final Object eventType = event.get("eventType");
@@ -239,6 +241,26 @@ public class OrderCreatedNotificationService {
         );
 
         log.info("ORDER_ACCEPTED notification sent to customer {} for order {}", customerId, orderId);
+
+        // Admin order detail + liste : même canal STOMP que ORDER_STATUS_CHANGED (acceptation partenaire = PREPARING)
+        final String previousStatus = parseString(event.get("previousStatus"));
+        final String description = parseString(event.get("description"));
+        final Map<String, Object> timelineEntry = new HashMap<>();
+        timelineEntry.put("orderId", orderId);
+        timelineEntry.put("status", status);
+        timelineEntry.put("previousStatus", previousStatus);
+        timelineEntry.put("description", description != null ? description : message);
+        timelineEntry.put("actorType", data.get("actorType"));
+        timelineEntry.put("timestamp", LocalDateTime.now().toString());
+        try {
+            messagingTemplate.convertAndSend("/topic/orders/" + orderId + "/timeline", timelineEntry);
+            log.info("ORDER_ACCEPTED timeline broadcast for orderId={}", orderId);
+        } catch (Exception ex) {
+            log.warn("Failed ORDER_ACCEPTED timeline orderId={}: {}", orderId, ex.getMessage());
+        }
+
+        notificationService.sendAdminBroadcast(NotificationType.ORDER, title, message, data);
+        log.info("ORDER_ACCEPTED admin WebSocket broadcast for orderId={}", orderId);
     }
 
     private static String buildOrderMessage(int itemCount, BigDecimal total) {

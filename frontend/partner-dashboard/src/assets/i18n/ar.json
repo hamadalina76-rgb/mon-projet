@@ -932,9 +932,18 @@
     "backToLogin": "العودة لتسجيل الدخول",
     "home": "الصفحة الرئيسية"
   },
+  "adminOrderMessages": {
+    "title": "رسائل الإدارة",
+    "subtitle": "جميع الرسائل المرسلة من الإدارة بخصوص طلباتك.",
+    "refresh": "تحديث",
+    "loadError": "تعذر تحميل الرسائل.",
+    "empty": "لا توجد رسائل من الإدارة بعد.",
+    "openOrder": "عرض الطلب"
+  },
   "nav": {
     "dashboard": "لوحة التحكم",
     "orders": "الطلبات",
+    "adminOrderMessages": "رسائل الإدارة",
     "orderHistory": "السجل",
     "menu": "القائمة",
     "analytics": "التحليلات",

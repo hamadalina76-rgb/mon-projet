@@ -201,8 +201,13 @@ export class HeaderComponent implements OnInit, OnDestroy {
       if (productId != null) {
         this.router.navigate(['/menu/products', productId, 'edit']);
       }
+    } else if (notif.data?.['action'] === 'ADMIN_CONTACT') {
+      const rawId = notif.data?.['orderId'] ?? notif.data?.['id'];
+      if (rawId != null && String(rawId).trim().length > 0) {
+        this.router.navigate(['/orders', String(rawId)]);
+      }
     }
-    
+
     this.showNotifications.set(false);
   }
 
