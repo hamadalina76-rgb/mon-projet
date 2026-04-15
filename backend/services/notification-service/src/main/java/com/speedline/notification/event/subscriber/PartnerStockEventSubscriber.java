@@ -14,6 +14,7 @@ import com.speedline.notification.service.impl.NotificationServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.annotation.ServiceActivator;
@@ -22,6 +23,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -39,6 +41,7 @@ public class PartnerStockEventSubscriber {
     private final NotificationServiceImpl notificationService;
     private final ObjectMapper objectMapper;
     private final PubSubTemplate pubSubTemplate;
+    private final MessageSource messageSource;
 
     @Bean
     public MessageChannel partnerStockEventsChannel() {
@@ -96,8 +99,8 @@ public class PartnerStockEventSubscriber {
         Long notificationUserId = partnerUserId != null && partnerUserId != 0L ? partnerUserId : 0L;
 
         if ("PRODUCT_OUT_OF_STOCK".equals(eventType)) {
-            String title = "Produit épuisé";
-            String message = "Le produit \"" + productName + "\" est épuisé (quantité 0). Il n'est plus proposé à la commande.";
+            String title = messageSource.getMessage("stock.out.title", null, Locale.FRENCH);
+            String message = messageSource.getMessage("stock.out.message", new Object[]{productName}, Locale.FRENCH);
             Notification notif = Notification.builder()
                     .userId(notificationUserId)
                     .type(NotificationType.SYSTEM)
@@ -119,8 +122,8 @@ public class PartnerStockEventSubscriber {
             Number thresholdNum = (Number) event.get("threshold");
             int quantity = quantityNum != null ? quantityNum.intValue() : 0;
             int threshold = thresholdNum != null ? thresholdNum.intValue() : 0;
-            String title = "Stock faible";
-            String message = String.format("Le produit \"%s\" est en stock faible (%d restants, seuil %d).", productName, quantity, threshold);
+            String title = messageSource.getMessage("stock.low.title", null, Locale.FRENCH);
+            String message = messageSource.getMessage("stock.low.message", new Object[]{productName, quantity, threshold}, Locale.FRENCH);
             Notification notif = Notification.builder()
                     .userId(notificationUserId)
                     .type(NotificationType.SYSTEM)

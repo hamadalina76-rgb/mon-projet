@@ -190,23 +190,61 @@ $gray-light: #f4f6f8;
   &.grand { font-weight: 800; font-size: 1.05rem; color: #111; margin-top: 6px; padding-top: 8px; border-top: 1px solid #ddd; }
 }
 
-/* ── Map ─────────────────────────────────────────── */
-.map-card { padding: 0; overflow: hidden; border-radius: 14px; }
-
-.map-container {
-  width: 100%; height: 450px;
-  @media (max-width: 768px) { height: 300px; }
+/* ── Map (fullscreen background) ──────────────────── */
+.map-fullscreen-tab {
+  position: relative;
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 14px;
 }
 
-.tracking-banner {
-  display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+.map-container-fullscreen {
+  width: 100%; height: 75vh;
+  min-height: 500px;
+  @media (max-width: 768px) { height: 60vh; min-height: 350px; }
+}
+
+.map-overlay-banner {
+  position: absolute; top: 12px; left: 12px; right: 12px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: 10px;
   font-size: 0.82rem; font-weight: 600;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px); box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  z-index: 2;
   &.live {
-    background: linear-gradient(90deg, rgba($blue, 0.1), rgba($green, 0.1));
+    background: linear-gradient(90deg, rgba($blue, 0.15), rgba($green, 0.15));
+    backdrop-filter: blur(8px);
     color: $blue;
     mat-icon { animation: pulse 1.5s infinite; }
   }
 }
+
+.map-overlay-legend {
+  position: absolute; bottom: 60px; left: 12px;
+  display: flex; gap: 1rem; padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(8px);
+  border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  font-size: 0.78rem; color: #444; z-index: 2;
+}
+
+.map-overlay-address {
+  position: absolute; bottom: 12px; left: 12px; right: 12px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(8px);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  font-size: 0.82rem; color: #333; z-index: 2;
+  mat-icon { font-size: 18px; width: 18px; height: 18px; color: $red; }
+}
+
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  &.green { background: $green; }
+  &.blue  { background: $blue; }
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
@@ -218,23 +256,6 @@ $gray-light: #f4f6f8;
 @keyframes markerPulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba($blue, 0.5); }
   50% { box-shadow: 0 0 0 12px rgba($blue, 0); }
-}
-
-.map-legend {
-  display: flex; gap: 1.25rem; padding: 10px 16px;
-  font-size: 0.78rem; color: #666;
-}
-.legend-item { display: flex; align-items: center; gap: 6px; }
-.legend-dot {
-  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-  &.green { background: $green; }
-  &.blue  { background: $blue; }
-}
-
-.delivery-info-below {
-  display: flex; align-items: center; gap: 8px; padding: 10px 16px;
-  border-top: 1px solid #f0f0f0; font-size: 0.82rem; color: #555;
-  mat-icon { font-size: 18px; width: 18px; height: 18px; color: $red; }
 }
 
 /* ── Timeline ────────────────────────────────────── */

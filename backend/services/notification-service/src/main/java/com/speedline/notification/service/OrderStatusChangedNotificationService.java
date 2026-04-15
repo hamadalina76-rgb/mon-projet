@@ -4,11 +4,13 @@ import com.speedline.notification.domain.NotificationChannel;
 import com.speedline.notification.domain.NotificationType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -16,18 +18,9 @@ import java.util.Map;
 @Slf4j
 public class OrderStatusChangedNotificationService {
 
-    private static final Map<String, String> STATUS_MESSAGES_FR = Map.of(
-            "CONFIRMED", "Votre commande a été confirmée",
-            "PREPARING", "Votre commande est en cours de préparation",
-            "READY_FOR_PICKUP", "Votre commande est prête",
-            "PICKED_UP", "Le livreur a récupéré votre commande",
-            "IN_DELIVERY", "Votre commande est en cours de livraison",
-            "DELIVERED", "Votre commande a été livrée",
-            "CANCELLED", "Votre commande a été annulée"
-    );
-
     private final NotificationService notificationService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final MessageSource messageSource;
 
     public void handleOrderStatusChangedEvent(Map<String, Object> event) {
         final Long orderId = parseLong(event.get("orderId"));
@@ -58,9 +51,12 @@ public class OrderStatusChangedNotificationService {
                 orderId, orderNumber, previousStatus, newStatus, customerId);
 
         // Send notification to customer
-        String title = "Commande #" + (orderNumber != null ? orderNumber : orderId);
-        String message = STATUS_MESSAGES_FR.getOrDefault(newStatus,
-                "Le statut de votre commande a changé : " + newStatus);
+        String orderLabel = orderNumber != null ? orderNumber : String.valueOf(orderId);
+        String title = messageSource.getMessage("order.title", new Object[]{orderLabel}, Locale.FRENCH);
+        String defaultMessage = messageSource.getMessage(
+                "order.status.default", new Object[]{newStatus}, Locale.FRENCH);
+        String message = messageSource.getMessage(
+                "order.status." + newStatus, null, defaultMessage, Locale.FRENCH);
 
         Map<String, Object> data = new HashMap<>();
         data.put("id", orderId);

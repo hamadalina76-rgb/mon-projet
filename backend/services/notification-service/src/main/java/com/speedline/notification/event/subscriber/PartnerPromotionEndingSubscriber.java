@@ -14,6 +14,7 @@ import com.speedline.notification.service.impl.NotificationServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.annotation.ServiceActivator;
@@ -24,6 +25,7 @@ import org.springframework.messaging.MessageHandler;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -41,6 +43,7 @@ public class PartnerPromotionEndingSubscriber {
     private final NotificationServiceImpl notificationService;
     private final ObjectMapper objectMapper;
     private final PubSubTemplate pubSubTemplate;
+    private final MessageSource messageSource;
 
     @Bean
     public MessageChannel partnerPromotionEndingChannel() {
@@ -116,10 +119,10 @@ public class PartnerPromotionEndingSubscriber {
             endDateFormatted = "";
         }
 
-        String title = "Promotion bientôt terminée";
+        String title = messageSource.getMessage("promotion.ending.title", null, Locale.FRENCH);
         String message = daysLeft == 1
-                ? String.format("Votre promotion « %s » se termine demain (fin le %s).", productName, endDateFormatted)
-                : String.format("Votre promotion « %s » se termine dans %d jours (fin le %s).", productName, daysLeft, endDateFormatted);
+                ? messageSource.getMessage("promotion.ending.message.tomorrow", new Object[]{productName, endDateFormatted}, Locale.FRENCH)
+                : messageSource.getMessage("promotion.ending.message.days", new Object[]{productName, daysLeft, endDateFormatted}, Locale.FRENCH);
 
         Notification notif = Notification.builder()
                 .userId(notificationUserId)

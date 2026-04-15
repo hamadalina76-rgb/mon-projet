@@ -14,6 +14,7 @@ import com.speedline.notification.service.impl.NotificationServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.annotation.ServiceActivator;
@@ -22,6 +23,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -39,6 +41,7 @@ public class PartnerEventSubscriber {
     private final NotificationServiceImpl notificationService;
     private final ObjectMapper objectMapper;
     private final PubSubTemplate pubSubTemplate;
+    private final MessageSource messageSource;
 
     @Bean
     public MessageChannel partnerEventsChannel() {
@@ -164,8 +167,8 @@ public class PartnerEventSubscriber {
         Notification adminNotif = Notification.builder()
                 .userId(0L)
                 .type(NotificationType.PARTNER)
-                .title("Nouvelle demande partenaire")
-                .message("Le partenaire \"" + displayName + "\" a soumis une demande d'inscription.")
+                .title(messageSource.getMessage("partner.request.admin.title", null, Locale.FRENCH))
+                .message(messageSource.getMessage("partner.request.admin.message", new Object[]{displayName}, Locale.FRENCH))
                 .data(Map.of("partnerId", partnerId, "action", "REVIEW_PARTNER"))
                 .channel(NotificationChannel.IN_APP)
                 .isRead(false)
@@ -191,8 +194,8 @@ public class PartnerEventSubscriber {
         Notification partnerNotif = Notification.builder()
                 .userId(userId)
                 .type(NotificationType.PARTNER)
-                .title("Votre compte a été approuvé !")
-                .message("Félicitations ! Votre demande de partenariat pour \"" + displayName + "\" a été approuvée. Vous pouvez maintenant commencer à recevoir des commandes.")
+                .title(messageSource.getMessage("partner.approved.title", null, Locale.FRENCH))
+                .message(messageSource.getMessage("partner.approved.message", new Object[]{displayName}, Locale.FRENCH))
                 .data(Map.of("partnerId", partnerId, "action", "PARTNER_APPROVED", "newStatus", "ACTIVE"))
                 .channel(NotificationChannel.IN_APP)
                 .isRead(false)
@@ -220,7 +223,7 @@ public class PartnerEventSubscriber {
                 
                 notificationService.sendEmail(
                     email,
-                    "🎉 Votre compte partenaire SpeedLine a été approuvé !",
+                    messageSource.getMessage("partner.approved.email.subject", null, Locale.FRENCH),
                     "partner-approved-email",
                     emailVars
                 );
@@ -244,8 +247,8 @@ public class PartnerEventSubscriber {
         Notification partnerNotif = Notification.builder()
                 .userId(userId)
                 .type(NotificationType.PARTNER)
-                .title("Compte réactivé")
-                .message("Votre compte partenaire \"" + displayName + "\" a été réactivé. Vous pouvez à nouveau recevoir des commandes.")
+                .title(messageSource.getMessage("partner.activated.title", null, Locale.FRENCH))
+                .message(messageSource.getMessage("partner.activated.message", new Object[]{displayName}, Locale.FRENCH))
                 .data(Map.of("partnerId", partnerId, "action", "PARTNER_ACTIVATED", "newStatus", "ACTIVE"))
                 .channel(NotificationChannel.IN_APP)
                 .isRead(false)
@@ -267,16 +270,16 @@ public class PartnerEventSubscriber {
     private void handlePartnerDeactivated(Long partnerId, Long userId, String displayName, String reason) {
         log.info("Partner deactivated: partnerId={}, userId={}, reason={}", partnerId, userId, reason);
 
-        String message = "Votre compte partenaire \"" + displayName + "\" a été désactivé.";
+        String message = messageSource.getMessage("partner.deactivated.message", new Object[]{displayName}, Locale.FRENCH);
         if (reason != null && !reason.isEmpty()) {
-            message += " Raison : " + reason;
+            message += messageSource.getMessage("partner.deactivated.reason", new Object[]{reason}, Locale.FRENCH);
         }
-        message += " Pour réactiver votre compte, veuillez contacter le support.";
+        message += messageSource.getMessage("partner.deactivated.contact", null, Locale.FRENCH);
 
         Notification partnerNotif = Notification.builder()
                 .userId(userId)
                 .type(NotificationType.PARTNER)
-                .title("Compte partenaire désactivé")
+                .title(messageSource.getMessage("partner.deactivated.title", null, Locale.FRENCH))
                 .message(message)
                 .data(Map.of("partnerId", partnerId, "action", "PARTNER_DEACTIVATED", "newStatus", "INACTIVE", "reason", reason != null ? reason : ""))
                 .channel(NotificationChannel.IN_APP)
@@ -294,15 +297,15 @@ public class PartnerEventSubscriber {
     private void handlePartnerRejected(Long partnerId, Long userId, String displayName, String reason) {
         log.info("Partner rejected: partnerId={}, userId={}, reason={}", partnerId, userId, reason);
 
-        String message = "Votre demande de partenariat pour \"" + displayName + "\" a été refusée.";
+        String message = messageSource.getMessage("partner.rejected.message", new Object[]{displayName}, Locale.FRENCH);
         if (reason != null && !reason.isEmpty()) {
-            message += " Raison : " + reason;
+            message += messageSource.getMessage("partner.rejected.reason", new Object[]{reason}, Locale.FRENCH);
         }
 
         Notification partnerNotif = Notification.builder()
                 .userId(userId)
                 .type(NotificationType.PARTNER)
-                .title("Demande de partenariat refusée")
+                .title(messageSource.getMessage("partner.rejected.title", null, Locale.FRENCH))
                 .message(message)
                 .data(Map.of("partnerId", partnerId, "action", "PARTNER_REJECTED", "newStatus", "REJECTED", "reason", reason != null ? reason : ""))
                 .channel(NotificationChannel.IN_APP)
@@ -319,15 +322,15 @@ public class PartnerEventSubscriber {
     private void handlePartnerSuspended(Long partnerId, Long userId, String displayName, String reason) {
         log.info("Partner suspended: partnerId={}, userId={}", partnerId, userId);
 
-        String message = "Votre compte partenaire \"" + displayName + "\" a été suspendu.";
+        String message = messageSource.getMessage("partner.suspended.message", new Object[]{displayName}, Locale.FRENCH);
         if (reason != null && !reason.isEmpty()) {
-            message += " Raison : " + reason;
+            message += messageSource.getMessage("partner.suspended.reason", new Object[]{reason}, Locale.FRENCH);
         }
 
         Notification partnerNotif = Notification.builder()
                 .userId(userId)
                 .type(NotificationType.PARTNER)
-                .title("Compte partenaire suspendu")
+                .title(messageSource.getMessage("partner.suspended.title", null, Locale.FRENCH))
                 .message(message)
                 .data(Map.of("partnerId", partnerId, "action", "PARTNER_SUSPENDED", "newStatus", "SUSPENDED", "reason", reason != null ? reason : ""))
                 .channel(NotificationChannel.IN_APP)
@@ -344,7 +347,7 @@ public class PartnerEventSubscriber {
     private void handlePartnerInfoRequested(Long partnerId, Long userId, String displayName, String message) {
         log.info("Partner info requested: partnerId={}, userId={}, message={}", partnerId, userId, message);
 
-        String notificationMessage = "Des informations complémentaires sont requises pour votre demande de partenariat \"" + displayName + "\".";
+        String notificationMessage = messageSource.getMessage("partner.info_requested.message", new Object[]{displayName}, Locale.FRENCH);
         if (message != null && !message.isEmpty()) {
             notificationMessage += "\n\n" + message;
         }
@@ -352,7 +355,7 @@ public class PartnerEventSubscriber {
         Notification partnerNotif = Notification.builder()
                 .userId(userId)
                 .type(NotificationType.PARTNER)
-                .title("Informations complémentaires demandées")
+                .title(messageSource.getMessage("partner.info_requested.title", null, Locale.FRENCH))
                 .message(notificationMessage)
                 .data(Map.of(
                     "partnerId", partnerId,
@@ -387,8 +390,8 @@ public class PartnerEventSubscriber {
         Notification adminNotif = Notification.builder()
                 .userId(0L)
                 .type(NotificationType.PARTNER)
-                .title("Nouveau produit en attente")
-                .message("Le partenaire \"" + displayName + "\" a soumis le produit \"" + safeProductName + "\" pour validation.")
+                .title(messageSource.getMessage("product.request.admin.title", null, Locale.FRENCH))
+                .message(messageSource.getMessage("product.request.admin.message", new Object[]{displayName, safeProductName}, Locale.FRENCH))
                 .data(Map.of(
                         "partnerId", partnerId,
                         "action", "REVIEW_PRODUCT",
@@ -412,8 +415,8 @@ public class PartnerEventSubscriber {
             notificationService.sendNotification(
                     userId,
                     NotificationType.PARTNER,
-                    "Produit en attente",
-                    "Le produit \"" + safeProductName + "\" a été soumis pour validation. Vous serez informé après la décision de l'admin.",
+                    messageSource.getMessage("product.request.partner.title", null, Locale.FRENCH),
+                    messageSource.getMessage("product.request.partner.message", new Object[]{safeProductName}, Locale.FRENCH),
                     Map.of(
                             "partnerId", partnerId,
                             "action", "PRODUCT_REQUEST_SUBMITTED",
@@ -443,8 +446,8 @@ public class PartnerEventSubscriber {
         notificationService.sendNotification(
                 userId,
                 NotificationType.PARTNER,
-                "Produit validé",
-                "Le produit \"" + safeProductName + "\" a été validé.",
+                messageSource.getMessage("product.approved.title", null, Locale.FRENCH),
+                messageSource.getMessage("product.approved.message", new Object[]{safeProductName}, Locale.FRENCH),
                 Map.of(
                         "partnerId", partnerId,
                         "action", "PRODUCT_APPROVED",
@@ -473,8 +476,10 @@ public class PartnerEventSubscriber {
         notificationService.sendNotification(
                 userId,
                 NotificationType.PARTNER,
-                "Produit rejeté",
-                "Le produit \"" + safeProductName + "\" a été rejeté." + (safeReason.isBlank() ? "" : " Motif: " + safeReason),
+                messageSource.getMessage("product.rejected.title", null, Locale.FRENCH),
+                safeReason.isBlank()
+                        ? messageSource.getMessage("product.rejected.message", new Object[]{safeProductName}, Locale.FRENCH)
+                        : messageSource.getMessage("product.rejected.message.with_reason", new Object[]{safeProductName, safeReason}, Locale.FRENCH),
                 Map.of(
                         "partnerId", partnerId,
                         "action", "PRODUCT_REJECTED",
