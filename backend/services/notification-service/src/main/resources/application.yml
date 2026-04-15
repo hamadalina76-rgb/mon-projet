@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: notification-service
+  messages:
+    basename: messages
+    encoding: UTF-8
+    fallback-to-system-locale: true
   data:
     mongodb:
       uri: mongodb://${MONGO_USERNAME:mongo}:${MONGO_PASSWORD:mongo123}@${MONGO_HOST:localhost}:${MONGO_PORT:27017}/speedline_notifications?authSource=admin
