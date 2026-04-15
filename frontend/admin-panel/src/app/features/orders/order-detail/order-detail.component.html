@@ -17,7 +17,7 @@
       </div>
     </div>
     <div class="header-right">
-      <button mat-stroked-button class="refresh-btn" (click)="refresh()" [disabled]="refreshing">
+      <button mat-stroked-button color="warn" class="refresh-btn" (click)="refresh()" [disabled]="refreshing">
         <mat-icon [class.spin]="refreshing">refresh</mat-icon>
         {{ 'orderDetail.refresh' | translate }}
       </button>
@@ -194,17 +194,17 @@
                   <span class="col-qty item-qty">{{ item.quantity }}×</span>
                   <div class="col-name item-info">
                     <span class="item-name">{{ item.productName }}</span>
-                    @if (item.selectedOptions) {
+                    @if (item.selectedOptions?.length) {
                       <div class="item-options">
-                        @for (opt of item.selectedOptions | keyvalue; track opt.key) {
-                          <span class="option-badge">{{ opt.key }}: {{ opt.value }}</span>
+                        @for (opt of item.selectedOptions; track opt.optionId ?? $index) {
+                          <span class="option-badge">{{ opt.optionName }}: {{ opt.valueName }} @if (opt.priceModifier) { (+{{ opt.priceModifier | number:'1.2-2' }}) }</span>
                         }
                       </div>
                     }
                     @if (item.selectedAddons?.length) {
                       <div class="item-addons">
-                        @for (addon of item.selectedAddons; track addon) {
-                          <span class="addon-badge">+ {{ addon }}</span>
+                        @for (addon of item.selectedAddons; track addon.addonId ?? $index) {
+                          <span class="addon-badge">+ {{ addon.addonName }} @if (addon.quantity && addon.quantity > 1) { ×{{ addon.quantity }} } @if (addon.price) { ({{ addon.total || addon.price | number:'1.2-2' }} TND) }</span>
                         }
                       </div>
                     }
@@ -239,26 +239,28 @@
         {{ 'orderDetail.tabs.map' | translate }}
       </ng-template>
 
-      <div class="tab-content">
-        <section class="card map-card">
-          @if (order.status === 'IN_DELIVERY' && courierPosition) {
-            <div class="tracking-banner live">
-              <mat-icon>gps_fixed</mat-icon>
-              {{ 'orderDetail.courierLive' | translate }}
-            </div>
-          }
-          <div id="order-map" class="map-container"></div>
-          <div class="map-legend">
-            <span class="legend-item"><span class="legend-dot green"></span> {{ 'orderDetail.customer' | translate }}</span>
-            <span class="legend-item"><span class="legend-dot blue"></span> {{ 'orderDetail.courier' | translate }}</span>
+      <div class="tab-content map-fullscreen-tab">
+        <div id="order-map" class="map-container-fullscreen"></div>
+
+        <!-- Overlays flottants -->
+        @if (order.status === 'IN_DELIVERY' && courierPosition) {
+          <div class="map-overlay-banner live">
+            <mat-icon>gps_fixed</mat-icon>
+            {{ 'orderDetail.courierLive' | translate }}
           </div>
-          @if (order.deliveryAddress?.formattedAddress) {
-            <div class="delivery-info-below">
-              <mat-icon>place</mat-icon>
-              <span>{{ order.deliveryAddress!.formattedAddress }}</span>
-            </div>
-          }
-        </section>
+        }
+
+        <div class="map-overlay-legend">
+          <span class="legend-item"><span class="legend-dot green"></span> {{ 'orderDetail.customer' | translate }}</span>
+          <span class="legend-item"><span class="legend-dot blue"></span> {{ 'orderDetail.courier' | translate }}</span>
+        </div>
+
+        @if (order.deliveryAddress?.formattedAddress) {
+          <div class="map-overlay-address">
+            <mat-icon>place</mat-icon>
+            <span>{{ order.deliveryAddress!.formattedAddress }}</span>
+          </div>
+        }
       </div>
     </mat-tab>
 
@@ -504,7 +506,15 @@
       <p>{{ 'orderDetail.assignCourierConfirm' | translate }}</p>
       <mat-form-field appearance="outline" class="dialog-field">
         <mat-label>{{ 'orderDetail.courierIdLabel' | translate }}</mat-label>
-        <input matInput type="number" [(ngModel)]="newCourierId" min="1">
+        @if (couriersLoading) {
+          <mat-select disabled><mat-option>Chargement...</mat-option></mat-select>
+        } @else {
+          <mat-select [(ngModel)]="newCourierId">
+            @for (courier of couriersList; track courier.id) {
+              <mat-option [value]="courier.id">{{ courier.firstName }} {{ courier.lastName }} — {{ courier.phone }}</mat-option>
+            }
+          </mat-select>
+        }
       </mat-form-field>
       <div class="dialog-actions">
         <button mat-button (click)="closeAssignCourierDialog()">{{ 'common.cancel' | translate }}</button>

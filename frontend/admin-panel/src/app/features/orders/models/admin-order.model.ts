@@ -22,16 +22,34 @@ export interface DeliveryAddress {
   longitude?: number;
 }
 
+export interface SelectedOption {
+  optionId?: number;
+  optionName?: string;
+  valueId?: number;
+  valueName?: string;
+  priceModifier?: number;
+}
+
+export interface SelectedAddon {
+  addonId?: number;
+  addonName?: string;
+  quantity?: number;
+  price?: number;
+  total?: number;
+}
+
 export interface OrderItem {
   id: number;
   productId: number;
   productName: string;
   quantity: number;
   unitPrice: number;
+  modifiersTotal?: number;
+  totalUnitPrice?: number;
   subtotal: number;
   specialInstructions?: string;
-  selectedOptions?: Record<string, string>;
-  selectedAddons?: string[];
+  selectedOptions?: SelectedOption[];
+  selectedAddons?: SelectedAddon[];
 }
 
 export interface StatusHistoryEntry {

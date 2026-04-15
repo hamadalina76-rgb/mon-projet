@@ -19,6 +19,7 @@ import mapboxgl from 'mapbox-gl';
 import { environment } from '@environments/environment';
 import { OrdersService } from '../services/orders.service';
 import { PartnersService } from '../../partners/services/partners.service';
+import { CouriersService } from '../../users/couriers/services/couriers.service';
 import { WebSocketService, CourierPositionEvent, OrderNoteEvent, OrderTimelineEvent, WebSocketNotification } from '@core/services/websocket.service';
 import { AdminOrder, CourierPosition, InternalNote, NoteVisibility, ORDER_STATUS_CONFIG, OrderStatus } from '../models/admin-order.model';
 
@@ -39,6 +40,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private ordersService = inject(OrdersService);
   private partnersService = inject(PartnersService);
+  private couriersService = inject(CouriersService);
   private wsService = inject(WebSocketService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
@@ -65,6 +67,8 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   // Assign courier dialog state
   showAssignCourierDialog = false;
   newCourierId: number | null = null;
+  couriersList: any[] = [];
+  couriersLoading = false;
 
   // Contact dialog state
   showContactDialog = false;
@@ -249,6 +253,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     });
 
     this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    this.map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
 
     this.map.on('load', () => {
       this.mapInitialized = true;
@@ -503,6 +508,17 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   openAssignCourierDialog(): void {
     this.newCourierId = null;
     this.showAssignCourierDialog = true;
+    this.couriersLoading = true;
+    this.couriersService.getCouriers(0, 200, 'ACTIVE').subscribe({
+      next: (res: any) => {
+        this.couriersList = res.content || [];
+        this.couriersLoading = false;
+      },
+      error: () => {
+        this.couriersList = [];
+        this.couriersLoading = false;
+      },
+    });
   }
 
   closeAssignCourierDialog(): void {

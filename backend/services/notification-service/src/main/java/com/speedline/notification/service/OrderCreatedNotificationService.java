@@ -7,6 +7,7 @@ import com.speedline.notification.repository.NotificationRepository;
 import com.speedline.notification.service.impl.NotificationServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -28,6 +30,7 @@ public class OrderCreatedNotificationService {
     private final NotificationRepository notificationRepository;
     private final NotificationServiceImpl notificationService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final MessageSource messageSource;
 
     public void handleOrderCreatedEvent(Map<String, Object> event) {
         final Object eventType = event.get("eventType");
@@ -66,7 +69,8 @@ public class OrderCreatedNotificationService {
         log.info("Processing ORDER_CREATED: orderId={}, orderNumber={}, partnerId={}, partnerUserId={}, total={}",
                 orderId, orderNumber, partnerId, partnerUserId, total);
 
-        String title = "Nouvelle commande #" + (orderNumber != null ? orderNumber : orderId);
+        String title = messageSource.getMessage("order.created.title",
+                new Object[]{orderNumber != null ? orderNumber : orderId}, Locale.FRENCH);
         String message = buildOrderMessage(itemCount, total);
 
         Map<String, Object> data = new HashMap<>();
@@ -106,7 +110,8 @@ public class OrderCreatedNotificationService {
         Notification adminNotification = Notification.builder()
                 .userId(0L)
                 .type(NotificationType.ORDER)
-                .title("Nouvelle commande #" + (orderNumber != null ? orderNumber : orderId))
+                .title(messageSource.getMessage("order.created.title",
+                        new Object[]{orderNumber != null ? orderNumber : orderId}, Locale.FRENCH))
                 .message(message)
                 .data(data)
                 .channel(NotificationChannel.IN_APP)
@@ -152,13 +157,9 @@ public class OrderCreatedNotificationService {
             }
         }
 
-        String title = "Commande planifiée — préparation";
-        String message = String.format(
-                "La commande #%s a un créneau à %s. Prévoyez %d min (prépa + marge).",
-                orderNumber != null ? orderNumber : orderId,
-                slotLabel,
-                prepLead
-        );
+        String title = messageSource.getMessage("order.scheduled.title", null, Locale.FRENCH);
+        String message = messageSource.getMessage("order.scheduled.message",
+                new Object[]{orderNumber != null ? orderNumber : orderId, slotLabel, prepLead}, Locale.FRENCH);
 
         Map<String, Object> data = new HashMap<>();
         data.put("id", orderId);
@@ -214,10 +215,14 @@ public class OrderCreatedNotificationService {
         final String estimatedDeliveryTime = parseString(event.get("estimatedDeliveryTime"));
 
         final String orderLabel = orderNumber != null ? "#" + orderNumber : "#" + orderId;
-        final String title = "Commande acceptee";
-        String message = "Votre commande " + orderLabel + " a ete acceptee par le partenaire.";
+        final String title = messageSource.getMessage("order.accepted.title", null, Locale.FRENCH);
+        String message;
         if (estimatedDeliveryTime != null) {
-            message += " Livraison estimee: " + estimatedDeliveryTime + ".";
+            message = messageSource.getMessage("order.accepted.message.with_delivery",
+                    new Object[]{orderLabel, estimatedDeliveryTime}, Locale.FRENCH);
+        } else {
+            message = messageSource.getMessage("order.accepted.message",
+                    new Object[]{orderLabel}, Locale.FRENCH);
         }
 
         final Map<String, Object> data = new HashMap<>();
@@ -263,12 +268,16 @@ public class OrderCreatedNotificationService {
         log.info("ORDER_ACCEPTED admin WebSocket broadcast for orderId={}", orderId);
     }
 
-    private static String buildOrderMessage(int itemCount, BigDecimal total) {
-        String itemLabel = itemCount == 1 ? "article" : "articles";
+    private String buildOrderMessage(int itemCount, BigDecimal total) {
+        String itemLabel = messageSource.getMessage(
+                itemCount == 1 ? "order.created.item.singular" : "order.created.item.plural",
+                null, Locale.FRENCH);
         if (total != null) {
-            return itemCount + " " + itemLabel + " • " + total.toPlainString() + " MAD";
+            return messageSource.getMessage("order.created.message.with_total",
+                    new Object[]{itemCount, itemLabel, total.toPlainString()}, Locale.FRENCH);
         }
-        return itemCount + " " + itemLabel;
+        return messageSource.getMessage("order.created.message.no_total",
+                new Object[]{itemCount, itemLabel}, Locale.FRENCH);
     }
 
     private static BigDecimal parseBigDecimal(Object value) {
