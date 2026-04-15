@@ -17,7 +17,7 @@
 
   @include mobile {
     max-width: 100%;
-    padding: $spacing-lg;
+    padding: calc(#{$spacing-lg} + env(safe-area-inset-top, 0px)) calc(#{$spacing-lg} + env(safe-area-inset-right, 0px)) calc(#{$spacing-lg} + env(safe-area-inset-bottom, 0px)) calc(#{$spacing-lg} + env(safe-area-inset-left, 0px));
   }
 }
 

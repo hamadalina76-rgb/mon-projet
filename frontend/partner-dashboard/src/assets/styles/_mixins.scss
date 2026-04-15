@@ -7,6 +7,8 @@
 
 // Responsive Breakpoints
 // ==========================================================================
+// Contract (align TS + SCSS): "mobile" = viewports strictly below $breakpoint-tablet (768px),
+// i.e. max-width 767px — matches BreakpointObserver '(max-width: 767px)' in MainLayoutComponent.
 
 @mixin mobile {
   @media (max-width: #{$breakpoint-tablet - 1px}) {

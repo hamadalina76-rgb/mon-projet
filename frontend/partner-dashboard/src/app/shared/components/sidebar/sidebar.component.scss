@@ -19,7 +19,8 @@
   }
 
   &.mobile {
-    width: min(280px, 85vw);
+    width: min(280px, calc(85vw - env(safe-area-inset-left, 0px)));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     transform: translateX(-100%);
     box-shadow: $shadow-xl;
 
@@ -28,7 +29,18 @@
     }
 
     &.collapsed {
-      width: min(280px, 85vw);
+      width: min(280px, calc(85vw - env(safe-area-inset-left, 0px)));
+    }
+
+    .nav-item {
+      min-height: 48px;
+      align-items: center;
+    }
+
+    .collapse-btn {
+      width: 44px;
+      height: 44px;
+      bottom: calc(#{$spacing-md} + env(safe-area-inset-bottom, 0px));
     }
   }
 }

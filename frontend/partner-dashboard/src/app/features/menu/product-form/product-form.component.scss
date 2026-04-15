@@ -1,5 +1,6 @@
 // product-form.component.scss
 @use 'assets/styles/variables' as *;
+@use 'assets/styles/mixins' as *;
 @use 'sass:color';
 
 @keyframes fadeInUp {
@@ -13,8 +14,12 @@
   max-width: 1200px;
   min-height: calc(100vh - $header-height);
   animation: fadeInUp 0.4s ease-out;
+  width: 100%;
+  box-sizing: border-box;
 
-  @media (max-width: 600px) { padding: 1rem; }
+  @include mobile {
+    padding: 1rem calc(1rem + env(safe-area-inset-right, 0px)) 1rem calc(1rem + env(safe-area-inset-left, 0px));
+  }
 }
 
 /* ── Breadcrumb ── */
@@ -204,7 +209,7 @@
 .half-width {
   width: 50%;
   display: block;
-  @media (max-width: 768px) { width: 100%; }
+  @include mobile { width: 100%; }
 }
 
 .form-row {
@@ -643,7 +648,7 @@
   width: 50%;
   display: block;
 
-  @media (max-width: 768px) { width: 100%; }
+  @include mobile { width: 100%; }
 }
 
 .form-row {

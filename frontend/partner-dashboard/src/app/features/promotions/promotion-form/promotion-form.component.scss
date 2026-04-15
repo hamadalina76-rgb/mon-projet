@@ -1,9 +1,16 @@
 // Promotion Form Component Styles
 @use 'assets/styles/variables' as *;
+@use 'assets/styles/mixins' as *;
 
 .promotion-form-page {
   padding: 1.5rem;
   max-width: 900px;
+  width: 100%;
+  box-sizing: border-box;
+
+  @include mobile {
+    padding: 1rem calc(1rem + env(safe-area-inset-right, 0px)) 1rem calc(1rem + env(safe-area-inset-left, 0px));
+  }
 }
 
 .page-header {

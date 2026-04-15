@@ -60,6 +60,7 @@
   font-size: 0.875rem;
 
   @include mobile {
+    top: calc(#{$header-height} + env(safe-area-inset-top, 0px));
     margin: 0 0.75rem;
     padding: 0.6rem 1rem;
     font-size: 0.8125rem;
@@ -112,7 +113,11 @@
   overflow-x: hidden;
 
   @include mobile {
+    padding-top: calc(#{$header-height} + env(safe-area-inset-top, 0px));
+    min-height: calc(100vh - #{$header-height} - env(safe-area-inset-top, 0px));
     padding-left: 0;
     padding-right: 0;
+    /* Home indicator / gesture bar on notched phones */
+    padding-bottom: calc(#{$spacing-sm} + env(safe-area-inset-bottom, 0px));
   }
 }
