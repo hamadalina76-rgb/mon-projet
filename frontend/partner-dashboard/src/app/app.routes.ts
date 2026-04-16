@@ -64,6 +64,13 @@ export const routes: Routes = [
           import('./features/finance/finance.routes').then((m) => m.FINANCE_ROUTES),
       },
       {
+        path: 'notifications',
+        loadChildren: () =>
+          import('./features/notifications/notifications.routes').then(
+            (m) => m.NOTIFICATIONS_ROUTES
+          ),
+      },
+      {
         path: '',
         redirectTo: 'dashboard',
         pathMatch: 'full',

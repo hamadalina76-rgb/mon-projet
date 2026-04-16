@@ -29,6 +29,7 @@ import {
   hasProductPrepOnItems,
   suggestedPrepMinutesFromItems,
 } from '../models/order.model';
+import { partnerOrderItemsLines } from '../utils/order-item-display';
 import { TimerComponent } from '../components/prep-timer/timer.component';
 import { PrepTimerSessionService } from '../services/prep-timer-session.service';
 import { KitchenPrintService } from '../services/kitchen-print.service';
@@ -469,11 +470,9 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  getItemsSummary(order: any): string {
-    const items = order.items ?? [];
-    if (!items.length) return '—';
-    const first = items[0]?.productName ?? '';
-    return items.length > 1 ? `${first} +${items.length - 1}` : first;
+  /** Lignes produit + options / suppléments / notes pour la colonne Articles. */
+  itemsLines(order: any): { title: string; meta: string[] }[] {
+    return partnerOrderItemsLines(order);
   }
 
   totalItems(order: any): number {
@@ -544,6 +543,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
           showProductPrepHint: showHint,
           isScheduled: o.isScheduled === true,
           scheduledDeliveryTime: o.scheduledDeliveryTime,
+          orderLines: partnerOrderItemsLines(o),
         },
         panelClass: 'sl-dialog-panel',
         maxWidth: '90vw',

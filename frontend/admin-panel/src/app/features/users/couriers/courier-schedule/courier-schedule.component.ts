@@ -131,7 +131,7 @@ export class CourierScheduleComponent implements OnInit {
     expandRows: true,
     nowIndicator: true,
     dayHeaderContent: (args: any) => {
-      const lang = this.translate?.currentLang === 'fr' ? 'fr-FR' : 'en-US';
+      const lang = this.translate?.currentLang === 'fr' ? 'fr-FR' : 'en-GB';
       const weekday = args.date.toLocaleDateString(lang, { weekday: 'short' })
         .replace(/\.$/, '').toUpperCase();
       const dayNum = args.date.getDate();
@@ -546,7 +546,7 @@ export class CourierScheduleComponent implements OnInit {
 
   private formatWeekLabel(start: Date, end: Date): string {
     const lang   = this.translate.currentLang || 'fr';
-    const locale = lang === 'fr' ? 'fr-FR' : 'en-US';
+    const locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
     const lastDay = new Date(end);
     lastDay.setDate(lastDay.getDate() - 1);
     const startStr = start.toLocaleDateString(locale, { day: 'numeric', month: 'long' });

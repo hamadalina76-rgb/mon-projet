@@ -180,7 +180,9 @@ public final class KitchenTicketHtmlBuilder {
             inner.append("<div class=\"mod\">").append(esc(line)).append("</div>");
         }
         if (it.getSpecialInstructions() != null && !it.getSpecialInstructions().isBlank()) {
-            inner.append("<div class=\"item-note\">📌 ").append(esc(it.getSpecialInstructions())).append("</div>");
+            inner.append("<div class=\"item-note\"><span class=\"item-note-lbl\">Note plat · </span>")
+                    .append(esc(it.getSpecialInstructions()))
+                    .append("</div>");
         }
         return "<div class=\"item\">" + inner + "</div>";
     }
@@ -412,6 +414,7 @@ public final class KitchenTicketHtmlBuilder {
               border-left: 2px solid #000;
               background: #f0f0f0;
             }
+            .item-note-lbl { font-style: normal; font-weight: 800; }
 
             /* ── Totaux ──────────────────────────────────── */
             .total-row {

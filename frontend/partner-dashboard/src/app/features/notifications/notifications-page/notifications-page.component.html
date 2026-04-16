@@ -1,0 +1,92 @@
+<div class="notifications-shell">
+  <div class="notifications-page">
+    <header class="notif-hero">
+      <div class="notif-hero-brand">
+        <div class="notif-hero-icon" aria-hidden="true">
+          <span class="material-icons">notifications</span>
+        </div>
+        <div class="notif-hero-text">
+          <h1 class="page-title">{{ 'NOTIFICATIONS.TITLE' | translate }}</h1>
+          <p class="page-subtitle">{{ 'NOTIFICATIONS.SUBTITLE' | translate }}</p>
+        </div>
+      </div>
+      <div class="notif-hero-actions">
+        @if (unreadCount() > 0) {
+          <span class="unread-pill" role="status">
+            {{ 'NOTIFICATIONS.UNREAD_BADGE' | translate: { count: unreadCount() } }}
+          </span>
+          <button
+            type="button"
+            mat-stroked-button
+            color="primary"
+            class="mark-all-btn"
+            (click)="markAllRead()">
+            {{ 'NOTIFICATIONS.MARK_ALL' | translate }}
+          </button>
+        }
+      </div>
+    </header>
+
+    @if (loading()) {
+      <div class="state-card loading-card">
+        <mat-spinner diameter="44"></mat-spinner>
+        <span>{{ 'NOTIFICATIONS.LOADING' | translate }}</span>
+      </div>
+    } @else if (loadError()) {
+      <div class="state-card error-card" role="alert">
+        <span class="material-icons error-card-icon">error_outline</span>
+        <p>{{ 'NOTIFICATIONS.LOAD_ERROR' | translate }}</p>
+      </div>
+    } @else if (rows().length === 0) {
+      <div class="state-card empty-card">
+        <div class="empty-card-icon-wrap" aria-hidden="true">
+          <span class="material-icons">notifications_none</span>
+        </div>
+        <p class="empty-card-title">{{ 'NOTIFICATIONS.EMPTY' | translate }}</p>
+        <p class="empty-card-hint">{{ 'NOTIFICATIONS.EMPTY_HINT' | translate }}</p>
+      </div>
+    } @else {
+      <section class="notif-panel" [attr.aria-label]="'NOTIFICATIONS.LIST_REGION' | translate">
+        <ul class="notif-list" role="list">
+          @for (notif of rows(); track notif.id) {
+            <li class="notif-li" role="listitem">
+              <button
+                type="button"
+                class="notif-row"
+                [class.unread]="!notif.isRead"
+                [attr.aria-label]="notif.title"
+                (click)="onNotifClick(notif)">
+                <div class="notif-row-icon-wrap" aria-hidden="true">
+                  <span class="material-icons notif-row-icon">{{ notifIcon(notif) }}</span>
+                </div>
+                <div class="notif-row-body">
+                  <div class="notif-row-top">
+                    <span class="notif-row-title">{{ notif.title }}</span>
+                    @if (!notif.isRead) {
+                      <span class="notif-new-tag">{{ 'NOTIFICATIONS.NEW_BADGE' | translate }}</span>
+                    }
+                  </div>
+                  <p class="notif-row-msg">{{ notif.message }}</p>
+                  <time class="notif-row-time" [attr.datetime]="notif.createdAt">
+                    {{ notif.createdAt | date: 'short' }}
+                  </time>
+                </div>
+                <span class="material-icons notif-row-chevron" aria-hidden="true">chevron_right</span>
+              </button>
+            </li>
+          }
+        </ul>
+
+        <div class="notif-paginator-wrap">
+          <mat-paginator
+            [length]="totalElements()"
+            [pageSize]="pageSize()"
+            [pageIndex]="pageIndex()"
+            [pageSizeOptions]="[20, 50, 100]"
+            (page)="onPage($event)">
+          </mat-paginator>
+        </div>
+      </section>
+    }
+  </div>
+</div>

@@ -354,6 +354,32 @@ hr {
 .notifications-dropdown {
   min-width: 280px;
   max-width: min(400px, calc(100vw - 2 * #{$spacing-md}));
+  display: flex;
+  flex-direction: column;
+
+  .dropdown-body {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .dropdown-footer {
+    flex-shrink: 0;
+    border-top: 1px solid $gray-200;
+  }
+
+  .view-all-notifications {
+    display: block;
+    padding: $spacing-sm $spacing-md;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: $primary-color;
+    text-decoration: none;
+    text-align: center;
+
+    &:hover {
+      background: $gray-50;
+    }
+  }
 
   @include mobile {
     position: fixed;

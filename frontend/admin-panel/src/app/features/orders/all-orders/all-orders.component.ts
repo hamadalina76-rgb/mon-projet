@@ -1,5 +1,5 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy, inject, LOCALE_ID } from '@angular/core';
+import { CommonModule, formatDate } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
 import { Subject, Observable, of, Subscription } from 'rxjs';
@@ -61,6 +61,7 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
   private translate = inject(TranslateService);
   private wsService = inject(WebSocketService);
   private snackBar = inject(MatSnackBar);
+  private localeId = inject(LOCALE_ID);
   private destroy$ = new Subject<void>();
   private searchInput$ = new Subject<string>();
   private wsSub?: Subscription;
@@ -296,7 +297,7 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
       chips.push({ key: 'amountMax', label: `≤ ${this.amountMax} TND`, icon: 'attach_money' });
     }
     if (this.selectedRange === 'custom' && this.dateRange.value.start && this.dateRange.value.end) {
-      const fmt = (d: Date) => d.toLocaleDateString();
+      const fmt = (d: Date) => formatDate(d, 'dd/MM/yyyy', this.localeId);
       chips.push({ key: 'dateRange', label: `${fmt(this.dateRange.value.start)} — ${fmt(this.dateRange.value.end)}`, icon: 'date_range' });
     }
     return chips;

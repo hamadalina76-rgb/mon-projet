@@ -1,6 +1,7 @@
 // src/app/features/orders/services/orders.service.ts
 import { Injectable, inject } from '@angular/core';
 import { Observable, of } from 'rxjs';
+import { normalizePartnerOrderItem } from '../utils/order-item-display';
 import { map, catchError } from 'rxjs/operators';
 import { ApiService } from '@core/services/api.service';
 import { AuthService } from '@core/services/auth.service';
@@ -461,13 +462,7 @@ export class OrdersService {
         name:  o.customerName  ?? '',
         phone: o.customerPhone ?? '',
       },
-      items: (o.items ?? []).map((it: any) => ({
-        ...it,
-        productId: it.productId != null ? String(it.productId) : it.productId,
-        unitPrice: it.unitPrice ?? it.price ?? 0,
-        preparationTimeMin:
-          it.preparationTimeMin != null ? Number(it.preparationTimeMin) : undefined,
-      })),
+      items: (o.items ?? []).map((it: any) => normalizePartnerOrderItem(it)),
     };
   }
 }

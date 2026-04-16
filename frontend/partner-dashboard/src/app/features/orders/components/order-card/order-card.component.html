@@ -76,19 +76,24 @@
       </span>
     </div>
     <ul class="items-list">
-      @for (item of order().items?.slice(0, 3); track item.productId) {
-        <li class="item-row">
-          <span class="item-qty">{{ item.quantity }}×</span>
-          <span class="item-name">{{ item.productName }}</span>
-          @if (item.unitPrice) {
-            <span class="item-price">{{ item.unitPrice * item.quantity | number:'1.2-2' }} TND</span>
+      @for (item of order().items; track item.id ?? item.productId) {
+        <li class="item-block">
+          <div class="item-row">
+            <span class="item-qty">{{ item.quantity }}×</span>
+            <span class="item-name">{{ item.productName }}</span>
+            @if (item.subtotal != null && item.subtotal >= 0) {
+              <span class="item-price">{{ item.subtotal | number:'1.2-2' }} TND</span>
+            } @else if (item.unitPrice) {
+              <span class="item-price">{{ item.unitPrice * item.quantity | number:'1.2-2' }} TND</span>
+            }
+          </div>
+          @if (itemMetaLines(item).length) {
+            <ul class="item-meta">
+              @for (m of itemMetaLines(item); track $index) {
+                <li>{{ m }}</li>
+              }
+            </ul>
           }
-        </li>
-      }
-      @if ((order().items?.length ?? 0) > 3) {
-        <li class="item-row more-row">
-          <span class="material-icons">more_horiz</span>
-          <span>{{ 'ORDERS.CARD.MORE_ITEMS' | translate: { count: order().items.length - 3 } }}</span>
         </li>
       }
     </ul>

@@ -6,6 +6,7 @@ import { OrderStatusBadgeComponent } from '../order-status-badge/order-status-ba
 import { TimeAgoPipe } from '@shared/pipes/time-ago.pipe';
 import { TranslateModule } from '@ngx-translate/core';
 import { Order } from '../../models/order.model';
+import { partnerOrderItemMetaLines } from '../../utils/order-item-display';
 import { TimerComponent } from '../prep-timer/timer.component';
 import { PrepTimerSessionService } from '../../services/prep-timer-session.service';
 import { mergePrepTimerContext } from '../../utils/prep-timer.utils';
@@ -63,6 +64,10 @@ export class OrderCardComponent {
     const o = this.order();
     return o?.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) ?? 0;
   });
+
+  itemMetaLines(item: any): string[] {
+    return partnerOrderItemMetaLines(item);
+  }
 
   onConfirm(): void {
     this.confirm.emit(this.order().id);
