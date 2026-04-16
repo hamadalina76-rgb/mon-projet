@@ -58,7 +58,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -164,6 +166,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         final List<CartItemPayload> cartItems = resolveCartItemsForCheckout(customerId, request);
+        mergeKitchenNotesFromCheckoutPayload(cartItems, request.getCartItems());
         if (cartItems.isEmpty()) {
             throw badRequest("Le panier est vide");
         }
@@ -1263,6 +1266,52 @@ public class OrderServiceImpl implements OrderService {
                 })
                 .sorted()
                 .toList();
+    }
+
+    /**
+     * Clé de ligne panier sans la note — pour rapprocher panier Redis et payload checkout
+     * quand la note n’a pas encore été synchronisée côté serveur.
+     */
+    private String cartLineKeyWithoutNote(CartItemPayload item) {
+        final List<String> normalizedOptions = normalizeOptionsForSignature(item.getSelectedOptions());
+        final Integer qty = item.getQuantity() == null ? 0 : item.getQuantity();
+        return item.getProductId() + "|"
+                + item.getPartnerId() + "|"
+                + qty + "|"
+                + String.join(",", normalizedOptions);
+    }
+
+    /**
+     * Si le panier résolu (souvent Redis) n’a pas de {@code kitchenNote} mais que le client
+     * l’a envoyée dans le checkout, on la recopie — évite les commandes sans note par plat.
+     */
+    private void mergeKitchenNotesFromCheckoutPayload(
+            List<CartItemPayload> resolved,
+            List<CheckoutOrderRequest.CartItemRequest> rawCartItems) {
+        if (resolved == null || resolved.isEmpty() || rawCartItems == null || rawCartItems.isEmpty()) {
+            return;
+        }
+        final List<CartItemPayload> fromRequest = toCartPayloads(rawCartItems);
+        if (fromRequest.isEmpty()) {
+            return;
+        }
+        final Map<String, ArrayDeque<CartItemPayload>> queues = new HashMap<>();
+        for (CartItemPayload r : fromRequest) {
+            queues.computeIfAbsent(cartLineKeyWithoutNote(r), k -> new ArrayDeque<>()).addLast(r);
+        }
+        for (CartItemPayload s : resolved) {
+            if (trimToNull(s.getKitchenNote()) != null) {
+                continue;
+            }
+            final ArrayDeque<CartItemPayload> q = queues.get(cartLineKeyWithoutNote(s));
+            if (q == null || q.isEmpty()) {
+                continue;
+            }
+            final String note = trimToNull(q.pollFirst().getKitchenNote());
+            if (note != null) {
+                s.setKitchenNote(note);
+            }
+        }
     }
 
             private List<String> normalizeOptionsForSignature(List<Object> rawSelectedOptions) {

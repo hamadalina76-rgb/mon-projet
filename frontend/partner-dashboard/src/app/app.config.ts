@@ -1,5 +1,6 @@
 // src/app/app.config.ts
-import { ApplicationConfig, importProvidersFrom, APP_INITIALIZER } from '@angular/core';
+import { ApplicationConfig, importProvidersFrom, APP_INITIALIZER, LOCALE_ID } from '@angular/core';
+import { MAT_DATE_LOCALE } from '@angular/material/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withInterceptors, HttpClient } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
@@ -14,6 +15,7 @@ import { authInterceptor } from '@core/interceptors/auth.interceptor';
 import { errorInterceptor } from '@core/interceptors/error.interceptor';
 import { loadingInterceptor } from '@core/interceptors/loading.interceptor';
 import { environment } from '@environments/environment';
+import { partnerAppLocaleId } from '@core/i18n/locale-id.factory';
 
 // Socket.IO Configuration
 const socketConfig: SocketIoConfig = {
@@ -43,6 +45,8 @@ export function initTranslations(translate: TranslateService) {
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    { provide: LOCALE_ID, useFactory: partnerAppLocaleId },
+    { provide: MAT_DATE_LOCALE, useFactory: partnerAppLocaleId },
     { provide: APP_INITIALIZER, useFactory: initTranslations, deps: [TranslateService], multi: true },
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(

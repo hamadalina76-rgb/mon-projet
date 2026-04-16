@@ -433,16 +433,41 @@
   font-size: 0.875rem; font-weight: 600; color: $text-primary;
 }
 
-.item-options {
+.item-options,
+.item-addons {
   list-style: none; padding: 0; margin: 0;
   li { font-size: 0.75rem; color: $text-muted; }
   .opt-price { color: $primary-color; font-weight: 500; margin-left: 4px; }
 }
 
+.item-addons li {
+  color: $text-secondary;
+}
+
+.addon-qty {
+  font-weight: 600;
+  color: $text-muted;
+  margin-left: 4px;
+}
+
 .item-note {
-  font-size: 0.75rem; color: $info-dark;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: $info-dark;
   background: rgba($info-color, 0.06);
-  padding: 3px 8px; border-radius: 4px; margin: 0;
+  padding: 6px 10px;
+  border-radius: $border-radius-md;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.item-note-ico {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+  opacity: 0.85;
 }
 
 .item-qty, .item-unit-price, .item-subtotal {
@@ -548,6 +573,67 @@
   background: $gray-50; border-radius: $border-radius-sm;
   padding: 6px 10px; font-size: 0.8rem; color: $text-muted;
   .material-icons { font-size: 0.9rem; flex-shrink: 0; margin-top: 1px; }
+}
+
+.admin-messages-card .admin-messages-muted {
+  margin: 0;
+  padding: $spacing-sm $spacing-md $spacing-md;
+  font-size: 0.85rem;
+  color: $text-muted;
+  font-style: italic;
+}
+
+.admin-msg-list {
+  list-style: none;
+  margin: 0;
+  padding: $spacing-sm $spacing-md $spacing-md;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.admin-msg-item {
+  border-radius: $border-radius-md;
+  border: 1px solid $gray-100;
+  padding: 10px 12px;
+  background: $gray-50;
+
+  &.unread {
+    border-color: rgba($primary-color, 0.35);
+    background: rgba($primary-color, 0.04);
+  }
+}
+
+.admin-msg-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-sm;
+  margin-bottom: 6px;
+}
+
+.admin-msg-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: $text-primary;
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-msg-date {
+  font-size: 0.72rem;
+  color: $text-muted;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.admin-msg-body {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: $text-secondary;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 // ---------------------------------------------------------------------------

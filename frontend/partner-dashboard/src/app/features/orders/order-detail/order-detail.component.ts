@@ -7,7 +7,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/paginator';
-import { finalize } from 'rxjs/operators';
+import { filter, finalize } from 'rxjs/operators';
 import { OrdersService, OrderHistoryParams } from '../services/orders.service';
 import { OrdersStoreService } from '../services/orders-store.service';
 import { OrderStatusBadgeComponent } from '../components/order-status-badge/order-status-badge.component';
@@ -25,6 +25,7 @@ import {
   hasProductPrepOnItems,
   suggestedPrepMinutesFromItems,
   Order,
+  OrderItemAddon,
 } from '../models/order.model';
 import { TimerComponent } from '../components/prep-timer/timer.component';
 import { PrepTimerSessionService } from '../services/prep-timer-session.service';
@@ -33,8 +34,20 @@ import {
   buildPrepTimerContextAfterAccept,
 } from '../utils/prep-timer.utils';
 import { KitchenPrintService } from '../services/kitchen-print.service';
+import { partnerOrderItemsLines } from '../utils/order-item-display';
 import { ScheduledOrderReminderService } from '@core/services/scheduled-order-reminder.service';
 import { formatScheduledSlot } from '@core/utils/format-scheduled-slot';
+import { AuthService } from '@core/services/auth.service';
+import { NotificationService } from '@core/services/notification.service';
+import { WebSocketService, PartnerNotification } from '@core/services/websocket.service';
+
+export interface OrderAdminMessageRow {
+  id: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  isRead: boolean;
+}
 
 @Component({
   selector: 'app-order-detail',
@@ -67,6 +80,9 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
   private prepTimerSession = inject(PrepTimerSessionService);
   private kitchenPrint     = inject(KitchenPrintService);
   private scheduledReminders = inject(ScheduledOrderReminderService);
+  private authService          = inject(AuthService);
+  private notificationService  = inject(NotificationService);
+  private wsService            = inject(WebSocketService);
 
   order   = signal<any>(null);
   /** Bandeau minuteur en surbrillance quand l’échéance est dépassée. */
@@ -84,6 +100,10 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
   historyFilterActor  = signal('');
   historyFilterFrom   = signal('');
   historyFilterTo     = signal('');
+
+  /** Notifications « contact admin » pour la commande affichée */
+  adminMessages        = signal<OrderAdminMessageRow[]>([]);
+  adminMessagesLoading = signal(false);
 
   readonly historyStatusFilterOptions: { value: string; labelKey: string }[] = [
     { value: '', labelKey: 'ORDERS.HISTORY.FILTER_ALL_STATUS' },
@@ -157,6 +177,18 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
       if (cached) this.order.set(cached);
       this.fetchOrder(id);
     }
+
+    this.wsService.onPartnerNotification
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        filter((n: PartnerNotification) => n?.data?.['action'] === 'ADMIN_CONTACT'),
+        filter((n) => {
+          const oid = String(n.data?.['orderId'] ?? n.data?.['id'] ?? '').trim();
+          const cur = this.order()?.id;
+          return !!oid && cur != null && String(cur) === oid;
+        }),
+      )
+      .subscribe((n) => this.mergeAdminMessageFromSocket(n));
   }
 
   ngAfterViewInit(): void {
@@ -193,8 +225,64 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
         this.historyPageIndex.set(0);
         this.loadHistory();
         this.scheduledReminders.refreshFromActiveApi();
+        this.loadAdminMessagesForOrder(String(o.id));
       },
       error: () => this.loading.set(false),
+    });
+  }
+
+  private loadAdminMessagesForOrder(orderId: string): void {
+    this.adminMessagesLoading.set(true);
+    const user = this.authService.currentUser();
+    if (!user?.id) {
+      this.adminMessages.set([]);
+      this.adminMessagesLoading.set(false);
+      return;
+    }
+    this.notificationService
+      .getNotifications(Number(user.id), 0, 100)
+      .pipe(finalize(() => this.adminMessagesLoading.set(false)))
+      .subscribe({
+        next: (response: { content?: any[] }) => {
+          const content = response?.content ?? [];
+          const rows = content
+            .filter((n) => n?.data?.['action'] === 'ADMIN_CONTACT')
+            .filter(
+              (n) => String(n.data?.['orderId'] ?? n.data?.['id'] ?? '') === String(orderId),
+            )
+            .map((n) => this.notificationToAdminRow(n))
+            .filter((r): r is OrderAdminMessageRow => r != null)
+            .sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+            );
+          this.adminMessages.set(rows);
+        },
+        error: () => this.adminMessages.set([]),
+      });
+  }
+
+  private notificationToAdminRow(n: any): OrderAdminMessageRow | null {
+    if (n?.id == null) return null;
+    return {
+      id: String(n.id),
+      title: String(n.title ?? ''),
+      message: String(n.message ?? ''),
+      createdAt: String(n.createdAt ?? ''),
+      isRead: !!n.isRead,
+    };
+  }
+
+  private mergeAdminMessageFromSocket(n: PartnerNotification): void {
+    const row = this.notificationToAdminRow(n);
+    if (!row) return;
+    this.adminMessages.update((list) => {
+      if (list.some((x) => x.id === row.id)) {
+        return list.map((x) => (x.id === row.id ? { ...x, ...row } : x));
+      }
+      return [row, ...list].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
     });
   }
 
@@ -283,6 +371,7 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
         showProductPrepHint: showHint,
         isScheduled: o.isScheduled === true,
         scheduledDeliveryTime: o.scheduledDeliveryTime,
+        orderLines: partnerOrderItemsLines(o),
       },
       panelClass: 'sl-dialog-panel',
       maxWidth: '90vw',
@@ -461,9 +550,17 @@ export class OrderDetailComponent implements OnInit, AfterViewInit {
   }
 
   getItemTotal(item: any): number {
+    const sub = item.subtotal != null ? Number(item.subtotal) : NaN;
+    if (Number.isFinite(sub) && sub >= 0) return sub;
     const qty = item.quantity ?? 1;
     const price = item.unitPrice ?? item.price ?? 0;
     return qty * price;
+  }
+
+  addonLineTotal(ad: OrderItemAddon): number {
+    const q = ad.quantity ?? 1;
+    if (ad.total != null && Number(ad.total) >= 0) return Number(ad.total);
+    return Number(ad.price ?? 0) * q;
   }
 
   /** Clé i18n ORDERS.HISTORY.ACTOR_* ou null */

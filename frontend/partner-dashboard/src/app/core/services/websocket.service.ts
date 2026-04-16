@@ -14,7 +14,8 @@ export interface PartnerNotification {
   type: string;
   title: string;
   message: string;
-  data: Record<string, any>;
+  /** Présent pour la plupart des notifs ; peut manquer selon la source (REST / WS). */
+  data?: Record<string, any>;
   isRead: boolean;
   channel: string;
   createdAt: string;

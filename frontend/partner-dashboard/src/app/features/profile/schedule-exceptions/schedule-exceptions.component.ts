@@ -1,5 +1,5 @@
 // src/app/features/profile/schedule-exceptions/schedule-exceptions.component.ts
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, LOCALE_ID } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -36,6 +36,7 @@ export class ScheduleExceptionsComponent implements OnInit {
   private partnerService = inject(PartnerService);
   private snackBar = inject(MatSnackBar);
   private translate = inject(TranslateService);
+  private localeId = inject(LOCALE_ID);
 
   loading = signal(false);
   saving = signal(false);
@@ -153,7 +154,7 @@ export class ScheduleExceptionsComponent implements OnInit {
   formatDateDisplay(dateStr: string): string {
     if (!dateStr || dateStr.length !== 10) return dateStr;
     const d = new Date(dateStr + 'T12:00:00');
-    return d.toLocaleDateString(undefined, {
+    return d.toLocaleDateString(this.localeId, {
       weekday: 'short',
       day: 'numeric',
       month: 'long',

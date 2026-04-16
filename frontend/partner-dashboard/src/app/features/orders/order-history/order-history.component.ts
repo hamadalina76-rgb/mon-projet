@@ -32,6 +32,7 @@ import {
   PartnerOrderHistorySummary,
 } from '../services/orders.service';
 import { Order } from '../models/order.model';
+import { partnerOrderItemMetaLines, partnerOrderItemsLines } from '../utils/order-item-display';
 import { OrderStatusBadgeComponent } from '../components/order-status-badge/order-status-badge.component';
 import { TimeAgoPipe } from '@shared/pipes/time-ago.pipe';
 
@@ -251,6 +252,15 @@ export class OrderHistoryComponent implements OnInit, AfterViewInit, OnDestroy {
     if (items.length === 0) return '';
     const first = items[0].productName;
     return items.length > 1 ? `${first} +${items.length - 1}` : first;
+  }
+
+  /** Même logique que la liste commandes : titre + options / suppléments / notes par ligne. */
+  itemsLines(order: Order): { title: string; meta: string[] }[] {
+    return partnerOrderItemsLines(order);
+  }
+
+  itemMetaLines(item: Order['items'][number]): string[] {
+    return partnerOrderItemMetaLines(item);
   }
 
   totalItems(order: Order): number {

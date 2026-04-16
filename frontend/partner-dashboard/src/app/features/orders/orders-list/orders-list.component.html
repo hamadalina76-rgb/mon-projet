@@ -161,7 +161,24 @@
             <td mat-cell *matCellDef="let row">
               <div class="cell-items">
                 <span class="items-count">{{ totalItems(row) }} {{ 'ORDERS.ITEMS_ABBR' | translate }}</span>
-                <span class="items-summary">{{ getItemsSummary(row) }}</span>
+                @if (itemsLines(row).length === 0) {
+                  <span class="items-empty">—</span>
+                } @else {
+                  <div class="items-lines" role="list">
+                    @for (line of itemsLines(row); track $index) {
+                      <div class="item-line-block" role="listitem">
+                        <span class="item-line-title">{{ line.title }}</span>
+                        @if (line.meta.length) {
+                          <ul class="item-line-meta">
+                            @for (m of line.meta; track $index) {
+                              <li>{{ m }}</li>
+                            }
+                          </ul>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
               </div>
             </td>
           </ng-container>

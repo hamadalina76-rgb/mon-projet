@@ -138,6 +138,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
     }
   }
 
+  onViewAllNotifications(): void {
+    this.showNotifications.set(false);
+  }
+
   selectLanguage(lang: string): void {
     this.currentLang.set(lang);
     this.translate.use(lang);
@@ -192,23 +196,42 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   onNotificationClick(notif: PartnerNotification): void {
     this.markNotificationRead(notif);
-    
-    // Navigate based on notification type/data
-    if (notif.data?.['action'] === 'PARTNER_APPROVED') {
+
+    const action = this.notifDataAction(notif);
+    const data = notif.data;
+
+    if (action === 'PARTNER_APPROVED') {
       this.router.navigate(['/dashboard']);
-    } else if (notif.data?.['action'] === 'PRODUCT_APPROVED' || notif.data?.['action'] === 'PRODUCT_REJECTED') {
-      const productId = notif.data?.['productId'];
+    } else if (action === 'PRODUCT_APPROVED' || action === 'PRODUCT_REJECTED') {
+      const productId = data != null ? data['productId'] : undefined;
       if (productId != null) {
         this.router.navigate(['/menu/products', productId, 'edit']);
       }
-    } else if (notif.data?.['action'] === 'ADMIN_CONTACT') {
-      const rawId = notif.data?.['orderId'] ?? notif.data?.['id'];
+    } else if (action === 'ADMIN_CONTACT') {
+      const rawId = data != null ? (data['orderId'] ?? data['id']) : undefined;
       if (rawId != null && String(rawId).trim().length > 0) {
         this.router.navigate(['/orders', String(rawId)]);
       }
     }
 
     this.showNotifications.set(false);
+  }
+
+  /** Icône Material selon le type / action (logique hors template pour NG8107). */
+  notifIconName(notif: PartnerNotification): string {
+    const action = this.notifDataAction(notif);
+    if (action === 'ADMIN_CONTACT') return 'mark_unread_chat_alt';
+    if (notif.type === 'ORDER') return 'shopping_bag';
+    if (notif.type === 'PARTNER' || action === 'PARTNER_APPROVED') return 'check_circle';
+    return 'notifications';
+  }
+
+  private notifDataAction(notif: PartnerNotification): string | undefined {
+    const d = notif.data;
+    if (d == null) return undefined;
+    const raw = d['action'];
+    if (raw == null) return undefined;
+    return typeof raw === 'string' ? raw : String(raw);
   }
 
   logout(): void {

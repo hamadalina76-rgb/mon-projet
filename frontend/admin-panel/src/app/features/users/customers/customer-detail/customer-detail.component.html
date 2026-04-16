@@ -90,7 +90,7 @@
         <span class="metric-icon membership">
           <mat-icon>star</mat-icon>
         </span>
-        <span class="metric-value">{{ c.createdAt | date:'MMM d, y' }}</span>
+        <span class="metric-value">{{ c.createdAt | date:'d MMM y' }}</span>
         <span class="metric-label">{{ 'users.customers.membership' | translate }}</span>
         <span class="metric-trend positive">{{ 'users.customers.loyalFor' | translate }} {{ getMembershipYears(c) }} {{ 'users.customers.years' | translate }}</span>
       </div>
@@ -131,7 +131,7 @@
                           <span>#{{ $any(o).orderNumber || '-' }}</span>
                         }
                       </td>
-                      <td>{{ $any(o).orderTime || $any(o).createdAt | date:'MMM d, y' }}</td>
+                      <td>{{ $any(o).orderTime || $any(o).createdAt | date:'d MMM y' }}</td>
                       <td>
                         <span class="order-status-badge" [ngClass]="'status-' + ($any(o).status || '').toLowerCase().replace(' ', '-')">
                           {{ $any(o).status }}

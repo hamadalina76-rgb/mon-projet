@@ -57,9 +57,7 @@
                      [class.unread]="!notif.isRead"
                      (click)="onNotificationClick(notif)">
                   <div class="notif-icon-wrapper">
-                    <span class="material-icons">
-                      {{ notif.data?.['action'] === 'ADMIN_CONTACT' ? 'mark_unread_chat_alt' : notif.type === 'ORDER' ? 'shopping_bag' : (notif.type === 'PARTNER' || notif.data?.['action'] === 'PARTNER_APPROVED') ? 'check_circle' : 'notifications' }}
-                    </span>
+                    <span class="material-icons">{{ notifIconName(notif) }}</span>
                     @if (!notif.isRead) {
                       <span class="unread-dot"></span>
                     }
@@ -72,6 +70,14 @@
                 </div>
               }
             }
+          </div>
+          <div class="dropdown-footer">
+            <a
+              routerLink="/notifications"
+              class="view-all-notifications"
+              (click)="onViewAllNotifications()">
+              {{ 'header.viewAllNotifications' | translate }}
+            </a>
           </div>
         </div>
       }

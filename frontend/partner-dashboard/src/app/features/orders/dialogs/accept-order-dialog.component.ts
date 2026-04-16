@@ -4,6 +4,12 @@ import { CommonModule } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { TranslateModule } from '@ngx-translate/core';
 
+/** Lignes titre + meta (options, suppléments, note par plat) — affichées avant confirmation. */
+export interface AcceptOrderDialogLine {
+  title: string;
+  meta: string[];
+}
+
 export interface AcceptOrderDialogData {
   orderNumber: string;
   orderId: string;
@@ -16,6 +22,8 @@ export interface AcceptOrderDialogData {
   /** Créneau livraison client (commande planifiée). */
   isScheduled?: boolean;
   scheduledDeliveryTime?: string;
+  /** Résumé des articles (dont notes par produit) au moment d’accepter. */
+  orderLines?: AcceptOrderDialogLine[];
 }
 
 export interface AcceptOrderDialogResult {
@@ -50,6 +58,25 @@ export interface AcceptOrderDialogResult {
               <span class="scheduled-dialog-label">{{ 'ORDERS.ACCEPT_DIALOG.SCHEDULED_LABEL' | translate }}</span>
               <span class="scheduled-dialog-slot">{{ data.scheduledDeliveryTime | date:'EEEE d MMM yyyy, HH:mm' }}</span>
               <p class="scheduled-dialog-hint">{{ 'ORDERS.ACCEPT_DIALOG.SCHEDULED_HINT' | translate }}</p>
+            </div>
+          </div>
+        }
+        @if ((data.orderLines?.length ?? 0) > 0) {
+          <div class="order-summary" role="region" [attr.aria-label]="'ORDERS.ACCEPT_DIALOG.ORDER_SUMMARY' | translate">
+            <div class="order-summary-label">{{ 'ORDERS.ACCEPT_DIALOG.ORDER_SUMMARY' | translate }}</div>
+            <div class="order-summary-scroll">
+              @for (line of data.orderLines!; track $index) {
+                <div class="os-line">
+                  <div class="os-title">{{ line.title }}</div>
+                  @if (line.meta.length) {
+                    <ul class="os-meta">
+                      @for (m of line.meta; track $index) {
+                        <li>{{ m }}</li>
+                      }
+                    </ul>
+                  }
+                </div>
+              }
             </div>
           </div>
         }
@@ -163,6 +190,39 @@ export interface AcceptOrderDialogResult {
     .scheduled-dialog-hint {
       margin: 4px 0 0; font-size: 0.8rem; color: #4A5568; line-height: 1.4;
     }
+
+    .order-summary {
+      margin-bottom: 14px;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #F8FAFC;
+    }
+    .order-summary-label {
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #64748B;
+      margin-bottom: 8px;
+    }
+    .order-summary-scroll {
+      max-height: min(40vh, 200px);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-right: 4px;
+    }
+    .os-line { margin-bottom: 10px; }
+    .os-line:last-child { margin-bottom: 0; }
+    .os-title { font-size: 0.85rem; font-weight: 700; color: #1A202C; line-height: 1.35; word-break: break-word; }
+    .os-meta {
+      margin: 4px 0 0;
+      padding-left: 1rem;
+      font-size: 0.78rem;
+      color: #475569;
+      line-height: 1.4;
+    }
+    .os-meta li { margin: 2px 0; }
 
     .body-hint {
       margin: 0 0 16px; font-size: 0.875rem; color: #4A5568;

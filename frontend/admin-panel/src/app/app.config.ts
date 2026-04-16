@@ -1,5 +1,5 @@
 // src/app/app.config.ts
-import { ApplicationConfig, importProvidersFrom, APP_INITIALIZER } from '@angular/core';
+import { ApplicationConfig, importProvidersFrom, APP_INITIALIZER, LOCALE_ID } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
@@ -17,6 +17,7 @@ import { errorInterceptor } from '@core/interceptors/error.interceptor';
 import { loadingInterceptor } from '@core/interceptors/loading.interceptor';
 import { RuntimeConfigService } from '@core/services/runtime-config.service';
 import { environment } from '@environments/environment';
+import { adminAppLocaleId } from '@core/i18n/locale-id.factory';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 
 const CUSTOM_DATE_FORMATS = {
@@ -58,6 +59,7 @@ export function initializeRuntimeConfig(runtimeConfigService: RuntimeConfigServi
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    { provide: LOCALE_ID, useFactory: adminAppLocaleId },
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(
       withInterceptors([authInterceptor, errorInterceptor, loadingInterceptor])
@@ -99,7 +101,7 @@ export const appConfig: ApplicationConfig = {
       deps: [TranslateService],
       multi: true,
     },
-    { provide: MAT_DATE_LOCALE, useValue: 'fr-FR' },
+    { provide: MAT_DATE_LOCALE, useFactory: adminAppLocaleId },
     { provide: MAT_DATE_FORMATS, useValue: CUSTOM_DATE_FORMATS },
     { provide: DateAdapter, useClass: NativeDateAdapter },
     provideCharts(withDefaultRegisterables()),

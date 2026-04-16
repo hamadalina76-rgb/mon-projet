@@ -175,15 +175,40 @@
                   <span class="item-name">{{ item.productName }}</span>
                   @if (item.options?.length) {
                     <ul class="item-options">
-                      @for (opt of item.options; track opt.name) {
-                        <li>+ {{ opt.name }} : {{ opt.value }}
-                          @if (opt.price > 0) { <span class="opt-price">+{{ opt.price | number:'1.2-2' }}</span>}
+                      @for (opt of item.options; track $index) {
+                        <li>
+                          @if (opt.name && opt.value && opt.name !== opt.value) {
+                            + {{ opt.name }} : {{ opt.value }}
+                          } @else {
+                            + {{ opt.name || opt.value }}
+                          }
+                          @if (opt.price > 0) {
+                            <span class="opt-price">+{{ opt.price | number:'1.2-2' }}</span>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  }
+                  @if (item.addons?.length) {
+                    <ul class="item-addons" [attr.aria-label]="'ORDERS.DETAIL.ADDONS' | translate">
+                      @for (ad of item.addons; track $index) {
+                        <li>
+                          + {{ ad.addonName }}
+                          @if ((ad.quantity ?? 1) > 1) {
+                            <span class="addon-qty">×{{ ad.quantity }}</span>
+                          }
+                          @if (addonLineTotal(ad) > 0) {
+                            <span class="opt-price">+{{ addonLineTotal(ad) | number:'1.2-2' }}</span>
+                          }
                         </li>
                       }
                     </ul>
                   }
                   @if (item.notes) {
-                    <p class="item-note">📝 {{ item.notes }}</p>
+                    <p class="item-note">
+                      <span class="material-icons item-note-ico" aria-hidden="true">sticky_note_2</span>
+                      {{ item.notes }}
+                    </p>
                   }
                 </div>
                 <span class="item-qty">{{ item.quantity }}</span>
@@ -262,6 +287,30 @@
               </div>
             }
           </div>
+        </div>
+
+        <div class="detail-card admin-messages-card">
+          <div class="card-title">
+            <span class="material-icons">mark_unread_chat_alt</span>
+            {{ 'ORDERS.DETAIL.ADMIN_MESSAGES_TITLE' | translate }}
+          </div>
+          @if (adminMessagesLoading()) {
+            <p class="muted admin-messages-muted">{{ 'ORDERS.DETAIL.ADMIN_MESSAGES_LOADING' | translate }}</p>
+          } @else if (adminMessages().length === 0) {
+            <p class="muted admin-messages-muted">{{ 'ORDERS.DETAIL.ADMIN_MESSAGES_EMPTY' | translate }}</p>
+          } @else {
+            <ul class="admin-msg-list">
+              @for (m of adminMessages(); track m.id) {
+                <li class="admin-msg-item" [class.unread]="!m.isRead">
+                  <div class="admin-msg-head">
+                    <span class="admin-msg-title">{{ m.title }}</span>
+                    <span class="admin-msg-date">{{ m.createdAt | date:'short' }}</span>
+                  </div>
+                  <p class="admin-msg-body">{{ m.message }}</p>
+                </li>
+              }
+            </ul>
+          }
         </div>
 
         @if (order().deliveryAddress || order().orderType === 'DELIVERY') {

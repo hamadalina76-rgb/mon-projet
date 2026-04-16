@@ -18,6 +18,14 @@ export interface OrderItemOption {
   price: number;
 }
 
+/** Supplément / add-on sélectionné sur une ligne de commande (API order-service). */
+export interface OrderItemAddon {
+  addonName: string;
+  quantity: number;
+  price: number;
+  total?: number;
+}
+
 export interface OrderItem {
   id: string;
   productId: string;
@@ -25,7 +33,10 @@ export interface OrderItem {
   quantity: number;
   unitPrice: number;
   price: number; // unitPrice × quantity
+  /** Sous-total ligne (API), inclut options / suppléments si exposé. */
+  subtotal?: number;
   options?: OrderItemOption[];
+  addons?: OrderItemAddon[];
   notes?: string;
   /** Minutes (fiche produit au moment de la commande), si exposées par l’API. */
   preparationTimeMin?: number;
