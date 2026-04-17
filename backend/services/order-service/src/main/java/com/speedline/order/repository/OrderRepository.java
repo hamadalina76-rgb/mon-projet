@@ -28,6 +28,12 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     
     boolean existsByOrderNumber(String orderNumber);
 
+    /**
+     * Dernier numéro lexicographique au format standard {@code ORD-2026-00001} (exclut suffixes non numériques / secours).
+     */
+    @Query("SELECT MAX(o.orderNumber) FROM Order o WHERE o.orderNumber LIKE :pattern AND LENGTH(o.orderNumber) = :standardLen")
+    Optional<String> findMaxStandardOrderNumberLike(@Param("pattern") String pattern, @Param("standardLen") int standardLen);
+
     // ==================== RECHERCHE PAR CLIENT ====================
 
     Page<Order> findByCustomerId(Long customerId, Pageable pageable);
@@ -241,7 +247,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     /**
      * Liste admin paginée avec filtres optionnels (statut, recherche, paiement, plage de dates,
-     * partenaire, livreur, montant min/max).
+     * partenaire, livreur, montant min/max, commandes programmées uniquement).
      */
     @Query(value = "SELECT o FROM Order o WHERE "
             + "(:status IS NULL OR o.status = :status) "
@@ -255,7 +261,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             + "AND (:partnerId IS NULL OR o.partnerId = :partnerId) "
             + "AND (:courierId IS NULL OR o.courierId = :courierId) "
             + "AND (:amountMin IS NULL OR o.total >= :amountMin) "
-            + "AND (:amountMax IS NULL OR o.total <= :amountMax)",
+            + "AND (:amountMax IS NULL OR o.total <= :amountMax) "
+            + "AND (:scheduledOnly IS NULL OR :scheduledOnly = false "
+            + "     OR (COALESCE(o.isScheduled, false) = true AND o.scheduledDeliveryTime IS NOT NULL))",
             countQuery = "SELECT COUNT(o) FROM Order o WHERE "
             + "(:status IS NULL OR o.status = :status) "
             + "AND (:paymentMethod IS NULL OR o.paymentMethod = :paymentMethod) "
@@ -268,7 +276,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             + "AND (:partnerId IS NULL OR o.partnerId = :partnerId) "
             + "AND (:courierId IS NULL OR o.courierId = :courierId) "
             + "AND (:amountMin IS NULL OR o.total >= :amountMin) "
-            + "AND (:amountMax IS NULL OR o.total <= :amountMax)")
+            + "AND (:amountMax IS NULL OR o.total <= :amountMax) "
+            + "AND (:scheduledOnly IS NULL OR :scheduledOnly = false "
+            + "     OR (COALESCE(o.isScheduled, false) = true AND o.scheduledDeliveryTime IS NOT NULL))")
     Page<Order> findAllAdmin(
             @Param("status") OrderStatus status,
             @Param("paymentMethod") Order.PaymentMethod paymentMethod,
@@ -280,6 +290,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("courierId") Long courierId,
             @Param("amountMin") BigDecimal amountMin,
             @Param("amountMax") BigDecimal amountMax,
+            @Param("scheduledOnly") Boolean scheduledOnly,
             Pageable pageable);
 
     // ==================== RECHERCHE PAR DATE ====================
@@ -434,6 +445,21 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findScheduledOrdersDueForPrepReminder(
             @Param("now") LocalDateTime now,
             @Param("bufferMinutes") int bufferMinutes);
+
+    /**
+     * Commandes planifiées acceptées (CONFIRMED) dont le moment de démarrage prépa est atteint :
+     * {@code scheduledDeliveryTime <= now + prepMinutes}.
+     */
+    @Query(value = """
+            SELECT * FROM orders o
+            WHERE COALESCE(o.is_scheduled, false) = true
+            AND o.scheduled_delivery_time IS NOT NULL
+            AND o.status = 'CONFIRMED'
+            AND o.scheduled_delivery_time <= :now
+                + (COALESCE(o.suggested_preparation_minutes, 15) * INTERVAL '1 minute')
+            FOR UPDATE SKIP LOCKED
+            """, nativeQuery = true)
+    List<Order> findScheduledOrdersDueForAutoPreparing(@Param("now") LocalDateTime now);
 
     // ==================== STATS INTERNES (usage: partner-service stats catégories) ====================
 

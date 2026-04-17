@@ -1,243 +1,231 @@
-// Map Location Selector Styles
-// No variables needed for this component
+// Carte : recherche en overlay + RTL (dir) pour texte arabe correct
 
 .map-location-selector {
   width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+}
 
-  .search-bar {
+.map-container {
+  position: relative;
+  width: 100%;
+  height: 500px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  .map {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Recherche + bouton géoloc : au-dessus de la carte (évite chevauchement contrôles Mapbox à droite) */
+  .map-search-overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 52px;
+    z-index: 20;
     display: flex;
-    gap: 1rem;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+
+    > * {
+      pointer-events: auto;
+    }
+
+    &[dir='rtl'] {
+      left: 52px;
+      right: 10px;
+    }
+  }
+
+  .search-row {
+    display: flex;
+    gap: 0.5rem;
     align-items: flex-start;
     flex-wrap: wrap;
+  }
 
-    .search-input-wrapper {
-      position: relative;
-      flex: 1;
-      min-width: 250px;
+  .search-input-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    max-width: 100%;
 
-      .search-field {
-        width: 100%;
-        margin-bottom: 0;
-      }
+    .search-field {
+      width: 100%;
+      margin-bottom: 0;
+      background: rgba(255, 255, 255, 0.97);
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+    }
 
-      .suggestions-dropdown {
-        position: absolute;
-        top: 56px;
-        left: 0;
-        right: 0;
-        background: white;
-        border-radius: 0 0 12px 12px;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-        z-index: 1000;
-        max-height: 300px;
-        overflow-y: auto;
-        border: 1px solid #e0e0e0;
-        border-top: none;
+    .suggestions-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      z-index: 30;
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid #e8e8e8;
 
-        .suggestion-item {
+      .suggestion-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        transition: background-color 0.15s;
+
+        &:hover {
+          background: #f7f7f7;
+        }
+
+        .suggestion-icon {
+          font-size: 1.25rem;
+          color: #ef4444;
+          width: 1.25rem;
+          height: 1.25rem;
+          flex-shrink: 0;
+        }
+
+        .suggestion-text {
           display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.75rem 1rem;
-          cursor: pointer;
-          transition: background-color 0.15s;
+          flex-direction: column;
+          overflow: hidden;
+          flex: 1;
+          min-width: 0;
+          text-align: start;
+          unicode-bidi: isolate;
 
-          &:hover {
-            background: #f5f5f5;
+          .suggestion-main {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1a1a1a;
+            word-break: break-word;
           }
 
-          &:last-child {
-            border-radius: 0 0 12px 12px;
-          }
-
-          .suggestion-icon {
-            font-size: 1.25rem;
-            color: #EF4444;
-            width: 1.25rem;
-            height: 1.25rem;
-            flex-shrink: 0;
-          }
-
-          .suggestion-text {
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            flex: 1;
-
-            .suggestion-main {
-              font-weight: 500;
-              font-size: 0.9rem;
-              color: #333;
-            }
-
-            .suggestion-detail {
-              font-size: 0.8rem;
-              color: #888;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-            }
+          .suggestion-detail {
+            font-size: 0.78rem;
+            color: #666;
+            white-space: normal;
+            word-break: break-word;
+            line-height: 1.35;
           }
         }
       }
     }
+  }
 
-    .geolocate-btn {
-      height: 56px;
-      padding: 0 1.5rem;
-      
-      mat-icon {
-        margin-right: 0.5rem;
-      }
+  .geolocate-btn {
+    flex-shrink: 0;
+    height: 56px;
+    padding: 0 1rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+
+    mat-icon {
+      margin-inline-end: 0.35rem;
     }
   }
 
-  .map-container {
-    position: relative;
-    width: 100%;
-    height: 500px;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  .map-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    background: rgba(255, 255, 255, 0.96);
+    z-index: 25;
 
-    .map {
-      width: 100%;
-      height: 100%;
-    }
-
-    .map-loading {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 1rem;
-      background: rgba(255, 255, 255, 0.95);
-      z-index: 1000;
-
-      p {
-        margin: 0;
-        color: #666;
-        font-size: 0.875rem;
-      }
-    }
-
-    .map-instructions {
-      position: absolute;
-      bottom: 1rem;
-      left: 50%;
-      transform: translateX(-50%);
-      background: white;
-      padding: 0.75rem 1.25rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.875rem;
+    p {
+      margin: 0;
       color: #666;
-      max-width: 90%;
-      z-index: 10;
+      font-size: 0.875rem;
+    }
+  }
 
-      mat-icon {
-        font-size: 1.25rem;
-        width: 1.25rem;
-        height: 1.25rem;
-        color: #EF4444;
-      }
+  .map-instructions {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.96);
+    padding: 0.65rem 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #444;
+    max-width: min(92%, 520px);
+    z-index: 12;
+    text-align: start;
+    unicode-bidi: isolate;
 
-      span {
-        line-height: 1.4;
-      }
+    mat-icon {
+      font-size: 1.2rem;
+      width: 1.2rem;
+      height: 1.2rem;
+      color: #ef4444;
+      flex-shrink: 0;
+    }
+
+    span {
+      line-height: 1.45;
     }
   }
 }
 
-// Responsive
 @media (max-width: 768px) {
-  .map-location-selector {
-    gap: 0.75rem;
+  .map-container {
+    height: 360px;
+    border-radius: 8px;
 
-    .search-bar {
-      flex-direction: column;
-      gap: 0.75rem;
+    .map-search-overlay {
+      left: 8px;
+      right: 48px;
 
-      .search-input-wrapper {
-        width: 100%;
-        min-width: 100%;
-
-        .search-field {
-          width: 100%;
-          min-width: 100%;
-        }
-      }
-
-      .geolocate-btn {
-        width: 100%;
-        height: 48px;
+      &[dir='rtl'] {
+        left: 48px;
+        right: 8px;
       }
     }
 
-    .map-container {
-      height: 350px;
-      border-radius: 8px;
+    .search-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
 
-      .map-instructions {
-        bottom: 0.5rem;
-        left: 0.5rem;
-        right: 0.5rem;
-        transform: none;
-        padding: 0.5rem 0.75rem;
-        font-size: 0.75rem;
-        max-width: calc(100% - 1rem);
+    .geolocate-btn {
+      width: 100%;
+      height: 48px;
+    }
 
-        mat-icon {
-          font-size: 1rem;
-          width: 1rem;
-          height: 1rem;
-        }
-
-        span {
-          line-height: 1.3;
-        }
-      }
+    .map-instructions {
+      left: 8px;
+      right: 8px;
+      transform: none;
+      max-width: none;
+      font-size: 0.78rem;
     }
   }
 }
 
 @media (max-width: 480px) {
-  .map-location-selector {
-    .search-bar {
-      .geolocate-btn {
-        mat-icon {
-          margin-right: 0.25rem;
-        }
-      }
-    }
+  .map-container {
+    height: 300px;
 
-    .map-container {
-      height: 300px;
-
-      .map-instructions {
-        padding: 0.4rem 0.6rem;
-        font-size: 0.7rem;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.25rem;
-
-        mat-icon {
-          font-size: 0.9rem;
-          width: 0.9rem;
-          height: 0.9rem;
-        }
-      }
+    .map-instructions {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
     }
   }
 }

@@ -25,6 +25,7 @@ public class OrderStatusChangedEvent {
 
     private Long customerId;
     private Long partnerId;
+    private Long partnerUserId;
     private OrderStatus previousStatus;
     private OrderStatus status;
 

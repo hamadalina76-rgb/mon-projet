@@ -1,7 +1,7 @@
 // src/app/shared/components/header/header.component.ts - Angular 19
 import { Component, inject, input, output, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AuthService } from '@core/services/auth.service';
 import { WebSocketService, PartnerNotification } from '@core/services/websocket.service';
@@ -19,7 +19,6 @@ export class HeaderComponent implements OnInit, OnDestroy {
   authService = inject(AuthService); // Made public for template access
   private wsService = inject(WebSocketService);
   private notificationService = inject(NotificationService);
-  private router = inject(Router);
   private translate = inject(TranslateService);
   private wsSub: Subscription | null = null;
   private audioContext: AudioContext | null = null;
@@ -197,22 +196,11 @@ export class HeaderComponent implements OnInit, OnDestroy {
   onNotificationClick(notif: PartnerNotification): void {
     this.markNotificationRead(notif);
 
-    const action = this.notifDataAction(notif);
-    const data = notif.data;
-
-    if (action === 'PARTNER_APPROVED') {
-      this.router.navigate(['/dashboard']);
-    } else if (action === 'PRODUCT_APPROVED' || action === 'PRODUCT_REJECTED') {
-      const productId = data != null ? data['productId'] : undefined;
-      if (productId != null) {
-        this.router.navigate(['/menu/products', productId, 'edit']);
-      }
-    } else if (action === 'ADMIN_CONTACT') {
-      const rawId = data != null ? (data['orderId'] ?? data['id']) : undefined;
-      if (rawId != null && String(rawId).trim().length > 0) {
-        this.router.navigate(['/orders', String(rawId)]);
-      }
-    }
+    void this.notificationService.navigateFromNotification({
+      type: notif.type,
+      channel: notif.channel,
+      data: notif.data,
+    });
 
     this.showNotifications.set(false);
   }

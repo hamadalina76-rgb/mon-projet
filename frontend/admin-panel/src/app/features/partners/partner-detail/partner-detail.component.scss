@@ -1,6 +1,135 @@
 // ─── Variables ───────────────────────────────────────────────────
 @use '../../../../assets/styles/variables' as v;
 
+// ─── Partner Orders tab ────────────────────────────────────────────────────
+.partner-orders-tab {
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+
+  .partner-orders-toolbar-card,
+  .partner-orders-list-card {
+    border-radius: 14px !important;
+    border: 1px solid v.$gray-200 !important;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04) !important;
+    background: v.$background-paper !important;
+  }
+
+  .partner-orders-toolbar-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin-bottom: .65rem;
+  }
+
+  .partner-orders-title {
+    margin: 0;
+    color: v.$text-primary;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .partner-orders-summary {
+    color: v.$text-secondary;
+    font-size: .9rem;
+    font-weight: 500;
+  }
+
+  .partner-orders-filters {
+    display: flex;
+    gap: .75rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .partner-orders-filter-field {
+    min-width: 180px;
+  }
+
+  .partner-orders-btn-apply {
+    background: v.$primary-color !important;
+    color: v.$white !important;
+  }
+
+  .partner-orders-btn-reset {
+    border-color: v.$gray-200 !important;
+    color: v.$text-secondary !important;
+  }
+
+  .partner-orders-loading {
+    display: flex;
+    justify-content: center;
+    padding: 1.2rem 0;
+  }
+
+  .partner-orders-error {
+    color: v.$error-color;
+    padding: .8rem .25rem;
+  }
+
+  .partner-orders-empty {
+    color: v.$text-secondary;
+    padding: 1rem .25rem;
+  }
+
+  .partner-orders-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .partner-orders-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 820px;
+
+    thead th {
+      font-size: .78rem;
+      font-weight: 700;
+      color: v.$text-muted;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      text-align: left;
+      padding: .7rem .8rem;
+      border-bottom: 1px solid v.$gray-200;
+      background: #f8fafc;
+    }
+
+    tbody td {
+      padding: .75rem .8rem;
+      border-bottom: 1px solid #f1f5f9;
+      color: v.$text-primary;
+      font-size: .9rem;
+      vertical-align: middle;
+    }
+
+    tbody tr:hover {
+      background: #fafafa;
+    }
+  }
+
+  .partner-order-status {
+    display: inline-flex;
+    align-items: center;
+    padding: .22rem .62rem;
+    border-radius: 999px;
+    font-size: .74rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+
+    &.status-pending { background: rgba(245, 158, 11, .12); color: #92400e; }
+    &.status-confirmed { background: rgba(59, 130, 246, .12); color: #1e40af; }
+    &.status-preparing { background: rgba(139, 92, 246, .12); color: #5b21b6; }
+    &.status-ready-for-pickup { background: rgba(6, 182, 212, .12); color: #155e75; }
+    &.status-picked-up { background: rgba(20, 184, 166, .12); color: #115e59; }
+    &.status-in-delivery { background: rgba(234, 179, 8, .12); color: #854d0e; }
+    &.status-delivered { background: rgba(16, 185, 129, .12); color: #065f46; }
+    &.status-cancelled { background: rgba(239, 68, 68, .12); color: #991b1b; }
+  }
+}
+
 // ─── Partner Menu / Products tab ─────────────────────────────────────────────
 .partner-menu-tab {
   .partner-menu-toolbar-card,

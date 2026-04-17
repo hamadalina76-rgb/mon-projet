@@ -212,6 +212,7 @@ public class OrderCreatedNotificationService {
 
         final String orderNumber = parseString(event.get("orderNumber"));
         final Long partnerId = parseLong(event.get("partnerId"));
+        final Long partnerUserId = parseLong(event.get("partnerUserId"));
         final String estimatedDeliveryTime = parseString(event.get("estimatedDeliveryTime"));
 
         final String orderLabel = orderNumber != null ? "#" + orderNumber : "#" + orderId;
@@ -266,6 +267,39 @@ public class OrderCreatedNotificationService {
 
         notificationService.sendAdminBroadcast(NotificationType.ORDER, title, message, data);
         log.info("ORDER_ACCEPTED admin WebSocket broadcast for orderId={}", orderId);
+
+        // For scheduled auto-start (actor SYSTEM), also notify partner inbox + partner WebSocket topic.
+        if ("SYSTEM".equalsIgnoreCase(actorType) && partnerId != null) {
+            final Long partnerNotificationUserId = partnerUserId != null ? partnerUserId : partnerId;
+            final String partnerTitle = messageSource.getMessage("order.scheduled.auto_preparing.title", null,
+                "Préparation démarrée", Locale.FRENCH);
+            final String partnerMessage = messageSource.getMessage("order.scheduled.auto_preparing.message",
+                new Object[]{orderLabel},
+                "La commande " + orderLabel + " est passée automatiquement en préparation.",
+                Locale.FRENCH);
+
+            final Map<String, Object> partnerData = new HashMap<>(data);
+            partnerData.put("action", "ORDER_STATUS_CHANGED");
+            partnerData.put("status", "PREPARING");
+            partnerData.put("eventType", eventType != null ? eventType : "ORDER_ACCEPTED");
+
+            Notification partnerNotification = Notification.builder()
+                .userId(partnerNotificationUserId)
+                .type(NotificationType.ORDER)
+                .title(partnerTitle)
+                .message(partnerMessage)
+                .data(partnerData)
+                .channel(NotificationChannel.IN_APP)
+                .isRead(false)
+                .isSent(true)
+                .sentAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+            partnerNotification = notificationRepository.save(partnerNotification);
+            notificationService.pushToPartnerTopic(partnerId, partnerNotification);
+            log.info("ORDER_ACCEPTED partner notification sent for auto-preparing orderId={} partnerId={}", orderId, partnerId);
+        }
     }
 
     private String buildOrderMessage(int itemCount, BigDecimal total) {

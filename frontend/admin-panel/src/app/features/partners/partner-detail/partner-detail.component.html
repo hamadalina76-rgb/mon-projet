@@ -783,8 +783,175 @@
       </mat-tab>
 
       <mat-tab [label]="'partners.detail.tabs.orders' | translate">
-        <div class="tab-content">
-          <p class="coming-soon">{{ 'partners.detail.comingSoon' | translate }}</p>
+        <div class="tab-content partner-orders-tab">
+          <mat-card class="partner-orders-toolbar-card">
+            <div class="partner-orders-toolbar-head">
+              <h3 class="partner-orders-title">{{ 'partners.detail.orders.title' | translate }}</h3>
+              <div class="partner-orders-summary">
+                {{ partnerOrdersTotalElements() }} {{ 'partners.detail.orders.countLabel' | translate }}
+              </div>
+            </div>
+
+            <div class="partner-orders-filters">
+              <mat-form-field appearance="outline" class="partner-orders-filter-field">
+                <mat-label>{{ 'partners.detail.orders.filters.day' | translate }}</mat-label>
+                <input
+                  matInput
+                  type="date"
+                  [ngModel]="partnerOrdersDateValue"
+                  (ngModelChange)="onPartnerOrdersDateChange($event)"
+                />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="partner-orders-filter-field">
+                <mat-label>{{ 'partners.detail.orders.filters.search' | translate }}</mat-label>
+                <input
+                  matInput
+                  type="text"
+                  [ngModel]="partnerOrdersSearchValue"
+                  (ngModelChange)="partnerOrdersSearchValue = $event"
+                  [placeholder]="'partners.detail.orders.filters.searchPlaceholder' | translate"
+                />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="partner-orders-filter-field">
+                <mat-label>{{ 'partners.detail.orders.filters.status' | translate }}</mat-label>
+                <mat-select
+                  [ngModel]="partnerOrdersStatusValue"
+                  (ngModelChange)="partnerOrdersStatusValue = $event">
+                  <mat-option value="">{{ 'common.all' | translate }}</mat-option>
+                  <mat-option *ngFor="let s of partnerOrderStatuses" [value]="s">
+                    {{ getOrderStatusLabel(s) }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="partner-orders-filter-field">
+                <mat-label>{{ 'partners.detail.orders.filters.paymentMethod' | translate }}</mat-label>
+                <mat-select
+                  [ngModel]="partnerOrdersPaymentMethodValue"
+                  (ngModelChange)="partnerOrdersPaymentMethodValue = $event">
+                  <mat-option value="">{{ 'common.all' | translate }}</mat-option>
+                  <mat-option *ngFor="let pm of partnerPaymentMethods" [value]="pm">{{ getPaymentMethodLabel(pm) }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="partner-orders-filter-field">
+                <mat-label>{{ 'partners.detail.orders.filters.paymentStatus' | translate }}</mat-label>
+                <mat-select
+                  [ngModel]="partnerOrdersPaymentStatusValue"
+                  (ngModelChange)="partnerOrdersPaymentStatusValue = $event">
+                  <mat-option value="">{{ 'common.all' | translate }}</mat-option>
+                  <mat-option *ngFor="let ps of partnerPaymentStatuses" [value]="ps">{{ getPaymentStatusLabel(ps) }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="partner-orders-filter-field">
+                <mat-label>{{ 'partners.detail.orders.filters.courierId' | translate }}</mat-label>
+                <input
+                  matInput
+                  type="number"
+                  [ngModel]="partnerOrdersCourierIdValue"
+                  (ngModelChange)="partnerOrdersCourierIdValue = $event"
+                  [placeholder]="'partners.detail.orders.filters.courierPlaceholder' | translate"
+                />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="partner-orders-filter-field">
+                <mat-label>{{ 'partners.detail.orders.filters.amountMin' | translate }}</mat-label>
+                <input
+                  matInput
+                  type="number"
+                  [ngModel]="partnerOrdersAmountMinValue"
+                  (ngModelChange)="partnerOrdersAmountMinValue = $event"
+                  [placeholder]="'partners.detail.orders.filters.amountMinPlaceholder' | translate"
+                />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="partner-orders-filter-field">
+                <mat-label>{{ 'partners.detail.orders.filters.amountMax' | translate }}</mat-label>
+                <input
+                  matInput
+                  type="number"
+                  [ngModel]="partnerOrdersAmountMaxValue"
+                  (ngModelChange)="partnerOrdersAmountMaxValue = $event"
+                  [placeholder]="'partners.detail.orders.filters.amountMaxPlaceholder' | translate"
+                />
+              </mat-form-field>
+
+              <button mat-flat-button class="partner-orders-btn-apply" (click)="applyPartnerOrdersFilters()">
+                <mat-icon>search</mat-icon>
+                {{ 'common.filter' | translate }}
+              </button>
+
+              <button mat-stroked-button class="partner-orders-btn-reset" (click)="resetPartnerOrdersFilters()">
+                <mat-icon>restart_alt</mat-icon>
+                {{ 'common.reset' | translate }}
+              </button>
+            </div>
+          </mat-card>
+
+          <mat-card class="partner-orders-list-card">
+            <div class="partner-orders-loading" *ngIf="partnerOrdersLoading()">
+              <mat-spinner diameter="34"></mat-spinner>
+            </div>
+
+            <div class="partner-orders-error" *ngIf="partnerOrdersError()">
+              {{ partnerOrdersError() }}
+            </div>
+
+            <div class="partner-orders-empty" *ngIf="!partnerOrdersLoading() && !partnerOrdersError() && partnerOrders().length === 0">
+              {{ 'partners.detail.orders.empty' | translate }}
+            </div>
+
+            <div class="partner-orders-table-wrap" *ngIf="!partnerOrdersLoading() && !partnerOrdersError() && partnerOrders().length > 0">
+              <table class="partner-orders-table">
+                <thead>
+                  <tr>
+                    <th>{{ 'partners.detail.orders.columns.orderNumber' | translate }}</th>
+                    <th>{{ 'partners.detail.orders.columns.customer' | translate }}</th>
+                    <th>{{ 'partners.detail.orders.columns.courier' | translate }}</th>
+                    <th>{{ 'partners.detail.orders.columns.status' | translate }}</th>
+                    <th>{{ 'partners.detail.orders.columns.total' | translate }}</th>
+                    <th>{{ 'partners.detail.orders.columns.createdAt' | translate }}</th>
+                    <th>{{ 'common.actions' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let order of partnerOrders()">
+                    <td>
+                      <strong>{{ order.orderNumber || ('#' + order.id) }}</strong>
+                    </td>
+                    <td>{{ order.customerName || '—' }}</td>
+                    <td>{{ order.courierName || '—' }}</td>
+                    <td>
+                      <span class="partner-order-status" [ngClass]="getOrderStatusClass(order.status)">
+                        {{ getOrderStatusLabel(order.status) }}
+                      </span>
+                    </td>
+                    <td>{{ order.total | number:'1.2-2' }} {{ 'partners.detail.orders.currency' | translate }}</td>
+                    <td>{{ order.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td>
+                      <button
+                        mat-icon-button
+                        [matTooltip]="'orders.viewDetail' | translate"
+                        (click)="openOrderDetail(order.id)">
+                        <mat-icon>open_in_new</mat-icon>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <mat-paginator
+              [length]="partnerOrdersTotalElements()"
+              [pageIndex]="partnerOrdersPage()"
+              [pageSize]="partnerOrdersPageSize()"
+              [pageSizeOptions]="[10, 20, 50]"
+              (page)="onPartnerOrdersPageChange($event)">
+            </mat-paginator>
+          </mat-card>
         </div>
       </mat-tab>
 

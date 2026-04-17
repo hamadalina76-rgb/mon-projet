@@ -1,80 +1,81 @@
-<!-- Map Location Selector Component -->
+<!-- Carte + recherche intégrée (overlay) pour cohérence UI et RTL -->
 <div class="map-location-selector">
-  <!-- Search Bar with Autocomplete -->
-  <div class="search-bar">
-    <div class="search-input-wrapper">
-      <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Rechercher une adresse</mat-label>
-        <input 
-          matInput 
-          [ngModel]="searchQuery()" 
-          (input)="onSearchInput($event)"
-          (keyup.enter)="searchLocation()"
-          (blur)="hideSuggestions()"
-          (focus)="searchResults().length ? showSuggestions.set(true) : null"
-          placeholder="Ex: Avenue Habib Bourguiba, Tunis"
-        />
-        <mat-icon matPrefix>search</mat-icon>
-        <button 
-          mat-icon-button 
-          matSuffix 
-          (click)="searchLocation()"
-          [disabled]="!searchQuery() || loading()"
-        >
-          <mat-icon>arrow_forward</mat-icon>
-        </button>
-      </mat-form-field>
+  <div class="map-container">
+    <div class="map-search-overlay" [attr.dir]="uiDir()">
+      <div class="search-row">
+        <div class="search-input-wrapper">
+          <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+            <mat-label>{{ 'profilePages.mapSearchLabel' | translate }}</mat-label>
+            <input
+              matInput
+              [ngModel]="searchQuery()"
+              (input)="onSearchInput($event)"
+              (keyup.enter)="searchLocation()"
+              (blur)="hideSuggestions()"
+              (focus)="searchResults().length ? showSuggestions.set(true) : null"
+              [placeholder]="'profilePages.mapSearchPlaceholder' | translate"
+            />
+            <mat-icon matPrefix>search</mat-icon>
+            <button
+              mat-icon-button
+              matSuffix
+              type="button"
+              (click)="searchLocation()"
+              [disabled]="!searchQuery() || loading()"
+            >
+              <mat-icon>arrow_forward</mat-icon>
+            </button>
+          </mat-form-field>
 
-      <!-- Autocomplete Suggestions Dropdown -->
-      @if (showSuggestions() && searchResults().length) {
-        <div class="suggestions-dropdown">
-          @for (result of searchResults(); track result.placeName) {
-            <div class="suggestion-item" (mousedown)="selectSuggestion(result)">
-              <mat-icon class="suggestion-icon">
-                @if (result.placeType.includes('poi')) {
-                  place
-                } @else if (result.placeType.includes('address')) {
-                  home
-                } @else {
-                  location_city
-                }
-              </mat-icon>
-              <div class="suggestion-text">
-                <span class="suggestion-main">{{ result.text }}</span>
-                <span class="suggestion-detail">{{ result.placeName }}</span>
-              </div>
+          @if (showSuggestions() && searchResults().length) {
+            <div class="suggestions-dropdown" [attr.dir]="uiDir()">
+              @for (result of searchResults(); track result.placeName) {
+                <div class="suggestion-item" (mousedown)="selectSuggestion(result)">
+                  <mat-icon class="suggestion-icon">
+                    @if (result.placeType.includes('poi')) {
+                      place
+                    } @else if (result.placeType.includes('address')) {
+                      home
+                    } @else {
+                      location_city
+                    }
+                  </mat-icon>
+                  <div class="suggestion-text">
+                    <span class="suggestion-main" dir="auto">{{ result.text }}</span>
+                    <span class="suggestion-detail" dir="auto">{{ result.placeName }}</span>
+                  </div>
+                </div>
+              }
             </div>
           }
         </div>
-      }
+
+        <button
+          mat-raised-button
+          color="accent"
+          type="button"
+          (click)="getCurrentLocation()"
+          [disabled]="loading()"
+          class="geolocate-btn"
+        >
+          <mat-icon>my_location</mat-icon>
+          {{ 'profilePages.mapGeolocate' | translate }}
+        </button>
+      </div>
     </div>
 
-    <button 
-      mat-raised-button 
-      color="accent" 
-      (click)="getCurrentLocation()"
-      [disabled]="loading()"
-      class="geolocate-btn"
-    >
-      <mat-icon>my_location</mat-icon>
-      Ma position
-    </button>
-  </div>
-
-  <!-- Map Container -->
-  <div class="map-container">
     @if (loading()) {
       <div class="map-loading">
         <mat-spinner diameter="50"></mat-spinner>
-        <p>Chargement de la carte...</p>
+        <p>{{ 'profilePages.mapLoading' | translate }}</p>
       </div>
     }
-    
-    <div id="map" class="map"></div>
-    
-    <div class="map-instructions">
+
+    <div [attr.id]="mapDomId" class="map"></div>
+
+    <div class="map-instructions" [attr.dir]="uiDir()">
       <mat-icon>info</mat-icon>
-      <span>Cliquez sur la carte ou déplacez le marqueur pour définir votre position</span>
+      <span>{{ 'profilePages.mapHint' | translate }}</span>
     </div>
   </div>
 </div>

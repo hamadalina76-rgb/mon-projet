@@ -73,8 +73,11 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
   itemsPerPage = 20;
 
   searchText = '';
-  selectedStatus: OrderStatus | '' = '';
-  selectedPayment: PaymentMethod | '' = '';
+  /** Sentinelle 'ALL' : évite mat-option value="" (erreurs MatFormFieldControl avec mat-select). */
+  selectedStatus: OrderStatus | 'ALL' = 'ALL';
+  selectedPayment: PaymentMethod | 'ALL' = 'ALL';
+  /** 'all' = toutes les commandes ; 'scheduled' = programmées uniquement (évite mat-option value vide). */
+  scheduledDeliveryFilter: 'all' | 'scheduled' = 'all';
   selectedRange: DateRange = 'today';
 
   // ── Advanced filters ───────────────────────────────
@@ -187,6 +190,10 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
     this.applyFilters();
   }
 
+  onScheduledDeliveryFilterChange(): void {
+    this.applyFilters();
+  }
+
   onRangeChange(range: DateRange): void {
     this.selectedRange = range;
     if (range !== 'custom') {
@@ -202,8 +209,8 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
       return;
     }
     // Apply quick-filter preset on top of current advanced filters
-    this.selectedStatus = (qf.filters.status as OrderStatus) || '';
-    this.selectedPayment = '';
+    this.selectedStatus = (qf.filters.status as OrderStatus) ?? 'ALL';
+    this.selectedPayment = 'ALL';
     this.selectedRange = 'all';
     this.dateRange.reset();
     this.applyFilters();
@@ -278,10 +285,10 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
     if (this.searchText) {
       chips.push({ key: 'search', label: `"${this.searchText}"`, icon: 'search' });
     }
-    if (this.selectedStatus) {
+    if (this.selectedStatus !== 'ALL') {
       chips.push({ key: 'status', label: this.getStatusLabel(this.selectedStatus), icon: 'flag' });
     }
-    if (this.selectedPayment) {
+    if (this.selectedPayment !== 'ALL') {
       chips.push({ key: 'payment', label: this.getPaymentLabel(this.selectedPayment), icon: 'payment' });
     }
     if (this.selectedPartnerName) {
@@ -300,14 +307,17 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
       const fmt = (d: Date) => formatDate(d, 'dd/MM/yyyy', this.localeId);
       chips.push({ key: 'dateRange', label: `${fmt(this.dateRange.value.start)} — ${fmt(this.dateRange.value.end)}`, icon: 'date_range' });
     }
+    if (this.scheduledDeliveryFilter === 'scheduled') {
+      chips.push({ key: 'scheduled', label: this.translate.instant('orders.filters.scheduledOnly'), icon: 'event' });
+    }
     return chips;
   }
 
   removeFilter(key: string): void {
     switch (key) {
       case 'search': this.searchText = ''; break;
-      case 'status': this.selectedStatus = ''; break;
-      case 'payment': this.selectedPayment = ''; break;
+      case 'status': this.selectedStatus = 'ALL'; break;
+      case 'payment': this.selectedPayment = 'ALL'; break;
       case 'partner': this.clearPartner(); return;
       case 'courier': this.clearCourier(); return;
       case 'amountMin': this.amountMin = null; break;
@@ -316,14 +326,17 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
         this.dateRange.reset();
         this.selectedRange = 'today';
         break;
+      case 'scheduled':
+        this.scheduledDeliveryFilter = 'all';
+        break;
     }
     this.applyFilters();
   }
 
   resetFilters(): void {
     this.searchText = '';
-    this.selectedStatus = '';
-    this.selectedPayment = '';
+    this.selectedStatus = 'ALL';
+    this.selectedPayment = 'ALL';
     this.selectedRange = 'today';
     this.selectedPartnerId = null;
     this.selectedPartnerName = '';
@@ -334,6 +347,7 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
     this.amountMin = null;
     this.amountMax = null;
     this.dateRange.reset();
+    this.scheduledDeliveryFilter = 'all';
     this.applyFilters();
   }
 
@@ -364,12 +378,13 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
     const filters: OrderFilters = {
       ...this.getDateFilters(),
       ...(this.searchText ? { search: this.searchText } : {}),
-      ...(this.selectedStatus ? { status: this.selectedStatus } : {}),
-      ...(this.selectedPayment ? { paymentMethod: this.selectedPayment } : {}),
+      ...(this.selectedStatus !== 'ALL' ? { status: this.selectedStatus } : {}),
+      ...(this.selectedPayment !== 'ALL' ? { paymentMethod: this.selectedPayment } : {}),
       ...(this.selectedPartnerId ? { partnerId: this.selectedPartnerId } : {}),
       ...(this.selectedCourierId ? { courierId: this.selectedCourierId } : {}),
       ...(this.amountMin != null ? { amountMin: this.amountMin } : {}),
       ...(this.amountMax != null ? { amountMax: this.amountMax } : {}),
+      ...(this.scheduledDeliveryFilter === 'scheduled' ? { scheduledOnly: true } : {}),
     };
     // Merge quick-filter paymentStatus if active
     const activeQf = this.quickFilters.find(q => q.id === this.activeQuickFilter);
@@ -557,8 +572,8 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
       const idStr = String(o.id);
       if (!num.includes(q) && !name.includes(q) && !idStr.includes(q)) return false;
     }
-    if (this.selectedStatus && o.status !== this.selectedStatus) return false;
-    if (this.selectedPayment && o.paymentMethod !== this.selectedPayment) return false;
+    if (this.selectedStatus !== 'ALL' && o.status !== this.selectedStatus) return false;
+    if (this.selectedPayment !== 'ALL' && o.paymentMethod !== this.selectedPayment) return false;
     if (this.selectedPartnerId != null && o.partnerId !== this.selectedPartnerId) return false;
     if (this.selectedCourierId != null && o.courierId !== this.selectedCourierId) return false;
     if (this.amountMin != null && o.total < this.amountMin) return false;
@@ -575,6 +590,9 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
     if (df.endDate && o.createdAt) {
       if (new Date(o.createdAt) > new Date(df.endDate)) return false;
     }
+    if (this.scheduledDeliveryFilter === 'scheduled') {
+      if (!(o.isScheduled === true && o.scheduledDeliveryTime)) return false;
+    }
     return true;
   }
 
@@ -582,12 +600,13 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
     const filters: OrderFilters = {
       ...this.getDateFilters(),
       ...(this.searchText ? { search: this.searchText } : {}),
-      ...(this.selectedStatus ? { status: this.selectedStatus } : {}),
-      ...(this.selectedPayment ? { paymentMethod: this.selectedPayment } : {}),
+      ...(this.selectedStatus !== 'ALL' ? { status: this.selectedStatus } : {}),
+      ...(this.selectedPayment !== 'ALL' ? { paymentMethod: this.selectedPayment } : {}),
       ...(this.selectedPartnerId ? { partnerId: this.selectedPartnerId } : {}),
       ...(this.selectedCourierId ? { courierId: this.selectedCourierId } : {}),
       ...(this.amountMin != null ? { amountMin: this.amountMin } : {}),
       ...(this.amountMax != null ? { amountMax: this.amountMax } : {}),
+      ...(this.scheduledDeliveryFilter === 'scheduled' ? { scheduledOnly: true } : {}),
     };
     const activeQf = this.quickFilters.find(q => q.id === this.activeQuickFilter);
     if (activeQf?.filters.paymentStatus) {

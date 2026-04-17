@@ -47,12 +47,13 @@ public class AdminOrderExportService {
             OrderStatus status, String paymentMethod, String paymentStatus,
             String search, LocalDateTime startDate, LocalDateTime endDate,
             Long partnerId, Long courierId, BigDecimal amountMin, BigDecimal amountMax,
+            Boolean scheduledOnly,
             String lang
     ) {
         final Labels labels = Labels.of(lang);
         final List<OrderResponse> orders = orderService.listAllAdminOrdersForExport(
                 status, paymentMethod, paymentStatus, search, startDate, endDate,
-                partnerId, courierId, amountMin, amountMax);
+                partnerId, courierId, amountMin, amountMax, scheduledOnly);
 
         try (Workbook wb = new XSSFWorkbook(); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             Sheet sheet = wb.createSheet(labels.sheetName);
@@ -109,12 +110,13 @@ public class AdminOrderExportService {
             OrderStatus status, String paymentMethod, String paymentStatus,
             String search, LocalDateTime startDate, LocalDateTime endDate,
             Long partnerId, Long courierId, BigDecimal amountMin, BigDecimal amountMax,
+            Boolean scheduledOnly,
             String lang
     ) {
         final Labels labels = Labels.of(lang);
         final List<OrderResponse> orders = orderService.listAllAdminOrdersForExport(
                 status, paymentMethod, paymentStatus, search, startDate, endDate,
-                partnerId, courierId, amountMin, amountMax);
+                partnerId, courierId, amountMin, amountMax, scheduledOnly);
         try {
             return buildPdf(orders, startDate, endDate, labels);
         } catch (DocumentException | IOException e) {

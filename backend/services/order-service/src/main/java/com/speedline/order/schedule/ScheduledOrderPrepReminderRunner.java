@@ -27,7 +27,9 @@ public class ScheduledOrderPrepReminderRunner {
             return;
         }
         try {
-            scheduledOrderPrepReminderService.sendDueReminders(LocalDateTime.now());
+            final LocalDateTime now = LocalDateTime.now();
+            scheduledOrderPrepReminderService.sendDueReminders(now);
+            scheduledOrderPrepReminderService.autoStartPreparingWhenDue(now);
         } catch (Exception ex) {
             log.warn("Erreur batch rappels commandes planifiées", ex);
         }

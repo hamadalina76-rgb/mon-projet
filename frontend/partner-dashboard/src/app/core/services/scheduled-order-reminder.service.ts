@@ -87,7 +87,17 @@ export class ScheduledOrderReminderService implements OnDestroy {
             verticalPosition: 'top',
             panelClass: ['sl-snack-scheduled-reminder'],
           });
-          this.notif.showBrowserNotification(title, body);
+          this.notif.showBrowserNotification(title, body, {
+            notification: {
+              type: 'ORDER',
+              data: {
+                orderId: id,
+                id,
+                action: 'ORDER_SCHEDULED_PREP_REMINDER',
+                orderNumber,
+              },
+            },
+          });
         }, delay);
 
         this.timeoutHandles.set(handleKey, h);

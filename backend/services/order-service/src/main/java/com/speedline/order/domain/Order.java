@@ -360,11 +360,11 @@ public class Order {
      * Générer le numéro de commande
      */
     @PrePersist
-    public void generateOrderNumber() {
-        if (this.orderNumber == null) {
+    public void onPrePersist() {
+        // orderNumber doit être attribué par OrderService (séquentiel par année). Secours minimal si persistance directe.
+        if (this.orderNumber == null || this.orderNumber.isBlank()) {
             String year = String.valueOf(java.time.Year.now().getValue());
-            String random = String.format("%05d", (int) (Math.random() * 100000));
-            this.orderNumber = "ORD-" + year + "-" + random;
+            this.orderNumber = "ORD-" + year + "-FALLBACK-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase(java.util.Locale.ROOT);
         }
         if (this.orderTime == null) {
             this.orderTime = LocalDateTime.now();

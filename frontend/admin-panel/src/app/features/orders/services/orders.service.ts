@@ -1,10 +1,19 @@
 // src/app/features/orders/services/orders.service.ts
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { ApiService } from '@core/services/api.service';
 import { environment } from '@environments/environment';
 import { AdminOrder, CourierPosition, InternalNote, OrderFilters, OrderPageResponse, OrderStatsResponse, OrderStatus } from '../models/admin-order.model';
+
+function normalizeAdminOrder(o: AdminOrder): AdminOrder {
+  return {
+    ...o,
+    isScheduled: o.isScheduled === true,
+    scheduledDeliveryTime: o.scheduledDeliveryTime ?? null,
+  };
+}
 
 @Injectable({
   providedIn: 'root',
@@ -26,11 +35,16 @@ export class OrdersService {
         }
       });
     }
-    return this.api.get<OrderPageResponse>('orders/admin', params);
+    return this.api.get<OrderPageResponse>('orders/admin', params).pipe(
+      map((res) => ({
+        ...res,
+        content: (res.content ?? []).map(normalizeAdminOrder),
+      })),
+    );
   }
 
   getOrder(id: number): Observable<AdminOrder> {
-    return this.api.get<AdminOrder>(`orders/${id}`);
+    return this.api.get<AdminOrder>(`orders/${id}`).pipe(map(normalizeAdminOrder));
   }
 
   getStats(date: string, granularity: 'HOUR' | 'DAY'): Observable<OrderStatsResponse> {
