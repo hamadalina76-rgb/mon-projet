@@ -480,7 +480,7 @@ public class OrderController {
 
     /**
      * Liste paginée de toutes les commandes (admin panel).
-     * GET /orders/admin?page=0&size=50&status=PENDING&paymentMethod=CASH&search=ORD&sort=createdAt,desc&startDate=2026-04-01T00:00:00&endDate=2026-04-09T23:59:59
+     * GET /orders/admin?page=0&size=50&status=PENDING&paymentMethod=CASH&search=ORD&sort=createdAt,desc&startDate=2026-04-01T00:00:00&endDate=2026-04-09T23:59:59&scheduledOnly=true
      */
     @GetMapping("/admin")
     public ResponseEntity<Page<OrderResponse>> getAdminOrders(
@@ -494,6 +494,7 @@ public class OrderController {
             @RequestParam(required = false) Long courierId,
             @RequestParam(required = false) BigDecimal amountMin,
             @RequestParam(required = false) BigDecimal amountMax,
+            @RequestParam(required = false) Boolean scheduledOnly,
             @RequestParam(defaultValue = "createdAt,desc") String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size
@@ -506,7 +507,7 @@ public class OrderController {
         final LocalDateTime parsedStart = parseDateTime(startDate);
         final LocalDateTime parsedEnd = parseDateTime(endDate);
         return ResponseEntity.ok(orderService.getAdminOrders(status, paymentMethod, paymentStatus,
-                search, parsedStart, parsedEnd, partnerId, courierId, amountMin, amountMax, pageable));
+                search, parsedStart, parsedEnd, partnerId, courierId, amountMin, amountMax, scheduledOnly, pageable));
     }
 
     /**
@@ -572,12 +573,13 @@ public class OrderController {
             @RequestParam(required = false) Long courierId,
             @RequestParam(required = false) BigDecimal amountMin,
             @RequestParam(required = false) BigDecimal amountMax,
+            @RequestParam(required = false) Boolean scheduledOnly,
             @RequestParam(defaultValue = "fr") String lang
     ) {
         byte[] bytes = adminOrderExportService.exportExcel(
                 status, paymentMethod, paymentStatus, search,
                 parseDateTime(startDate), parseDateTime(endDate),
-                partnerId, courierId, amountMin, amountMax, lang);
+                partnerId, courierId, amountMin, amountMax, scheduledOnly, lang);
         String filename = "commandes-admin-" + LocalDate.now() + ".xlsx";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
@@ -601,12 +603,13 @@ public class OrderController {
             @RequestParam(required = false) Long courierId,
             @RequestParam(required = false) BigDecimal amountMin,
             @RequestParam(required = false) BigDecimal amountMax,
+            @RequestParam(required = false) Boolean scheduledOnly,
             @RequestParam(defaultValue = "fr") String lang
     ) {
         byte[] bytes = adminOrderExportService.exportPdf(
                 status, paymentMethod, paymentStatus, search,
                 parseDateTime(startDate), parseDateTime(endDate),
-                partnerId, courierId, amountMin, amountMax, lang);
+                partnerId, courierId, amountMin, amountMax, scheduledOnly, lang);
         String filename = "commandes-admin-" + LocalDate.now() + ".pdf";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);

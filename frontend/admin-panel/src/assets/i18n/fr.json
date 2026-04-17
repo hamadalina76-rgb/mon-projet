@@ -665,6 +665,35 @@
       "saveNote": "Enregistrer la note",
       "noDocuments": "Aucun document disponible",
       "comingSoon": "Fonctionnalité à venir",
+      "orders": {
+        "title": "Commandes du partenaire",
+        "countLabel": "commande(s)",
+        "currency": "TND",
+        "empty": "Aucune commande trouvée pour ce filtre.",
+        "loadError": "Impossible de charger les commandes du partenaire.",
+        "filters": {
+          "day": "Jour",
+          "search": "Recherche",
+          "searchPlaceholder": "N° commande, client...",
+          "status": "Statut",
+          "paymentMethod": "Paiement",
+          "paymentStatus": "Statut paiement",
+          "courierId": "ID livreur",
+          "courierPlaceholder": "Ex: 12",
+          "amountMin": "Montant min",
+          "amountMax": "Montant max",
+          "amountMinPlaceholder": "Ex: 20",
+          "amountMaxPlaceholder": "Ex: 150"
+        },
+        "columns": {
+          "orderNumber": "N° commande",
+          "customer": "Client",
+          "courier": "Livreur",
+          "status": "Statut",
+          "total": "Total",
+          "createdAt": "Créée le"
+        }
+      },
       "tabs": {
         "general": "Infos générales",
         "menu": "Menu / Produits",
@@ -782,6 +811,11 @@
     "disputed": "Commandes litigieuses",
     "orderId": "N° commande",
     "dateTime": "Date / Heure",
+    "scheduledBadge": "Planifiée",
+    "scheduledDeliveryLabel": "Livraison prévue",
+    "orderPlacedOn": "Commande passée le",
+    "scheduledBannerTitle": "Livraison planifiée",
+    "scheduledSlotLabel": "Créneau client",
     "customer": "Client",
     "partner": "Partenaire",
     "courier": "Livreur",
@@ -813,6 +847,9 @@
       "allStatuses": "Tous les statuts",
       "payment": "Paiement",
       "allPayments": "Tous les paiements",
+      "scheduledFilterLabel": "Programmation",
+      "scheduledFilterAll": "Toutes les commandes",
+      "scheduledOnly": "Programmées uniquement",
       "partner": "Partenaire",
       "searchPartner": "Rechercher un partenaire…",
       "courier": "Livreur",
@@ -822,7 +859,9 @@
       "customRange": "Période personnalisée",
       "dateFrom": "Du",
       "dateTo": "Au",
-      "reset": "Réinitialiser"
+      "reset": "Réinitialiser",
+      "toggleMoreFilters": "Plus de filtres (partenaire, livreur, montants, dates)",
+      "toggleLessFilters": "Masquer les filtres avancés"
     },
     "quick": {
       "all": "Toutes",
@@ -835,7 +874,14 @@
     "payment": {
       "cash": "Espèces",
       "card": "Carte",
-      "wallet": "Portefeuille"
+      "wallet": "Portefeuille",
+      "cardOnDelivery": "Carte à la livraison"
+    },
+    "paymentStatus": {
+      "pending": "En attente",
+      "completed": "Payé",
+      "failed": "Échoué",
+      "refunded": "Remboursé"
     },
     "pipeline": {
       "PENDING": "En attente",

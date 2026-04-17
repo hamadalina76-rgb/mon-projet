@@ -101,6 +101,19 @@ export class BusinessInfoComponent implements OnInit {
     };
   }
 
+  /**
+   * Champs bancaires optionnels : vide = OK. Si saisi, appliquer min + lettre.
+   */
+  private optionalTextMinMeaningful(min: number): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const raw = control.value;
+      if (raw == null || String(raw).trim() === '') return null;
+      const minErr = this.minTrimmedLengthValidator(min)(control);
+      if (minErr) return minErr;
+      return this.meaningfulTextValidator()(control);
+    };
+  }
+
   private ibanValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const raw = control.value;
@@ -108,6 +121,9 @@ export class BusinessInfoComponent implements OnInit {
 
       const value = String(raw).toUpperCase().replace(/\s+/g, '');
       if (!value) return null;
+
+      // IBAN optionnel : ne pas bloquer tout le profil sur une saisie partielle / test
+      if (value.length < 15) return null;
 
       // Generic IBAN structure: 2 letters + 2 digits + BBAN
       if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(value)) {
@@ -160,9 +176,9 @@ export class BusinessInfoComponent implements OnInit {
     legalRepFirstName: [''],
     legalRepLastName: [''],
     position: [''],
-    accountHolderName: ['', [this.minTrimmedLengthValidator(2), this.meaningfulTextValidator()]],
+    accountHolderName: ['', [this.optionalTextMinMeaningful(2)]],
     iban: ['', [this.ibanValidator()]],
-    bankName: ['', [this.minTrimmedLengthValidator(2), this.meaningfulTextValidator()]],
+    bankName: ['', [this.optionalTextMinMeaningful(2)]],
     currency: ['TND'],
   });
 
@@ -330,8 +346,15 @@ export class BusinessInfoComponent implements OnInit {
   }
 
   saveBusinessInfo(): void {
+    if (this.saving() || this.loading()) return;
+
     if (this.businessForm.invalid) {
       this.businessForm.markAllAsTouched();
+      this.snackBar.open(
+        this.translate.instant('profilePages.formInvalidHint'),
+        this.translate.instant('profilePages.close'),
+        { duration: 6000 }
+      );
       return;
     }
     const formVal = this.businessForm.value;
@@ -394,7 +417,16 @@ export class BusinessInfoComponent implements OnInit {
       error: (err) => {
         console.error('Error saving business info:', err);
         this.saving.set(false);
-        this.snackBar.open(this.translate.instant('profilePages.saveError'), this.translate.instant('profilePages.close'), { duration: 3000 });
+        const msg =
+          err?.error?.message ||
+          err?.error?.error ||
+          (typeof err?.error === 'string' ? err.error : null) ||
+          err?.message;
+        this.snackBar.open(
+          msg ? `${this.translate.instant('profilePages.saveError')}: ${msg}` : this.translate.instant('profilePages.saveError'),
+          this.translate.instant('profilePages.close'),
+          { duration: 5000 }
+        );
       },
     });
   }

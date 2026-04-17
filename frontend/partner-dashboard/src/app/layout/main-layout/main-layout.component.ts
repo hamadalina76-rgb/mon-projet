@@ -148,6 +148,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       .onNewOrder()
       .pipe(takeUntil(this.destroy$))
       .subscribe((order: any) => {
+        const orderId = order?.id ?? order?.orderId;
         this.notificationService.newOrderAlert(order.orderNumber);
         this.notificationService.showOrderBanner(order);
         this.notificationService.showBrowserNotification(
@@ -155,6 +156,17 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
           this.translate.instant('ORDERS.NOTIF_BROWSER_BODY', {
             orderNumber: order.orderNumber ?? '',
           }),
+          {
+            notification: {
+              type: 'ORDER',
+              data: {
+                orderId,
+                id: orderId,
+                action: 'ORDER_NEW',
+                orderNumber: order?.orderNumber,
+              },
+            },
+          }
         );
       });
 
@@ -171,7 +183,25 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
           this.notificationService.showScheduledPrepReminderFromServer({
             title: notif?.title,
             message: notif?.message,
+            type: notif?.type,
+            channel: notif?.channel,
+            data,
           });
+          return;
+        }
+
+        if (notif?.type !== 'ORDER' && notif?.type !== 'ORDER_NEW') {
+          this.notificationService.showBrowserNotification(
+            notif?.title || this.translate.instant('header.notifications'),
+            notif?.message || '',
+            {
+              notification: {
+                type: notif?.type,
+                channel: notif?.channel,
+                data,
+              },
+            }
+          );
         }
       });
   }

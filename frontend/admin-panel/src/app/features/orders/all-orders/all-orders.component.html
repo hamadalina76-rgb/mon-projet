@@ -87,43 +87,53 @@
     <div class="fcard">
 
       <!-- Row 1 — search + dropdowns + toggle -->
-      <div class="frow">
+      <div class="frow frow--primary">
         <mat-form-field appearance="outline" class="ff ff--grow" subscriptSizing="dynamic">
-          <mat-icon matPrefix class="ff-ico">search</mat-icon>
+          <span matPrefix class="ff-prefix"><mat-icon class="ff-ico">search</mat-icon></span>
           <input matInput
                  [(ngModel)]="searchText"
                  (ngModelChange)="onSearchChange()"
-                 [placeholder]="'orders.filters.searchPlaceholder' | translate" />
+                 [placeholder]="'orders.filters.searchPlaceholder' | translate"
+                 [attr.aria-label]="'orders.filters.searchPlaceholder' | translate"
+                 autocomplete="off" />
           @if (searchText) {
-            <button matSuffix mat-icon-button class="ff-clear" (click)="searchText=''; onSearchChange()">
+            <button matSuffix mat-icon-button type="button" class="ff-clear" (click)="searchText=''; onSearchChange()">
               <mat-icon>close</mat-icon>
             </button>
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="ff ff--fixed" subscriptSizing="dynamic">
+        <mat-form-field appearance="outline" class="ff ff--select" subscriptSizing="dynamic" hideRequiredMarker>
           <mat-label>{{ 'orders.filters.status' | translate }}</mat-label>
-          <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange()">
-            <mat-option value="">{{ 'orders.filters.allStatuses' | translate }}</mat-option>
+          <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange()" panelClass="orders-filter-panel">
+            <mat-option value="ALL">{{ 'orders.filters.allStatuses' | translate }}</mat-option>
             @for (s of statuses; track s) {
               <mat-option [value]="s">{{ getStatusLabel(s) }}</mat-option>
             }
           </mat-select>
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="ff ff--fixed" subscriptSizing="dynamic">
+        <mat-form-field appearance="outline" class="ff ff--select" subscriptSizing="dynamic" hideRequiredMarker>
           <mat-label>{{ 'orders.filters.payment' | translate }}</mat-label>
-          <mat-select [(ngModel)]="selectedPayment" (selectionChange)="onPaymentChange()">
-            <mat-option value="">{{ 'orders.filters.allPayments' | translate }}</mat-option>
+          <mat-select [(ngModel)]="selectedPayment" (selectionChange)="onPaymentChange()" panelClass="orders-filter-panel">
+            <mat-option value="ALL">{{ 'orders.filters.allPayments' | translate }}</mat-option>
             <mat-option value="CASH">{{ 'orders.payment.cash' | translate }}</mat-option>
             <mat-option value="CARD">{{ 'orders.payment.card' | translate }}</mat-option>
             <mat-option value="WALLET">{{ 'orders.payment.wallet' | translate }}</mat-option>
           </mat-select>
         </mat-form-field>
 
-        <button class="toggle-btn" [class.open]="showAdvancedFilters"
+        <mat-form-field appearance="outline" class="ff ff--select" subscriptSizing="dynamic" hideRequiredMarker>
+          <mat-label>{{ 'orders.filters.scheduledFilterLabel' | translate }}</mat-label>
+          <mat-select [(ngModel)]="scheduledDeliveryFilter" (selectionChange)="onScheduledDeliveryFilterChange()" panelClass="orders-filter-panel">
+            <mat-option value="all">{{ 'orders.filters.scheduledFilterAll' | translate }}</mat-option>
+            <mat-option value="scheduled">{{ 'orders.filters.scheduledOnly' | translate }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button type="button" class="toggle-btn" [class.open]="showAdvancedFilters"
                 (click)="showAdvancedFilters = !showAdvancedFilters"
-                [matTooltip]="showAdvancedFilters ? 'Masquer' : 'Plus de filtres'">
+                [matTooltip]="(showAdvancedFilters ? 'orders.filters.toggleLessFilters' : 'orders.filters.toggleMoreFilters') | translate">
           <span class="material-icons-round">tune</span>
         </button>
       </div>
@@ -131,68 +141,87 @@
       <!-- Row 2 — advanced (collapsible) -->
       @if (showAdvancedFilters) {
         <div class="frow frow--adv">
-          <mat-form-field appearance="outline" class="ff ff--mid" subscriptSizing="dynamic">
-            <mat-label>{{ 'orders.filters.partner' | translate }}</mat-label>
-            <mat-icon matPrefix class="ff-ico">store</mat-icon>
-            <input matInput [formControl]="partnerSearchCtrl" [matAutocomplete]="partnerAuto" />
-            @if (selectedPartnerId) {
-              <button matSuffix mat-icon-button class="ff-clear" (click)="clearPartner(); $event.stopPropagation()">
-                <mat-icon>close</mat-icon>
-              </button>
-            }
-            <mat-autocomplete #partnerAuto="matAutocomplete"
-                              [displayWith]="displayPartner"
-                              (optionSelected)="onPartnerSelected($event)">
-              @for (p of filteredPartners$ | async; track p.id) {
-                <mat-option [value]="p">{{ p.businessName || p.name }}</mat-option>
+          <div class="adv-pair">
+            <mat-form-field appearance="outline" class="ff ff--adv-field" subscriptSizing="dynamic">
+              <mat-label>{{ 'orders.filters.partner' | translate }}</mat-label>
+              <span matPrefix class="ff-prefix"><mat-icon class="ff-ico">store</mat-icon></span>
+              <input matInput
+                     [formControl]="partnerSearchCtrl"
+                     [matAutocomplete]="partnerAuto"
+                     [placeholder]="'orders.filters.searchPartner' | translate"
+                     autocomplete="off" />
+              @if (selectedPartnerId) {
+                <button matSuffix mat-icon-button type="button" class="ff-clear" (click)="clearPartner(); $event.stopPropagation()">
+                  <mat-icon>close</mat-icon>
+                </button>
               }
-            </mat-autocomplete>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="ff ff--mid" subscriptSizing="dynamic">
-            <mat-label>{{ 'orders.filters.courier' | translate }}</mat-label>
-            <mat-icon matPrefix class="ff-ico">delivery_dining</mat-icon>
-            <input matInput [formControl]="courierSearchCtrl" [matAutocomplete]="courierAuto" />
-            @if (selectedCourierId) {
-              <button matSuffix mat-icon-button class="ff-clear" (click)="clearCourier(); $event.stopPropagation()">
-                <mat-icon>close</mat-icon>
-              </button>
-            }
-            <mat-autocomplete #courierAuto="matAutocomplete"
-                              [displayWith]="displayCourier"
-                              (optionSelected)="onCourierSelected($event)">
-              @for (c of filteredCouriers$ | async; track c.id) {
-                <mat-option [value]="c">{{ c.firstName }} {{ c.lastName }}</mat-option>
-              }
-            </mat-autocomplete>
-          </mat-form-field>
-
-          <div class="amt-group">
-            <mat-form-field appearance="outline" class="ff ff--sm" subscriptSizing="dynamic">
-              <mat-label>{{ 'orders.filters.amountMin' | translate }}</mat-label>
-              <input matInput type="number" [(ngModel)]="amountMin" (change)="onAmountChange()" min="0" />
-              <span matTextSuffix class="ff-unit">TND</span>
-            </mat-form-field>
-            <span class="amt-dash">–</span>
-            <mat-form-field appearance="outline" class="ff ff--sm" subscriptSizing="dynamic">
-              <mat-label>{{ 'orders.filters.amountMax' | translate }}</mat-label>
-              <input matInput type="number" [(ngModel)]="amountMax" (change)="onAmountChange()" min="0" />
-              <span matTextSuffix class="ff-unit">TND</span>
             </mat-form-field>
           </div>
 
-          <mat-form-field appearance="outline" class="ff ff--date" subscriptSizing="dynamic">
-            <mat-label>{{ 'orders.filters.customRange' | translate }}</mat-label>
-            <mat-date-range-input [formGroup]="dateRange" [rangePicker]="picker">
-              <input matStartDate formControlName="start"
-                     [placeholder]="'orders.filters.dateFrom' | translate" />
-              <input matEndDate formControlName="end"
-                     [placeholder]="'orders.filters.dateTo' | translate"
-                     (dateChange)="onDateRangeChange()" />
-            </mat-date-range-input>
-            <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+          <div class="adv-pair">
+            <mat-form-field appearance="outline" class="ff ff--adv-field" subscriptSizing="dynamic">
+              <mat-label>{{ 'orders.filters.courier' | translate }}</mat-label>
+              <span matPrefix class="ff-prefix"><mat-icon class="ff-ico">delivery_dining</mat-icon></span>
+              <input matInput
+                     [formControl]="courierSearchCtrl"
+                     [matAutocomplete]="courierAuto"
+                     [placeholder]="'orders.filters.searchCourier' | translate"
+                     autocomplete="off" />
+              @if (selectedCourierId) {
+                <button matSuffix mat-icon-button type="button" class="ff-clear" (click)="clearCourier(); $event.stopPropagation()">
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </mat-form-field>
+          </div>
+
+          <div class="adv-pair adv-pair--amounts">
+            <div class="amt-group">
+              <mat-form-field appearance="outline" class="ff ff--sm" subscriptSizing="dynamic">
+                <mat-label>{{ 'orders.filters.amountMin' | translate }}</mat-label>
+                <input matInput type="number" [(ngModel)]="amountMin" (change)="onAmountChange()" min="0" />
+                <span matTextSuffix class="ff-unit">TND</span>
+              </mat-form-field>
+              <span class="amt-dash" aria-hidden="true">–</span>
+              <mat-form-field appearance="outline" class="ff ff--sm" subscriptSizing="dynamic">
+                <mat-label>{{ 'orders.filters.amountMax' | translate }}</mat-label>
+                <input matInput type="number" [(ngModel)]="amountMax" (change)="onAmountChange()" min="0" />
+                <span matTextSuffix class="ff-unit">TND</span>
+              </mat-form-field>
+            </div>
+          </div>
+
+          <div class="adv-pair adv-pair--daterange">
+            <mat-form-field appearance="outline" class="ff ff--date" subscriptSizing="dynamic">
+              <mat-label>{{ 'orders.filters.customRange' | translate }}</mat-label>
+              <mat-date-range-input [formGroup]="dateRange" [rangePicker]="picker">
+                <input matStartDate formControlName="start"
+                       [placeholder]="'orders.filters.dateFrom' | translate" />
+                <input matEndDate formControlName="end"
+                       [placeholder]="'orders.filters.dateTo' | translate"
+                       (dateChange)="onDateRangeChange()" />
+              </mat-date-range-input>
+              <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+            </mat-form-field>
             <mat-date-range-picker #picker></mat-date-range-picker>
-          </mat-form-field>
+          </div>
+
+          <mat-autocomplete #partnerAuto="matAutocomplete"
+                            class="adv-autocomplete-host"
+                            [displayWith]="displayPartner"
+                            (optionSelected)="onPartnerSelected($event)">
+            @for (p of filteredPartners$ | async; track p.id) {
+              <mat-option [value]="p">{{ p.businessName || p.name }}</mat-option>
+            }
+          </mat-autocomplete>
+          <mat-autocomplete #courierAuto="matAutocomplete"
+                            class="adv-autocomplete-host"
+                            [displayWith]="displayCourier"
+                            (optionSelected)="onCourierSelected($event)">
+            @for (c of filteredCouriers$ | async; track c.id) {
+              <mat-option [value]="c">{{ c.firstName }} {{ c.lastName }}</mat-option>
+            }
+          </mat-autocomplete>
         </div>
       }
     </div>
@@ -202,13 +231,20 @@
       <div class="chips-bar">
         <span class="chips-ico material-icons-round">filter_list</span>
         @for (chip of activeFilters; track chip.key) {
-          <span class="chip" (click)="removeFilter(chip.key)">
+          <span class="chip"
+                role="button"
+                tabindex="0"
+                (click)="removeFilter(chip.key); $event.stopPropagation()"
+                (keydown.enter)="removeFilter(chip.key)"
+                (keydown.space)="$event.preventDefault(); removeFilter(chip.key)"
+                [matTooltip]="chip.label"
+                matTooltipShowDelay="400">
             <span class="material-icons-round chip-i">{{ chip.icon }}</span>
-            {{ chip.label }}
-            <span class="material-icons-round chip-x">close</span>
+            <span class="chip-label">{{ chip.label }}</span>
+            <span class="material-icons-round chip-x" aria-hidden="true">close</span>
           </span>
         }
-        <button class="reset-btn" (click)="resetFilters()">
+        <button type="button" class="reset-btn" (click)="resetFilters()">
           <span class="material-icons-round">restart_alt</span>
           {{ 'orders.filters.reset' | translate }}
         </button>
@@ -236,9 +272,24 @@
       @for (order of orders; track order.id) {
         <tr class="table-row" (click)="onRowClick(order)">
           <td class="col-order-number">
-            <span class="order-number">{{ order.orderNumber }}</span>
+            <div class="order-number-cell">
+              <span class="order-number">{{ order.orderNumber }}</span>
+              @if (order.isScheduled && order.scheduledDeliveryTime) {
+                <span class="scheduled-badge">{{ 'orders.scheduledBadge' | translate }}</span>
+              }
+            </div>
           </td>
-          <td class="col-date">{{ order.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+          <td class="col-date">
+            @if (order.isScheduled && order.scheduledDeliveryTime) {
+              <div class="cell-datetime cell-datetime--scheduled">
+                <span class="time-scheduled-label">{{ 'orders.scheduledDeliveryLabel' | translate }}</span>
+                <span class="time-scheduled-abs">{{ order.scheduledDeliveryTime | date:'EEE d MMM, HH:mm' }}</span>
+                <span class="time-ordered-muted">{{ 'orders.orderPlacedOn' | translate }} {{ order.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+            } @else {
+              <span class="cell-datetime-plain">{{ order.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+            }
+          </td>
           <td class="col-customer">
             <div class="cell-person">
               <span class="person-avatar material-icons-round">person</span>

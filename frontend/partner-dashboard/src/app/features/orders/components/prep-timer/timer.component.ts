@@ -54,7 +54,6 @@ export class TimerComponent implements OnInit, OnDestroy, OnChanges {
 
   ngOnDestroy(): void {
     this.subscription?.unsubscribe();
-    this.emitExpiredIfChanged(false);
   }
 
   private startTick(): void {

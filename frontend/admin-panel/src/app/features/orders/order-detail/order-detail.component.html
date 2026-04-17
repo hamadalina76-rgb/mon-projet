@@ -30,6 +30,18 @@
     </div>
   </header>
 
+  @if (order.isScheduled && order.scheduledDeliveryTime) {
+    <div class="scheduled-banner">
+      <mat-icon class="scheduled-banner-ico">event</mat-icon>
+      <div class="scheduled-banner-text">
+        <span class="scheduled-banner-title">{{ 'orders.scheduledBannerTitle' | translate }}</span>
+        <span class="scheduled-banner-slot">{{ order.scheduledDeliveryTime | date:'EEEE d MMMM yyyy, HH:mm' }}</span>
+        <span class="scheduled-banner-placed">{{ 'orders.orderPlacedOn' | translate }}
+          {{ order.createdAt | date:'dd MMM yyyy, HH:mm' }}</span>
+      </div>
+    </div>
+  }
+
   <!-- ── Progress Pipeline ─────────────────────────────── -->
   @if (order.status !== 'CANCELLED') {
     <div class="pipeline-card card">
@@ -106,6 +118,9 @@
           <h3 class="card-title"><mat-icon>payment</mat-icon> {{ 'orderDetail.paymentDelivery' | translate }}</h3>
           <div class="info-row"><span class="info-label">{{ 'orderDetail.paymentMethod' | translate }}</span><span>{{ 'orders.payment.' + order.paymentMethod.toLowerCase() | translate }}</span></div>
           <div class="info-row"><span class="info-label">{{ 'orderDetail.paymentStatus' | translate }}</span><span>{{ order.paymentStatus }}</span></div>
+          @if (order.isScheduled && order.scheduledDeliveryTime) {
+            <div class="info-row"><span class="info-label">{{ 'orders.scheduledSlotLabel' | translate }}</span><span>{{ order.scheduledDeliveryTime | date:'EEEE d MMMM yyyy, HH:mm' }}</span></div>
+          }
           @if (order.estimatedDeliveryTime) {
             <div class="info-row"><span class="info-label">{{ 'orderDetail.estimatedDelivery' | translate }}</span><span>{{ order.estimatedDeliveryTime | date:'HH:mm' }}</span></div>
           }

@@ -150,10 +150,15 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** Lignes dont le minuteur de prépa a dépassé l’échéance (clignotement). */
   prepTimerExpiredIds = signal<Set<string>>(new Set());
+  /** Déduplication des rappels "attente terminée" côté UI. */
+  scheduledDueReminderIds = signal<Set<string>>(new Set());
 
   dataSource = new MatTableDataSource<Order>([]);
 
   private mobileObserver?: IntersectionObserver;
+  private destroyed = false;
+  private highlightTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+  private prepTimerContextCache = new Map<string, { signature: string; context: PrepTimerContext | null }>();
 
   ngOnInit(): void {
     this.isMobile.set(this.breakpoints.isMatched('(max-width: 767px)'));
@@ -215,7 +220,10 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
       this.loadOrders();
     }
 
-    setTimeout(() => this.setupMobileInfiniteScroll(), 0);
+    setTimeout(() => {
+      if (this.destroyed) return;
+      this.setupMobileInfiniteScroll();
+    }, 0);
   }
 
   private applyPaginatorIntl(): void {
@@ -236,7 +244,10 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
     this.teardownMobileObserver();
+    this.clearHighlightTimeouts();
+    this.prepTimerContextCache.clear();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -307,8 +318,10 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: (page) => {
         const orders = page.content as Order[];
+        this.prepTimerContextCache.clear();
         this.clearPrepSessionsForTerminalOrders(orders);
-        this.dataSource.data = orders;
+        const prioritized = this.prioritizeOrdersForAction(orders);
+        this.dataSource.data = prioritized;
         this.totalElements.set(page.totalElements);
         this.currentPage.set(page.number);
         this.currentSize.set(page.size);
@@ -323,7 +336,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         }
 
-        this.ordersStore.setOrders(orders);
+        this.ordersStore.setOrders(prioritized);
         this.notifService.updateTabTitle(this.counts()['PENDING'] ?? 0);
         this.loading.set(false);
         this.scheduledReminders.refreshFromActiveApi();
@@ -361,27 +374,33 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: (page) => {
         const chunk = page.content as Order[];
+        this.prepTimerContextCache.clear();
         this.clearPrepSessionsForTerminalOrders(chunk);
+        let nextMobile: Order[];
         if (reset) {
-          this.mobileOrders.set(chunk);
+          nextMobile = chunk;
         } else {
-          this.mobileOrders.update((prev) => {
-            const seen = new Set(prev.map((o) => o.id));
-            const merged = [...prev];
-            for (const o of chunk) {
-              if (!seen.has(o.id)) merged.push(o);
-            }
-            return merged;
-          });
+          const prev = this.mobileOrders();
+          const seen = new Set(prev.map((o) => o.id));
+          const merged = [...prev];
+          for (const o of chunk) {
+            if (!seen.has(o.id)) merged.push(o);
+          }
+          nextMobile = merged;
         }
+        const prioritized = this.prioritizeOrdersForAction(nextMobile);
+        this.mobileOrders.set(prioritized);
         this.mobileNextPage.set(pageIdx + 1);
         this.totalElements.set(page.totalElements);
-        this.ordersStore.setOrders(this.mobileOrders());
+        this.ordersStore.setOrders(prioritized);
         this.notifService.updateTabTitle(this.counts()['PENDING'] ?? 0);
         this.loading.set(false);
         this.loadingMore.set(false);
         if (reset) this.scheduledReminders.refreshFromActiveApi();
-        setTimeout(() => this.setupMobileInfiniteScroll(), 100);
+        setTimeout(() => {
+          if (this.destroyed) return;
+          this.setupMobileInfiniteScroll();
+        }, 100);
       },
       error: () => {
         this.loading.set(false);
@@ -484,7 +503,26 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   prepTimerContextForRow(row: Order): PrepTimerContext | null {
-    return mergePrepTimerContext(this.prepTimerSession.load(row.id), row);
+    const session = this.prepTimerSession.load(row.id);
+    const signature = [
+      row.id,
+      row.status ?? '',
+      row.isScheduled ? '1' : '0',
+      row.scheduledDeliveryTime ?? '',
+      row.prepTime ?? '',
+      row.confirmedAt ?? '',
+      row.preparingAt ?? '',
+      row.suggestedPreparationMinutes ?? '',
+      session?.startTimeIso ?? '',
+      session?.durationMinutes ?? '',
+    ].join('|');
+
+    const cached = this.prepTimerContextCache.get(row.id);
+    if (cached?.signature === signature) return cached.context;
+
+    const context = mergePrepTimerContext(session, row);
+    this.prepTimerContextCache.set(row.id, { signature, context });
+    return context;
   }
 
   isPrepTimerRowOverdue(orderId: string): boolean {
@@ -492,12 +530,17 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onPrepTimerExpired(orderId: string, expired: boolean): void {
+    if (this.destroyed) return;
     this.prepTimerExpiredIds.update((set) => {
       const next = new Set(set);
       if (expired) next.add(orderId);
       else next.delete(orderId);
       return next;
     });
+    if (expired) {
+      this.notifyScheduledDueNow(orderId);
+    }
+    this.reprioritizeVisibleOrders();
   }
 
   private clearPrepSessionsForTerminalOrders(orders: Order[]): void {
@@ -509,6 +552,11 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
     if (s === 'READY' || s === 'DELIVERED' || s === 'CANCELLED' || s === 'PICKED_UP') {
       this.prepTimerSession.clear(o.id);
       this.prepTimerExpiredIds.update((set) => {
+        const next = new Set(set);
+        next.delete(o.id);
+        return next;
+      });
+      this.scheduledDueReminderIds.update((set) => {
         const next = new Set(set);
         next.delete(o.id);
         return next;
@@ -580,7 +628,15 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private applyOrderUpdate(u: Order): void {
+    this.prepTimerContextCache.delete(u.id);
     this.clearPrepTimerIfTerminal(u);
+    if (u.status !== 'CONFIRMED') {
+      this.scheduledDueReminderIds.update((set) => {
+        const next = new Set(set);
+        next.delete(u.id);
+        return next;
+      });
+    }
     this.ordersStore.updateOrder(u);
     this.dataSource.data = this.dataSource.data.map((o) =>
       o.id === u.id ? { ...o, ...u } : o
@@ -588,20 +644,27 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
     this.mobileOrders.update((list) =>
       list.map((o) => (o.id === u.id ? { ...o, ...u } : o))
     );
+    this.reprioritizeVisibleOrders();
   }
 
   private executeAccept(orderId: string, prepTime: number): void {
+    const sourceOrder = this.findOrderForId(orderId);
+    const effectivePrepTime = this.resolveEffectivePrepTime(sourceOrder, prepTime);
+
     const prev = (this.ordersStore.getOrder(orderId) as any)?.status;
     this.ordersStore.updateOrder({ id: orderId, status: 'CONFIRMED' } as any);
     this.refreshRowEverywhere(orderId, 'CONFIRMED');
-    this.ordersService.confirmOrder(orderId, prepTime).subscribe({
+    this.ordersService.confirmOrder(orderId, effectivePrepTime).subscribe({
       next: (u) => {
         this.applyOrderUpdate(u);
-        const ctx = buildPrepTimerContextAfterAccept(u, prepTime);
-        if (ctx) this.prepTimerSession.save(orderId, ctx);
+        const ctx = buildPrepTimerContextAfterAccept(u, effectivePrepTime);
+        if (ctx) {
+          this.prepTimerSession.save(orderId, ctx);
+          this.prepTimerContextCache.delete(orderId);
+        }
         this.kitchenPrint.printKitchenTicket(String(orderId));
         this.loadCounts();
-        this.snackBar.open(this.acceptSuccessToast(u as Order, prepTime), undefined, {
+        this.snackBar.open(this.acceptSuccessToast(u as Order, effectivePrepTime), undefined, {
           duration: 5000,
           panelClass: ['sl-snack-success'],
         });
@@ -613,6 +676,24 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
         this.snackBar.open(this.translate.instant('ORDERS.TOAST.CONFIRM_ERROR'), 'OK', { duration: 3000 });
       },
     });
+  }
+
+  private resolveEffectivePrepTime(order: Order | undefined, prepTime: number): number {
+    const provided = Number.isFinite(prepTime) && prepTime > 0 ? Math.round(prepTime) : 0;
+    if (!order) return provided > 0 ? provided : 15;
+
+    const fromItems = suggestedPrepMinutesFromItems(order.items ?? []);
+    const fromOrder = order.suggestedPreparationMinutes != null && order.suggestedPreparationMinutes > 0
+      ? Math.round(order.suggestedPreparationMinutes)
+      : 0;
+    const suggested = fromOrder > 0 ? fromOrder : fromItems;
+
+    // Scheduled flow: enforce at least product-suggested prep for reliable due-time scheduling.
+    if (order.isScheduled === true) {
+      return Math.max(provided > 0 ? provided : suggested, suggested, 10);
+    }
+
+    return Math.max(provided > 0 ? provided : suggested, 10);
   }
 
   private acceptSuccessToast(updated: Order, prepTime: number): string {
@@ -633,6 +714,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
     this.ordersService.cancelOrder(orderId, reason).subscribe({
       next: (u) => {
         this.prepTimerSession.clear(orderId);
+        this.prepTimerContextCache.delete(orderId);
         this.onPrepTimerExpired(orderId, false);
         this.applyOrderUpdate(u);
         this.loadCounts();
@@ -668,6 +750,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
     this.ordersService.markReady(orderId).subscribe({
       next: (u) => {
         this.prepTimerSession.clear(orderId);
+        this.prepTimerContextCache.delete(orderId);
         this.onPrepTimerExpired(orderId, false);
         this.ordersStore.updateOrder(u);
         this.refreshRowEverywhere(orderId, u.status);
@@ -678,6 +761,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private refreshRowEverywhere(orderId: string, status: string): void {
+    this.prepTimerContextCache.delete(orderId);
     this.dataSource.data = this.dataSource.data.map((o: any) =>
       o.id === orderId ? { ...o, status } : o
     );
@@ -724,6 +808,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
                   list.some((o) => o.id === fullOrder.id) ? list : [fullOrder, ...list]
                 );
                 this.totalElements.update((t) => t + 1);
+                this.reprioritizeVisibleOrders();
               }
             } else if (this.currentPage() === 0) {
               const current = this.dataSource.data;
@@ -731,18 +816,24 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.dataSource.data = [fullOrder, ...current];
                 this.totalElements.update((t) => t + 1);
                 if (this.paginator) this.paginator.length = this.totalElements();
+                this.reprioritizeVisibleOrders();
               } else {
                 // Order already in list (race with polling): update in place
                 this.dataSource.data = this.dataSource.data.map((o: any) =>
                   o.id === fullOrder.id ? fullOrder : o
                 );
+                this.reprioritizeVisibleOrders();
               }
             }
 
             this.newOrderIds.update((ids) => new Set([...ids, fullOrder.id]));
-            setTimeout(() => {
+            const existingTimer = this.highlightTimeouts.get(fullOrder.id);
+            if (existingTimer) clearTimeout(existingTimer);
+            const timerId = setTimeout(() => {
+              if (this.destroyed) return;
               this.newOrderIds.update((ids) => { const n = new Set(ids); n.delete(fullOrder.id); return n; });
             }, 3000);
+            this.highlightTimeouts.set(fullOrder.id, timerId);
 
             this.loadCounts();
             this.notifService.newOrderAlert(fullOrder.orderNumber ?? '');
@@ -750,6 +841,17 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
             this.notifService.showBrowserNotification(
               this.translate.instant('ORDERS.NOTIF_NEW_ORDER'),
               `#${fullOrder.orderNumber}`,
+              {
+                notification: {
+                  type: 'ORDER',
+                  data: {
+                    orderId: fullOrder.id,
+                    id: fullOrder.id,
+                    action: 'ORDER_NEW',
+                    orderNumber: fullOrder.orderNumber,
+                  },
+                },
+              }
             );
             this.scheduledReminders.refreshFromActiveApi();
           },
@@ -766,6 +868,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
                   list.some((o) => o.id === fallback.id) ? list : [fallback, ...list]
                 );
                 this.totalElements.update((t) => t + 1);
+                this.reprioritizeVisibleOrders();
               }
             } else if (this.currentPage() === 0) {
               const current = this.dataSource.data;
@@ -773,6 +876,7 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.dataSource.data = [fallback, ...current];
                 this.totalElements.update((t) => t + 1);
                 if (this.paginator) this.paginator.length = this.totalElements();
+                this.reprioritizeVisibleOrders();
               }
             }
             this.loadCounts();
@@ -781,6 +885,87 @@ export class OrdersListComponent implements OnInit, AfterViewInit, OnDestroy {
           },
         });
       });
+  }
+
+  private reprioritizeVisibleOrders(): void {
+    this.prepTimerContextCache.clear();
+    this.dataSource.data = this.prioritizeOrdersForAction(this.dataSource.data);
+    this.mobileOrders.update((list) => this.prioritizeOrdersForAction(list));
+  }
+
+  private clearHighlightTimeouts(): void {
+    for (const t of this.highlightTimeouts.values()) {
+      clearTimeout(t);
+    }
+    this.highlightTimeouts.clear();
+  }
+
+  private prioritizeOrdersForAction(orders: Order[]): Order[] {
+    if (!orders || orders.length <= 1) return orders;
+
+    const ranked = orders.map((order, index) => ({
+      order,
+      index,
+      score: this.prepActionPriority(order),
+    }));
+
+    if (!ranked.some((x) => x.score > 0)) return orders;
+
+    ranked.sort((a, b) => {
+      if (a.score !== b.score) return b.score - a.score;
+      return a.index - b.index;
+    });
+    return ranked.map((x) => x.order);
+  }
+
+  private prepActionPriority(order: Order): number {
+    if (!this.isPrepDeadlineReached(order)) return 0;
+    if (order.status === 'PREPARING') return 3;
+    if (order.status === 'CONFIRMED') return 2;
+    return 0;
+  }
+
+  private isPrepDeadlineReached(order: Order): boolean {
+    if (order.status !== 'CONFIRMED' && order.status !== 'PREPARING') return false;
+    const ctx = mergePrepTimerContext(this.prepTimerSession.load(order.id), order);
+    if (!ctx) return false;
+    const startMs = Date.parse(ctx.startTimeIso);
+    if (Number.isNaN(startMs)) return false;
+    const deadlineMs = startMs + ctx.durationMinutes * 60_000;
+    return Date.now() >= deadlineMs;
+  }
+
+  private notifyScheduledDueNow(orderId: string): void {
+    if (this.scheduledDueReminderIds().has(orderId)) return;
+    const order = this.findOrderForId(orderId);
+    if (!order) return;
+    if (order.status !== 'CONFIRMED' || order.isScheduled !== true) return;
+    if (!this.isPrepDeadlineReached(order)) return;
+
+    const title = this.translate.instant('ORDERS.NOTIF_SCHEDULED_PREP_TITLE');
+    const message = this.translate.instant('ORDERS.TOAST.PREP_DEADLINE_CONFIRMED', {
+      orderNumber: order.orderNumber ?? orderId,
+    });
+
+    this.notifService.showScheduledPrepReminderFromServer({
+      title,
+      message,
+      type: 'ORDER',
+      channel: 'IN_APP',
+      data: {
+        id: orderId,
+        orderId,
+        action: 'ORDER_SCHEDULED_PREP_REMINDER',
+        orderNumber: order.orderNumber,
+        status: order.status,
+      },
+    });
+
+    this.scheduledDueReminderIds.update((set) => {
+      const next = new Set(set);
+      next.add(orderId);
+      return next;
+    });
   }
 
   get statusIcon(): string {

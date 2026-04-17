@@ -651,6 +651,35 @@
       "saveNote": "Save Note",
       "noDocuments": "No documents available",
       "comingSoon": "Coming Soon",
+      "orders": {
+        "title": "Partner orders",
+        "countLabel": "order(s)",
+        "currency": "TND",
+        "empty": "No orders found for this filter.",
+        "loadError": "Could not load partner orders.",
+        "filters": {
+          "day": "Day",
+          "search": "Search",
+          "searchPlaceholder": "Order #, customer...",
+          "status": "Status",
+          "paymentMethod": "Payment",
+          "paymentStatus": "Payment status",
+          "courierId": "Courier ID",
+          "courierPlaceholder": "E.g.: 12",
+          "amountMin": "Min amount",
+          "amountMax": "Max amount",
+          "amountMinPlaceholder": "E.g.: 20",
+          "amountMaxPlaceholder": "E.g.: 150"
+        },
+        "columns": {
+          "orderNumber": "Order #",
+          "customer": "Customer",
+          "courier": "Courier",
+          "status": "Status",
+          "total": "Total",
+          "createdAt": "Created at"
+        }
+      },
       "tabs": {
         "general": "General Info",
         "menu": "Menu / Products",
@@ -766,10 +795,22 @@
     "allOrders": "All Orders",
     "disputed": "Disputed Orders",
     "orderId": "Order #",
+    "scheduledBadge": "Scheduled",
+    "scheduledDeliveryLabel": "Scheduled delivery",
+    "orderPlacedOn": "Order placed on",
+    "scheduledBannerTitle": "Scheduled delivery",
+    "scheduledSlotLabel": "Customer time slot",
     "customer": "Customer",
     "partner": "Partner",
     "courier": "Courier",
     "total": "Total",
+    "filters": {
+      "scheduledFilterLabel": "Scheduling",
+      "scheduledFilterAll": "All orders",
+      "scheduledOnly": "Scheduled only",
+      "toggleMoreFilters": "More filters (partner, courier, amounts, dates)",
+      "toggleLessFilters": "Hide advanced filters"
+    },
     "status": {
       "pending": "Pending",
       "confirmed": "Confirmed",
@@ -779,6 +820,18 @@
       "delivering": "Delivering",
       "delivered": "Delivered",
       "cancelled": "Cancelled"
+    },
+    "payment": {
+      "cash": "Cash",
+      "card": "Card",
+      "wallet": "Wallet",
+      "cardOnDelivery": "Card on delivery"
+    },
+    "paymentStatus": {
+      "pending": "Pending",
+      "completed": "Completed",
+      "failed": "Failed",
+      "refunded": "Refunded"
     }
   },
   "payments": {

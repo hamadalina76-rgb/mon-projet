@@ -55,6 +55,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Year;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -66,6 +67,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -76,6 +78,9 @@ import java.util.Set;
 @Slf4j
 @Transactional
 public class OrderServiceImpl implements OrderService {
+
+    /** Verrou JVM pour numéros séquentiels (OK instance unique ; collision rare sinon gérée par contrainte unique + retry manuel). */
+    private final Object orderNumberAllocLock = new Object();
 
     private static final BigDecimal ZERO = new BigDecimal("0.00");
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
@@ -259,16 +264,23 @@ public class OrderServiceImpl implements OrderService {
             historyNotes = null;
         }
 
+        final OrderStatus targetStatus = Boolean.TRUE.equals(order.getIsScheduled())
+            ? OrderStatus.CONFIRMED
+            : OrderStatus.PREPARING;
+
         applyStatusTransition(
                 order,
-                OrderStatus.PREPARING,
+            targetStatus,
                 "PARTNER",
                 partnerId,
                 historyNotes,
                 "Commande confirmée par le partenaire"
         );
 
-        if (estimatedPrepTime != null && estimatedPrepTime > 0 && !Boolean.TRUE.equals(order.getIsScheduled())) {
+        if (Boolean.TRUE.equals(order.getIsScheduled())) {
+            order.setEstimatedDeliveryTime(order.getScheduledDeliveryTime());
+            orderRepository.save(order);
+        } else if (estimatedPrepTime != null && estimatedPrepTime > 0) {
             final int prepMinutes = Math.max(10, estimatedPrepTime);
             order.setEstimatedDeliveryTime(LocalDateTime.now().plusMinutes(prepMinutes + 15L));
             orderRepository.save(order);
@@ -633,12 +645,14 @@ public class OrderServiceImpl implements OrderService {
                                               LocalDateTime startDate, LocalDateTime endDate,
                                               Long partnerId, Long courierId,
                                               BigDecimal amountMin, BigDecimal amountMax,
+                                              Boolean scheduledOnly,
                                               Pageable pageable) {
         final Order.PaymentMethod pm = parsePaymentMethodOrNull(paymentMethod);
         final Order.PaymentStatus ps = parsePaymentStatusOrNull(paymentStatus);
         final String safeSearch = search == null ? "" : search.trim();
+        final Boolean scheduledFilter = Boolean.TRUE.equals(scheduledOnly) ? Boolean.TRUE : null;
         return orderRepository.findAllAdmin(status, pm, ps, safeSearch, startDate, endDate,
-                partnerId, courierId, amountMin, amountMax, pageable)
+                partnerId, courierId, amountMin, amountMax, scheduledFilter, pageable)
                 .map(this::toResponse);
     }
 
@@ -901,7 +915,10 @@ public class OrderServiceImpl implements OrderService {
                 .max()
                 .orElse(20);
 
+        final String orderNumber = allocateSequentialOrderNumber();
+
         final Order order = Order.builder()
+                .orderNumber(orderNumber)
                 .customerId(customerId)
                 .partnerId(partnerId)
                 .status(OrderStatus.PENDING)
@@ -966,6 +983,40 @@ public class OrderServiceImpl implements OrderService {
         }
 
         return getOrderById(savedOrder.getId());
+    }
+
+    /**
+     * Numéro stable par année : {@code ORD-2026-00001}, incrémenté à partir du max existant (verrou JVM).
+     */
+    private String allocateSequentialOrderNumber() {
+        final int year = Year.now().getValue();
+        final String prefix = "ORD-" + year + "-";
+        synchronized (orderNumberAllocLock) {
+            final String pattern = prefix + "%";
+            final int standardLen = prefix.length() + 5;
+            final Optional<String> maxOpt = orderRepository.findMaxStandardOrderNumberLike(pattern, standardLen);
+            int next = 1;
+            if (maxOpt.isPresent()) {
+                final String max = maxOpt.get();
+                if (max.startsWith(prefix) && max.length() > prefix.length()) {
+                    final String suffix = max.substring(prefix.length());
+                    if (suffix.length() == 5 && suffix.chars().allMatch(Character::isDigit)) {
+                        try {
+                            next = Integer.parseInt(suffix) + 1;
+                        } catch (NumberFormatException ignored) {
+                            next = 1;
+                        }
+                    }
+                }
+            }
+            if (next > 99_999) {
+                throw new ResponseStatusException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Numérotation des commandes dépassée pour l'année " + year
+                );
+            }
+            return prefix + String.format("%05d", next);
+        }
     }
 
     @Override
@@ -1048,6 +1099,7 @@ public class OrderServiceImpl implements OrderService {
                             .orderNumber(order.getOrderNumber())
                             .customerId(order.getCustomerId())
                             .partnerId(order.getPartnerId())
+                    .partnerUserId(resolvePartnerUserId(order.getPartnerId()))
                             .previousStatus(previousStatus)
                             .newStatus(newStatus)
                             .actorType(actorType)
@@ -1537,16 +1589,7 @@ public class OrderServiceImpl implements OrderService {
                     .filter(Objects::nonNull)
                     .reduce(0, Integer::sum);
 
-            Long partnerUserId = null;
-            try {
-                final PartnerSnapshot partner = partnerServiceClient.getPartnerById(order.getPartnerId());
-                if (partner != null && partner.getUserId() != null) {
-                    partnerUserId = partner.getUserId();
-                }
-            } catch (Exception ex) {
-                log.warn("Impossible de résoudre partnerUserId pour partnerId={} : {}",
-                        order.getPartnerId(), ex.getMessage());
-            }
+            final Long partnerUserId = resolvePartnerUserId(order.getPartnerId());
 
             final OrderCreatedEvent event = OrderCreatedEvent.builder()
                     .orderId(order.getId())
@@ -1595,6 +1638,7 @@ public class OrderServiceImpl implements OrderService {
                     .orderNumber(order.getOrderNumber())
                     .customerId(order.getCustomerId())
                     .partnerId(order.getPartnerId())
+                    .partnerUserId(resolvePartnerUserId(order.getPartnerId()))
                     .previousStatus(previousStatus)
                     .status(order.getStatus())
                     .actorType(normalizedActorType)
@@ -1613,6 +1657,21 @@ public class OrderServiceImpl implements OrderService {
         final int partnerPreparation = partner.getPreparationTime() == null ? 20 : Math.max(0, partner.getPreparationTime());
         final int totalMinutes = Math.max(30, partnerPreparation + 15);
         return LocalDateTime.now().plusMinutes(totalMinutes);
+    }
+
+    private Long resolvePartnerUserId(Long partnerId) {
+        if (partnerId == null) {
+            return null;
+        }
+        try {
+            final PartnerSnapshot partner = partnerServiceClient.getPartnerById(partnerId);
+            if (partner != null && partner.getUserId() != null) {
+                return partner.getUserId();
+            }
+        } catch (Exception ex) {
+            log.warn("Impossible de résoudre partnerUserId pour partnerId={} : {}", partnerId, ex.getMessage());
+        }
+        return null;
     }
 
     private List<OrderItem> buildOrderItems(PartnerSnapshot partner, Long partnerId, List<CartItemPayload> cartItems) {
@@ -2573,13 +2632,14 @@ public class OrderServiceImpl implements OrderService {
     public List<OrderResponse> listAllAdminOrdersForExport(
             OrderStatus status, String paymentMethod, String paymentStatus,
             String search, LocalDateTime startDate, LocalDateTime endDate,
-            Long partnerId, Long courierId, BigDecimal amountMin, BigDecimal amountMax) {
+            Long partnerId, Long courierId, BigDecimal amountMin, BigDecimal amountMax,
+            Boolean scheduledOnly) {
         final List<OrderResponse> out = new ArrayList<>();
         int page = 0;
         while (true) {
             final Pageable pageable = PageRequest.of(page, EXPORT_PAGE_SIZE, Sort.by(Sort.Direction.DESC, "createdAt"));
             final Page<OrderResponse> chunk = getAdminOrders(status, paymentMethod, paymentStatus,
-                    search, startDate, endDate, partnerId, courierId, amountMin, amountMax, pageable);
+                    search, startDate, endDate, partnerId, courierId, amountMin, amountMax, scheduledOnly, pageable);
             out.addAll(chunk.getContent());
             if (!chunk.hasNext()) break;
             page++;

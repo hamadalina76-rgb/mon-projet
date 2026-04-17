@@ -1,5 +1,6 @@
 // src/app/shared/components/map-location-selector/map-location-selector.component.ts
-import { Component, OnInit, OnDestroy, AfterViewInit, Output, EventEmitter, Input, signal, effect, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, Output, EventEmitter, Input, signal, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
 import * as mapboxgl from 'mapbox-gl';
 import MapboxLanguage from '@mapbox/mapbox-gl-language';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { environment } from '@environments/environment';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged, filter } from 'rxjs/operators';
@@ -41,7 +43,8 @@ export interface SearchSuggestion {
     MatProgressSpinnerModule,
     MatFormFieldModule,
     MatInputModule,
-    FormsModule
+    FormsModule,
+    TranslateModule,
   ],
   templateUrl: './map-location-selector.component.html',
   styleUrls: ['./map-location-selector.component.scss']
@@ -51,14 +54,23 @@ export class MapLocationSelectorComponent implements OnInit, AfterViewInit, OnDe
   @Input() initialLongitude?: number;
   @Output() locationSelected = new EventEmitter<LocationData>();
 
+  /** ID unique pour éviter les collisions si plusieurs cartes */
+  readonly mapDomId = `partner-map-${Math.random().toString(36).slice(2, 11)}`;
+
   map?: mapboxgl.Map;
   marker?: mapboxgl.Marker;
+  private languageControl?: MapboxLanguage;
+
   loading = signal(false);
   searchQuery = signal('');
   isMapReady = signal(false);
   searchResults = signal<SearchSuggestion[]>([]);
   showSuggestions = signal(false);
 
+  /** RTL pour l’overlay (suggestions) ; la carte Mapbox utilise le plugin RTL + langue. */
+  uiDir = signal<'ltr' | 'rtl'>('ltr');
+
+  private readonly translate = inject(TranslateService);
   private mapboxToken = environment.mapboxToken;
   private searchSubject = new Subject<string>();
   private searchSubscription?: Subscription;
@@ -68,11 +80,77 @@ export class MapLocationSelectorComponent implements OnInit, AfterViewInit, OnDe
   private defaultLng = 10.1815;
 
   constructor() {
+    this.uiDir.set(this.resolveUiDir());
+    this.translate.onLangChange.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.uiDir.set(this.resolveUiDir());
+      this.applyMapLanguageIfReady();
+    });
+
     this.searchSubscription = this.searchSubject.pipe(
       debounceTime(300),
       distinctUntilChanged(),
       filter((q: string) => q.length >= 2),
     ).subscribe((query: string) => this.fetchSuggestions(query));
+  }
+
+  private resolveUiDir(): 'ltr' | 'rtl' {
+    const lang = (this.translate.currentLang || 'fr').toLowerCase();
+    return lang.startsWith('ar') ? 'rtl' : 'ltr';
+  }
+
+  /** Langue Mapbox Streets (étiquettes sur la carte). */
+  private mapboxMapLanguage(): 'fr' | 'en' | 'ar' {
+    const lang = (this.translate.currentLang || 'fr').toLowerCase().split('-')[0];
+    if (lang === 'ar') return 'ar';
+    if (lang === 'en') return 'en';
+    return 'fr';
+  }
+
+  /** Accept-Language pour Nominatim (résultats + ordre des mots en arabe). */
+  private nominatimAcceptLanguage(): string {
+    const lang = (this.translate.currentLang || 'fr').toLowerCase().split('-')[0];
+    if (lang === 'ar') return 'ar,fr,en';
+    if (lang === 'en') return 'en,fr,ar';
+    return 'fr,ar,en';
+  }
+
+  private ensureRtlTextPlugin(): void {
+    try {
+      const gl = mapboxgl as typeof mapboxgl & {
+        getRTLTextPluginStatus?: () => string;
+        setRTLTextPlugin?: (url: string, cb?: (err?: { err?: Error | null }) => void, deferred?: boolean) => void;
+      };
+      const status = gl.getRTLTextPluginStatus?.();
+      if (
+        status === 'loaded' ||
+        status === 'deferred' ||
+        status === 'parsed' ||
+        status === 'parsing' ||
+        status === 'loading'
+      ) {
+        return;
+      }
+      gl.setRTLTextPlugin?.(
+        'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.2.3/mapbox-gl-rtl-text.js',
+        () => {},
+        true
+      );
+    } catch (e) {
+      console.warn('[map-location-selector] RTL plugin', e);
+    }
+  }
+
+  private applyMapLanguageIfReady(): void {
+    if (!this.map || !this.languageControl) return;
+    try {
+      const lang = this.mapboxMapLanguage();
+      const style = this.map.getStyle();
+      if (!style?.layers?.length) return;
+      const nextStyle = this.languageControl.setLanguage(style, lang);
+      this.map.setStyle(nextStyle);
+    } catch (e) {
+      console.warn('[map-location-selector] set map language', e);
+    }
   }
 
   ngOnInit(): void {
@@ -94,8 +172,9 @@ export class MapLocationSelectorComponent implements OnInit, AfterViewInit, OnDe
   }
 
   private initMap(): void {
-    // Check if container exists
-    const container = document.getElementById('map');
+    this.ensureRtlTextPlugin();
+
+    const container = document.getElementById(this.mapDomId);
     if (!container) {
       console.error('Map container not found. Retrying...');
       setTimeout(() => this.initMap(), 100);
@@ -109,20 +188,20 @@ export class MapLocationSelectorComponent implements OnInit, AfterViewInit, OnDe
     const lng = hasInitial ? this.initialLongitude! : this.defaultLng;
 
     try {
-      // Set Mapbox access token using Object.assign to avoid immutability error
       Object.assign(mapboxgl, { accessToken: this.mapboxToken });
 
-      // Initialize map
       this.map = new mapboxgl.Map({
-        container: 'map',
+        container: this.mapDomId,
         style: 'mapbox://styles/mapbox/streets-v11',
         center: [lng, lat],
         zoom: 13,
-        accessToken: this.mapboxToken
+        accessToken: this.mapboxToken,
       });
 
-      // Force French labels on map (independent of app language)
-      this.map.addControl(new MapboxLanguage({ defaultLanguage: 'fr' }));
+      this.languageControl = new MapboxLanguage({
+        defaultLanguage: this.mapboxMapLanguage(),
+      });
+      this.map.addControl(this.languageControl);
 
       // Add navigation controls
       this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
@@ -182,9 +261,10 @@ export class MapLocationSelectorComponent implements OnInit, AfterViewInit, OnDe
   private async onLocationChange(lat: number, lng: number): Promise<void> {
     try {
       // Use OpenStreetMap Nominatim for reverse geocoding — far better street-level coverage in Tunisia
+      const al = encodeURIComponent(this.nominatimAcceptLanguage());
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=jsonv2` +
-        `&lat=${lat}&lon=${lng}&accept-language=fr&addressdetails=1&zoom=18`
+        `&lat=${lat}&lon=${lng}&accept-language=${al}&addressdetails=1&zoom=18`
       );
       const data = await response.json();
 
@@ -241,10 +321,11 @@ export class MapLocationSelectorComponent implements OnInit, AfterViewInit, OnDe
     try {
       const center = this.map.getCenter();
       const viewbox = this.getViewbox();
+      const al = encodeURIComponent(this.nominatimAcceptLanguage());
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=jsonv2` +
         `&q=${encodeURIComponent(query)}` +
-        `&accept-language=fr` +
+        `&accept-language=${al}` +
         `&limit=1` +
         `&addressdetails=1` +
         `&viewbox=${viewbox}` +
@@ -288,10 +369,11 @@ export class MapLocationSelectorComponent implements OnInit, AfterViewInit, OnDe
   private async fetchSuggestions(query: string): Promise<void> {
     try {
       const viewbox = this.getViewbox();
+      const al = encodeURIComponent(this.nominatimAcceptLanguage());
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=jsonv2` +
         `&q=${encodeURIComponent(query)}` +
-        `&accept-language=fr` +
+        `&accept-language=${al}` +
         `&limit=5` +
         `&addressdetails=1` +
         `&viewbox=${viewbox}` +

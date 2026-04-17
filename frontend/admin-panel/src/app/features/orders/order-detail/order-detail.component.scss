@@ -35,6 +35,51 @@ $gray-light: #f4f6f8;
   .back-btn { color: #555; }
 }
 
+.scheduled-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.25rem;
+  border-radius: 14px;
+  border: 1px solid rgba(14, 165, 233, 0.28);
+  background: rgba(14, 165, 233, 0.08);
+}
+
+.scheduled-banner-ico {
+  font-size: 1.35rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  color: #0284c7;
+  flex-shrink: 0;
+}
+
+.scheduled-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.scheduled-banner-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #0369a1;
+}
+
+.scheduled-banner-slot {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.scheduled-banner-placed {
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
 .refresh-btn {
   font-size: 0.82rem; border-color: $red; color: $red;
   mat-icon { font-size: 18px; width: 18px; height: 18px; margin-right: 4px; }

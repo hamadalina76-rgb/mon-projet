@@ -156,6 +156,8 @@ export interface OrderFilters {
   paymentStatus?: PaymentStatus | '';
   amountMin?: number | null;
   amountMax?: number | null;
+  /** Si true, ne retourne que les commandes avec créneau client (isScheduled + scheduledDeliveryTime). */
+  scheduledOnly?: boolean;
 }
 
 // ── Order Stats ──────────────────────────────────────────

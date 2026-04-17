@@ -394,6 +394,7 @@ public interface OrderService {
                                        LocalDateTime startDate, LocalDateTime endDate,
                                        Long partnerId, Long courierId,
                                        BigDecimal amountMin, BigDecimal amountMax,
+                                       Boolean scheduledOnly,
                                        Pageable pageable);
 
     /**
@@ -412,7 +413,8 @@ public interface OrderService {
     List<OrderResponse> listAllAdminOrdersForExport(
             OrderStatus status, String paymentMethod, String paymentStatus,
             String search, LocalDateTime startDate, LocalDateTime endDate,
-            Long partnerId, Long courierId, BigDecimal amountMin, BigDecimal amountMax);
+            Long partnerId, Long courierId, BigDecimal amountMin, BigDecimal amountMax,
+            Boolean scheduledOnly);
 
     /**
      * Logs admin paginés : historique de toutes les modifications.

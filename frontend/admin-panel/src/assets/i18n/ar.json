@@ -612,6 +612,35 @@
       "saveNote": "حفظ الملاحظة",
       "noDocuments": "لا توجد مستندات متاحة",
       "comingSoon": "قريباً",
+      "orders": {
+        "title": "طلبات الشريك",
+        "countLabel": "طلب",
+        "currency": "د.ت",
+        "empty": "لا توجد طلبات مطابقة لهذا الفلتر.",
+        "loadError": "تعذر تحميل طلبات الشريك.",
+        "filters": {
+          "day": "اليوم",
+          "search": "بحث",
+          "searchPlaceholder": "رقم الطلب، العميل...",
+          "status": "الحالة",
+          "paymentMethod": "الدفع",
+          "paymentStatus": "حالة الدفع",
+          "courierId": "معرّف الساعي",
+          "courierPlaceholder": "مثال: 12",
+          "amountMin": "الحد الأدنى",
+          "amountMax": "الحد الأقصى",
+          "amountMinPlaceholder": "مثال: 20",
+          "amountMaxPlaceholder": "مثال: 150"
+        },
+        "columns": {
+          "orderNumber": "رقم الطلب",
+          "customer": "العميل",
+          "courier": "الساعي",
+          "status": "الحالة",
+          "total": "الإجمالي",
+          "createdAt": "تاريخ الإنشاء"
+        }
+      },
       "tabs": {
         "general": "المعلومات العامة",
         "menu": "القائمة / المنتجات",
@@ -729,6 +758,11 @@
     "disputed": "الطلبات المتنازع عليها",
     "orderId": "رقم الطلب",
     "dateTime": "التاريخ / الوقت",
+    "scheduledBadge": "مجدولة",
+    "scheduledDeliveryLabel": "التسليم المخطط",
+    "orderPlacedOn": "تم الطلب في",
+    "scheduledBannerTitle": "تسليم مجدول",
+    "scheduledSlotLabel": "الفترة التي اختارها العميل",
     "customer": "العميل",
     "partner": "الشريك",
     "courier": "الساعي",
@@ -760,6 +794,9 @@
       "allStatuses": "جميع الحالات",
       "payment": "الدفع",
       "allPayments": "جميع طرق الدفع",
+      "scheduledFilterLabel": "الجدولة",
+      "scheduledFilterAll": "جميع الطلبات",
+      "scheduledOnly": "المجدولة فقط",
       "partner": "الشريك",
       "searchPartner": "بحث عن شريك…",
       "courier": "الساعي",
@@ -769,7 +806,9 @@
       "customRange": "فترة مخصصة",
       "dateFrom": "من",
       "dateTo": "إلى",
-      "reset": "إعادة تعيين"
+      "reset": "إعادة تعيين",
+      "toggleMoreFilters": "المزيد من المرشحات (شريك، ساعي، مبالغ، تواريخ)",
+      "toggleLessFilters": "إخفاء المرشحات المتقدمة"
     },
     "quick": {
       "all": "الكل",
@@ -782,7 +821,14 @@
     "payment": {
       "cash": "نقدي",
       "card": "بطاقة",
-      "wallet": "محفظة"
+      "wallet": "محفظة",
+      "cardOnDelivery": "بطاقة عند التسليم"
+    },
+    "paymentStatus": {
+      "pending": "قيد الانتظار",
+      "completed": "مكتمل",
+      "failed": "فشل",
+      "refunded": "مُسترجع"
     },
     "pipeline": {
       "PENDING": "قيد الانتظار",

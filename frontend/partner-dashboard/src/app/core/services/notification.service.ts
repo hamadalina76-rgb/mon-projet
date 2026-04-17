@@ -1,9 +1,10 @@
 // src/app/core/services/notification.service.ts
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, NgZone, inject, signal } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Title } from '@angular/platform-browser';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslateService } from '@ngx-translate/core';
+import { Router } from '@angular/router';
 import { ApiService } from './api.service';
 
 export interface Notification {
@@ -17,6 +18,17 @@ export interface Notification {
   createdAt: string;
 }
 
+export interface NotificationNavigationPayload {
+  type?: string;
+  channel?: string;
+  data?: unknown;
+}
+
+export interface BrowserNotificationOptions {
+  icon?: string;
+  notification?: NotificationNavigationPayload;
+}
+
 const SOUND_PREF_KEY = 'speedline_sound_enabled';
 const APP_TITLE = 'SpeedLine Partner';
 
@@ -28,6 +40,8 @@ export class NotificationService {
   private title = inject(Title);
   private snackBar = inject(MatSnackBar);
   private translate = inject(TranslateService);
+  private router = inject(Router);
+  private zone = inject(NgZone);
 
   private audioCtx: AudioContext | null = null;
   private pendingAudioPlay = false;
@@ -281,19 +295,114 @@ export class NotificationService {
     }
   }
 
-  showBrowserNotification(title: string, body: string, icon?: string): void {
+  showBrowserNotification(
+    title: string,
+    body: string,
+    iconOrOptions?: string | BrowserNotificationOptions
+  ): void {
     if (!('Notification' in window)) return;
     if (Notification.permission === 'granted') {
-      new Notification(title, {
+      const opts: BrowserNotificationOptions =
+        typeof iconOrOptions === 'string'
+          ? { icon: iconOrOptions }
+          : (iconOrOptions ?? {});
+
+      const browserNotification = new Notification(title, {
         body,
-        icon: icon || '/assets/images/logo.svg',
+        icon: opts.icon || '/assets/images/logo.svg',
         badge: '/assets/images/logo-icon.svg',
       });
+
+      const navPayload = opts.notification;
+      if (navPayload) {
+        browserNotification.onclick = (event: Event) => {
+          event.preventDefault();
+          window.focus();
+          this.zone.run(() => {
+            void this.navigateFromNotification(navPayload);
+          });
+          browserNotification.close();
+        };
+      }
     }
   }
 
+  resolveNotificationRoute(notif: NotificationNavigationPayload): string {
+    const data = this.normalizeRecord(notif.data);
+    const action = this.asUpper(data?.['action']);
+
+    if (action === 'PARTNER_APPROVED' || action === 'PARTNER_ACTIVATED') {
+      return '/dashboard';
+    }
+
+    if (action === 'PRODUCT_APPROVED' || action === 'PRODUCT_REJECTED') {
+      const productId = this.asTrimmed(data?.['productId']);
+      if (productId) return `/menu/products/${productId}/edit`;
+      return '/menu';
+    }
+
+    const orderId =
+      this.asTrimmed(data?.['orderId']) ??
+      this.asTrimmed(data?.['id']) ??
+      this.asTrimmed(data?.['orderUuid']);
+
+    if (action === 'ADMIN_CONTACT' || action?.startsWith('ORDER_')) {
+      return orderId ? `/orders/${orderId}` : '/orders';
+    }
+
+    if (notif.type === 'ORDER' || notif.type === 'ORDER_NEW') {
+      return orderId ? `/orders/${orderId}` : '/orders';
+    }
+
+    if (notif.type === 'PARTNER') {
+      return '/dashboard';
+    }
+
+    const customPath = this.asTrimmed(data?.['path']);
+    if (customPath?.startsWith('/')) return customPath;
+
+    return '/notifications';
+  }
+
+  navigateFromNotification(notif: NotificationNavigationPayload): Promise<boolean> {
+    const route = this.resolveNotificationRoute(notif);
+    return this.router.navigateByUrl(route);
+  }
+
+  private normalizeRecord(value: unknown): Record<string, unknown> | null {
+    if (value == null) return null;
+    if (typeof value === 'string') {
+      try {
+        const parsed: unknown = JSON.parse(value);
+        return typeof parsed === 'object' && parsed !== null
+          ? (parsed as Record<string, unknown>)
+          : null;
+      } catch {
+        return null;
+      }
+    }
+    return typeof value === 'object' ? (value as Record<string, unknown>) : null;
+  }
+
+  private asTrimmed(value: unknown): string | null {
+    if (value == null) return null;
+    const str = String(value).trim();
+    return str.length > 0 ? str : null;
+  }
+
+  private asUpper(value: unknown): string | null {
+    const normalized = this.asTrimmed(value);
+    return normalized ? normalized.toUpperCase() : null;
+  }
+
   /** Rappel émis par le serveur (15 min + prépa avant le créneau). */
-  showScheduledPrepReminderFromServer(notif: { title?: string; message?: string }): void {
+  showScheduledPrepReminderFromServer(notif: {
+    title?: string;
+    message?: string;
+    type?: string;
+    channel?: string;
+    data?: unknown;
+  }): void {
     this.playPrepDeadlineSound();
     const title =
       (notif.title && notif.title.trim()) ||
@@ -306,6 +415,12 @@ export class NotificationService {
       verticalPosition: 'top',
       panelClass: ['sl-snack-scheduled-reminder'],
     });
-    this.showBrowserNotification(title, message);
+    this.showBrowserNotification(title, message, {
+      notification: {
+        type: notif.type,
+        channel: notif.channel,
+        data: notif.data,
+      },
+    });
   }
 }

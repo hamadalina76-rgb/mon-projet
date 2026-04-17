@@ -15,7 +15,7 @@
     </div>
     <div class="header-actions">
       <button type="button" class="btn btn-ghost" (click)="loadBusinessInfo()">{{ 'profilePages.cancel' | translate }}</button>
-      <button type="submit" form="business-form" class="btn btn-primary" [disabled]="loading() || saving()">
+      <button type="button" class="btn btn-primary" [disabled]="loading() || saving()" (click)="saveBusinessInfo()">
         @if (saving()) {
           <span class="btn-spinner"></span>
           {{ 'profilePages.saving' | translate }}
@@ -34,6 +34,8 @@
     </div>
   } @else {
     <form id="business-form" [formGroup]="businessForm" (ngSubmit)="saveBusinessInfo()">
+      <!-- Permet la soumission avec Entrée depuis un champ du formulaire -->
+      <button type="submit" class="biz-form-hidden-submit" tabindex="-1" aria-hidden="true"></button>
       <div class="content-grid">
         <!-- Colonne principale -->
         <div class="main-col">

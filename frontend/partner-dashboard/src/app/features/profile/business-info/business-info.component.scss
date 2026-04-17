@@ -14,6 +14,18 @@ $success-faint: rgba($success-color, 0.12);
   overflow-x: hidden;
 }
 
+/* Soumission clavier (Entrée) : bouton submit invisible dans le <form> */
+.biz-form-hidden-submit {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  pointer-events: none;
+}
+
 .page-wrap {
   max-width: 1120px;
   margin: 0 auto;

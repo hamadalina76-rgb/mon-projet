@@ -63,18 +63,19 @@ export function computeScheduledPrepTimerContext(
   if (Number.isNaN(schedMs)) return null;
 
   const deadlineMs = schedMs - prepMinutes * 60_000;
-  const now = Date.now();
+  const nowMs = Date.now();
 
-  if (deadlineMs <= now) {
+  // Phase 1 (waiting): countdown until prep should start.
+  if (nowMs < deadlineMs) {
     return {
-      startTimeIso: new Date(now).toISOString(),
-      durationMinutes: prepMinutes,
+      startTimeIso: new Date(nowMs).toISOString(),
+      durationMinutes: Math.max(1, Math.ceil((deadlineMs - nowMs) / 60_000)),
     };
   }
 
-  const startMs = deadlineMs - prepMinutes * 60_000;
+  // Phase 2 (prep): once due time is reached, run prep countdown.
   return {
-    startTimeIso: new Date(startMs).toISOString(),
+    startTimeIso: new Date(deadlineMs).toISOString(),
     durationMinutes: prepMinutes,
   };
 }
@@ -99,6 +100,17 @@ export function mergePrepTimerContext(
   order: Order,
 ): PrepTimerContext | null {
   if (!isPrepTimerActiveStatus(order.status)) return null;
+
+  if (order.isScheduled === true && order.scheduledDeliveryTime) {
+    const durationFromSession =
+      session && session.durationMinutes != null && session.durationMinutes > 0
+        ? session.durationMinutes
+        : null;
+    const duration = durationFromSession ?? resolvePrepDurationMinutes(order);
+    if (duration == null || duration <= 0) return null;
+    return computeScheduledPrepTimerContext(order.scheduledDeliveryTime, duration);
+  }
+
   if (
     session &&
     session.startTimeIso &&

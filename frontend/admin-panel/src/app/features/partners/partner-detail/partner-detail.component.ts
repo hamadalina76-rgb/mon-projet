@@ -20,6 +20,8 @@ import { ListPageComponent } from '@shared/components/list-page/list-page.compon
 import { FormsModule } from '@angular/forms';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { PartnersService } from '../services/partners.service';
+import { OrdersService } from '@features/orders/services/orders.service';
+import { AdminOrder, OrderFilters, OrderStatus, PaymentMethod, PaymentStatus } from '@features/orders/models/admin-order.model';
 import { PartnerEditDialogComponent, PartnerEditDialogData } from '../partner-edit-dialog/partner-edit-dialog.component';
 import { CommissionSetupDialogComponent, CommissionSetupData, CommissionSetupResult } from '../partner-approval/commission-setup-dialog.component';
 import { CategoriesService } from '@features/categories/services/categories.service';
@@ -71,6 +73,7 @@ export class PartnerDetailComponent implements OnInit, AfterViewInit, OnDestroy 
   private dialog            = inject(MatDialog);
   private wsService         = inject(WebSocketService);
   private adminService      = inject(AdminService);
+  private ordersService     = inject(OrdersService);
   private wsSub: Subscription | null = null;
 
   @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
@@ -182,6 +185,44 @@ export class PartnerDetailComponent implements OnInit, AfterViewInit, OnDestroy 
   productAuditTotalElements = signal(0);
   productAuditPage = signal(0);
   productAuditPageSize = signal(5);
+
+  // ── Orders (partner scope) ─────────────────────────────────────────────
+  partnerOrders = signal<AdminOrder[]>([]);
+  partnerOrdersLoading = signal(false);
+  partnerOrdersError = signal<string | null>(null);
+  partnerOrdersPage = signal(0);
+  partnerOrdersPageSize = signal(10);
+  partnerOrdersTotalElements = signal(0);
+  partnerOrdersDate = signal('');
+  partnerOrdersDateValue = '';
+  partnerOrdersSearch = signal('');
+  partnerOrdersSearchValue = '';
+  partnerOrdersStatus = signal<OrderStatus | ''>('');
+  partnerOrdersStatusValue: OrderStatus | '' = '';
+  partnerOrdersPaymentMethod = signal<PaymentMethod | ''>('');
+  partnerOrdersPaymentMethodValue: PaymentMethod | '' = '';
+  partnerOrdersPaymentStatus = signal<PaymentStatus | ''>('');
+  partnerOrdersPaymentStatusValue: PaymentStatus | '' = '';
+  partnerOrdersCourierId = signal<number | null>(null);
+  partnerOrdersCourierIdValue = '';
+  partnerOrdersAmountMin = signal<number | null>(null);
+  partnerOrdersAmountMinValue = '';
+  partnerOrdersAmountMax = signal<number | null>(null);
+  partnerOrdersAmountMaxValue = '';
+
+  readonly partnerOrderStatuses: OrderStatus[] = [
+    'PENDING',
+    'CONFIRMED',
+    'PREPARING',
+    'READY_FOR_PICKUP',
+    'PICKED_UP',
+    'IN_DELIVERY',
+    'DELIVERED',
+    'CANCELLED',
+  ];
+
+  readonly partnerPaymentMethods: PaymentMethod[] = ['CASH', 'CARD', 'WALLET', 'CARD_ON_DELIVERY'];
+  readonly partnerPaymentStatuses: PaymentStatus[] = ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'];
 
   // Etat calculé pour l'affichage Menu/History dans ListPageComponent
   menuLoading = computed(() =>
@@ -637,6 +678,7 @@ export class PartnerDetailComponent implements OnInit, AfterViewInit, OnDestroy 
 
         // Load partner menu categories & products for verification (Menu / Products tab)
         this.loadPartnerMenu(id);
+        this.loadPartnerOrders(id, 0, this.partnerOrdersPageSize());
       },
       error: (err) => {
         console.error('Failed to load partner:', err);
@@ -690,6 +732,166 @@ export class PartnerDetailComponent implements OnInit, AfterViewInit, OnDestroy 
         }
       }
     }
+  }
+
+  private loadPartnerOrders(partnerId: string, page: number, size: number): void {
+    const partnerIdNum = Number(partnerId);
+    if (!Number.isFinite(partnerIdNum)) {
+      this.partnerOrders.set([]);
+      this.partnerOrdersTotalElements.set(0);
+      return;
+    }
+
+    this.partnerOrdersLoading.set(true);
+    this.partnerOrdersError.set(null);
+
+    const filters: OrderFilters = {
+      partnerId: partnerIdNum,
+      ...this.getPartnerOrdersDateFilters(),
+      ...(this.partnerOrdersSearch() ? { search: this.partnerOrdersSearch() } : {}),
+      ...(this.partnerOrdersStatus() ? { status: this.partnerOrdersStatus() } : {}),
+      ...(this.partnerOrdersPaymentMethod() ? { paymentMethod: this.partnerOrdersPaymentMethod() } : {}),
+      ...(this.partnerOrdersPaymentStatus() ? { paymentStatus: this.partnerOrdersPaymentStatus() } : {}),
+      ...(this.partnerOrdersCourierId() != null ? { courierId: this.partnerOrdersCourierId() } : {}),
+      ...(this.partnerOrdersAmountMin() != null ? { amountMin: this.partnerOrdersAmountMin() } : {}),
+      ...(this.partnerOrdersAmountMax() != null ? { amountMax: this.partnerOrdersAmountMax() } : {}),
+    };
+
+    this.ordersService.getOrders(page, size, filters, 'createdAt,desc').subscribe({
+      next: (res) => {
+        this.partnerOrders.set(res?.content ?? []);
+        this.partnerOrdersPage.set(res?.page ?? page);
+        this.partnerOrdersPageSize.set(res?.size ?? size);
+        this.partnerOrdersTotalElements.set(res?.totalElements ?? 0);
+        this.partnerOrdersError.set(null);
+        this.partnerOrdersLoading.set(false);
+      },
+      error: () => {
+        this.partnerOrders.set([]);
+        this.partnerOrdersTotalElements.set(0);
+        this.partnerOrdersError.set(this.translate.instant('partners.detail.orders.loadError'));
+        this.partnerOrdersLoading.set(false);
+      },
+    });
+  }
+
+  applyPartnerOrdersFilters(): void {
+    const partnerId = this.route.snapshot.paramMap.get('id');
+    if (!partnerId) return;
+
+    const day = (this.partnerOrdersDateValue || '').trim();
+    const search = (this.partnerOrdersSearchValue || '').trim();
+
+    this.partnerOrdersDate.set(day);
+    this.partnerOrdersSearch.set(search);
+    this.partnerOrdersStatus.set(this.partnerOrdersStatusValue || '');
+    this.partnerOrdersPaymentMethod.set(this.partnerOrdersPaymentMethodValue || '');
+    this.partnerOrdersPaymentStatus.set(this.partnerOrdersPaymentStatusValue || '');
+    this.partnerOrdersCourierId.set(this.parseNullableNumber(this.partnerOrdersCourierIdValue));
+    this.partnerOrdersAmountMin.set(this.parseNullableNumber(this.partnerOrdersAmountMinValue));
+    this.partnerOrdersAmountMax.set(this.parseNullableNumber(this.partnerOrdersAmountMaxValue));
+    this.partnerOrdersPage.set(0);
+
+    this.loadPartnerOrders(partnerId, 0, this.partnerOrdersPageSize());
+  }
+
+  resetPartnerOrdersFilters(): void {
+    const partnerId = this.route.snapshot.paramMap.get('id');
+    if (!partnerId) return;
+
+    this.partnerOrdersDateValue = '';
+    this.partnerOrdersSearchValue = '';
+    this.partnerOrdersStatusValue = '';
+    this.partnerOrdersPaymentMethodValue = '';
+    this.partnerOrdersPaymentStatusValue = '';
+    this.partnerOrdersCourierIdValue = '';
+    this.partnerOrdersAmountMinValue = '';
+    this.partnerOrdersAmountMaxValue = '';
+    this.partnerOrdersDate.set('');
+    this.partnerOrdersSearch.set('');
+    this.partnerOrdersStatus.set('');
+    this.partnerOrdersPaymentMethod.set('');
+    this.partnerOrdersPaymentStatus.set('');
+    this.partnerOrdersCourierId.set(null);
+    this.partnerOrdersAmountMin.set(null);
+    this.partnerOrdersAmountMax.set(null);
+    this.partnerOrdersPage.set(0);
+
+    this.loadPartnerOrders(partnerId, 0, this.partnerOrdersPageSize());
+  }
+
+  onPartnerOrdersDateChange(value: string): void {
+    this.partnerOrdersDateValue = value;
+  }
+
+  onPartnerOrdersPageChange(event: PageEvent): void {
+    const partnerId = this.route.snapshot.paramMap.get('id');
+    if (!partnerId) return;
+    this.loadPartnerOrders(partnerId, event.pageIndex, event.pageSize);
+  }
+
+  openOrderDetail(orderId: number): void {
+    this.router.navigate(['/orders', orderId]);
+  }
+
+  getOrderStatusLabel(status: OrderStatus): string {
+    const key = (status || '').toLowerCase();
+    const translated = this.translate.instant(`orders.status.${key}`);
+    return translated !== `orders.status.${key}` ? translated : status;
+  }
+
+  getOrderStatusClass(status: string): string {
+    return `status-${String(status || '').toLowerCase().replace(/_/g, '-')}`;
+  }
+
+  getPaymentMethodLabel(method: PaymentMethod | '' | null | undefined): string {
+    const normalized = String(method || '').toLowerCase();
+    const map: Record<string, string> = {
+      cash: 'orders.payment.cash',
+      card: 'orders.payment.card',
+      wallet: 'orders.payment.wallet',
+      card_on_delivery: 'orders.payment.cardOnDelivery',
+    };
+    const key = map[normalized];
+    if (!key) return String(method || '—');
+    const translated = this.translate.instant(key);
+    return translated !== key ? translated : String(method || '—');
+  }
+
+  getPaymentStatusLabel(status: PaymentStatus | '' | null | undefined): string {
+    const normalized = String(status || '').toLowerCase();
+    const key = `orders.paymentStatus.${normalized}`;
+    const translated = this.translate.instant(key);
+    return translated !== key ? translated : String(status || '—');
+  }
+
+  private getPartnerOrdersDateFilters(): Pick<OrderFilters, 'startDate' | 'endDate'> {
+    const selectedDay = this.partnerOrdersDate();
+    if (selectedDay) {
+      const [y, m, d] = selectedDay.split('-').map((p) => Number(p));
+      if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
+        const start = new Date(y, m - 1, d, 0, 0, 0);
+        const end = new Date(y, m - 1, d, 23, 59, 59);
+        return {
+          startDate: this.toLocalIsoDateTime(start),
+          endDate: this.toLocalIsoDateTime(end),
+        };
+      }
+    }
+
+    return {};
+  }
+
+  private parseNullableNumber(value: string): number | null {
+    const raw = String(value ?? '').trim();
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private toLocalIsoDateTime(d: Date): string {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   }
 
   private applyRouteTabPreferences(): void {
