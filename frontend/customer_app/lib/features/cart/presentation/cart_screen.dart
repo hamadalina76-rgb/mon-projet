@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -301,6 +303,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       productImageUrl: _productImageUrl(item),
                       isEditing: _editingItemKey == item.uniqueKey,
                       onEdit: () => _openProductEditor(item),
+                      onKitchenNoteChanged: (note) {
+                        ref.read(cartNotifierProvider.notifier).updateKitchenNote(
+                              itemKey: item.uniqueKey,
+                              kitchenNote: note,
+                            );
+                      },
                       onQuantityChanged: (newQty) {
                         ref.read(cartNotifierProvider.notifier).updateQuantity(
                               itemKey: item.uniqueKey,
@@ -540,11 +548,12 @@ class _PartnerBlock extends StatelessWidget {
   }
 }
 
-class _CartLineItem extends StatelessWidget {
+class _CartLineItem extends StatefulWidget {
   final CartItemModel item;
   final String productImageUrl;
   final bool isEditing;
   final VoidCallback onEdit;
+  final ValueChanged<String?> onKitchenNoteChanged;
   final ValueChanged<int> onQuantityChanged;
   final VoidCallback onRemove;
 
@@ -553,26 +562,90 @@ class _CartLineItem extends StatelessWidget {
     required this.productImageUrl,
     required this.isEditing,
     required this.onEdit,
+    required this.onKitchenNoteChanged,
     required this.onQuantityChanged,
     required this.onRemove,
   });
+
+  @override
+  State<_CartLineItem> createState() => _CartLineItemState();
+}
+
+class _CartLineItemState extends State<_CartLineItem> {
+  late final TextEditingController _noteController;
+  late final FocusNode _noteFocusNode;
+  Timer? _noteDebounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _noteController = TextEditingController(text: _noteText(widget.item.kitchenNote));
+    _noteFocusNode = FocusNode()..addListener(_onNoteFocusChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _CartLineItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (_noteFocusNode.hasFocus) {
+      return;
+    }
+
+    final incoming = _noteText(widget.item.kitchenNote);
+    if (incoming == _noteController.text) {
+      return;
+    }
+
+    _noteController
+      ..text = incoming
+      ..selection = TextSelection.collapsed(offset: incoming.length);
+  }
+
+  @override
+  void dispose() {
+    _noteDebounce?.cancel();
+    _noteFocusNode
+      ..removeListener(_onNoteFocusChanged)
+      ..dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
 
   String _money(double value) {
     if ((value % 1).abs() < 0.0001) return '${value.toStringAsFixed(0)} DT';
     return '${value.toStringAsFixed(2)} DT';
   }
 
+  String _noteText(String? note) => note?.trim() ?? '';
+
+  void _onNoteChanged(String _) {
+    _noteDebounce?.cancel();
+    _noteDebounce = Timer(const Duration(milliseconds: 450), _persistNote);
+  }
+
+  void _onNoteFocusChanged() {
+    if (!_noteFocusNode.hasFocus) {
+      _persistNote();
+    }
+  }
+
+  void _persistNote() {
+    _noteDebounce?.cancel();
+    final normalized = _noteText(_noteController.text);
+    widget.onKitchenNoteChanged(normalized.isEmpty ? null : normalized);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final image = resolveMediaUrl(productImageUrl);
+    final image = resolveMediaUrl(widget.productImageUrl);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: isEditing ? null : onEdit,
+        onTap: widget.isEditing ? null : widget.onEdit,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -610,14 +683,14 @@ class _CartLineItem extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            item.productName,
+                            widget.item.productName,
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
-                        if (isEditing)
+                        if (widget.isEditing)
                           const SizedBox(
                             width: 48,
                             height: 48,
@@ -642,28 +715,43 @@ class _CartLineItem extends StatelessWidget {
                             ),
                           ),
                         IconButton(
-                          onPressed: onRemove,
+                          onPressed: widget.onRemove,
                           icon: const Icon(Icons.delete_outline, color: Colors.red),
                         ),
                       ],
                     ),
-                    if (item.selectedOptions.isNotEmpty)
+                    if (widget.item.selectedOptions.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
-                          item.selectedOptionsDisplay.join(', '),
+                          widget.item.selectedOptionsDisplay.join(', '),
                           style: const TextStyle(color: Colors.black54),
                         ),
                       ),
-                    if ((item.kitchenNote ?? '').trim().isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Text(
-                          '${l10n.translate('kitchen_note')}: ${item.kitchenNote}',
-                          style: const TextStyle(color: Colors.black54),
+                    const SizedBox(height: 2),
+                    TextField(
+                      controller: _noteController,
+                      focusNode: _noteFocusNode,
+                      enabled: !widget.isEditing,
+                      minLines: 1,
+                      maxLines: 2,
+                      textInputAction: TextInputAction.done,
+                      onChanged: _onNoteChanged,
+                      onSubmitted: (_) => _persistNote(),
+                      decoration: InputDecoration(
+                        labelText: l10n.translate('kitchen_note'),
+                        hintText: l10n.translate('kitchen_note'),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                    const SizedBox(height: 4),
+                    ),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         Container(
@@ -677,22 +765,23 @@ class _CartLineItem extends StatelessWidget {
                               IconButton(
                                 visualDensity: VisualDensity.compact,
                                 onPressed: () {
-                                  final next = item.quantity - 1;
+                                  final next = widget.item.quantity - 1;
                                   if (next <= 0) {
-                                    onRemove();
+                                    widget.onRemove();
                                   } else {
-                                    onQuantityChanged(next);
+                                    widget.onQuantityChanged(next);
                                   }
                                 },
                                 icon: const Icon(Icons.remove),
                               ),
                               Text(
-                                '${item.quantity}',
+                                '${widget.item.quantity}',
                                 style: const TextStyle(fontWeight: FontWeight.w700),
                               ),
                               IconButton(
                                 visualDensity: VisualDensity.compact,
-                                onPressed: () => onQuantityChanged(item.quantity + 1),
+                                onPressed: () =>
+                                    widget.onQuantityChanged(widget.item.quantity + 1),
                                 icon: const Icon(Icons.add),
                               ),
                             ],
@@ -700,7 +789,7 @@ class _CartLineItem extends StatelessWidget {
                         ),
                         const Spacer(),
                         Text(
-                          _money(item.lineTotal),
+                          _money(widget.item.lineTotal),
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 15,
