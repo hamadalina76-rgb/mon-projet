@@ -10,9 +10,13 @@ class Order {
   final DateTime? orderTime;
   final DateTime? estimatedDeliveryTime;
   final int? deliveryTimeMinutes;
+  final bool isScheduled;
+  final DateTime? scheduledDeliveryTime;
   final DateTime? partnerAcceptedAt;
+  final DateTime? partnerReadyAt;
   final int? suggestedPreparationMinutes;
   final int? partnerAcceptedPrepMinutes;
+  final int? remainingPreparationMinutes;
 
   const Order({
     required this.id,
@@ -26,9 +30,13 @@ class Order {
     this.orderTime,
     this.estimatedDeliveryTime,
     this.deliveryTimeMinutes,
+    this.isScheduled = false,
+    this.scheduledDeliveryTime,
     this.partnerAcceptedAt,
+    this.partnerReadyAt,
     this.suggestedPreparationMinutes,
     this.partnerAcceptedPrepMinutes,
+    this.remainingPreparationMinutes,
   });
 
   static String normalizeStatus(String value) => value.trim().toUpperCase();

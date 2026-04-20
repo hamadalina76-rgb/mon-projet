@@ -602,20 +602,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen>
                   const SizedBox(height: 24),
                 ],
 
-                TextField(
-                  controller: _kitchenNoteController,
-                  maxLines: 3,
-                  maxLength: 500,
-                  decoration: InputDecoration(
-                    labelText:
-                        '${_tr('kitchen_note')} (${_tr('product_detail_optional')})',
-                    alignLabelWithHint: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 8),
 
                 // Option groups — no boxes, just dividers
                 if (_optionGroups.isNotEmpty)

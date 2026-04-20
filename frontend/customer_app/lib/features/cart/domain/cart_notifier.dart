@@ -123,6 +123,40 @@ class CartNotifier extends StateNotifier<CartState> {
     await _commitAndSync(next);
   }
 
+  Future<void> updateKitchenNote({
+    required String itemKey,
+    String? kitchenNote,
+  }) async {
+    final next = List<CartItemModel>.from(state.items);
+    final index = next.indexWhere((item) => item.uniqueKey == itemKey);
+    if (index < 0) return;
+
+    final current = next[index];
+    final normalized = kitchenNote?.trim();
+    final updated = current.copyWith(
+      kitchenNote: normalized,
+      clearKitchenNote: normalized == null || normalized.isEmpty,
+    );
+
+    next.removeAt(index);
+
+    final mergeIndex = next.indexWhere(
+      (item) => item.uniqueKey == updated.uniqueKey,
+    );
+
+    if (mergeIndex >= 0) {
+      final merged = next[mergeIndex];
+      next[mergeIndex] = merged.copyWith(
+        quantity: merged.quantity + updated.quantity,
+      );
+    } else {
+      final insertIndex = index <= next.length ? index : next.length;
+      next.insert(insertIndex, updated);
+    }
+
+    await _commitAndSync(next);
+  }
+
   Future<void> updateItemCustomization({
     required String itemKey,
     required List<String> selectedOptions,

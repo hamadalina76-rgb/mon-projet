@@ -13,6 +13,7 @@ import '../../../partners/data/models/partner_nearby_dto.dart';
 import '../../../partners/presentation/providers/nearby_partners_provider.dart';
 import '../../domain/entities/order.dart';
 import '../providers/order_provider.dart';
+import '../utils/order_status_palette.dart';
 
 final _orderPartnerPreviewProvider =
     FutureProvider.family<PartnerNearbyDto?, String>((ref, partnerId) async {
@@ -25,26 +26,28 @@ final _orderPartnerPreviewProvider =
       }
     });
 
-final _cartProductImageProvider =
-    FutureProvider.family<String?, String>((ref, key) async {
-      final separatorIndex = key.indexOf('::');
-      if (separatorIndex <= 0 || separatorIndex >= key.length - 2) {
-        return null;
-      }
+final _cartProductImageProvider = FutureProvider.family<String?, String>((
+  ref,
+  key,
+) async {
+  final separatorIndex = key.indexOf('::');
+  if (separatorIndex <= 0 || separatorIndex >= key.length - 2) {
+    return null;
+  }
 
-      final partnerId = key.substring(0, separatorIndex);
-      final productId = key.substring(separatorIndex + 2);
+  final partnerId = key.substring(0, separatorIndex);
+  final productId = key.substring(separatorIndex + 2);
 
-      try {
-        final product = await ref
-            .read(partnerApiServiceProvider)
-            .fetchMenuProductDetails(partnerId, productId);
-        final image = resolveMediaUrl(product.imageUrl);
-        return image.trim().isEmpty ? null : image;
-      } catch (_) {
-        return null;
-      }
-    });
+  try {
+    final product = await ref
+        .read(partnerApiServiceProvider)
+        .fetchMenuProductDetails(partnerId, productId);
+    final image = resolveMediaUrl(product.imageUrl);
+    return image.trim().isEmpty ? null : image;
+  } catch (_) {
+    return null;
+  }
+});
 
 class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
@@ -73,27 +76,6 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     return copy;
   }
 
-  LinearGradient _statusGradient(Order order) {
-    if (order.isCancelled) {
-      return const LinearGradient(
-        colors: [AppColors.primaryDark, AppColors.primary],
-      );
-    }
-    if (order.isDelivered) {
-      return const LinearGradient(
-        colors: [AppColors.primary2, AppColors.primary],
-      );
-    }
-    if (order.waitingPartnerAcceptance) {
-      return const LinearGradient(
-        colors: [AppColors.secondaryDark, AppColors.primary],
-      );
-    }
-    return const LinearGradient(
-      colors: [AppColors.secondary3, AppColors.primary],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -109,39 +91,39 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
         onRefresh: () async {
           ref.invalidate(customerOrdersProvider);
           await ref.read(customerOrdersProvider.future);
-        }, 
+        },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.receipt_long_rounded,
-                    color: AppColors.primary,
-                    size: 30,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      l10n.translate('orders_intro_message'),
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Container(
+            //   padding: const EdgeInsets.all(16),
+
+            //   child: Row(
+            //     children: [
+            //       const Icon(
+            //         Icons.receipt_long_rounded,
+            //         color: AppColors.primary,
+            //         size: 30,
+            //       ),
+            //       const SizedBox(width: 12),
+            //       Expanded(
+            //         child: Text(
+            //           l10n.translate('orders_intro_message'),
+            //           style: const TextStyle(
+            //             color: AppColors.textPrimary,
+            //             fontSize: 14,
+            //             fontWeight: FontWeight.w600,
+            //             height: 1.35,
+            //           ),
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
             const SizedBox(height: 18),
             _SectionHeader(
               title: l10n.translate('validated_orders_title'),
-              icon: Icons.verified_rounded,
+              icon: Icons.receipt_long_rounded,
             ),
             const SizedBox(height: 10),
             customerOrdersAsync.when(
@@ -161,30 +143,30 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                 final remainingOrdersCount = sorted.length - 1;
                 final visibleOrders = _showAllOrders
                     ? sorted
-                  : sorted.take(1).toList();
+                    : sorted.take(1).toList();
 
                 return Column(
                   children: [
-                    ...visibleOrders.map(
-                      (order) {
-                        final partnerId = order.partnerId?.trim();
-                        final partnerPreview = partnerId == null || partnerId.isEmpty
-                            ? const AsyncValue<PartnerNearbyDto?>.data(null)
-                            : ref.watch(_orderPartnerPreviewProvider(partnerId));
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _OrderTile(
-                            order: order,
-                            money: _money,
-                            statusGradient: _statusGradient(order),
-                            partnerPreview: partnerPreview,
-                            onTrackTap: () => context.push(
-                              RouteNames.orderTracking(order.id),
-                            ),
+                    ...visibleOrders.map((order) {
+                      final partnerId = order.partnerId?.trim();
+                      final partnerPreview =
+                          partnerId == null || partnerId.isEmpty
+                          ? const AsyncValue<PartnerNearbyDto?>.data(null)
+                          : ref.watch(_orderPartnerPreviewProvider(partnerId));
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _OrderTile(
+                          order: order,
+                          money: _money,
+                          statusStyle: OrderStatusPalette.forStatus(
+                            order.normalizedStatus,
                           ),
-                        );
-                      },
-                    ),
+                          partnerPreview: partnerPreview,
+                          onTrackTap: () =>
+                              context.push(RouteNames.orderTracking(order.id)),
+                        ),
+                      );
+                    }),
                     if (sorted.length > 1)
                       Align(
                         alignment: Alignment.centerRight,
@@ -268,14 +250,14 @@ class _SectionHeader extends StatelessWidget {
 class _OrderTile extends StatelessWidget {
   final Order order;
   final String Function(double value) money;
-  final LinearGradient statusGradient;
+  final OrderStatusStyle statusStyle;
   final AsyncValue<PartnerNearbyDto?> partnerPreview;
   final VoidCallback onTrackTap;
 
   const _OrderTile({
     required this.order,
     required this.money,
-    required this.statusGradient,
+    required this.statusStyle,
     required this.partnerPreview,
     required this.onTrackTap,
   });
@@ -288,6 +270,11 @@ class _OrderTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final localizedStatus = OrderStatusPalette.localizedLabel(
+      rawStatus: order.normalizedStatus,
+      l10n: l10n,
+      fallbackLabel: order.statusLabel,
+    );
     final partnerName = order.partnerName?.trim();
     final initials = partnerName != null && partnerName.isNotEmpty
         ? partnerName.characters.take(1).toString().toUpperCase()
@@ -336,16 +323,31 @@ class _OrderTile extends StatelessWidget {
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  gradient: statusGradient,
+                  color: statusStyle.background,
+                  border: Border.all(color: statusStyle.border),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: Text(
-                  order.displayStatus,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11.5,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: statusStyle.dot,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      localizedStatus,
+                      style: TextStyle(
+                        color: statusStyle.foreground,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -390,10 +392,7 @@ class _OrderTile extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 backgroundColor: AppColors.surface,
                 foregroundColor: AppColors.black,
-                side: const BorderSide(
-                  color: AppColors.black,
-                  width: 1.2,
-                ),
+                side: const BorderSide(color: AppColors.black, width: 1.2),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -433,10 +432,9 @@ class _CartPreviewPanel extends StatelessWidget {
     }
 
     final preview = cartItems.take(5).toList();
-    final partnerName =
-        cartItems.first.partnerName.trim().isNotEmpty
-            ? cartItems.first.partnerName.trim()
-            : l10n.translate('partner');
+    final partnerName = cartItems.first.partnerName.trim().isNotEmpty
+        ? cartItems.first.partnerName.trim()
+        : l10n.translate('partner');
     final names = cartItems.map((item) => item.productName).toList().join(', ');
     final totalItems = cartItems.fold<int>(
       0,
@@ -550,7 +548,9 @@ class _OverlappingProductAvatars extends ConsumerWidget {
     final visible = items.take(3).toList();
     const size = 38.0;
     const overlap = 20.0;
-    final totalWidth = visible.isEmpty ? 0.0 : size + (visible.length - 1) * (size - overlap);
+    final totalWidth = visible.isEmpty
+        ? 0.0
+        : size + (visible.length - 1) * (size - overlap);
 
     return SizedBox(
       width: totalWidth,
@@ -561,12 +561,14 @@ class _OverlappingProductAvatars extends ConsumerWidget {
           final item = entry.value;
           final fallbackImage = resolveMediaUrl(item.productImageUrl);
           final imageKey = '${item.partnerId}::${item.productId}';
-          final image = ref.watch(_cartProductImageProvider(imageKey)).maybeWhen(
-            data: (value) => (value != null && value.trim().isNotEmpty)
-                ? value
-                : fallbackImage,
-            orElse: () => fallbackImage,
-          );
+          final image = ref
+              .watch(_cartProductImageProvider(imageKey))
+              .maybeWhen(
+                data: (value) => (value != null && value.trim().isNotEmpty)
+                    ? value
+                    : fallbackImage,
+                orElse: () => fallbackImage,
+              );
 
           return Positioned(
             left: index * (size - overlap),

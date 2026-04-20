@@ -152,6 +152,10 @@ class PartnerCartInfo {
   final bool isOpen;
   final double serviceFeeValue;
   final bool serviceFeeIsPercentage;
+  final double? zoneServiceFee;
+  final double? deliveryFeeValue;
+  final double? zoneDeliveryFee;
+  final double freeDeliveryThreshold;
   final int? deliveryRadius;
   final double? distanceKm;
   final double? latitude;
@@ -166,11 +170,25 @@ class PartnerCartInfo {
     required this.isOpen,
     this.serviceFeeValue = 0,
     this.serviceFeeIsPercentage = false,
+    this.zoneServiceFee,
+    this.deliveryFeeValue,
+    this.zoneDeliveryFee,
+    this.freeDeliveryThreshold = 0,
     this.deliveryRadius,
     this.distanceKm,
     this.latitude,
     this.longitude,
     this.openingHours = const <PartnerOpeningHour>[],
+  });
+}
+
+class _ZoneFeeInfo {
+  final double? deliveryFee;
+  final double? serviceFee;
+
+  const _ZoneFeeInfo({
+    this.deliveryFee,
+    this.serviceFee,
   });
 }
 
@@ -257,11 +275,24 @@ class CartRepository {
       final isOpen =
           availabilityAllowsOrders && (scheduleOpen ?? backendOpen);
 
+      final latitude = _toDouble(json['latitude']);
+      final longitude = _toDouble(json['longitude']);
+      final zoneFeeInfo = await _findZoneFeeForCoordinates(
+        latitude: latitude,
+        longitude: longitude,
+      );
+
       final serviceFee =
           _toDouble(json['serviceFee']) ?? _toDouble(json['service_fee']);
       final commissionRate =
           _toDouble(json['commissionRate']) ??
           _toDouble(json['commission_rate']);
+      final partnerDeliveryFee =
+          _toDouble(json['deliveryFee']) ?? _toDouble(json['delivery_fee']);
+      final freeDeliveryThreshold =
+          _toDouble(json['freeDeliveryThreshold']) ??
+          _toDouble(json['free_delivery_threshold']) ??
+          0;
 
       final normalizedServiceFee = (serviceFee != null && serviceFee >= 0)
           ? serviceFee
@@ -270,6 +301,18 @@ class CartRepository {
           (commissionRate != null && commissionRate >= 0)
           ? commissionRate
           : null;
+      final normalizedZoneServiceFee =
+          (zoneFeeInfo?.serviceFee != null && zoneFeeInfo!.serviceFee! >= 0)
+          ? zoneFeeInfo.serviceFee
+          : null;
+      final normalizedZoneDeliveryFee =
+          (zoneFeeInfo?.deliveryFee != null && zoneFeeInfo!.deliveryFee! >= 0)
+          ? zoneFeeInfo.deliveryFee
+          : null;
+      final normalizedPartnerDeliveryFee =
+          (partnerDeliveryFee != null && partnerDeliveryFee >= 0)
+          ? partnerDeliveryFee
+          : null;
 
       return PartnerCartInfo(
         partnerId: partnerId,
@@ -277,15 +320,22 @@ class CartRepository {
         partnerLogoUrl: logo,
         minimumOrder: minimumOrder,
         isOpen: isOpen,
-        serviceFeeValue: normalizedServiceFee ?? normalizedCommissionRate ?? 0,
+        serviceFeeValue:
+            normalizedZoneServiceFee ?? normalizedServiceFee ?? normalizedCommissionRate ?? 0,
         serviceFeeIsPercentage:
-            normalizedServiceFee == null && normalizedCommissionRate != null,
+            normalizedZoneServiceFee == null &&
+            normalizedServiceFee == null &&
+            normalizedCommissionRate != null,
+        zoneServiceFee: normalizedZoneServiceFee,
+        deliveryFeeValue: normalizedZoneDeliveryFee ?? normalizedPartnerDeliveryFee,
+        zoneDeliveryFee: normalizedZoneDeliveryFee,
+        freeDeliveryThreshold: freeDeliveryThreshold,
         deliveryRadius:
             _toInt(json['deliveryRadius']) ?? _toInt(json['delivery_radius']),
         distanceKm:
             _toDouble(json['distanceKm']) ?? _toDouble(json['distance_km']),
-        latitude: _toDouble(json['latitude']),
-        longitude: _toDouble(json['longitude']),
+        latitude: latitude,
+        longitude: longitude,
         openingHours: openingHours,
       );
     } catch (e) {
@@ -295,19 +345,50 @@ class CartRepository {
   }
 
   Future<DeliveryFeeInfo> fetchDeliveryFee(String partnerId) async {
-    final response = await _dio.get(
-      '${ApiEndpoints.PARTNER_BASE}/$partnerId/delivery-fee',
-    );
+    try {
+      final response = await _dio.get(
+        '${ApiEndpoints.PARTNER_BASE}/$partnerId/delivery-fee',
+      );
 
-    if (response.data is! Map<String, dynamic>) {
-      throw StateError('Réponse delivery-fee invalide');
+      if (response.data is! Map<String, dynamic>) {
+        throw StateError('Réponse delivery-fee invalide');
+      }
+
+      final json = response.data as Map<String, dynamic>;
+      return DeliveryFeeInfo(
+        deliveryFee: _toDouble(json['deliveryFee']) ?? 0,
+        freeDeliveryThreshold: _toDouble(json['freeDeliveryThreshold']) ?? 0,
+      );
+    } catch (_) {
+      final partnerResponse = await _dio.get(ApiEndpoints.partnerById(partnerId));
+      if (partnerResponse.data is! Map<String, dynamic>) {
+        throw StateError('Impossible de calculer delivery-fee pour ce partenaire');
+      }
+
+      final partnerJson = Map<String, dynamic>.from(
+        partnerResponse.data as Map<String, dynamic>,
+      );
+      final latitude = _toDouble(partnerJson['latitude']);
+      final longitude = _toDouble(partnerJson['longitude']);
+      final zoneFeeInfo = await _findZoneFeeForCoordinates(
+        latitude: latitude,
+        longitude: longitude,
+      );
+
+      final fallbackPartnerFee =
+          _toDouble(partnerJson['deliveryFee']) ??
+          _toDouble(partnerJson['delivery_fee']) ??
+          0;
+      final freeDeliveryThreshold =
+          _toDouble(partnerJson['freeDeliveryThreshold']) ??
+          _toDouble(partnerJson['free_delivery_threshold']) ??
+          0;
+
+      return DeliveryFeeInfo(
+        deliveryFee: zoneFeeInfo?.deliveryFee ?? fallbackPartnerFee,
+        freeDeliveryThreshold: freeDeliveryThreshold,
+      );
     }
-
-    final json = response.data as Map<String, dynamic>;
-    return DeliveryFeeInfo(
-      deliveryFee: _toDouble(json['deliveryFee']) ?? 0,
-      freeDeliveryThreshold: _toDouble(json['freeDeliveryThreshold']) ?? 0,
-    );
   }
 
   Future<PromoValidationResult> validatePromo({
@@ -588,6 +669,45 @@ class CartRepository {
     if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
 
     return (hour * 60) + minute;
+  }
+
+  Future<_ZoneFeeInfo?> _findZoneFeeForCoordinates({
+    required double? latitude,
+    required double? longitude,
+  }) async {
+    if (latitude == null || longitude == null) {
+      return null;
+    }
+
+    try {
+      final response = await _dio.get(
+        '${ApiEndpoints.ZONES}/find',
+        queryParameters: {
+          'latitude': latitude,
+          'longitude': longitude,
+        },
+      );
+
+      if (response.data is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final json = Map<String, dynamic>.from(response.data as Map<String, dynamic>);
+      final deliveryFee = _toDouble(json['deliveryFee']) ?? _toDouble(json['delivery_fee']);
+      final serviceFee = _toDouble(json['serviceFee']) ?? _toDouble(json['service_fee']);
+
+      if (deliveryFee == null && serviceFee == null) {
+        return null;
+      }
+
+      return _ZoneFeeInfo(
+        deliveryFee: deliveryFee,
+        serviceFee: serviceFee,
+      );
+    } catch (e) {
+      debugPrint('[CartRepository] zone fees lookup failed: $e');
+      return null;
+    }
   }
 
   String _formatDate(DateTime value) {
