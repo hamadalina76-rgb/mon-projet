@@ -1,10 +1,14 @@
 package com.speedline.user.controller;
 
-import com.speedline.user.domain.CourierStatus;
+import com.speedline.user.client.LocationServiceClient;
+import com.speedline.user.domain.Courier;
 import com.speedline.user.domain.CourierType;
+import com.speedline.user.domain.CourierStatus;
 import com.speedline.user.dto.CourierChangeLogDTO;
 import com.speedline.user.dto.CourierDTO;
 import com.speedline.user.dto.CourierUpdateRequest;
+import com.speedline.user.dto.ZoneCourierCountDTO;
+import com.speedline.user.repository.CourierRepository;
 import com.speedline.user.service.CourierChangeLogService;
 import com.speedline.user.service.CourierService;
 import lombok.RequiredArgsConstructor;
@@ -17,9 +21,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -35,6 +43,8 @@ public class AdminCourierController {
 
     private final CourierService         courierService;
     private final CourierChangeLogService changeLogService;
+    private final LocationServiceClient locationServiceClient;
+    private final CourierRepository courierRepository;
 
     /**
      * GET v1/admin/couriers?page=0&size=20&sort=createdAt&sortDir=DESC&status=...&search=...
@@ -47,12 +57,13 @@ public class AdminCourierController {
             @RequestParam(defaultValue = "DESC") String sortDir,
             @RequestParam(required = false) CourierStatus status,
             @RequestParam(required = false) CourierType courierType,
+            @RequestParam(required = false) Long zoneId,
             @RequestParam(required = false) String search
     ) {
-        log.info("GET v1/admin/couriers - page: {}, size: {}, status: {}, courierType: {}, search: {}", page, size, status, courierType, search);
+        log.info("GET v1/admin/couriers - page: {}, size: {}, status: {}, courierType: {}, zoneId: {}, search: {}", page, size, status, courierType, zoneId, search);
         Sort.Direction direction = Sort.Direction.fromString(sortDir);
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-        return ResponseEntity.ok(courierService.searchCouriers(search, status, courierType, pageable));
+        return ResponseEntity.ok(courierService.searchCouriers(search, status, courierType, zoneId, pageable));
     }
 
     /**
@@ -71,10 +82,58 @@ public class AdminCourierController {
     /**
      * GET v1/admin/couriers/{id}
      */
+    @GetMapping("/zones/courier-counts")
+    public ResponseEntity<List<ZoneCourierCountDTO>> getZoneCourierCounts(
+            @RequestParam(required = false) List<Long> zoneIds
+    ) {
+        Set<Long> filter = zoneIds != null ? new HashSet<>(zoneIds) : null;
+        Map<Long, long[]> countsByZone = new HashMap<>();
+
+        List<Courier> couriers = courierRepository.findAll();
+        for (Courier courier : couriers) {
+            if (courier.getAssignedZoneIds() == null || courier.getAssignedZoneIds().isEmpty()) {
+                continue;
+            }
+
+            boolean isInternal = courier.getCourierType() == CourierType.INTERNAL;
+            for (Long zoneId : courier.getAssignedZoneIds()) {
+                if (zoneId == null) {
+                    continue;
+                }
+                if (filter != null && !filter.contains(zoneId)) {
+                    continue;
+                }
+                long[] counts = countsByZone.computeIfAbsent(zoneId, id -> new long[2]);
+                if (isInternal) {
+                    counts[0]++;
+                } else {
+                    counts[1]++;
+                }
+            }
+        }
+
+        List<ZoneCourierCountDTO> result = countsByZone.entrySet().stream()
+                .map(entry -> ZoneCourierCountDTO.builder()
+                        .zoneId(entry.getKey())
+                        .internalCouriersCount(entry.getValue()[0])
+                        .externalCouriersCount(entry.getValue()[1])
+                        .build())
+                .sorted(Comparator.comparing(ZoneCourierCountDTO::getZoneId))
+                .toList();
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * GET v1/admin/couriers/{id}
+     */
     @GetMapping("/{id}")
     public ResponseEntity<CourierDTO> getCourier(@PathVariable Long id) {
         log.info("GET v1/admin/couriers/{}", id);
-        return ResponseEntity.ok(courierService.getCourierById(id));
+        CourierDTO courier = courierService.getCourierById(id);
+        // Backfill sync: ensures old assignments are propagated to location-service.
+        syncZonesToLocationService(id, courier.getAssignedZoneIds());
+        return ResponseEntity.ok(courier);
     }
 
     /**
@@ -101,6 +160,7 @@ public class AdminCourierController {
                     .toList();
         }
         CourierDTO result = courierService.verifyDocuments(id, type, zoneIds);
+        syncZonesToLocationService(id, result.getAssignedZoneIds());
         final List<Long> finalZoneIds = zoneIds;
         changeLogService.log("APPROVE", id,
                 "PENDING_APPROVAL", "ACTIVE",
@@ -188,11 +248,21 @@ public class AdminCourierController {
                 ? before.getAssignedZoneIds().stream().map(String::valueOf).collect(Collectors.joining(","))
                 : null;
         CourierDTO result = courierService.updateAssignedZones(id, zoneIds != null ? zoneIds : List.of());
+        syncZonesToLocationService(id, result.getAssignedZoneIds());
         String zonesAfter = zoneIds != null
                 ? zoneIds.stream().map(String::valueOf).collect(Collectors.joining(","))
                 : null;
         changeLogService.log("ASSIGN_ZONES", id, null, null, null, null, zonesBefore, zonesAfter, null, null);
         return ResponseEntity.ok(result);
+    }
+
+    private void syncZonesToLocationService(Long courierId, List<Long> zoneIds) {
+        List<Long> safeZoneIds = zoneIds != null ? zoneIds : List.of();
+        try {
+            locationServiceClient.syncCourierZones(courierId, safeZoneIds);
+        } catch (Exception e) {
+            log.warn("Synchronisation zones->location-service échouée pour courierId={}: {}", courierId, e.getMessage());
+        }
     }
 
     /**

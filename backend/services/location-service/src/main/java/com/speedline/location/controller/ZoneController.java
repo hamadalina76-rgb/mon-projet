@@ -88,7 +88,12 @@ public class ZoneController {
                 request.getServiceFee(),
                 request.getMinDeliveryTime(),
                 request.getMaxDeliveryTime(),
-                request.getRadiusKm()
+                request.getRadiusKm(),
+                request.getMinActiveInternalCouriers(),
+                request.getMaxSimultaneousOrders(),
+                request.getInterZoneExtensionRadiusKm(),
+                request.getMaxInterZoneReassignmentDelayMinutes(),
+                request.getInternalCourierAssignments()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(zone);
     }
@@ -108,7 +113,12 @@ public class ZoneController {
                 request.getDeliveryFee(),
                 request.getServiceFee(),
                 request.getBoundaryJson(),
-                request.getRadiusKm()
+                request.getRadiusKm(),
+                request.getMinActiveInternalCouriers(),
+                request.getMaxSimultaneousOrders(),
+                request.getInterZoneExtensionRadiusKm(),
+                request.getMaxInterZoneReassignmentDelayMinutes(),
+                request.getInternalCourierAssignments()
         );
         return ResponseEntity.ok(zone);
     }
@@ -236,5 +246,16 @@ public class ZoneController {
         log.info("Import GeoJSON de zones");
         Map<String, Integer> result = zoneService.importZonesFromGeoJson(geojson);
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Synchronisation interne: met à jour les affectations d'un livreur sur les zones.
+     */
+    @PostMapping("/sync-courier-zones")
+    public ResponseEntity<Void> syncCourierZones(
+            @RequestParam Long courierId,
+            @RequestParam(required = false) List<Long> zoneIds) {
+        zoneService.syncCourierZones(courierId, zoneIds);
+        return ResponseEntity.ok().build();
     }
 }

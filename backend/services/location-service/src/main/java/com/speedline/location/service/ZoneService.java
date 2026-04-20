@@ -2,6 +2,7 @@ package com.speedline.location.service;
 
 import com.speedline.location.domain.Zone;
 import com.speedline.location.dto.ZoneDTO;
+import com.speedline.location.dto.ZoneInternalCourierAssignmentDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -30,7 +31,12 @@ public interface ZoneService {
     ZoneDTO createZone(String name, String description, String city, Zone.ZoneType type,
                        String boundaryJson, BigDecimal deliveryFee, BigDecimal serviceFee,
                        Integer minDeliveryTime, Integer maxDeliveryTime,
-                       Integer radiusKm);
+                       Integer radiusKm,
+                       Integer minActiveInternalCouriers,
+                       Integer maxSimultaneousOrders,
+                       Integer interZoneExtensionRadiusKm,
+                       Integer maxInterZoneReassignmentDelayMinutes,
+                       List<ZoneInternalCourierAssignmentDTO> internalCourierAssignments);
 
     /**
      * Récupérer une zone par ID
@@ -54,7 +60,12 @@ public interface ZoneService {
      */
     ZoneDTO updateZone(Long zoneId, String name, String description,
                        BigDecimal deliveryFee, BigDecimal serviceFee,
-                       String boundaryJson, Integer radiusKm);
+                       String boundaryJson, Integer radiusKm,
+                       Integer minActiveInternalCouriers,
+                       Integer maxSimultaneousOrders,
+                       Integer interZoneExtensionRadiusKm,
+                       Integer maxInterZoneReassignmentDelayMinutes,
+                       List<ZoneInternalCourierAssignmentDTO> internalCourierAssignments);
 
     /**
      * Activer/Désactiver une zone
@@ -142,4 +153,9 @@ public interface ZoneService {
      * @return Résultat de l'import { "created": N, "failed": M }
      */
     Map<String, Integer> importZonesFromGeoJson(String geojson);
+
+    /**
+     * Synchronise les affectations des zones d'un livreur interne depuis user-service.
+     */
+    void syncCourierZones(Long courierId, List<Long> zoneIds);
 }

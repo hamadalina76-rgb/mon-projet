@@ -101,6 +101,10 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     minDeliveryTime: [30],
     maxDeliveryTime: [60],
     radiusKm: [null, [Validators.min(0.1), Validators.max(500)]],
+    minActiveInternalCouriers: [null, [Validators.min(0)]],
+    maxSimultaneousOrders: [null, [Validators.min(0)]],
+    interZoneExtensionRadiusKm: [null, [Validators.min(0), Validators.max(500)]],
+    maxInterZoneReassignmentDelayMinutes: [null, [Validators.min(0)]],
     isActive: [true],
   });
 
@@ -343,6 +347,10 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
           minDeliveryTime: zone.minDeliveryTime,
           maxDeliveryTime: zone.maxDeliveryTime,
           radiusKm: zone.radiusKm ?? null,
+          minActiveInternalCouriers: zone.minActiveInternalCouriers ?? null,
+          maxSimultaneousOrders: zone.maxSimultaneousOrders ?? null,
+          interZoneExtensionRadiusKm: zone.interZoneExtensionRadiusKm ?? null,
+          maxInterZoneReassignmentDelayMinutes: zone.maxInterZoneReassignmentDelayMinutes ?? null,
           isActive: zone.isActive,
         });
         if (zone.boundaryJson) {
@@ -745,6 +753,10 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       minDeliveryTime: 30,
       maxDeliveryTime: 60,
       radiusKm: null,
+      minActiveInternalCouriers: null,
+      maxSimultaneousOrders: null,
+      interZoneExtensionRadiusKm: null,
+      maxInterZoneReassignmentDelayMinutes: null,
       isActive: true,
     });
     this.polygonCoordinates.set([]);
@@ -767,6 +779,10 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       minDeliveryTime: zone.minDeliveryTime,
       maxDeliveryTime: zone.maxDeliveryTime,
       radiusKm: zone.radiusKm,
+      minActiveInternalCouriers: zone.minActiveInternalCouriers ?? null,
+      maxSimultaneousOrders: zone.maxSimultaneousOrders ?? null,
+      interZoneExtensionRadiusKm: zone.interZoneExtensionRadiusKm ?? null,
+      maxInterZoneReassignmentDelayMinutes: zone.maxInterZoneReassignmentDelayMinutes ?? null,
       isActive: zone.isActive,
     });
         if (zone.boundaryJson) {
@@ -842,4 +858,5 @@ export class ZoneMapEditorComponent implements OnInit, AfterViewInit, OnDestroy 
       }
     });
   }
+
 }

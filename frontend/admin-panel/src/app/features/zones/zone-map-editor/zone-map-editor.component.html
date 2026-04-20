@@ -438,6 +438,65 @@
           }
         </div>
 
+        <div class="form-group">
+          <label>Nb minimum de livreurs internes actifs</label>
+          <div class="fee-input-wrap" [class.input-error]="zoneForm.get('minActiveInternalCouriers')?.invalid && zoneForm.get('minActiveInternalCouriers')?.touched">
+            <input
+              type="number"
+              formControlName="minActiveInternalCouriers"
+              class="form-input fee-input"
+              min="0"
+              step="1"
+              placeholder="ex. 2"
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Capacité max commandes simultanées</label>
+          <div class="fee-input-wrap" [class.input-error]="zoneForm.get('maxSimultaneousOrders')?.invalid && zoneForm.get('maxSimultaneousOrders')?.touched">
+            <input
+              type="number"
+              formControlName="maxSimultaneousOrders"
+              class="form-input fee-input"
+              min="0"
+              step="1"
+              placeholder="ex. 30"
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Rayon d'extension inter-zones</label>
+          <div class="fee-input-wrap" [class.input-error]="zoneForm.get('interZoneExtensionRadiusKm')?.invalid && zoneForm.get('interZoneExtensionRadiusKm')?.touched">
+            <input
+              type="number"
+              formControlName="interZoneExtensionRadiusKm"
+              class="form-input fee-input"
+              min="0"
+              max="500"
+              step="0.1"
+              placeholder="ex. 3"
+            />
+            <span class="fee-suffix">km</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Délai max avant ré-affectation inter-zone</label>
+          <div class="fee-input-wrap" [class.input-error]="zoneForm.get('maxInterZoneReassignmentDelayMinutes')?.invalid && zoneForm.get('maxInterZoneReassignmentDelayMinutes')?.touched">
+            <input
+              type="number"
+              formControlName="maxInterZoneReassignmentDelayMinutes"
+              class="form-input fee-input"
+              min="0"
+              step="1"
+              placeholder="ex. 10"
+            />
+            <span class="fee-suffix">min</span>
+          </div>
+        </div>
+
         @if (zoneAreaKm2() > 0 || polygonCoordinates().length >= 3) {
           <div class="zone-stats">
             <h4>{{ 'zones.editor.zoneStats' | translate }}</h4>

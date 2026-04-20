@@ -2,9 +2,13 @@ package com.speedline.location.service.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.speedline.location.client.UserServiceClient;
 import com.speedline.location.domain.Zone;
+import com.speedline.location.domain.ZoneInternalCourierAssignment;
+import com.speedline.location.dto.ZoneCourierCountDTO;
 import com.speedline.location.dto.ZoneDTO;
 import com.speedline.location.dto.ZoneGeometryDTO;
+import com.speedline.location.dto.ZoneInternalCourierAssignmentDTO;
 import com.speedline.location.exception.InvalidBoundaryException;
 import com.speedline.location.exception.ZoneNotFoundException;
 import com.speedline.location.exception.ZoneOverlapException;
@@ -22,7 +26,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.DayOfWeek;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +47,7 @@ import java.util.stream.Collectors;
 public class ZoneServiceImpl implements ZoneService {
 
     private final ZoneRepository zoneRepository;
+    private final UserServiceClient userServiceClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -47,7 +55,12 @@ public class ZoneServiceImpl implements ZoneService {
     public ZoneDTO createZone(String name, String description, String city, Zone.ZoneType type,
                              String boundaryJson, BigDecimal deliveryFee, BigDecimal serviceFee,
                              Integer minDeliveryTime, Integer maxDeliveryTime,
-                             Integer radiusKm) {
+                             Integer radiusKm,
+                             Integer minActiveInternalCouriers,
+                             Integer maxSimultaneousOrders,
+                             Integer interZoneExtensionRadiusKm,
+                             Integer maxInterZoneReassignmentDelayMinutes,
+                             List<ZoneInternalCourierAssignmentDTO> internalCourierAssignments) {
         log.info("Création d'une nouvelle zone: {}", name);
         
         // Valider le polygone et convertir en GeoJSON si nécessaire
@@ -77,8 +90,14 @@ public class ZoneServiceImpl implements ZoneService {
                 .minDeliveryTime(minDeliveryTime)
                 .maxDeliveryTime(maxDeliveryTime)
                 .radiusKm(radiusKm)
+                .minActiveInternalCouriers(minActiveInternalCouriers)
+                .maxSimultaneousOrders(maxSimultaneousOrders)
+                .interZoneExtensionRadiusKm(interZoneExtensionRadiusKm)
+                .maxInterZoneReassignmentDelayMinutes(maxInterZoneReassignmentDelayMinutes)
                 .isActive(true)
                 .build();
+
+            zone.setInternalCourierAssignments(mapAssignmentDTOsToEntities(internalCourierAssignments, zone));
         
         zone = zoneRepository.save(zone);
         log.info("Zone créée avec succès: ID={}", zone.getId());
@@ -92,14 +111,21 @@ public class ZoneServiceImpl implements ZoneService {
         log.debug("Récupération de la zone ID: {}", zoneId);
         Zone zone = zoneRepository.findById(zoneId)
                 .orElseThrow(() -> new ZoneNotFoundException(zoneId));
-        return mapToDTO(zone);
+        ZoneDTO dto = mapToDTO(zone);
+        enrichCourierCounts(List.of(dto));
+        return dto;
     }
 
     @Override
     @Transactional
     public ZoneDTO updateZone(Long zoneId, String name, String description,
                               BigDecimal deliveryFee, BigDecimal serviceFee,
-                              String boundaryJson, Integer radiusKm) {
+                              String boundaryJson, Integer radiusKm,
+                              Integer minActiveInternalCouriers,
+                              Integer maxSimultaneousOrders,
+                              Integer interZoneExtensionRadiusKm,
+                              Integer maxInterZoneReassignmentDelayMinutes,
+                              List<ZoneInternalCourierAssignmentDTO> internalCourierAssignments) {
         log.info("Mise à jour de la zone ID: {}", zoneId);
         
         Zone zone = zoneRepository.findById(zoneId)
@@ -131,6 +157,22 @@ public class ZoneServiceImpl implements ZoneService {
         }
         if (radiusKm != null) {
             zone.setRadiusKm(radiusKm);
+        }
+        if (minActiveInternalCouriers != null) {
+            zone.setMinActiveInternalCouriers(minActiveInternalCouriers);
+        }
+        if (maxSimultaneousOrders != null) {
+            zone.setMaxSimultaneousOrders(maxSimultaneousOrders);
+        }
+        if (interZoneExtensionRadiusKm != null) {
+            zone.setInterZoneExtensionRadiusKm(interZoneExtensionRadiusKm);
+        }
+        if (maxInterZoneReassignmentDelayMinutes != null) {
+            zone.setMaxInterZoneReassignmentDelayMinutes(maxInterZoneReassignmentDelayMinutes);
+        }
+        if (internalCourierAssignments != null) {
+            zone.getInternalCourierAssignments().clear();
+            zone.getInternalCourierAssignments().addAll(mapAssignmentDTOsToEntities(internalCourierAssignments, zone));
         }
         
         zone = zoneRepository.save(zone);
@@ -199,6 +241,7 @@ public class ZoneServiceImpl implements ZoneService {
         List<ZoneDTO> dtos = zones.getContent().stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
+        enrichCourierCounts(dtos);
         return new PageImpl<>(dtos, pageable, zones.getTotalElements());
     }
 
@@ -359,6 +402,11 @@ public class ZoneServiceImpl implements ZoneService {
                 .minDeliveryTime(zone.getMinDeliveryTime())
                 .maxDeliveryTime(zone.getMaxDeliveryTime())
                 .radiusKm(zone.getRadiusKm())
+                .minActiveInternalCouriers(zone.getMinActiveInternalCouriers())
+                .maxSimultaneousOrders(zone.getMaxSimultaneousOrders())
+                .interZoneExtensionRadiusKm(zone.getInterZoneExtensionRadiusKm())
+                .maxInterZoneReassignmentDelayMinutes(zone.getMaxInterZoneReassignmentDelayMinutes())
+                .internalCourierAssignments(mapAssignmentEntitiesToDTOs(zone.getInternalCourierAssignments()))
                 .isActive(zone.getIsActive())
                 .createdAt(zone.getCreatedAt())
                 .updatedAt(zone.getUpdatedAt())
@@ -388,6 +436,11 @@ public class ZoneServiceImpl implements ZoneService {
                             .minDeliveryTime(zone.getMinDeliveryTime())
                             .maxDeliveryTime(zone.getMaxDeliveryTime())
                             .radiusKm(zone.getRadiusKm())
+                            .minActiveInternalCouriers(zone.getMinActiveInternalCouriers())
+                            .maxSimultaneousOrders(zone.getMaxSimultaneousOrders())
+                            .interZoneExtensionRadiusKm(zone.getInterZoneExtensionRadiusKm())
+                            .maxInterZoneReassignmentDelayMinutes(zone.getMaxInterZoneReassignmentDelayMinutes())
+                            .internalCourierAssignments(mapAssignmentEntitiesToDTOs(zone.getInternalCourierAssignments()))
                             .isActive(Boolean.TRUE.equals(zone.getIsActive()))
                             .createdAt(zone.getCreatedAt())
                             .updatedAt(zone.getUpdatedAt())
@@ -418,6 +471,10 @@ public class ZoneServiceImpl implements ZoneService {
                 props.put("type", z.getType() != null ? z.getType().name() : "DELIVERY");
                 props.put("deliveryFee", z.getDeliveryFee());
                 props.put("radiusKm", z.getRadiusKm());
+                props.put("minActiveInternalCouriers", z.getMinActiveInternalCouriers());
+                props.put("maxSimultaneousOrders", z.getMaxSimultaneousOrders());
+                props.put("interZoneExtensionRadiusKm", z.getInterZoneExtensionRadiusKm());
+                props.put("maxInterZoneReassignmentDelayMinutes", z.getMaxInterZoneReassignmentDelayMinutes());
                 props.put("isActive", z.getIsActive() != null && z.getIsActive());
                 Map<String, Object> feature = new LinkedHashMap<>();
                 feature.put("type", "Feature");
@@ -513,7 +570,8 @@ public class ZoneServiceImpl implements ZoneService {
                         } catch (Exception ignored) {}
                     }
                     boolean isActive = props.get("isActive") == null || Boolean.TRUE.equals(props.get("isActive"));
-                    createZone(name, null, city, type, boundaryJson, deliveryFee, BigDecimal.ZERO, 30, 60, radiusKm);
+                        createZone(name, null, city, type, boundaryJson, deliveryFee, BigDecimal.ZERO, 30, 60, radiusKm,
+                            null, null, null, null, Collections.emptyList());
                     created++;
                 } catch (Exception e) {
                     log.warn("Échec import d'une feature: {}", e.getMessage());
@@ -566,6 +624,141 @@ public class ZoneServiceImpl implements ZoneService {
                     .perimeterKm(BigDecimal.ZERO)
                     .pointCount(0)
                     .build();
+        }
+    }
+
+    private List<ZoneInternalCourierAssignment> mapAssignmentDTOsToEntities(
+            List<ZoneInternalCourierAssignmentDTO> dtos,
+            Zone zone
+    ) {
+        if (dtos == null || dtos.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<ZoneInternalCourierAssignment> entities = new ArrayList<>();
+        for (ZoneInternalCourierAssignmentDTO dto : dtos) {
+            if (dto == null || dto.getCourierId() == null) {
+                continue;
+            }
+            Set<DayOfWeek> days = dto.getWorkDays() != null ? new HashSet<>(dto.getWorkDays()) : new HashSet<>();
+            entities.add(
+                    ZoneInternalCourierAssignment.builder()
+                            .zone(zone)
+                            .courierId(dto.getCourierId())
+                            .workDays(days)
+                            .startTime(dto.getStartTime())
+                            .endTime(dto.getEndTime())
+                            .build()
+            );
+        }
+        return entities;
+    }
+
+    private List<ZoneInternalCourierAssignmentDTO> mapAssignmentEntitiesToDTOs(
+            List<ZoneInternalCourierAssignment> entities
+    ) {
+        if (entities == null || entities.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return entities.stream()
+                .map(entity -> ZoneInternalCourierAssignmentDTO.builder()
+                        .courierId(entity.getCourierId())
+                        .workDays(entity.getWorkDays() != null ? new HashSet<>(entity.getWorkDays()) : new HashSet<>())
+                        .startTime(entity.getStartTime())
+                        .endTime(entity.getEndTime())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private void enrichCourierCounts(List<ZoneDTO> zoneDTOs) {
+        if (zoneDTOs == null || zoneDTOs.isEmpty()) {
+            return;
+        }
+
+        Map<Long, ZoneCourierCountDTO> countsByZone = fetchCourierCountsByZone(zoneDTOs.stream()
+                .map(ZoneDTO::getId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList()));
+
+        for (ZoneDTO dto : zoneDTOs) {
+            ZoneCourierCountDTO counts = countsByZone.get(dto.getId());
+            long internalFallback = dto.getInternalCourierAssignments() != null
+                    ? dto.getInternalCourierAssignments().size()
+                    : 0L;
+            dto.setInternalAssignedCouriersCount(counts != null && counts.getInternalCouriersCount() != null
+                    ? counts.getInternalCouriersCount()
+                    : internalFallback);
+            dto.setExternalAssignedCouriersCount(counts != null && counts.getExternalCouriersCount() != null
+                    ? counts.getExternalCouriersCount()
+                    : 0L);
+        }
+    }
+
+    private Map<Long, ZoneCourierCountDTO> fetchCourierCountsByZone(List<Long> zoneIds) {
+        if (zoneIds == null || zoneIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        try {
+            List<ZoneCourierCountDTO> counts = userServiceClient.getZoneCourierCounts(zoneIds);
+            if (counts == null || counts.isEmpty()) {
+                return Collections.emptyMap();
+            }
+            return counts.stream()
+                    .filter(c -> c.getZoneId() != null)
+                    .collect(Collectors.toMap(ZoneCourierCountDTO::getZoneId, c -> c, (a, b) -> b));
+        } catch (Exception e) {
+            log.warn("Impossible de récupérer les compteurs livreurs par zone depuis user-service: {}", e.getMessage());
+            return Collections.emptyMap();
+        }
+    }
+
+    @Override
+    @Transactional
+    public void syncCourierZones(Long courierId, List<Long> zoneIds) {
+        if (courierId == null) {
+            return;
+        }
+
+        Set<Long> targetZoneIds = zoneIds != null ? new HashSet<>(zoneIds) : Collections.emptySet();
+        List<Zone> zones = zoneRepository.findAll();
+        List<Zone> changedZones = new ArrayList<>();
+
+        for (Zone zone : zones) {
+            boolean shouldBeAssigned = targetZoneIds.contains(zone.getId());
+            List<ZoneInternalCourierAssignment> assignments = zone.getInternalCourierAssignments();
+            if (assignments == null) {
+                assignments = new ArrayList<>();
+                zone.setInternalCourierAssignments(assignments);
+            }
+
+            boolean isAlreadyAssigned = assignments.stream()
+                    .anyMatch(a -> courierId.equals(a.getCourierId()));
+
+            boolean changed = false;
+            if (shouldBeAssigned && !isAlreadyAssigned) {
+                assignments.add(
+                        ZoneInternalCourierAssignment.builder()
+                                .zone(zone)
+                                .courierId(courierId)
+                                .workDays(new HashSet<>())
+                                .build()
+                );
+                changed = true;
+            }
+
+            if (!shouldBeAssigned && isAlreadyAssigned) {
+                changed = assignments.removeIf(a -> courierId.equals(a.getCourierId()));
+            }
+
+            if (changed) {
+                changedZones.add(zone);
+            }
+        }
+
+        if (!changedZones.isEmpty()) {
+            zoneRepository.saveAll(changedZones);
         }
     }
 }

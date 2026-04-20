@@ -51,6 +51,18 @@
   color: #dc2626 !important;
 }
 
+:host ::ng-deep .data-table {
+  .col-min-couriers,
+  .col-max-orders,
+  .col-inter-zone,
+  .col-reassign-delay,
+  .col-assigned-internal,
+  .col-assigned-external {
+    white-space: nowrap;
+    font-size: 0.8rem;
+  }
+}
+
 :host ::ng-deep .type-badge {
   &.type-DELIVERY {
     background: rgba(v.$info-color, 0.15);

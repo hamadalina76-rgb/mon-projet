@@ -5,6 +5,22 @@ export enum ZoneType {
   EXPRESS = 'EXPRESS'
 }
 
+export type WeekDay =
+  | 'MONDAY'
+  | 'TUESDAY'
+  | 'WEDNESDAY'
+  | 'THURSDAY'
+  | 'FRIDAY'
+  | 'SATURDAY'
+  | 'SUNDAY';
+
+export interface ZoneInternalCourierAssignment {
+  courierId: number;
+  workDays: WeekDay[];
+  startTime?: string;
+  endTime?: string;
+}
+
 export interface Zone {
   id: number;
   name: string;
@@ -21,6 +37,13 @@ export interface Zone {
    * Approximate delivery radius for this zone (in kilometers).
    */
   radiusKm?: number;
+  minActiveInternalCouriers?: number;
+  maxSimultaneousOrders?: number;
+  interZoneExtensionRadiusKm?: number;
+  maxInterZoneReassignmentDelayMinutes?: number;
+  internalCourierAssignments?: ZoneInternalCourierAssignment[];
+  internalAssignedCouriersCount?: number;
+  externalAssignedCouriersCount?: number;
   createdAt?: string;
   updatedAt?: string;
   partnersCount?: number;
@@ -40,6 +63,11 @@ export interface ZoneCreateRequest {
   maxDeliveryTime?: number;
   isActive?: boolean;
   radiusKm?: number;
+  minActiveInternalCouriers?: number;
+  maxSimultaneousOrders?: number;
+  interZoneExtensionRadiusKm?: number;
+  maxInterZoneReassignmentDelayMinutes?: number;
+  internalCourierAssignments?: ZoneInternalCourierAssignment[];
 }
 
 export interface ZoneUpdateRequest {
@@ -54,6 +82,11 @@ export interface ZoneUpdateRequest {
   maxDeliveryTime?: number;
   isActive?: boolean;
   radiusKm?: number;
+  minActiveInternalCouriers?: number;
+  maxSimultaneousOrders?: number;
+  interZoneExtensionRadiusKm?: number;
+  maxInterZoneReassignmentDelayMinutes?: number;
+  internalCourierAssignments?: ZoneInternalCourierAssignment[];
 }
 
 export interface PartnerInZone {
