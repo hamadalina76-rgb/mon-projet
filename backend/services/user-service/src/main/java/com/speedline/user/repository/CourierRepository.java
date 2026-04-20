@@ -267,8 +267,62 @@ public interface CourierRepository extends JpaRepository<Courier, Long> {
     @Query("SELECT c FROM Courier c WHERE " +
            "(:status IS NULL OR c.status = :status) AND " +
            "(:courierType IS NULL OR c.courierType = :courierType) AND " +
+           "(:zoneId IS NULL OR EXISTS (" +
+           "  SELECT 1 FROM Courier c2 JOIN c2.assignedZoneIds z " +
+           "  WHERE c2.id = c.id AND z = :zoneId" +
+           ")) AND " +
            "(:search IS NULL OR :search = '' OR LOWER(COALESCE(c.vehicleNumber, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(COALESCE(c.identityNumber, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(COALESCE(c.drivingLicenseNumber, '')) LIKE LOWER(CONCAT('%', :search, '%')))")
-    Page<Courier> searchCouriers(@Param("status") CourierStatus status, @Param("courierType") CourierType courierType, @Param("search") String search, Pageable pageable);
+    Page<Courier> searchCouriers(@Param("status") CourierStatus status,
+                                 @Param("courierType") CourierType courierType,
+                                 @Param("zoneId") Long zoneId,
+                                 @Param("search") String search,
+                                 Pageable pageable);
+
+    @Query(value = "SELECT DISTINCT c.* FROM couriers c " +
+           "JOIN courier_assigned_zones caz ON caz.courier_id = c.id " +
+           "WHERE caz.zone_id = :zoneId " +
+           "AND (:status IS NULL OR CAST(c.status AS text) = :status) " +
+           "AND (:courierType IS NULL OR CAST(c.courier_type AS text) = :courierType) " +
+           "AND (:search IS NULL OR :search = '' " +
+           "OR LOWER(COALESCE(c.vehicle_number, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(COALESCE(c.identity_number, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(COALESCE(c.driving_license_number, '')) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "ORDER BY c.created_at DESC",
+           countQuery = "SELECT COUNT(DISTINCT c.id) FROM couriers c " +
+                  "JOIN courier_assigned_zones caz ON caz.courier_id = c.id " +
+                  "WHERE caz.zone_id = :zoneId " +
+                  "AND (:status IS NULL OR CAST(c.status AS text) = :status) " +
+                  "AND (:courierType IS NULL OR CAST(c.courier_type AS text) = :courierType) " +
+                  "AND (:search IS NULL OR :search = '' " +
+                  "OR LOWER(COALESCE(c.vehicle_number, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
+                  "OR LOWER(COALESCE(c.identity_number, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
+                  "OR LOWER(COALESCE(c.driving_license_number, '')) LIKE LOWER(CONCAT('%', :search, '%')))",
+           nativeQuery = true)
+    Page<Courier> searchCouriersByZoneNative(@Param("status") String status,
+                                        @Param("courierType") String courierType,
+                                        @Param("zoneId") Long zoneId,
+                                        @Param("search") String search,
+                                        Pageable pageable);
+
+    @Query(value = "SELECT DISTINCT c.* FROM couriers c " +
+           "JOIN courier_assigned_zones caz ON caz.courier_id = c.id " +
+           "WHERE caz.zone_id = :zoneId " +
+           "AND (:search IS NULL OR :search = '' " +
+           "OR LOWER(COALESCE(c.vehicle_number, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(COALESCE(c.identity_number, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(COALESCE(c.driving_license_number, '')) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "ORDER BY c.created_at DESC",
+           countQuery = "SELECT COUNT(DISTINCT c.id) FROM couriers c " +
+                  "JOIN courier_assigned_zones caz ON caz.courier_id = c.id " +
+                  "WHERE caz.zone_id = :zoneId " +
+                  "AND (:search IS NULL OR :search = '' " +
+                  "OR LOWER(COALESCE(c.vehicle_number, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
+                  "OR LOWER(COALESCE(c.identity_number, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
+                  "OR LOWER(COALESCE(c.driving_license_number, '')) LIKE LOWER(CONCAT('%', :search, '%')))",
+           nativeQuery = true)
+    Page<Courier> searchCouriersByZoneNativeNoEnum(@Param("zoneId") Long zoneId,
+                                              @Param("search") String search,
+                                              Pageable pageable);
 }

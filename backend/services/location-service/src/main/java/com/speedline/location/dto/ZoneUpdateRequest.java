@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Requête pour mettre à jour une zone
@@ -41,4 +42,19 @@ public class ZoneUpdateRequest {
     @Min(value = 0,   message = "Le rayon doit être positif")
     @Max(value = 500, message = "Le rayon ne peut pas dépasser 500 km")
     private Integer radiusKm;
+
+    @Min(value = 0, message = "Le minimum de livreurs actifs doit être positif")
+    private Integer minActiveInternalCouriers;
+
+    @Min(value = 0, message = "La capacité max de commandes doit être positive")
+    private Integer maxSimultaneousOrders;
+
+    @Min(value = 0, message = "Le rayon d'extension inter-zones doit être positif")
+    @Max(value = 500, message = "Le rayon d'extension inter-zones ne peut pas dépasser 500 km")
+    private Integer interZoneExtensionRadiusKm;
+
+    @Min(value = 0, message = "Le délai max de ré-affectation inter-zone doit être positif")
+    private Integer maxInterZoneReassignmentDelayMinutes;
+
+    private List<ZoneInternalCourierAssignmentDTO> internalCourierAssignments;
 }

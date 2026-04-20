@@ -43,6 +43,14 @@
         <mat-option value="EXTERNAL">{{ 'users.couriers.external' | translate }}</mat-option>
       </mat-select>
     </mat-form-field>
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-select [(ngModel)]="selectedZoneId" (selectionChange)="onZoneChange()">
+        <mat-option value="all">Toutes les zones</mat-option>
+        @for (zone of zones(); track zone.id) {
+          <mat-option [value]="zone.id">{{ zone.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
     <button class="btn-schedule-templates" routerLink="/users/schedule-templates">
       <span class="material-icons-round">schedule</span>
       {{ 'schedule.templatesTitle' | translate }}

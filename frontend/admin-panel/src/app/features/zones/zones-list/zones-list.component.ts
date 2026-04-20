@@ -124,6 +124,21 @@ export class ZonesListComponent implements OnInit, OnDestroy {
     return translated !== key ? translated : type;
   }
 
+  getInternalAssignedCouriers(zone: Zone): number {
+    if (typeof zone.internalAssignedCouriersCount === 'number') {
+      return zone.internalAssignedCouriersCount;
+    }
+    return zone.internalCourierAssignments?.length ?? 0;
+  }
+
+  getExternalAssignedCouriers(zone: Zone): number {
+    if (typeof zone.externalAssignedCouriersCount === 'number') {
+      return zone.externalAssignedCouriersCount;
+    }
+    const zoneWithExternal = zone as Zone & { externalCourierAssignments?: unknown[] };
+    return zoneWithExternal.externalCourierAssignments?.length ?? 0;
+  }
+
   onDeleteZone(event: Event, zone: Zone): void {
     event.stopPropagation();
     event.preventDefault();

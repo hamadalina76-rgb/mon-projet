@@ -65,6 +65,12 @@
         <th class="col-fee">{{ 'zones.feeTnd' | translate | uppercase }}</th>
         <th class="col-service-fee">{{ 'zones.serviceFee' | translate | uppercase }}</th>
         <th class="col-radius">{{ 'zones.editor.deliveryRadius' | translate | uppercase }}</th>
+        <th class="col-min-couriers">MIN LIVREURS</th>
+        <th class="col-max-orders">MAX CMD SIMULTANEES</th>
+        <th class="col-inter-zone">RAYON INTER-ZONES</th>
+        <th class="col-reassign-delay">DELAI RE-AFFECTATION</th>
+        <th class="col-assigned-internal">LIVREURS INTERNES</th>
+        <th class="col-assigned-external">LIVREURS EXTERNES</th>
         <th class="col-status">{{ 'zones.status' | translate | uppercase }}</th>
         <th class="col-actions">{{ 'common.actions' | translate | uppercase }}</th>
       </tr>
@@ -82,6 +88,12 @@
           <td class="col-fee">{{ zone.deliveryFee ?? 0 }}</td>
           <td class="col-service-fee">{{ zone.serviceFee ?? 0 }}</td>
           <td class="col-radius">{{ zone.radiusKm != null ? (zone.radiusKm + ' km') : '-' }}</td>
+          <td class="col-min-couriers">{{ zone.minActiveInternalCouriers ?? '-' }}</td>
+          <td class="col-max-orders">{{ zone.maxSimultaneousOrders ?? '-' }}</td>
+          <td class="col-inter-zone">{{ zone.interZoneExtensionRadiusKm != null ? (zone.interZoneExtensionRadiusKm + ' km') : '-' }}</td>
+          <td class="col-reassign-delay">{{ zone.maxInterZoneReassignmentDelayMinutes != null ? (zone.maxInterZoneReassignmentDelayMinutes + ' min') : '-' }}</td>
+          <td class="col-assigned-internal">{{ getInternalAssignedCouriers(zone) }}</td>
+          <td class="col-assigned-external">{{ getExternalAssignedCouriers(zone) }}</td>
           <td class="col-status">
             <span class="status-badge" [class.active]="zone.isActive">
               {{ zone.isActive ? ('zones.active' | translate) : ('zones.inactive' | translate) }}

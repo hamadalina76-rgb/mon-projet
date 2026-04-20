@@ -14,11 +14,13 @@ export class CouriersService {
     pageSize: number,
     status?: string,
     search?: string,
-    courierType?: string
+    courierType?: string,
+    zoneId?: number
   ): Observable<any> {
     let url = `admin/couriers?page=${page}&size=${pageSize}`;
     if (status) url += `&status=${encodeURIComponent(status)}`;
     if (courierType) url += `&courierType=${encodeURIComponent(courierType)}`;
+    if (typeof zoneId === 'number') url += `&zoneId=${zoneId}`;
     if (search?.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
     return this.api.get(url);
   }

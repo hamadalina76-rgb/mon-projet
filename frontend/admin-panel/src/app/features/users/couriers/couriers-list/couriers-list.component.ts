@@ -16,6 +16,8 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MatDialog } from '@angular/material/dialog';
 import { ToastrService } from 'ngx-toastr';
 import { CouriersService } from '../services/couriers.service';
+import { ZonesService } from '../../../zones/services/zones.service';
+import { Zone } from '../../../zones/models/zone.model';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '@shared/components/confirmation-dialog/confirmation-dialog.component';
 import { RejectDialogComponent } from '../../../partners/partner-approval/reject-dialog.component';
 import { ChangeTypeDialogComponent, ChangeTypeResult } from '../courier-detail/change-type-dialog.component';
@@ -43,6 +45,7 @@ import { ListPageComponent } from '@shared/components/list-page/list-page.compon
 })
 export class CouriersListComponent implements OnInit, OnDestroy {
   private couriersService = inject(CouriersService);
+  private zonesService = inject(ZonesService);
   private dialog = inject(MatDialog);
   private toastr = inject(ToastrService);
   private translate = inject(TranslateService);
@@ -55,9 +58,11 @@ export class CouriersListComponent implements OnInit, OnDestroy {
   searchText = '';
   selectedStatus = 'all';
   selectedCourierType = 'all';
+  selectedZoneId: number | 'all' = 'all';
   itemsPerPage = 20;
   currentPage = 1;
   totalItems = 0;
+  zones = signal<Zone[]>([]);
 
   Math = Math;
 
@@ -65,6 +70,7 @@ export class CouriersListComponent implements OnInit, OnDestroy {
     this.searchInput$
       .pipe(debounceTime(350), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe(() => this.applyFilters());
+    this.loadZones();
     this.loadCouriers();
   }
 
@@ -77,8 +83,9 @@ export class CouriersListComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     const status = this.selectedStatus !== 'all' ? this.selectedStatus : undefined;
     const courierType = this.selectedCourierType !== 'all' ? this.selectedCourierType : undefined;
+    const zoneId = this.selectedZoneId !== 'all' ? Number(this.selectedZoneId) : undefined;
     this.couriersService
-      .getCouriers(this.currentPage - 1, this.itemsPerPage, status, this.searchText || undefined, courierType)
+      .getCouriers(this.currentPage - 1, this.itemsPerPage, status, this.searchText || undefined, courierType, zoneId)
       .subscribe({
         next: (response: any) => {
           const list = response.content ?? [];
@@ -88,6 +95,13 @@ export class CouriersListComponent implements OnInit, OnDestroy {
         },
         error: () => this.loading.set(false),
       });
+  }
+
+  private loadZones(): void {
+    this.zonesService.getActiveZones().subscribe({
+      next: (zones) => this.zones.set(zones || []),
+      error: () => this.zones.set([]),
+    });
   }
 
   applyFilters(): void {
@@ -104,6 +118,10 @@ export class CouriersListComponent implements OnInit, OnDestroy {
   }
 
   onCourierTypeChange(): void {
+    this.applyFilters();
+  }
+
+  onZoneChange(): void {
     this.applyFilters();
   }
 

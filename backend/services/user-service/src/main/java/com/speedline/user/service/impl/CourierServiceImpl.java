@@ -14,6 +14,7 @@ import com.speedline.user.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -786,9 +787,18 @@ public class CourierServiceImpl implements CourierService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<CourierDTO> searchCouriers(String search, CourierStatus status, com.speedline.user.domain.CourierType courierType, Pageable pageable) {
+    public Page<CourierDTO> searchCouriers(String search, CourierStatus status, com.speedline.user.domain.CourierType courierType, Long zoneId, Pageable pageable) {
         String term = (search != null && !search.isBlank()) ? search.trim() : null;
-        return courierRepository.searchCouriers(status, courierType, term, pageable).map(this::mapToDTO);
+        if (zoneId != null) {
+            Pageable zonePageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+            if (status == null && courierType == null) {
+                return courierRepository.searchCouriersByZoneNativeNoEnum(zoneId, term, zonePageable).map(this::mapToDTO);
+            }
+            String statusValue = status != null ? status.name() : null;
+            String courierTypeValue = courierType != null ? courierType.name() : null;
+            return courierRepository.searchCouriersByZoneNative(statusValue, courierTypeValue, zoneId, term, zonePageable).map(this::mapToDTO);
+        }
+        return courierRepository.searchCouriers(status, courierType, null, term, pageable).map(this::mapToDTO);
     }
 
     @Override

@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * DTO complet pour Zone avec toutes les informations
@@ -32,6 +33,13 @@ public class ZoneDTO {
      * Rayon de livraison approximatif pour cette zone (en kilomètres).
      */
     private Integer radiusKm;
+    private Integer minActiveInternalCouriers;
+    private Integer maxSimultaneousOrders;
+    private Integer interZoneExtensionRadiusKm;
+    private Integer maxInterZoneReassignmentDelayMinutes;
+    private List<ZoneInternalCourierAssignmentDTO> internalCourierAssignments;
+    private Long internalAssignedCouriersCount;
+    private Long externalAssignedCouriersCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     

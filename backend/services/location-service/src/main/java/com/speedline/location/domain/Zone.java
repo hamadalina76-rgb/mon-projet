@@ -85,6 +85,37 @@ public class Zone {
     @Column(name = "radius_km")
     private Integer radiusKm;
 
+    /**
+     * Nombre minimum de livreurs internes actifs requis dans la zone.
+     */
+    @Column(name = "min_active_internal_couriers")
+    private Integer minActiveInternalCouriers;
+
+    /**
+     * Capacité maximale de commandes simultanées dans la zone.
+     */
+    @Column(name = "max_simultaneous_orders")
+    private Integer maxSimultaneousOrders;
+
+    /**
+     * Rayon d'extension inter-zones (en kilomètres).
+     */
+    @Column(name = "inter_zone_extension_radius_km")
+    private Integer interZoneExtensionRadiusKm;
+
+    /**
+     * Délai maximal avant ré-affectation inter-zone (en minutes).
+     */
+    @Column(name = "max_inter_zone_reassignment_delay_minutes")
+    private Integer maxInterZoneReassignmentDelayMinutes;
+
+    /**
+     * Affectations des livreurs internes avec jours et horaires.
+     */
+    @Builder.Default
+    @OneToMany(mappedBy = "zone", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<ZoneInternalCourierAssignment> internalCourierAssignments = new java.util.ArrayList<>();
+
     @Builder.Default
     private Boolean isActive = true;
 

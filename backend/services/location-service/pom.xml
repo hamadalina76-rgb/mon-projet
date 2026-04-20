@@ -122,6 +122,12 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
+        <!-- OpenFeign -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
         
         <!-- WebClient for Mapbox API -->
         <dependency>

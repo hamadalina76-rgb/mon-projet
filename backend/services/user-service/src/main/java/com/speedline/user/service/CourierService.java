@@ -373,7 +373,7 @@ public interface CourierService {
     /**
      * Recherche admin : liste paginée avec filtre statut et recherche (immat, CIN, permis).
      */
-    Page<CourierDTO> searchCouriers(String search, CourierStatus status, com.speedline.user.domain.CourierType courierType, Pageable pageable);
+    Page<CourierDTO> searchCouriers(String search, CourierStatus status, com.speedline.user.domain.CourierType courierType, Long zoneId, Pageable pageable);
 
     /**
      * Obtenir les livreurs actuellement en ligne
