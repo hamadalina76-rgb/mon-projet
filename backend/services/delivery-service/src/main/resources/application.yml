@@ -28,6 +28,8 @@ spring:
         enabled: true
     gcp:
       project-id: ${GCP_PROJECT_ID:speedline-local}
+      sql:
+        enabled: ${SPRING_CLOUD_GCP_SQL_ENABLED:false}
       pubsub:
         emulator-host: ${PUBSUB_EMULATOR_HOST:localhost:8090}
   data:
@@ -62,3 +64,40 @@ resilience4j:
     configs:
       default:
         timeoutDuration: 5s
+
+# DISP-101: dispatch loop configuration
+dispatch:
+  interval-seconds: ${DISPATCH_INTERVAL_SECONDS:5}
+  scheduler:
+    pool-size: ${DISPATCH_POOL_SIZE:4}
+  events:
+    topic: ${DISPATCH_EVENTS_TOPIC:dispatch-events}
+  order-events:
+    subscription: ${DISPATCH_ORDER_EVENTS_SUB:order-events-delivery-sub}
+  lock:
+    ttl-seconds: 30
+  pending:
+    ttl-hours: 24
+  enricher:
+    default-zone-id: ${DISPATCH_ENRICHER_DEFAULT_ZONE_ID:1}
+    default-guaranteed-delivery-minutes: ${DISPATCH_ENRICHER_DEFAULT_GUARANTEED_DELIVERY_MINUTES:30}
+  zones:
+    - id: 1
+      mode: AUTO
+      max-capacity: 50
+    - id: 2
+      mode: AUTO
+      max-capacity: 50
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      service: delivery-service
