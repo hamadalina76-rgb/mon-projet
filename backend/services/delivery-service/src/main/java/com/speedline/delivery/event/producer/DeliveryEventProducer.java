@@ -3,6 +3,7 @@ package com.speedline.delivery.event.producer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spring.pubsub.core.PubSubTemplate;
 import com.speedline.delivery.dispatch.event.CourierInactivityAlertEvent;
+import com.speedline.delivery.dispatch.event.CourierIncidentAlertEvent;
 import com.speedline.delivery.dispatch.event.CourierRefusalEscalationEvent;
 import com.speedline.delivery.dispatch.event.DispatchAssignedEvent;
 import lombok.RequiredArgsConstructor;
@@ -64,6 +65,11 @@ public class DeliveryEventProducer {
     public void publishInactivityAlert(CourierInactivityAlertEvent event) {
         if (event == null) return;
         publish(adminAlertsTopic, event.getEventType(), null, event);
+    }
+
+    public void publishCourierIncidentAlert(CourierIncidentAlertEvent event) {
+        if (event == null) return;
+        publish(adminAlertsTopic, event.getEventType(), event.getOrderId(), event);
     }
 
     private void publish(String topic, String eventName, Long orderId, Object payload) {
