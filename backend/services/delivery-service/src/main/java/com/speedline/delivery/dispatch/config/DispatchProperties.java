@@ -32,6 +32,8 @@ public class DispatchProperties {
     private DeliveryIncident deliveryIncident = new DeliveryIncident();
     private PartnerDelay partnerDelay = new PartnerDelay();
     private AdminAlerts adminAlerts = new AdminAlerts();
+    private Bundling bundling = new Bundling();
+    private Compensation compensation = new Compensation();
     private Matching matching = new Matching();
 
     private List<ZoneConfig> zones = new ArrayList<>();
@@ -144,6 +146,36 @@ public class DispatchProperties {
         private String topic;
         private String hrTopic;
         private String reliabilityTopic;
+    }
+
+    @Data
+    public static class Bundling {
+        private boolean enabled = true;
+        private int maxBundleSize = 4;
+        private int dropoffRadiusMeters = 800;
+        private int merchantRadiusMeters = 1500;
+        private int timeWindowSeconds = 480;
+        private boolean internalOnly = true;
+        private double averageSpeedKmh = 25.0;
+        private boolean respectUrgentFlag = true;
+        private String assignmentStrategy = "nearest";
+        private Compensation compensation = new Compensation();
+
+        @Data
+        public static class Compensation {
+            private boolean enabled = true;
+            private int thresholdMinutes = 10;
+            private double percentOfTotal = 0.10;
+            private String currency = "TND";
+        }
+    }
+
+    @Data
+    public static class Compensation {
+        private boolean enabled = true;
+        private int graceDelayMinutes = 10;
+        private double walletCreditAmount = 5.0;
+        private String walletCreditCurrency = "TND";
     }
 
     @Data

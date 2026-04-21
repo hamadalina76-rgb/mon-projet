@@ -4,6 +4,7 @@ import com.speedline.delivery.dispatch.config.DispatchMode;
 import com.speedline.delivery.dispatch.config.DispatchProperties;
 import com.speedline.delivery.dispatch.config.DispatchZoneConfig;
 import com.speedline.delivery.dispatch.contract.engine.BundlingEngine;
+import com.speedline.delivery.dispatch.contract.engine.BundlingResult;
 import com.speedline.delivery.dispatch.contract.engine.CostFunction;
 import com.speedline.delivery.dispatch.contract.engine.CostResult;
 import com.speedline.delivery.dispatch.contract.engine.DispatchSolver;
@@ -12,6 +13,7 @@ import com.speedline.delivery.dispatch.contract.model.AvailableCourier;
 import com.speedline.delivery.dispatch.contract.model.CourierStatus;
 import com.speedline.delivery.dispatch.contract.model.CourierType;
 import com.speedline.delivery.dispatch.contract.model.PendingOrder;
+import com.speedline.delivery.dispatch.engine.bundling.BundleDispatchOrchestrator;
 import com.speedline.delivery.dispatch.event.DispatchAssignedEvent;
 import com.speedline.delivery.dispatch.metrics.DispatchMetrics;
 import com.speedline.delivery.event.producer.DeliveryEventProducer;
@@ -56,6 +58,8 @@ class DispatchCycleServiceTest {
     @Mock
     private BundlingEngine bundlingEngine;
     @Mock
+    private BundleDispatchOrchestrator bundleDispatchOrchestrator;
+    @Mock
     private PreAssignmentCalculator preAssignmentCalculator;
     @Mock
     private EligibilityFilter eligibilityFilter;
@@ -89,6 +93,7 @@ class DispatchCycleServiceTest {
                 costFunction,
                 dispatchSolver,
                 bundlingEngine,
+                bundleDispatchOrchestrator,
                 preAssignmentCalculator,
                 eligibilityFilter,
                 responseTimeoutTracker,
@@ -177,6 +182,48 @@ class DispatchCycleServiceTest {
         verify(costFunction, times(2 * 3)).calculate(any(), any());
     }
 
+    @Test
+    void bundledOrders_externalCourierIsRefusedAndExpandedToMembers() {
+        stubCycleDefaults();
+
+        PendingOrder order1 = order(1L);
+        PendingOrder order2 = order(2L);
+        List<PendingOrder> orders = List.of(order1, order2);
+        AvailableCourier internal = courier(100L);
+        AvailableCourier external = courier(200L);
+        external.setType(CourierType.EXTERNAL);
+
+        BundlingResult bundlingResult = BundlingResult.builder()
+                .bundles(List.of(List.of(1L, 2L)))
+                .orderToBundleId(java.util.Map.of(1L, 1L, 2L, 1L))
+                .bundleToOrders(java.util.Map.of(1L, List.of(1L, 2L)))
+                .orderEtaMinutes(java.util.Map.of(1L, 8, 2L, 12))
+                .build();
+
+        when(pendingOrderRedisRepository.findByZone(1L)).thenReturn(orders);
+        when(courierAvailabilityService.findOnlineByZone(1L)).thenReturn(List.of(internal, external));
+        when(bundlingEngine.detectBundles(anyList())).thenReturn(bundlingResult);
+        when(pendingOrderRedisRepository.countByZone(1L)).thenReturn(0L);
+
+        when(bundleDispatchOrchestrator.dispatchBundles(any(), any(), anyList(), anyList(), anyLong()))
+            .thenReturn(com.speedline.delivery.dispatch.engine.bundling.BundleAssignmentBatch.builder()
+                .assignments(List.of(
+                    Assignment.builder().orderId(1L).courierId(100L).bundleId(1L).etaDeliveryMin(8).build(),
+                    Assignment.builder().orderId(2L).courierId(100L).bundleId(1L).etaDeliveryMin(12).build()))
+                .remainingOrders(List.of())
+                .remainingCouriers(List.of(external))
+                .build());
+
+        service.runCycle(1L);
+
+        ArgumentCaptor<DispatchAssignedEvent> captor = ArgumentCaptor.forClass(DispatchAssignedEvent.class);
+        verify(deliveryEventProducer, times(2)).publishAssigned(captor.capture());
+        List<DispatchAssignedEvent> events = captor.getAllValues();
+        assertEquals(2, events.size());
+        assertTrue(events.stream().allMatch(e -> e.getCourierId().equals(100L)));
+        assertTrue(events.stream().allMatch(e -> e.getBundleId().equals(1L)));
+    }
+
     private static PendingOrder order(Long id) {
         return PendingOrder.builder()
                 .id(id)
@@ -222,7 +269,20 @@ class DispatchCycleServiceTest {
         when(zoneConfig.getMode(anyLong())).thenReturn(DispatchMode.AUTO);
         when(zoneConfig.getMaxCapacity(anyLong())).thenReturn(50);
         when(preAssignmentCalculator.enrichPreAssignable(anyList(), anyLong(), any())).thenAnswer(inv -> inv.getArgument(0));
-        when(eligibilityFilter.selectPool(anyList(), anyList(), anyLong(), any())).thenAnswer(inv -> inv.getArgument(1));
+        when(eligibilityFilter.selectPoolDetailed(anyList(), anyList(), anyLong(), any())).thenAnswer(inv -> {
+            List<AvailableCourier> pool = inv.getArgument(1);
+            List<AvailableCourier> internals = pool.stream().filter(c -> c.getType() == CourierType.INTERNAL).toList();
+            return EligibilityPool.builder().pool(pool).internalOnly(internals).fallbackApplied(false).build();
+        });
+        when(bundleDispatchOrchestrator.dispatchBundles(any(), any(), anyList(), anyList(), anyLong())).thenAnswer(inv -> {
+            java.util.Map<Long, PendingOrder> orderById = inv.getArgument(1);
+            List<AvailableCourier> couriers = inv.getArgument(2);
+            return com.speedline.delivery.dispatch.engine.bundling.BundleAssignmentBatch.builder()
+                    .assignments(List.of())
+                    .remainingOrders(orderById == null ? List.of() : new java.util.ArrayList<>(orderById.values()))
+                    .remainingCouriers(couriers)
+                    .build();
+        });
         when(costFunction.calculate(any(), any())).thenReturn(CostResult.builder()
                 .feasible(true)
                 .totalCost(5.0)

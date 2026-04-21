@@ -98,6 +98,52 @@ public class DispatchMetrics {
                 .increment();
     }
 
+    public void recordBundlesCreated(Long zoneId, int count) {
+        Counter.builder("dispatch.bundles.created.total")
+                .tags(zoneTags(zoneId))
+                .register(registry)
+                .increment(Math.max(0, count));
+    }
+
+    public void recordBundleSize(int bundleSize) {
+        DistributionSummary.builder("dispatch.bundle.size")
+                .register(registry)
+                .record(Math.max(0, bundleSize));
+    }
+
+    public void recordBundlingSkippedNoInternals(Long zoneId) {
+        Counter.builder("dispatch.bundling.skipped.no.internals.total")
+                .tags(zoneTags(zoneId))
+                .register(registry)
+                .increment();
+    }
+
+    public void recordBundlingInfeasibility(String reason) {
+        Counter.builder("dispatch.bundling.infeasibility.total")
+                .tags(Tags.of("reason", reason == null || reason.isBlank() ? "unknown" : reason))
+                .register(registry)
+                .increment();
+    }
+
+    public void recordBundleCompensationIssued(Long zoneId) {
+        Counter.builder("dispatch.bundle.compensation.issued.total")
+                .tags(zoneTags(zoneId))
+                .register(registry)
+                .increment();
+    }
+
+    public void recordBundleCompensationFailed() {
+        Counter.builder("dispatch.bundle.compensation.failed.total")
+                .register(registry)
+                .increment();
+    }
+
+    public void recordBundlingDuration(Duration duration) {
+        Timer.builder("dispatch.bundling.duration")
+                .register(registry)
+                .record(duration);
+    }
+
     private AtomicReference<Double> gaugeMatchRate(Long zoneId) {
         return matchRateByZone.computeIfAbsent(zoneId, id -> {
             AtomicReference<Double> ref = new AtomicReference<>(0.0d);

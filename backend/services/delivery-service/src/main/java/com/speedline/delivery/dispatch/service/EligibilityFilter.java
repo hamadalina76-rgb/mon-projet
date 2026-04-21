@@ -28,8 +28,19 @@ public class EligibilityFilter {
                                              List<AvailableCourier> couriers,
                                              Long zoneId,
                                              Clock clock) {
+        return selectPoolDetailed(orders, couriers, zoneId, clock).pool();
+    }
+
+    public EligibilityPool selectPoolDetailed(List<PendingOrder> orders,
+                                              List<AvailableCourier> couriers,
+                                              Long zoneId,
+                                              Clock clock) {
         if (couriers == null || couriers.isEmpty()) {
-            return List.of();
+            return EligibilityPool.builder()
+                    .pool(List.of())
+                    .internalOnly(List.of())
+                    .fallbackApplied(false)
+                    .build();
         }
 
         Instant now = Instant.now(clock);
@@ -57,7 +68,11 @@ public class EligibilityFilter {
 
         if (reasons.isEmpty()) {
             dispatchMetrics.recordEligibilityPhase1Only(zoneId);
-            return internalPool;
+            return EligibilityPool.builder()
+                    .pool(internalPool)
+                    .internalOnly(internalPool)
+                    .fallbackApplied(false)
+                    .build();
         }
 
         reasons.forEach(reason -> dispatchMetrics.recordEligibilityPhase2Triggered(zoneId, reason));
@@ -69,7 +84,11 @@ public class EligibilityFilter {
         List<AvailableCourier> combined = new ArrayList<>(internalPool.size() + externals.size());
         combined.addAll(internalPool);
         combined.addAll(externals);
-        return combined;
+        return EligibilityPool.builder()
+            .pool(combined)
+            .internalOnly(internalPool)
+            .fallbackApplied(true)
+            .build();
     }
 
     private boolean hasWaitingOrder(List<PendingOrder> orders, Instant now) {
