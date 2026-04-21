@@ -120,6 +120,12 @@ dispatch:
     threshold-minutes: ${DISPATCH_INACTIVITY_THRESHOLD_MIN:15}
   courier-response:
     refusal-subscription: ${DISPATCH_COURIER_REFUSED_SUB:courier-order-refused-delivery-sub}
+  delivery-incident:
+    subscription: ${DISPATCH_DELIVERY_INCIDENT_SUB:delivery-incident-delivery-sub}
+  partner-delay:
+    subscription: ${DISPATCH_PARTNER_NOT_READY_SUB:partner-not-ready-delivery-sub}
+    scheduler-interval-seconds: ${DISPATCH_PARTNER_DELAY_SCHEDULER_SECONDS:15}
+    threshold-minutes: ${DISPATCH_PARTNER_DELAY_THRESHOLD_MINUTES:5}
   admin-alerts:
     topic: ${DISPATCH_ADMIN_ALERTS_TOPIC:admin-alerts}
     hr-topic: ${DISPATCH_HR_NOTIFICATIONS_TOPIC:hr-notifications}

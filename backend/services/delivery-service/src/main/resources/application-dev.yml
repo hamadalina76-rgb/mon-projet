@@ -106,6 +106,56 @@ logging:
     com.speedline: DEBUG
 
 dispatch:
+  interval-seconds: 5
+  scheduler:
+    pool-size: 4
+  events:
+    topic: dispatch-events
+  order-events:
+    subscription: order-events-delivery-sub
+  lock:
+    ttl-seconds: 30
+  pending:
+    ttl-hours: 24
+  enricher:
+    default-zone-id: 1
+    default-guaranteed-delivery-minutes: 30
   solver:
+    greedy-max-orders: 5
+    hungarian-max-orders: 10
+    inf-cost-placeholder: 1000000000000.0
     ortools:
       url: ${DISPATCH_SOLVER_ORTOOLS_URL:http://localhost:5001}
+      timeout-ms: ${DISPATCH_SOLVER_ORTOOLS_TIMEOUT_MS:2000}
+      enabled: ${DISPATCH_SOLVER_ORTOOLS_ENABLED:true}
+  eligibility:
+    order-waiting-threshold-seconds: 180
+    internal-shortage-threshold: 2
+  pre-assignment:
+    finish-window-seconds: 180
+    cost-penalty: 1.2
+  refusal:
+    internal-warning-threshold: 2
+    internal-hr-threshold: 3
+    external-score-degradation-threshold: 5
+    counter-ttl-hours: 24
+    blacklist-ttl-seconds: 300
+  response-timeout:
+    deadline-seconds: 45
+    poll-interval-ms: 5000
+  inactivity:
+    scheduler-interval-seconds: 60
+    threshold-minutes: 15
+  courier-response:
+    refusal-subscription: courier-order-refused-delivery-sub
+  admin-alerts:
+    topic: admin-alerts
+    hr-topic: hr-notifications
+    reliability-topic: courier-reliability-events
+  zones:
+    - id: 1
+      mode: AUTO
+      max-capacity: 50
+    - id: 2
+      mode: AUTO
+      max-capacity: 50

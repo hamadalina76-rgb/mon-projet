@@ -29,6 +29,8 @@ public class DispatchProperties {
     private ResponseTimeout responseTimeout = new ResponseTimeout();
     private Inactivity inactivity = new Inactivity();
     private CourierResponse courierResponse = new CourierResponse();
+    private DeliveryIncident deliveryIncident = new DeliveryIncident();
+    private PartnerDelay partnerDelay = new PartnerDelay();
     private AdminAlerts adminAlerts = new AdminAlerts();
 
     private List<ZoneConfig> zones = new ArrayList<>();
@@ -88,40 +90,52 @@ public class DispatchProperties {
 
     @Data
     public static class Eligibility {
-        private int orderWaitingThresholdSeconds = 180;
-        private int internalShortageThreshold = 2;
+        private int orderWaitingThresholdSeconds;
+        private int internalShortageThreshold;
     }
 
     @Data
     public static class PreAssignment {
-        private int finishWindowSeconds = 180;
-        private double costPenalty = 1.2;
+        private int finishWindowSeconds;
+        private double costPenalty;
     }
 
     @Data
     public static class Refusal {
-        private int internalWarningThreshold = 2;
-        private int internalHrThreshold = 3;
-        private int externalScoreDegradationThreshold = 5;
-        private int counterTtlHours = 24;
-        private int blacklistTtlSeconds = 300;
+        private int internalWarningThreshold;
+        private int internalHrThreshold;
+        private int externalScoreDegradationThreshold;
+        private int counterTtlHours;
+        private int blacklistTtlSeconds;
     }
 
     @Data
     public static class ResponseTimeout {
-        private int deadlineSeconds = 45;
-        private int pollIntervalMs = 5000;
+        private int deadlineSeconds;
+        private int pollIntervalMs;
     }
 
     @Data
     public static class Inactivity {
-        private int schedulerIntervalSeconds = 60;
-        private int thresholdMinutes = 15;
+        private int schedulerIntervalSeconds;
+        private int thresholdMinutes;
     }
 
     @Data
     public static class CourierResponse {
         private String refusalSubscription;
+    }
+
+    @Data
+    public static class DeliveryIncident {
+        private String subscription;
+    }
+
+    @Data
+    public static class PartnerDelay {
+        private String subscription;
+        private int schedulerIntervalSeconds;
+        private int thresholdMinutes;
     }
 
     @Data
