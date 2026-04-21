@@ -24,6 +24,8 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
     // ==================== RECHERCHE PAR IDENTIFIANTS ====================
 
     Optional<Delivery> findByOrderId(Long orderId);
+
+    List<Delivery> findByBundleId(Long bundleId);
     
     boolean existsByOrderId(Long orderId);
 

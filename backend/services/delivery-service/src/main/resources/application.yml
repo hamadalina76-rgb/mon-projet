@@ -58,6 +58,8 @@ resilience4j:
     instances:
       orToolsSolver:
         baseConfig: default
+      bundle-ortools:
+        baseConfig: default
   retry:
     configs:
       default:
@@ -67,12 +69,18 @@ resilience4j:
       orToolsSolver:
         maxAttempts: 2
         waitDuration: 200ms
+      bundle-ortools:
+        maxAttempts: 2
+        waitDuration: 200ms
   timelimiter:
     configs:
       default:
         timeoutDuration: 5s
     instances:
       orToolsSolver:
+        timeoutDuration: 2s
+        cancelRunningFuture: true
+      bundle-ortools:
         timeoutDuration: 2s
         cancelRunningFuture: true
 
@@ -130,6 +138,26 @@ dispatch:
     topic: ${DISPATCH_ADMIN_ALERTS_TOPIC:admin-alerts}
     hr-topic: ${DISPATCH_HR_NOTIFICATIONS_TOPIC:hr-notifications}
     reliability-topic: ${DISPATCH_RELIABILITY_EVENTS_TOPIC:courier-reliability-events}
+  bundling:
+    enabled: ${DISPATCH_BUNDLING_ENABLED:true}
+    max-bundle-size: ${DISPATCH_BUNDLING_MAX_BUNDLE_SIZE:4}
+    dropoff-radius-meters: ${DISPATCH_BUNDLING_DROPOFF_RADIUS_METERS:800}
+    merchant-radius-meters: ${DISPATCH_BUNDLING_MERCHANT_RADIUS_METERS:1500}
+    time-window-seconds: ${DISPATCH_BUNDLING_TIME_WINDOW_SECONDS:480}
+    internal-only: ${DISPATCH_BUNDLING_INTERNAL_ONLY:true}
+    average-speed-kmh: ${DISPATCH_BUNDLING_AVERAGE_SPEED_KMH:25.0}
+    respect-urgent-flag: ${DISPATCH_BUNDLING_RESPECT_URGENT:true}
+    assignment-strategy: ${DISPATCH_BUNDLING_ASSIGNMENT_STRATEGY:nearest}
+    compensation:
+      enabled: ${DISPATCH_BUNDLING_COMPENSATION_ENABLED:true}
+      threshold-minutes: ${DISPATCH_BUNDLING_COMPENSATION_THRESHOLD_MINUTES:10}
+      percent-of-total: ${DISPATCH_BUNDLING_COMPENSATION_PERCENT_OF_TOTAL:0.10}
+      currency: ${DISPATCH_BUNDLING_COMPENSATION_CURRENCY:TND}
+  compensation:
+    enabled: ${DISPATCH_COMPENSATION_ENABLED:true}
+    grace-delay-minutes: ${DISPATCH_COMPENSATION_GRACE_MINUTES:10}
+    wallet-credit-amount: ${DISPATCH_COMPENSATION_WALLET_CREDIT_AMOUNT:5.0}
+    wallet-credit-currency: ${DISPATCH_COMPENSATION_WALLET_CREDIT_CURRENCY:TND}
   matching:
     infinite-cost: ${DISPATCH_MATCHING_INFINITE_COST:1000000.0}
     availability-unavailable-penalty: ${DISPATCH_MATCHING_AVAILABILITY_UNAVAILABLE_PENALTY:80.0}

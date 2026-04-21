@@ -20,6 +20,7 @@ import java.util.List;
 @Table(name = "deliveries", indexes = {
     @Index(name = "idx_delivery_order", columnList = "orderId", unique = true),
     @Index(name = "idx_delivery_courier", columnList = "courierId"),
+    @Index(name = "idx_delivery_bundle", columnList = "bundleId"),
     @Index(name = "idx_delivery_status", columnList = "status"),
     @Index(name = "idx_delivery_created", columnList = "createdAt")
 })
@@ -82,6 +83,15 @@ public class Delivery {
      */
     @Column(length = 255)
     private String partnerName;
+
+    @Column(name = "bundle_id")
+    private Long bundleId;
+
+    @Column(name = "promised_delivery_at")
+    private LocalDateTime promisedDeliveryAt;
+
+    @Column(name = "compensation_issued_at")
+    private LocalDateTime compensationIssuedAt;
 
     // ==================== STATUT ====================
 

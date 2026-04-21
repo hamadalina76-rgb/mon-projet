@@ -1,5 +1,7 @@
 package com.speedline.delivery.service.impl;
 
+import com.speedline.delivery.compensation.LateDeliveryCompensationService;
+import com.speedline.delivery.domain.Delivery;
 import com.speedline.delivery.domain.DeliveryStatus;
 import com.speedline.delivery.dto.DeliveryDTO;
 import com.speedline.delivery.repository.DeliveryRepository;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -24,6 +27,7 @@ import java.util.List;
 public class DeliveryServiceImpl implements DeliveryService {
 
     private final DeliveryRepository deliveryRepository;
+    private final LateDeliveryCompensationService lateDeliveryCompensationService;
 
     // ==================== CRÉATION ====================
 
@@ -100,8 +104,29 @@ public class DeliveryServiceImpl implements DeliveryService {
     @Override
     @Transactional
     public DeliveryDTO completeDelivery(Long deliveryId, Long courierId, String proofImageUrl, String notes) {
-        // TODO: Implémenter la complétion de la livraison
-        throw new UnsupportedOperationException("À implémenter");
+        Delivery delivery = deliveryRepository.findById(deliveryId)
+                .orElseThrow(() -> new IllegalArgumentException("Livraison introuvable: " + deliveryId));
+
+        if (courierId == null || !courierId.equals(delivery.getCourierId())) {
+            throw new IllegalStateException("Le livreur ne correspond pas a la livraison");
+        }
+
+        if (delivery.getStatus() == DeliveryStatus.DELIVERED
+                || delivery.getStatus() == DeliveryStatus.CANCELLED
+                || delivery.getStatus() == DeliveryStatus.FAILED) {
+            throw new IllegalStateException("Transition invalide vers DELIVERED depuis " + delivery.getStatus());
+        }
+
+        delivery.setStatus(DeliveryStatus.DELIVERED);
+        delivery.setDeliveredAt(LocalDateTime.now());
+        delivery.setProofOfDeliveryImage(proofImageUrl);
+        delivery.setDeliveryNotes(notes);
+        delivery.calculateActualDuration();
+
+        Delivery saved = deliveryRepository.save(delivery);
+        lateDeliveryCompensationService.evaluateAndCompensate(saved);
+
+        return toDTO(saved);
     }
 
     @Override
@@ -155,5 +180,40 @@ public class DeliveryServiceImpl implements DeliveryService {
     public DeliveryDTO addTip(Long deliveryId, BigDecimal tip) {
         // TODO: Implémenter l'ajout d'un pourboire à une livraison
         throw new UnsupportedOperationException("À implémenter");
+    }
+
+    private DeliveryDTO toDTO(Delivery delivery) {
+        return DeliveryDTO.builder()
+                .id(delivery.getId())
+                .orderId(delivery.getOrderId())
+                .orderNumber(delivery.getOrderNumber())
+                .courierId(delivery.getCourierId())
+                .courierName(delivery.getCourierName())
+                .courierPhone(delivery.getCourierPhone())
+                .customerName(delivery.getCustomerName())
+                .customerPhone(delivery.getCustomerPhone())
+                .partnerName(delivery.getPartnerName())
+                .status(delivery.getStatus())
+                .pickupLatitude(delivery.getPickupLatitude())
+                .pickupLongitude(delivery.getPickupLongitude())
+                .pickupAddress(delivery.getPickupAddress())
+                .dropoffLatitude(delivery.getDropoffLatitude())
+                .dropoffLongitude(delivery.getDropoffLongitude())
+                .dropoffAddress(delivery.getDropoffAddress())
+                .deliveryInstructions(delivery.getDeliveryInstructions())
+                .estimatedDistance(delivery.getEstimatedDistance())
+                .actualDistance(delivery.getActualDistance())
+                .estimatedDuration(delivery.getEstimatedDuration())
+                .actualDuration(delivery.getActualDuration())
+                .assignedAt(delivery.getAssignedAt())
+                .acceptedAt(delivery.getAcceptedAt())
+                .pickedUpAt(delivery.getPickedUpAt())
+                .deliveredAt(delivery.getDeliveredAt())
+                .proofOfDeliveryImage(delivery.getProofOfDeliveryImage())
+                .deliveryCode(delivery.getDeliveryCode())
+                .deliveryFee(delivery.getDeliveryFee())
+                .tip(delivery.getTip())
+                .courierEarnings(delivery.getCourierEarnings())
+                .build();
     }
 }

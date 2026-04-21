@@ -23,4 +23,10 @@ public class BundlingResult {
 
     @Builder.Default
     private Map<Long, Long> orderToBundleId = Map.of();
+
+    @Builder.Default
+    private Map<Long, List<Long>> bundleToOrders = Map.of();
+
+    @Builder.Default
+    private Map<Long, Integer> orderEtaMinutes = Map.of();
 }

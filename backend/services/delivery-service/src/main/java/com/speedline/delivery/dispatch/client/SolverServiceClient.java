@@ -1,5 +1,7 @@
 package com.speedline.delivery.dispatch.client;
 
+import com.speedline.delivery.dispatch.impl.bundling.BundleRouteRequest;
+import com.speedline.delivery.dispatch.impl.bundling.BundleRouteResponse;
 import com.speedline.delivery.dispatch.impl.solver.dto.SolveRequest;
 import com.speedline.delivery.dispatch.impl.solver.dto.SolveResponse;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -17,4 +19,7 @@ public interface SolverServiceClient {
 
     @PostMapping("/solve")
     SolveResponse solve(@RequestBody SolveRequest request);
+
+    @PostMapping("/optimize-route")
+    BundleRouteResponse optimizeRoute(@RequestBody BundleRouteRequest request);
 }

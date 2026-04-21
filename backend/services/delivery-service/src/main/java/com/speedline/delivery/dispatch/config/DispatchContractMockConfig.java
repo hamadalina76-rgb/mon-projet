@@ -9,6 +9,7 @@ import com.speedline.delivery.dispatch.contract.mock.MockDispatchSolver;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 @Configuration
 public class DispatchContractMockConfig {
@@ -27,6 +28,7 @@ public class DispatchContractMockConfig {
 
     @Bean
     @ConditionalOnMissingBean(BundlingEngine.class)
+    @Profile("test")
     public BundlingEngine bundlingEngine() {
         return new MockBundlingEngine();
     }

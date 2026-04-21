@@ -13,6 +13,8 @@ import com.speedline.delivery.dispatch.contract.model.AvailableCourier;
 import com.speedline.delivery.dispatch.contract.model.CourierStatus;
 import com.speedline.delivery.dispatch.contract.model.CourierType;
 import com.speedline.delivery.dispatch.contract.model.PendingOrder;
+import com.speedline.delivery.dispatch.engine.bundling.BundleDispatchOrchestrator;
+import com.speedline.delivery.dispatch.engine.bundling.BundleAssignmentBatch;
 import com.speedline.delivery.dispatch.metrics.DispatchMetrics;
 import com.speedline.delivery.event.producer.DeliveryEventProducer;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,6 +61,8 @@ class DispatchCyclePerformanceTest {
     private EligibilityFilter eligibilityFilter;
     @Mock
     private CourierResponseTimeoutTracker responseTimeoutTracker;
+    @Mock
+    private BundleDispatchOrchestrator bundleDispatchOrchestrator;
 
     private DispatchCycleService service;
 
@@ -85,6 +89,7 @@ class DispatchCyclePerformanceTest {
                 costFunction,
                 dispatchSolver,
                 bundlingEngine,
+                bundleDispatchOrchestrator,
                 preAssignmentCalculator,
                 eligibilityFilter,
                 responseTimeoutTracker,
@@ -94,7 +99,16 @@ class DispatchCyclePerformanceTest {
                 redisTemplate);
 
             when(preAssignmentCalculator.enrichPreAssignable(anyList(), any(), any())).thenAnswer(inv -> inv.getArgument(0));
-            when(eligibilityFilter.selectPool(anyList(), anyList(), any(), any())).thenAnswer(inv -> inv.getArgument(1));
+            when(eligibilityFilter.selectPoolDetailed(anyList(), anyList(), any(), any())).thenAnswer(inv -> {
+                List<AvailableCourier> pool = inv.getArgument(1);
+                return EligibilityPool.builder().pool(pool).internalOnly(pool).fallbackApplied(false).build();
+            });
+                when(bundleDispatchOrchestrator.dispatchBundles(any(), any(), anyList(), anyList(), any())).thenReturn(
+                    BundleAssignmentBatch.builder()
+                        .assignments(List.of())
+                        .remainingOrders(List.of())
+                        .remainingCouriers(List.of())
+                        .build());
     }
 
     @Test
