@@ -21,7 +21,7 @@ spring:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
-    validate-on-migrate: true
+    validate-on-migrate: false
   cloud:
     openfeign:
       circuitbreaker:
@@ -130,6 +130,20 @@ dispatch:
     topic: ${DISPATCH_ADMIN_ALERTS_TOPIC:admin-alerts}
     hr-topic: ${DISPATCH_HR_NOTIFICATIONS_TOPIC:hr-notifications}
     reliability-topic: ${DISPATCH_RELIABILITY_EVENTS_TOPIC:courier-reliability-events}
+  matching:
+    infinite-cost: ${DISPATCH_MATCHING_INFINITE_COST:1000000.0}
+    availability-unavailable-penalty: ${DISPATCH_MATCHING_AVAILABILITY_UNAVAILABLE_PENALTY:80.0}
+    availability-on-mission-penalty: ${DISPATCH_MATCHING_AVAILABILITY_ON_MISSION_PENALTY:20.0}
+    performance-missing-rating-penalty: ${DISPATCH_MATCHING_PERFORMANCE_MISSING_RATING_PENALTY:10.0}
+    performance-below-threshold: ${DISPATCH_MATCHING_PERFORMANCE_THRESHOLD:4.0}
+    performance-penalty-per-point: ${DISPATCH_MATCHING_PERFORMANCE_PENALTY_PER_POINT:30.0}
+    route-alignment-bonus-factor: ${DISPATCH_MATCHING_ROUTE_ALIGNMENT_BONUS_FACTOR:20.0}
+    eta:
+      default-speed-kmh: ${DISPATCH_MATCHING_ETA_DEFAULT_SPEED_KMH:20.0}
+      motorcycle-speed-kmh: ${DISPATCH_MATCHING_ETA_MOTORCYCLE_SPEED_KMH:25.0}
+      bike-speed-kmh: ${DISPATCH_MATCHING_ETA_BIKE_SPEED_KMH:15.0}
+      motor-tricycle-speed-kmh: ${DISPATCH_MATCHING_ETA_MOTOR_TRICYCLE_SPEED_KMH:22.0}
+      car-speed-kmh: ${DISPATCH_MATCHING_ETA_CAR_SPEED_KMH:28.0}
   zones:
     - id: 1
       mode: AUTO

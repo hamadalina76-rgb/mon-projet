@@ -32,6 +32,7 @@ public class DispatchProperties {
     private DeliveryIncident deliveryIncident = new DeliveryIncident();
     private PartnerDelay partnerDelay = new PartnerDelay();
     private AdminAlerts adminAlerts = new AdminAlerts();
+    private Matching matching = new Matching();
 
     private List<ZoneConfig> zones = new ArrayList<>();
 
@@ -143,6 +144,27 @@ public class DispatchProperties {
         private String topic;
         private String hrTopic;
         private String reliabilityTopic;
+    }
+
+    @Data
+    public static class Matching {
+        private double infiniteCost = 1_000_000.0;
+        private double availabilityUnavailablePenalty = 80.0;
+        private double availabilityOnMissionPenalty = 20.0;
+        private double performanceMissingRatingPenalty = 10.0;
+        private double performanceBelowThreshold = 4.0;
+        private double performancePenaltyPerPoint = 30.0;
+        private double routeAlignmentBonusFactor = 20.0;
+        private Eta eta = new Eta();
+
+        @Data
+        public static class Eta {
+            private double defaultSpeedKmh = 20.0;
+            private double motorcycleSpeedKmh = 25.0;
+            private double bikeSpeedKmh = 15.0;
+            private double motorTricycleSpeedKmh = 22.0;
+            private double carSpeedKmh = 28.0;
+        }
     }
 
     @Data

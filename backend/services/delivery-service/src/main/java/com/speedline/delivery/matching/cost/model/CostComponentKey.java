@@ -1,0 +1,15 @@
+package com.speedline.delivery.matching.cost.model;
+
+public enum CostComponentKey {
+    ETA_TOTAL_ESTIMATED,
+    COURIER_TYPE,
+    AVAILABILITY,
+    ROUTE_ALIGNMENT,
+    TOUR_COMPATIBILITY,
+    PERFORMANCE_RATING,
+    GUARANTEED_DEADLINE,
+    RECENT_REFUSAL,
+    WORKLOAD_FAIRNESS,
+    MERCHANT_KNOWLEDGE,
+    VEHICLE_COMPATIBILITY
+}
