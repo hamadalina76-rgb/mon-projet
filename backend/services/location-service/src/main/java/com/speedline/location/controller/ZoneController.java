@@ -124,9 +124,10 @@ public class ZoneController {
     }
 
     /**
-     * Activer/Désactiver une zone
+     * Activer/Désactiver une zone.
+     * PUT et PATCH sont supportés : les clients Feign (HTTP par défaut) utilisent souvent PUT car PATCH peut être indisponible.
      */
-    @PatchMapping("/{id}/status")
+    @RequestMapping(value = "/{id}/status", method = {RequestMethod.PATCH, RequestMethod.PUT})
     public ResponseEntity<ZoneDTO> setActiveStatus(
             @PathVariable Long id,
             @RequestBody Map<String, Boolean> request) {

@@ -55,6 +55,7 @@ public class DispatchCycleService {
     private final CourierResponseTimeoutTracker responseTimeoutTracker;
     private final DeliveryEventProducer deliveryEventProducer;
     private final DispatchMetrics dispatchMetrics;
+    private final DispatchRealtimePublisher dispatchRealtimePublisher;
     private final StringRedisTemplate redisTemplate;
 
     public void runCycle(Long zoneId) {
@@ -78,6 +79,7 @@ public class DispatchCycleService {
             if (pendingOrders.isEmpty()) {
                 dispatchMetrics.recordCycle(zoneId, 0, 0, 0, 0, Duration.between(start, Instant.now()),
                         pendingOrderRedisRepository.countByZone(zoneId));
+                dispatchRealtimePublisher.publishZoneCycle(zoneId, 0, 0, 0, 0);
                 return;
             }
 
@@ -99,6 +101,7 @@ public class DispatchCycleService {
             if (couriers.isEmpty()) {
                 dispatchMetrics.recordCycle(zoneId, pendingOrders.size(), 0, 0, pendingOrders.size(),
                         Duration.between(start, Instant.now()), pendingOrderRedisRepository.countByZone(zoneId));
+                dispatchRealtimePublisher.publishZoneCycle(zoneId, pendingOrders.size(), 0, 0, pendingOrders.size());
                 return;
             }
 
@@ -159,6 +162,7 @@ public class DispatchCycleService {
                     unmatched,
                     Duration.between(start, Instant.now()),
                     pendingOrderRedisRepository.countByZone(zoneId));
+            dispatchRealtimePublisher.publishZoneCycle(zoneId, pendingOrders.size(), couriers.size(), assigned, unmatched);
         } catch (Exception ex) {
             dispatchMetrics.recordError(zoneId, ex.getClass().getSimpleName());
             log.error("Dispatch cycle failed zoneId={}: {}", zoneId, ex.getMessage(), ex);

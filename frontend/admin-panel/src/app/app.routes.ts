@@ -54,6 +54,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'dispatch',
+        canActivate: [permissionGuard],
+        data: { permissions: [PERMISSIONS.DELIVERY_VIEW] },
+        loadChildren: () =>
+          import('./features/dispatch/dispatch.routes').then((m) => m.DISPATCH_ROUTES),
+      },
+      {
         path: 'orders',
         canActivate: [permissionGuard],
         data: { permissions: [PERMISSIONS.ORDERS_VIEW] },

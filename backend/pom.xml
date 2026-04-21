@@ -51,6 +51,7 @@
         <module>services/promotion-service</module>
         <module>services/review-service</module>
         <module>services/support-service</module>
+        <module>performance/gatling</module>
     </modules>
 
     <dependencyManagement>

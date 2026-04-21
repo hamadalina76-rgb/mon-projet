@@ -48,6 +48,8 @@ class DispatchCyclePerformanceTest {
     @Mock
     private DispatchMetrics dispatchMetrics;
     @Mock
+    private DispatchRealtimePublisher dispatchRealtimePublisher;
+    @Mock
     private StringRedisTemplate redisTemplate;
     @Mock
     private ValueOperations<String, String> valueOperations;
@@ -88,6 +90,7 @@ class DispatchCyclePerformanceTest {
                 responseTimeoutTracker,
                 deliveryEventProducer,
                 dispatchMetrics,
+                dispatchRealtimePublisher,
                 redisTemplate);
 
             when(preAssignmentCalculator.enrichPreAssignable(anyList(), any(), any())).thenAnswer(inv -> inv.getArgument(0));

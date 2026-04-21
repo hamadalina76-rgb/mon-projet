@@ -90,4 +90,16 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 
     @Query("SELECT SUM(d.actualDistance) FROM Delivery d WHERE d.courierId = :courierId AND d.status = 'DELIVERED'")
     BigDecimal getTotalDistanceByCourier(@Param("courierId") Long courierId);
+
+    Long countByStatusAndDeliveredAtAfter(DeliveryStatus status, LocalDateTime deliveredAfter);
+
+    Long countByDeliveredAtIsNotNull();
+
+    Long countByStatus(DeliveryStatus status);
+
+    @Query(
+            value = "SELECT AVG(EXTRACT(EPOCH FROM (assigned_at - created_at))) FROM deliveries WHERE assigned_at IS NOT NULL",
+            nativeQuery = true
+    )
+    Double averageAssignmentDelaySeconds();
 }

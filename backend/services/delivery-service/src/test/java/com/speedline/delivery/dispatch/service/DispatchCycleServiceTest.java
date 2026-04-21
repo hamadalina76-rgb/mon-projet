@@ -66,6 +66,8 @@ class DispatchCycleServiceTest {
     @Mock
     private DispatchMetrics dispatchMetrics;
     @Mock
+    private DispatchRealtimePublisher dispatchRealtimePublisher;
+    @Mock
     private StringRedisTemplate redisTemplate;
     @Mock
     private ValueOperations<String, String> valueOperations;
@@ -92,6 +94,7 @@ class DispatchCycleServiceTest {
                 responseTimeoutTracker,
                 deliveryEventProducer,
                 dispatchMetrics,
+                dispatchRealtimePublisher,
                 redisTemplate);
     }
 

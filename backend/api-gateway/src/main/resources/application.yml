@@ -172,12 +172,27 @@ spring:
           predicates:
             - Path=/ws/location,/ws/tracking/**
 
+        # Delivery Service - WebSocket STOMP dispatch dashboard (DISP-105)
+        - id: delivery-service-dispatch-ws
+          uri: lb:ws://delivery-service
+          predicates:
+            - Path=/ws/dispatch,/ws/dispatch/**
+
         # Delivery Service - REST tracking (position from Redis)
         - id: delivery-service-tracking
           uri: lb://delivery-service
           predicates:
             - Path=/api/v1/tracking/**,/api/v1/docs/tracking-websocket
           filters:
+            - AuthenticationFilter
+
+        # Delivery Service - Dispatch dashboard/admin APIs (DISP-105)
+        - id: delivery-service-dispatch
+          uri: lb://delivery-service
+          predicates:
+            - Path=/api/v1/dispatch/**
+          filters:
+            - StripPrefix=2
             - AuthenticationFilter
 
         # Payment Service

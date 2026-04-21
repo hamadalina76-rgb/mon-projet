@@ -175,7 +175,7 @@ export class LoginComponent implements OnInit {
       { permission: 'dashboard:view', route: '/dashboard' },
       { permission: 'orders:view', route: '/orders' },
       { permission: 'partners:view', route: '/partners' },
-      { permission: 'delivery:view', route: '/delivery' },
+      { permission: 'delivery:view', route: '/dispatch' },
       { permission: 'users:view', route: '/users/couriers' },
       { permission: 'admins:view', route: '/users/admins' },
       { permission: 'payments:view', route: '/payments' },
