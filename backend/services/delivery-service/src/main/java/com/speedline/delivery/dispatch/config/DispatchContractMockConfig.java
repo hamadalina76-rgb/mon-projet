@@ -15,8 +15,8 @@ public class DispatchContractMockConfig {
 
     @Bean
     @ConditionalOnMissingBean(CostFunction.class)
-    public CostFunction costFunction() {
-        return new MockCostFunction();
+    public CostFunction costFunction(DispatchProperties properties) {
+        return new MockCostFunction(properties.getPreAssignment().getCostPenalty());
     }
 
     @Bean

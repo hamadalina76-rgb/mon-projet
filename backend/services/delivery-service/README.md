@@ -153,5 +153,17 @@ Tu dois voir la position et `isOnline=true` avec un TTL proche de 30s.
 1. Envoyer quelques `POSITION_UPDATE`.
 2. Arrêter les envois ou fermer le WebSocket livreur.
 3. Attendre > 30s.
-4. Vérifier que les clés `courier:{courierId}:position` et `…:isOnline` ont expiré dans Redis → le livreur est hors ligne.
+
+4. Vérifier que les clés `courier:{courierId}:position` et `courier:{courierId}:isOnline` ont expiré dans Redis → le livreur est hors ligne.
+
+### 5. Pré-requis Redis pour DISP-103
+
+Le filtrage interne/externe et la pré-assignation de DISP-103 s’appuient sur des clés Redis écrites par `location-service`.
+
+- `courier:{id}:type` : `INTERNAL` ou `EXTERNAL`
+- `courier:{id}:shiftStart` / `courier:{id}:shiftEnd` : heure ISO `HH:mm`
+- `courier:{id}:vehicleType` : type de véhicule
+- `courier:{id}:currentDelivery:etaFinish` : `Instant` ISO-8601 pour la pré-assignation
+
+Si ces clés sont absentes, le moteur de dispatch applique des valeurs sûres par défaut, mais la priorisation DISP-103 ne peut pas être validée complètement sans elles.
 

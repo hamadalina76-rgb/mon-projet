@@ -5,11 +5,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.time.LocalTime;
 
 /**
  * Shared courier input object for dispatching contract.
- * Contract-Version: 1.0
+ * Contract-Version: 1.1
  */
 @Data
 @Builder
@@ -33,4 +34,7 @@ public class AvailableCourier {
 
     private LocalTime shiftStart;
     private LocalTime shiftEnd;
+
+    /** DISP-103 — wall-clock instant when a PRE_ASSIGNABLE courier becomes free. */
+    private Instant availableFromInstant;
 }

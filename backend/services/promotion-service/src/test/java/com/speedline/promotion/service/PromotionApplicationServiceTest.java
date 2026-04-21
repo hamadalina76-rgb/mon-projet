@@ -11,6 +11,7 @@ import com.speedline.promotion.event.PromotionEventPublisher;
 import com.speedline.promotion.exception.PromotionException;
 import com.speedline.promotion.repository.PromotionRepository;
 import com.speedline.promotion.repository.PromotionRuleRepository;
+import com.speedline.promotion.repository.PromotionAuditLogRepository;
 import com.speedline.promotion.repository.PromotionUsageLogRepository;
 import com.speedline.promotion.repository.UserPromotionRepository;
 import com.speedline.promotion.service.impl.PromotionServiceImpl;
@@ -41,6 +42,7 @@ class PromotionApplicationServiceTest {
     @Mock private PromotionRepository promotionRepository;
     @Mock private PromotionRuleRepository ruleRepository;
     @Mock private PromotionUsageLogRepository usageLogRepository;
+    @Mock private PromotionAuditLogRepository auditLogRepository;
     @Mock private UserPromotionRepository userPromotionRepository;
     @Mock private PromotionEventPublisher eventPublisher;
     @Mock private ValidationChain validationChain;
@@ -56,6 +58,7 @@ class PromotionApplicationServiceTest {
                 promotionRepository,
                 ruleRepository,
                 usageLogRepository,
+            auditLogRepository,
                 userPromotionRepository,
                 eventPublisher,
                 new ObjectMapper(),

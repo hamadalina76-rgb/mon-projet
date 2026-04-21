@@ -56,6 +56,12 @@ class DispatchCycleServiceTest {
     @Mock
     private BundlingEngine bundlingEngine;
     @Mock
+    private PreAssignmentCalculator preAssignmentCalculator;
+    @Mock
+    private EligibilityFilter eligibilityFilter;
+    @Mock
+    private CourierResponseTimeoutTracker responseTimeoutTracker;
+    @Mock
     private DeliveryEventProducer deliveryEventProducer;
     @Mock
     private DispatchMetrics dispatchMetrics;
@@ -81,6 +87,9 @@ class DispatchCycleServiceTest {
                 costFunction,
                 dispatchSolver,
                 bundlingEngine,
+                preAssignmentCalculator,
+                eligibilityFilter,
+                responseTimeoutTracker,
                 deliveryEventProducer,
                 dispatchMetrics,
                 redisTemplate);
@@ -101,7 +110,7 @@ class DispatchCycleServiceTest {
                 assignment(1L, 100L), assignment(2L, 101L), assignment(3L, 102L));
 
         when(pendingOrderRedisRepository.findByZone(1L)).thenReturn(orders);
-        when(courierAvailabilityService.findAvailableByZone(1L)).thenReturn(couriers);
+        when(courierAvailabilityService.findOnlineByZone(1L)).thenReturn(couriers);
         when(dispatchSolver.solve(any())).thenReturn(assignments);
         when(pendingOrderRedisRepository.countByZone(1L)).thenReturn(2L);
 
@@ -128,7 +137,7 @@ class DispatchCycleServiceTest {
         stubCycleDefaults();
         when(zoneConfig.getMode(1L)).thenReturn(DispatchMode.SEMI_AUTO);
         when(pendingOrderRedisRepository.findByZone(1L)).thenReturn(List.of(order(1L)));
-        when(courierAvailabilityService.findAvailableByZone(1L)).thenReturn(List.of(courier(100L)));
+        when(courierAvailabilityService.findOnlineByZone(1L)).thenReturn(List.of(courier(100L)));
         when(dispatchSolver.solve(any())).thenReturn(List.of(assignment(1L, 100L)));
         when(pendingOrderRedisRepository.countByZone(1L)).thenReturn(0L);
 
@@ -156,7 +165,7 @@ class DispatchCycleServiceTest {
         stubCycleDefaults();
         when(zoneConfig.getMaxCapacity(1L)).thenReturn(2);
         when(pendingOrderRedisRepository.findByZone(1L)).thenReturn(List.of(order(1L), order(2L), order(3L), order(4L), order(5L)));
-        when(courierAvailabilityService.findAvailableByZone(1L)).thenReturn(List.of(courier(100L), courier(101L), courier(102L)));
+        when(courierAvailabilityService.findOnlineByZone(1L)).thenReturn(List.of(courier(100L), courier(101L), courier(102L)));
         when(dispatchSolver.solve(any())).thenReturn(List.of());
         when(pendingOrderRedisRepository.countByZone(1L)).thenReturn(5L);
 
@@ -209,6 +218,8 @@ class DispatchCycleServiceTest {
         when(redisTemplate.execute(any(), anyList(), anyString())).thenReturn(1L);
         when(zoneConfig.getMode(anyLong())).thenReturn(DispatchMode.AUTO);
         when(zoneConfig.getMaxCapacity(anyLong())).thenReturn(50);
+        when(preAssignmentCalculator.enrichPreAssignable(anyList(), anyLong(), any())).thenAnswer(inv -> inv.getArgument(0));
+        when(eligibilityFilter.selectPool(anyList(), anyList(), anyLong(), any())).thenAnswer(inv -> inv.getArgument(1));
         when(costFunction.calculate(any(), any())).thenReturn(CostResult.builder()
                 .feasible(true)
                 .totalCost(5.0)

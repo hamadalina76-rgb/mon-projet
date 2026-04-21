@@ -70,6 +70,34 @@ public class DispatchMetrics {
                 .increment();
     }
 
+    public void recordEligibilityPhase1Only(Long zoneId) {
+        Counter.builder("dispatch.eligibility.phase1.only")
+                .tags(zoneTags(zoneId))
+                .register(registry)
+                .increment();
+    }
+
+    public void recordEligibilityPhase2Triggered(Long zoneId, String reason) {
+        Counter.builder("dispatch.eligibility.phase2.triggered")
+                .tags(zoneTags(zoneId).and("reason", reason == null || reason.isBlank() ? "unknown" : reason))
+                .register(registry)
+                .increment();
+    }
+
+    public void recordResponseTimeout(String courierType) {
+        Counter.builder("dispatch.response.timeout")
+                .tags(Tags.of("courierType", courierType == null || courierType.isBlank() ? "UNKNOWN" : courierType))
+                .register(registry)
+                .increment();
+    }
+
+    public void recordRefusalEscalation(String escalationType) {
+        Counter.builder("dispatch.refusal.escalation")
+                .tags(Tags.of("escalationType", escalationType == null || escalationType.isBlank() ? "UNKNOWN" : escalationType))
+                .register(registry)
+                .increment();
+    }
+
     private AtomicReference<Double> gaugeMatchRate(Long zoneId) {
         return matchRateByZone.computeIfAbsent(zoneId, id -> {
             AtomicReference<Double> ref = new AtomicReference<>(0.0d);

@@ -2,6 +2,8 @@ package com.speedline.delivery.event.producer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spring.pubsub.core.PubSubTemplate;
+import com.speedline.delivery.dispatch.event.CourierInactivityAlertEvent;
+import com.speedline.delivery.dispatch.event.CourierRefusalEscalationEvent;
 import com.speedline.delivery.dispatch.event.DispatchAssignedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,27 +37,51 @@ public class DeliveryEventProducer {
     @Value("${dispatch.events.topic:dispatch-events}")
     private String dispatchEventsTopic;
 
+    @Value("${dispatch.admin-alerts.topic:admin-alerts}")
+    private String adminAlertsTopic;
+
+    @Value("${dispatch.admin-alerts.hr-topic:hr-notifications}")
+    private String hrNotificationsTopic;
+
+    @Value("${dispatch.admin-alerts.reliability-topic:courier-reliability-events}")
+    private String reliabilityTopic;
+
     public void publishAssigned(DispatchAssignedEvent event) {
         if (event == null) return;
-        publish(event.getEventType(), event.getOrderId(), event);
+        publish(dispatchEventsTopic, event.getEventType(), event.getOrderId(), event);
     }
 
-    private void publish(String eventName, Long orderId, Object payload) {
+    public void publishRefusalEscalation(CourierRefusalEscalationEvent event) {
+        if (event == null) return;
+        String topic = switch (String.valueOf(event.getEscalationType())) {
+            case "HR" -> hrNotificationsTopic;
+            case "SCORE_DEGRADATION" -> reliabilityTopic;
+            default -> adminAlertsTopic;
+        };
+        publish(topic, event.getEventType(), event.getOrderId(), event);
+    }
+
+    public void publishInactivityAlert(CourierInactivityAlertEvent event) {
+        if (event == null) return;
+        publish(adminAlertsTopic, event.getEventType(), null, event);
+    }
+
+    private void publish(String topic, String eventName, Long orderId, Object payload) {
         final PubSubTemplate pubSubTemplate = pubSubTemplateProvider.getIfAvailable();
         if (pubSubTemplate == null) {
-            log.warn("PubSubTemplate absent — {} non publié orderId={}. En local: PUBSUB_EMULATOR_HOST=localhost:8090.",
-                    eventName, orderId);
+            log.warn("PubSubTemplate absent — {} non publié topic={} orderId={}. En local: PUBSUB_EMULATOR_HOST=localhost:8090.",
+                    eventName, topic, orderId);
             return;
         }
         try {
             final String json = objectMapper.writeValueAsString(payload);
-            final String messageId = pubSubTemplate.publish(dispatchEventsTopic, json)
+            final String messageId = pubSubTemplate.publish(topic, json)
                     .get(PUBLISH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             log.info("{} published topic={} messageId={} orderId={}",
-                    eventName, dispatchEventsTopic, messageId, orderId);
+                    eventName, topic, messageId, orderId);
         } catch (Exception ex) {
             log.warn("Impossible de publier {} sur topic={} orderId={}",
-                    eventName, dispatchEventsTopic, orderId, ex);
+                    eventName, topic, orderId, ex);
         }
     }
 }

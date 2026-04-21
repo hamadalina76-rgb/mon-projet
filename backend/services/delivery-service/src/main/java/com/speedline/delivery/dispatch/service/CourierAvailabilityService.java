@@ -12,6 +12,7 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -42,12 +43,25 @@ public class CourierAvailabilityService {
     private static final String ONLINE_SUFFIX = ":isOnline";
     private static final String ZONE_SUFFIX = ":zone";
     private static final String STATUS_SUFFIX = ":status";
+    private static final String TYPE_SUFFIX = ":type";
+    private static final String SHIFT_START_SUFFIX = ":shiftStart";
+    private static final String SHIFT_END_SUFFIX = ":shiftEnd";
+    private static final String VEHICLE_TYPE_SUFFIX = ":vehicleType";
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
     /** Return all couriers available to dispatch for the given zone (IDLE or PRE_ASSIGNABLE, online). */
     public List<AvailableCourier> findAvailableByZone(Long zoneId) {
+        return findByZone(zoneId, false);
+    }
+
+    /** Return online couriers (including ON_DELIVERY) for advanced DISP-103 preprocessing. */
+    public List<AvailableCourier> findOnlineByZone(Long zoneId) {
+        return findByZone(zoneId, true);
+    }
+
+    private List<AvailableCourier> findByZone(Long zoneId, boolean includeOnDelivery) {
         if (zoneId == null) return List.of();
 
         Set<String> courierIds = readZoneIndex(zoneId);
@@ -58,7 +72,7 @@ public class CourierAvailabilityService {
 
         final List<AvailableCourier> out = new ArrayList<>(courierIds.size());
         for (String courierId : courierIds) {
-            AvailableCourier c = toAvailableCourier(courierId, zoneId);
+            AvailableCourier c = toAvailableCourier(courierId, zoneId, includeOnDelivery);
             if (c != null) out.add(c);
         }
         return out;
@@ -87,7 +101,7 @@ public class CourierAvailabilityService {
         return ids;
     }
 
-    private AvailableCourier toAvailableCourier(String courierId, Long requestedZoneId) {
+    private AvailableCourier toAvailableCourier(String courierId, Long requestedZoneId, boolean includeOnDelivery) {
         if (!"true".equalsIgnoreCase(redisTemplate.opsForValue().get(COURIER_PREFIX + courierId + ONLINE_SUFFIX))) {
             return null;
         }
@@ -97,7 +111,7 @@ public class CourierAvailabilityService {
         }
 
         final CourierStatus status = readStatus(courierId);
-        if (status == CourierStatus.ON_DELIVERY) {
+        if (!includeOnDelivery && status == CourierStatus.ON_DELIVERY) {
             return null;
         }
 
@@ -116,16 +130,25 @@ public class CourierAvailabilityService {
             }
         }
 
+        CourierType type = readType(courierId);
+        LocalTime shiftStart = readTime(courierId, SHIFT_START_SUFFIX);
+        LocalTime shiftEnd = readTime(courierId, SHIFT_END_SUFFIX);
+        String vehicleType = readVehicleType(courierId);
+        int maxCapacity = capacityFromVehicleType(vehicleType);
+
         return AvailableCourier.builder()
                 .id(id)
                 .zoneId(requestedZoneId)
-                .type(CourierType.INTERNAL)
+            .type(type)
                 .status(status)
                 .lat(lat)
                 .lon(lon)
+            .vehicleType(vehicleType)
                 .rating(5.0)
                 .currentLoad(0)
-                .maxCapacity(1)
+            .maxCapacity(maxCapacity)
+            .shiftStart(shiftStart)
+            .shiftEnd(shiftEnd)
                 .build();
     }
 
@@ -141,5 +164,39 @@ public class CourierAvailabilityService {
 
     private static Long parseLongOrNull(String s) {
         try { return Long.parseLong(s); } catch (NumberFormatException e) { return null; }
+    }
+
+    private CourierType readType(String courierId) {
+        String raw = redisTemplate.opsForValue().get(COURIER_PREFIX + courierId + TYPE_SUFFIX);
+        if (raw == null || raw.isBlank()) return CourierType.INTERNAL;
+        try {
+            return CourierType.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return CourierType.INTERNAL;
+        }
+    }
+
+    private LocalTime readTime(String courierId, String suffix) {
+        try {
+            String raw = redisTemplate.opsForValue().get(COURIER_PREFIX + courierId + suffix);
+            if (raw == null || raw.isBlank()) return null;
+            return LocalTime.parse(raw.trim());
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private String readVehicleType(String courierId) {
+        String raw = redisTemplate.opsForValue().get(COURIER_PREFIX + courierId + VEHICLE_TYPE_SUFFIX);
+        return (raw == null || raw.isBlank()) ? "BICYCLE" : raw.trim().toUpperCase();
+    }
+
+    private static int capacityFromVehicleType(String vehicleType) {
+        if (vehicleType == null) return 1;
+        return switch (vehicleType.toUpperCase()) {
+            case "MOTO" -> 2;
+            case "MOTOTRICYCLE" -> 4;
+            default -> 1;
+        };
     }
 }

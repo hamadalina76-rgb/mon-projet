@@ -23,6 +23,13 @@ public class DispatchProperties {
     private Pending pending = new Pending();
     private Enricher enricher = new Enricher();
     private Solver solver = new Solver();
+    private Eligibility eligibility = new Eligibility();
+    private PreAssignment preAssignment = new PreAssignment();
+    private Refusal refusal = new Refusal();
+    private ResponseTimeout responseTimeout = new ResponseTimeout();
+    private Inactivity inactivity = new Inactivity();
+    private CourierResponse courierResponse = new CourierResponse();
+    private AdminAlerts adminAlerts = new AdminAlerts();
 
     private List<ZoneConfig> zones = new ArrayList<>();
 
@@ -63,18 +70,65 @@ public class DispatchProperties {
     @Data
     public static class Solver {
         /** Maximum order count routed to GreedySolver (inclusive). */
-        private int greedyMaxOrders = 5;
+        private int greedyMaxOrders;
         /** Maximum order count routed to HungarianSolver (inclusive, above greedy threshold). */
-        private int hungarianMaxOrders = 10;
+        private int hungarianMaxOrders;
+        /** Sentinel value used to represent infeasible pairs in padded matrices. */
+        private double infCostPlaceholder;
 
         private OrTools ortools = new OrTools();
 
         @Data
         public static class OrTools {
-            private boolean enabled = true;
-            private String url = "http://localhost:5001";
-            private int timeoutMs = 2000;
+            private boolean enabled;
+            private String url;
+            private int timeoutMs;
         }
+    }
+
+    @Data
+    public static class Eligibility {
+        private int orderWaitingThresholdSeconds = 180;
+        private int internalShortageThreshold = 2;
+    }
+
+    @Data
+    public static class PreAssignment {
+        private int finishWindowSeconds = 180;
+        private double costPenalty = 1.2;
+    }
+
+    @Data
+    public static class Refusal {
+        private int internalWarningThreshold = 2;
+        private int internalHrThreshold = 3;
+        private int externalScoreDegradationThreshold = 5;
+        private int counterTtlHours = 24;
+        private int blacklistTtlSeconds = 300;
+    }
+
+    @Data
+    public static class ResponseTimeout {
+        private int deadlineSeconds = 45;
+        private int pollIntervalMs = 5000;
+    }
+
+    @Data
+    public static class Inactivity {
+        private int schedulerIntervalSeconds = 60;
+        private int thresholdMinutes = 15;
+    }
+
+    @Data
+    public static class CourierResponse {
+        private String refusalSubscription;
+    }
+
+    @Data
+    public static class AdminAlerts {
+        private String topic;
+        private String hrTopic;
+        private String reliabilityTopic;
     }
 
     @Data
@@ -82,6 +136,7 @@ public class DispatchProperties {
         private Long id;
         private DispatchMode mode = DispatchMode.AUTO;
         private int maxCapacity = 50;
+        private Integer internalShortageThreshold;
         /** Optional per-zone override; 0 or negative = use global {@link DispatchProperties#intervalSeconds}. */
         private int intervalOverrideSeconds = 0;
     }

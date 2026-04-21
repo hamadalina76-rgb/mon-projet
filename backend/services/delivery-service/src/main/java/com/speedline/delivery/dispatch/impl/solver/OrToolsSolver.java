@@ -26,8 +26,6 @@ import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
 public class OrToolsSolver {
 
-    private static final double INF_COST = HungarianAlgorithm.INF_COST_PLACEHOLDER;
-
     private final SolverServiceClient solverServiceClient;
     private final DispatchProperties dispatchProperties;
     private final GreedySolver greedySolver;
@@ -51,6 +49,8 @@ public class OrToolsSolver {
     }
 
     private SolveRequest toRequest(CostMatrix matrix) {
+        final double infCost = configuredInfCost();
+
         List<PendingOrder> orders = matrix.getOrders() == null ? List.of() : matrix.getOrders();
         List<AvailableCourier> couriers = matrix.getCouriers() == null ? List.of() : matrix.getCouriers();
 
@@ -91,7 +91,7 @@ public class OrToolsSolver {
             for (AvailableCourier c : couriers) {
                 CostResult cost = matrix.get(o.getId(), c.getId());
                 if (cost == null || !Boolean.TRUE.equals(cost.getFeasible()) || cost.getTotalCost() == null) {
-                    row.add(INF_COST);
+                    row.add(infCost);
                 } else {
                     row.add(cost.getTotalCost());
                 }
@@ -109,6 +109,11 @@ public class OrToolsSolver {
                 .costs(costs)
                 .timeoutMs(dispatchProperties.getSolver().getOrtools().getTimeoutMs())
                 .build();
+    }
+
+    private double configuredInfCost() {
+        double configured = dispatchProperties.getSolver().getInfCostPlaceholder();
+        return configured > 0 ? configured : HungarianAlgorithm.INF_COST_PLACEHOLDER;
     }
 
     private List<Assignment> toAssignments(SolveResponse response) {

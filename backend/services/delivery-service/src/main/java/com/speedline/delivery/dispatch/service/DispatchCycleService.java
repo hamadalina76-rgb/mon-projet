@@ -20,10 +20,13 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -47,6 +50,9 @@ public class DispatchCycleService {
     private final CostFunction costFunction;
     private final DispatchSolver dispatchSolver;
     private final BundlingEngine bundlingEngine;
+    private final PreAssignmentCalculator preAssignmentCalculator;
+    private final EligibilityFilter eligibilityFilter;
+    private final CourierResponseTimeoutTracker responseTimeoutTracker;
     private final DeliveryEventProducer deliveryEventProducer;
     private final DispatchMetrics dispatchMetrics;
     private final StringRedisTemplate redisTemplate;
@@ -80,7 +86,16 @@ public class DispatchCycleService {
                 pendingOrders = new ArrayList<>(pendingOrders.subList(0, maxCapacity));
             }
 
-            List<AvailableCourier> couriers = courierAvailabilityService.findAvailableByZone(zoneId);
+            final Map<Long, PendingOrder> orderById = new HashMap<>(pendingOrders.size());
+            for (PendingOrder order : pendingOrders) {
+                if (order != null && order.getId() != null) {
+                    orderById.put(order.getId(), order);
+                }
+            }
+
+            List<AvailableCourier> couriers = courierAvailabilityService.findOnlineByZone(zoneId);
+            couriers = preAssignmentCalculator.enrichPreAssignable(couriers, zoneId, Clock.systemUTC());
+            couriers = eligibilityFilter.selectPool(pendingOrders, couriers, zoneId, Clock.systemUTC());
             if (couriers.isEmpty()) {
                 dispatchMetrics.recordCycle(zoneId, pendingOrders.size(), 0, 0, pendingOrders.size(),
                         Duration.between(start, Instant.now()), pendingOrderRedisRepository.countByZone(zoneId));
@@ -121,6 +136,18 @@ public class DispatchCycleService {
                         .dispatchMode(mode)
                         .proposal(mode == DispatchMode.SEMI_AUTO)
                         .build());
+
+                    PendingOrder pendingOrder = orderById.get(assignment.getOrderId());
+                    responseTimeoutTracker.trackProposal(
+                        assignment.getOrderId(),
+                        assignment.getCourierId(),
+                        Duration.ofSeconds(dispatchProperties.getResponseTimeout().getDeadlineSeconds()),
+                        pendingOrder);
+
+                    redisTemplate.opsForValue().set(
+                        "courier:" + assignment.getCourierId() + ":lastAssignedAt",
+                        Instant.now().toString(),
+                        Duration.ofHours(24));
                 assigned++;
             }
 
