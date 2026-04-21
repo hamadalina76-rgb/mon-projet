@@ -55,15 +55,26 @@ resilience4j:
         slidingWindowSize: 10
         failureRateThreshold: 50
         waitDurationInOpenState: 5s
+    instances:
+      orToolsSolver:
+        baseConfig: default
   retry:
     configs:
       default:
         maxAttempts: 3
         waitDuration: 500ms
+    instances:
+      orToolsSolver:
+        maxAttempts: 2
+        waitDuration: 200ms
   timelimiter:
     configs:
       default:
         timeoutDuration: 5s
+    instances:
+      orToolsSolver:
+        timeoutDuration: 2s
+        cancelRunningFuture: true
 
 # DISP-101: dispatch loop configuration
 dispatch:
@@ -81,6 +92,13 @@ dispatch:
   enricher:
     default-zone-id: ${DISPATCH_ENRICHER_DEFAULT_ZONE_ID:1}
     default-guaranteed-delivery-minutes: ${DISPATCH_ENRICHER_DEFAULT_GUARANTEED_DELIVERY_MINUTES:30}
+  solver:
+    greedy-max-orders: ${DISPATCH_SOLVER_GREEDY_MAX_ORDERS:5}
+    hungarian-max-orders: ${DISPATCH_SOLVER_HUNGARIAN_MAX_ORDERS:10}
+    ortools:
+      url: ${DISPATCH_SOLVER_ORTOOLS_URL:http://localhost:5001}
+      timeout-ms: ${DISPATCH_SOLVER_ORTOOLS_TIMEOUT_MS:2000}
+      enabled: ${DISPATCH_SOLVER_ORTOOLS_ENABLED:true}
   zones:
     - id: 1
       mode: AUTO

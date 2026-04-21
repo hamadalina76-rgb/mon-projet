@@ -104,3 +104,8 @@ logging:
   level:
     root: INFO
     com.speedline: DEBUG
+
+dispatch:
+  solver:
+    ortools:
+      url: ${DISPATCH_SOLVER_ORTOOLS_URL:http://localhost:5001}

@@ -87,6 +87,24 @@ services:
     networks:
       - speedline-network
 
+  # Solver Service - OR-Tools (DISP-102)
+  solver-service:
+    build:
+      context: ./services/solver-service
+      dockerfile: Dockerfile
+    container_name: solver-service
+    ports:
+      - "5001:5001"
+    environment:
+      - SOLVE_DEFAULT_TIMEOUT_MS=${SOLVE_DEFAULT_TIMEOUT_MS:-2000}
+    networks:
+      - speedline-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:5001/health').raise_for_status()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 # ==================== NETWORKS ====================
 networks:
   speedline-network:

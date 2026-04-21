@@ -22,6 +22,7 @@ public class DispatchProperties {
     private Lock lock = new Lock();
     private Pending pending = new Pending();
     private Enricher enricher = new Enricher();
+    private Solver solver = new Solver();
 
     private List<ZoneConfig> zones = new ArrayList<>();
 
@@ -54,6 +55,26 @@ public class DispatchProperties {
     public static class Enricher {
         private long defaultZoneId;
         private int defaultGuaranteedDeliveryMinutes;
+    }
+
+    /**
+     * DISP-102: Solver selection + OR-Tools microservice settings.
+     */
+    @Data
+    public static class Solver {
+        /** Maximum order count routed to GreedySolver (inclusive). */
+        private int greedyMaxOrders = 5;
+        /** Maximum order count routed to HungarianSolver (inclusive, above greedy threshold). */
+        private int hungarianMaxOrders = 10;
+
+        private OrTools ortools = new OrTools();
+
+        @Data
+        public static class OrTools {
+            private boolean enabled = true;
+            private String url = "http://localhost:5001";
+            private int timeoutMs = 2000;
+        }
     }
 
     @Data
