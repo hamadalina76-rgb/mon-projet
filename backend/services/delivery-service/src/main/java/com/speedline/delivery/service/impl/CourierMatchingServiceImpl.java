@@ -3,6 +3,10 @@ package com.speedline.delivery.service.impl;
 import com.speedline.delivery.domain.Delivery;
 import com.speedline.delivery.domain.DeliveryStatus;
 import com.speedline.delivery.dto.DeliveryDTO;
+import com.speedline.delivery.matching.cost.model.CostResult;
+import com.speedline.delivery.matching.cost.model.ScoringContext;
+import com.speedline.delivery.matching.cost.service.CostFunctionService;
+import com.speedline.delivery.dispatch.config.DispatchProperties;
 import com.speedline.delivery.repository.DeliveryRepository;
 import com.speedline.delivery.service.CourierMatchingService;
 import lombok.RequiredArgsConstructor;
@@ -28,13 +32,32 @@ import java.util.Map;
 public class CourierMatchingServiceImpl implements CourierMatchingService {
 
     private final DeliveryRepository deliveryRepository;
-    // TODO: Injecter UserServiceClient / LocationServiceClient pour récupérer les livreurs et leurs positions
+    private final CostFunctionService costFunctionService;
+    private final DispatchProperties dispatchProperties;
 
     @Override
     @Transactional(readOnly = true)
     public Long findBestCourier(Long deliveryId) {
-        // TODO: Implémenter l'algorithme pour trouver le meilleur livreur
-        throw new UnsupportedOperationException("À implémenter");
+        Delivery delivery = deliveryRepository.findById(deliveryId)
+                .orElseThrow(() -> new IllegalArgumentException("Livraison introuvable: " + deliveryId));
+
+        List<Long> candidates = findAvailableCouriers(delivery.getPickupLatitude(), delivery.getPickupLongitude(), 10.0);
+        Long bestCourierId = null;
+        double bestCost = dispatchProperties.getMatching().getInfiniteCost();
+
+        for (Long candidateId : candidates) {
+            if (candidateId == null || !canCourierAcceptDelivery(candidateId)) {
+                continue;
+            }
+
+            CostResult result = calculateCostForCourier(candidateId, delivery);
+            if (!result.isEliminated() && result.getTotalCost() < bestCost) {
+                bestCost = result.getTotalCost();
+                bestCourierId = candidateId;
+            }
+        }
+
+        return bestCourierId;
     }
 
     @Override
@@ -47,8 +70,11 @@ public class CourierMatchingServiceImpl implements CourierMatchingService {
     @Override
     @Transactional
     public DeliveryDTO autoAssignCourier(Long deliveryId) {
-        // TODO: Implémenter l'assignation automatique d'un livreur
-        throw new UnsupportedOperationException("À implémenter");
+        Long courierId = findBestCourier(deliveryId);
+        if (courierId == null) {
+            throw new IllegalStateException("Aucun livreur éligible pour la livraison " + deliveryId);
+        }
+        return assignCourier(deliveryId, courierId);
     }
 
     @Override
@@ -66,8 +92,13 @@ public class CourierMatchingServiceImpl implements CourierMatchingService {
     @Override
     @Transactional(readOnly = true)
     public int calculateCourierScore(Long courierId, Long deliveryId) {
-        // TODO: Implémenter le calcul du score d'un livreur pour une livraison
-        throw new UnsupportedOperationException("À implémenter");
+        Delivery delivery = deliveryRepository.findById(deliveryId)
+                .orElseThrow(() -> new IllegalArgumentException("Livraison introuvable: " + deliveryId));
+        CostResult result = calculateCostForCourier(courierId, delivery);
+        if (result.isEliminated()) {
+            return Integer.MAX_VALUE;
+        }
+        return (int) Math.round(result.getTotalCost());
     }
 
     @Override
@@ -77,7 +108,7 @@ public class CourierMatchingServiceImpl implements CourierMatchingService {
                 .orElseThrow(() -> new IllegalArgumentException("Livraison introuvable: " + deliveryId));
 
         Long currentCourierId = delivery.getCourierId();
-        Long nextCourierId = pickNextCourier(currentCourierId);
+        Long nextCourierId = pickNextCourier(currentCourierId, delivery);
 
         if (nextCourierId == null) {
             delivery.setStatus(DeliveryStatus.PENDING);
@@ -127,7 +158,7 @@ public class CourierMatchingServiceImpl implements CourierMatchingService {
                 continue;
             }
 
-            Long replacementCourierId = pickNextCourier(courierId);
+            Long replacementCourierId = pickNextCourier(courierId, delivery);
             if (replacementCourierId == null) {
                 delivery.setStatus(DeliveryStatus.PENDING);
                 delivery.setCourierId(null);
@@ -156,17 +187,47 @@ public class CourierMatchingServiceImpl implements CourierMatchingService {
         return result;
     }
 
-    private Long pickNextCourier(Long excludedCourierId) {
+    private Long pickNextCourier(Long excludedCourierId, Delivery delivery) {
         List<Long> candidates = deliveryRepository.findReassignmentCandidateCourierIds(excludedCourierId);
+        Long bestCourierId = null;
+        double bestCost = dispatchProperties.getMatching().getInfiniteCost();
+
         for (Long candidateId : candidates) {
-            if (candidateId == null) {
+            if (candidateId == null || !canCourierAcceptDelivery(candidateId)) {
                 continue;
             }
-            if (canCourierAcceptDelivery(candidateId)) {
-                return candidateId;
+
+            CostResult result = calculateCostForCourier(candidateId, delivery);
+            if (!result.isEliminated() && result.getTotalCost() < bestCost) {
+                bestCost = result.getTotalCost();
+                bestCourierId = candidateId;
             }
         }
-        return null;
+        return bestCourierId;
+    }
+
+    private CostResult calculateCostForCourier(Long courierId, Delivery delivery) {
+        int workload = getCourierWorkload(courierId);
+        ScoringContext context = ScoringContext.builder()
+                .deliveryId(delivery.getId())
+                .orderId(delivery.getOrderId())
+                .courierId(courierId)
+                .courierLatitude(null)
+                .courierLongitude(null)
+                .pickupLatitude(delivery.getPickupLatitude())
+                .pickupLongitude(delivery.getPickupLongitude())
+                .dropoffLatitude(delivery.getDropoffLatitude())
+                .dropoffLongitude(delivery.getDropoffLongitude())
+                .courierType("INTERNAL")
+                .vehicleType("MOTORCYCLE")
+                .courierAvailable(workload == 0)
+                .courierOnMission(workload > 0)
+                .activeDeliveries(workload)
+                .guaranteedDelayMinutes(delivery.getEstimatedDuration())
+                .bulkyOrder(false)
+                .preparationMinutes(10)
+                .build();
+        return costFunctionService.calculate(context);
     }
 
     private DeliveryDTO toDTO(Delivery delivery) {
