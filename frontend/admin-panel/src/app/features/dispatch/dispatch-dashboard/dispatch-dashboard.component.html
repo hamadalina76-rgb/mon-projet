@@ -1,0 +1,331 @@
+<section
+  class="dispatch-page"
+  [attr.dir]="isRtl() ? 'rtl' : 'ltr'"
+  [class.dispatch-rtl]="isRtl()"
+>
+  <!-- ── Header ────────────────────────────────── -->
+  <header class="page-header">
+    <div class="page-header-text">
+      <h1 class="page-title">{{ 'dispatch.title' | translate }}</h1>
+      <p class="page-subtitle">{{ 'dispatch.subtitle' | translate }}</p>
+    </div>
+    <div class="page-header-bar" aria-hidden="true"></div>
+  </header>
+
+  <!-- ── KPI Cards (shared StatsCardComponent) ─── -->
+  <div class="kpi-grid">
+    @for (stat of kpiStats(); track stat.label) {
+      <app-stats-card
+        [label]="stat.label"
+        [value]="stat.value"
+        [icon]="stat.icon"
+        [color]="stat.color"
+      />
+    }
+    @if (kpiStats().length === 0) {
+      <div class="kpi-loading-row">
+        <app-loading-spinner [diameter]="24" />
+        <span>{{ 'common.loading' | translate }}</span>
+      </div>
+    }
+  </div>
+
+  <!-- ── Main grid: Map + Right panel ──────────── -->
+  <div class="content-grid">
+
+    <!-- Map -->
+    <mat-card class="map-card">
+      <div class="map-toolbar">
+        <div class="map-toolbar-title">
+          <mat-icon aria-hidden="true">location_on</mat-icon>
+          <span>{{ 'dispatch.mapLiveTitle' | translate }}</span>
+        </div>
+        <div class="map-legend" [attr.aria-label]="'dispatch.legendAria' | translate">
+          <span class="lg"><span class="dot d-int-idle"></span>{{ 'dispatch.legendInterneIdle' | translate }}</span>
+          <span class="lg"><span class="dot d-int-del"></span>{{ 'dispatch.legendInterneDelivery' | translate }}</span>
+          <span class="lg"><span class="dot d-ext-idle"></span>{{ 'dispatch.legendExterneIdle' | translate }}</span>
+          <span class="lg"><span class="dot d-ext-del"></span>{{ 'dispatch.legendExterneDelivery' | translate }}</span>
+        </div>
+      </div>
+      <div class="map-container">
+        <div id="dispatch-map"></div>
+      </div>
+    </mat-card>
+
+    <!-- Right action panel -->
+    <div class="panel-col">
+
+      <!-- Zone selector card -->
+      <mat-card class="panel-card">
+        <div class="panel-card-head">
+          <span class="picon zone-picon"><mat-icon>place</mat-icon></span>
+          <div>
+            <h3>{{ 'dispatch.zoneTitle' | translate }}</h3>
+            <p>{{ 'dispatch.zoneDesc' | translate }}</p>
+          </div>
+        </div>
+        <div class="panel-card-body">
+          <!-- Zone searchable autocomplete -->
+          <mat-form-field appearance="outline" class="full-field">
+            <mat-label>{{ 'dispatch.zoneSearchLabel' | translate }}</mat-label>
+            <mat-icon matPrefix>search</mat-icon>
+            @if (loadingZones()) {
+              <mat-spinner matSuffix diameter="18" />
+            }
+            <input
+              matInput
+              [formControl]="zoneSearchCtrl"
+              [matAutocomplete]="zoneAuto"
+              [placeholder]="'dispatch.zoneSearchPlaceholder' | translate"
+            />
+            <mat-autocomplete #zoneAuto [displayWith]="displayZone" (optionSelected)="onZoneSelected($event)">
+              @for (zone of filteredZones(); track zone.id) {
+                <mat-option [value]="zone">
+                  <div class="zone-option">
+                    <span class="zone-opt-name">{{ zone.name }}</span>
+                    <span class="zone-opt-city">{{ zone.city }}</span>
+                  </div>
+                </mat-option>
+              }
+              @if (filteredZones().length === 0 && !loadingZones()) {
+                <mat-option disabled>{{ 'dispatch.noZone' | translate }}</mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+
+          @if (selectedZone()) {
+            <!-- Active toggle -->
+            <div
+              class="zone-toggle-row"
+              [matTooltip]="'dispatch.zoneActiveTooltip' | translate"
+            >
+              <mat-slide-toggle
+                color="primary"
+                [ngModel]="zoneActive"
+                (ngModelChange)="onZoneStatusToggle($event)"
+              >
+                {{ 'dispatch.zoneActive' | translate }}
+              </mat-slide-toggle>
+              <span class="zone-type-pill">{{ selectedZone()?.type }}</span>
+            </div>
+
+            <!-- Metrics chips -->
+            @if (loadingMetrics()) {
+              <app-loading-spinner [diameter]="26" />
+            } @else {
+              @if (state().selectedZoneMetrics; as m) {
+                <div class="metrics-name" *ngIf="m.zoneName">
+                  <mat-icon>label_outline</mat-icon>{{ m.zoneName }}
+                </div>
+                <div class="metrics-chips">
+                  <div class="mchip online">
+                    <mat-icon>wifi</mat-icon>
+                    <div>
+                      <span class="mval">{{ m.onlineCouriers }}</span>
+                      <span class="mlbl">{{ 'dispatch.metricOnline' | translate }}</span>
+                    </div>
+                  </div>
+                  <div class="mchip idle">
+                    <mat-icon>hourglass_empty</mat-icon>
+                    <div>
+                      <span class="mval">{{ m.idleCouriers }}</span>
+                      <span class="mlbl">{{ 'dispatch.metricIdle' | translate }}</span>
+                    </div>
+                  </div>
+                  <div class="mchip delivery">
+                    <mat-icon>delivery_dining</mat-icon>
+                    <div>
+                      <span class="mval">{{ m.onDeliveryCouriers }}</span>
+                      <span class="mlbl">{{ 'dispatch.metricOnDelivery' | translate }}</span>
+                    </div>
+                  </div>
+                  <div class="mchip pending-chip">
+                    <mat-icon>pending_actions</mat-icon>
+                    <div>
+                      <span class="mval">{{ m.pendingOrders }}</span>
+                      <span class="mlbl">{{ 'dispatch.metricPending' | translate }}</span>
+                    </div>
+                  </div>
+                  <div class="mchip delay">
+                    <mat-icon>timer</mat-icon>
+                    <div>
+                      <span class="mval">{{ m.averageAssignmentDelaySeconds }}s</span>
+                      <span class="mlbl">{{ 'dispatch.metricAvgAssign' | translate }}</span>
+                    </div>
+                  </div>
+                </div>
+              }
+            }
+          }
+        </div>
+      </mat-card>
+
+      <!-- Manual assignment card -->
+      <mat-card class="panel-card">
+        <div class="panel-card-head">
+          <span class="picon assign-picon"><mat-icon>swap_horiz</mat-icon></span>
+          <div>
+            <h3>{{ 'dispatch.manualTitle' | translate }}</h3>
+            <p>{{ 'dispatch.manualDesc' | translate }}</p>
+          </div>
+        </div>
+        <div class="panel-card-body">
+
+          <!-- Order: select from pending list -->
+          <mat-form-field appearance="outline" class="full-field">
+            <mat-label>{{ 'dispatch.orderSelectLabel' | translate }}</mat-label>
+            <mat-icon matPrefix>receipt_long</mat-icon>
+            <mat-select [(ngModel)]="selectedOrderId">
+              @for (order of state().pendingOrders; track order.id) {
+                <mat-option [value]="order.id">
+                  <span class="order-opt">
+                    <b>#{{ order.id }}</b>
+                    @if (order.orderNumber) { <span> · {{ order.orderNumber }}</span> }
+                    @if (order.deliveryAddress) { <span class="order-addr-hint"> · {{ order.deliveryAddress }}</span> }
+                  </span>
+                </mat-option>
+              }
+              @if (state().pendingOrders.length === 0) {
+                <mat-option disabled>{{ 'dispatch.pendingEmpty' | translate }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <!-- Courier: searchable autocomplete by name -->
+          <mat-form-field appearance="outline" class="full-field">
+            <mat-label>{{ 'dispatch.courierLabel' | translate }}</mat-label>
+            <mat-icon matPrefix>delivery_dining</mat-icon>
+            <input
+              matInput
+              [formControl]="courierSearchCtrl"
+              [matAutocomplete]="courierAuto"
+              [placeholder]="'dispatch.courierSearchPlaceholder' | translate"
+            />
+            @if (selectedCourier()) {
+              <button matSuffix mat-icon-button type="button" (click)="clearCourier()" [attr.aria-label]="'common.cancel' | translate">
+                <mat-icon>close</mat-icon>
+              </button>
+            }
+            <mat-autocomplete
+              #courierAuto
+              [displayWith]="displayCourier"
+              (optionSelected)="onCourierSelected($event)"
+            >
+              @if (loadingCouriers()) {
+                <mat-option disabled>
+                  <div class="courier-loading">
+                    <mat-spinner diameter="18" />
+                    <span>{{ 'common.loading' | translate }}</span>
+                  </div>
+                </mat-option>
+              } @else {
+                @for (courier of filteredCouriers(); track courier.id) {
+                  <mat-option [value]="courier">
+                    <div class="courier-opt">
+                      <span class="courier-fullname">{{ courier.firstName }} {{ courier.lastName }}</span>
+                      <span
+                        class="courier-type-pill"
+                        [class.internal]="courier.courierType === 'INTERNAL'"
+                      >{{ courier.courierType }}</span>
+                    </div>
+                  </mat-option>
+                }
+                @if (filteredCouriers().length === 0) {
+                  <mat-option disabled>{{ 'dispatch.noCourier' | translate }}</mat-option>
+                }
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+
+          <button
+            mat-flat-button
+            color="primary"
+            class="action-btn"
+            [disabled]="!selectedOrderId || !selectedCourier()"
+            (click)="doManualAssign()"
+          >
+            <mat-icon>check_circle</mat-icon>
+            {{ 'dispatch.assignBtn' | translate }}
+          </button>
+        </div>
+      </mat-card>
+
+      <!-- Bundle card -->
+      <mat-card class="panel-card">
+        <div class="panel-card-head">
+          <span class="picon bundle-picon"><mat-icon>inventory_2</mat-icon></span>
+          <div>
+            <h3>{{ 'dispatch.bundleTitle' | translate }}</h3>
+            <p>{{ 'dispatch.bundleDesc' | translate }}</p>
+          </div>
+        </div>
+        <div class="panel-card-body">
+          <mat-form-field appearance="outline" class="full-field">
+            <mat-label>{{ 'dispatch.bundleIdsLabel' | translate }}</mat-label>
+            <mat-icon matPrefix>format_list_numbered</mat-icon>
+            <input
+              matInput
+              [(ngModel)]="bundleOrderIds"
+              [placeholder]="'dispatch.bundleIdsPlaceholder' | translate"
+            />
+          </mat-form-field>
+          <button mat-stroked-button color="primary" class="action-btn" (click)="doManualBundle()">
+            <mat-icon>add_link</mat-icon>
+            {{ 'dispatch.bundleBtn' | translate }}
+          </button>
+        </div>
+      </mat-card>
+
+    </div><!-- /panel-col -->
+  </div><!-- /content-grid -->
+
+  <!-- ── Pending orders full list ─────────────────── -->
+  <mat-card class="pending-card">
+    <div class="pending-header">
+      <div class="pending-title-row">
+        <span class="picon pending-picon"><mat-icon>schedule</mat-icon></span>
+        <div>
+          <h3>{{ 'dispatch.pendingTitle' | translate }}</h3>
+          <p>{{ 'dispatch.pendingDesc' | translate }}</p>
+        </div>
+      </div>
+      <span class="count-badge" [class.has-orders]="state().pendingOrders.length > 0">
+        {{ state().pendingOrders.length }}
+      </span>
+    </div>
+
+    @if (state().pendingOrders.length === 0) {
+      <app-empty-state
+        icon="assignment_turned_in"
+        title="dispatch.pendingEmpty"
+      />
+    } @else {
+      <div class="orders-grid">
+        @for (order of state().pendingOrders; track order.id) {
+          <div class="order-card">
+            <div class="order-card-top">
+              <span class="order-id">#{{ order.id }}</span>
+              <span class="order-status-badge">{{ 'common.pending' | translate }}</span>
+            </div>
+            @if (order.orderNumber) {
+              <div class="order-num">{{ order.orderNumber }}</div>
+            }
+            @if (order.deliveryAddress) {
+              <div class="order-info-row">
+                <mat-icon>location_on</mat-icon>
+                <span>{{ order.deliveryAddress }}</span>
+              </div>
+            }
+            @if (order.createdAt) {
+              <div class="order-info-row">
+                <mat-icon>access_time</mat-icon>
+                <span>{{ order.createdAt | date:'HH:mm' }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </mat-card>
+
+</section>

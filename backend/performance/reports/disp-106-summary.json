@@ -1,0 +1,13 @@
+{
+  "status": "PENDING_EXECUTION",
+  "simulation": "DispatchLoadSimulation",
+  "dispatchTimeMs": {
+    "p50": null,
+    "p95": null,
+    "p99": null
+  },
+  "successRatePct": null,
+  "throughputPerSec": null,
+  "ordersUnder5MinPct": null,
+  "notes": "Run Gatling then execute summarize_gatling.py to populate values."
+}

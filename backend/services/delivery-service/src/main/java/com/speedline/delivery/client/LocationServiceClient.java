@@ -3,6 +3,8 @@ package com.speedline.delivery.client;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.math.BigDecimal;
@@ -17,4 +19,7 @@ public interface LocationServiceClient {
 
         @GetMapping("/zones/{id}")
         Map<String, Object> getZoneById(@PathVariable("id") Long zoneId);
+
+        @PutMapping("/zones/{id}/status")
+        Map<String, Object> updateZoneStatus(@PathVariable("id") Long zoneId, @RequestBody Map<String, Boolean> request);
 }

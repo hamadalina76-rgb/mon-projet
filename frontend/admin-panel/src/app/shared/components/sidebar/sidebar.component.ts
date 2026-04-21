@@ -52,7 +52,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     { label: 'nav.dashboard', icon: 'dashboard', route: '/dashboard', permission: 'dashboard:view', section: 'nav.mainMenu' },
     { label: 'nav.orders', icon: 'shopping_cart', route: '/orders', permission: 'orders:view', section: 'nav.mainMenu' },
     { label: 'nav.partners', icon: 'storefront', route: '/partners', permission: 'partners:view', section: 'nav.mainMenu' },
-    { label: 'nav.delivery', icon: 'local_shipping', route: '/delivery', permission: 'delivery:view', section: 'nav.mainMenu' },
+    { label: 'nav.dispatch', icon: 'local_shipping', route: '/dispatch', permission: 'delivery:view', section: 'nav.mainMenu' },
     { label: 'nav.couriers', icon: 'delivery_dining', route: '/users/couriers', permission: 'users:view', section: 'nav.mainMenu' },
     { label: 'nav.customers', icon: 'group', route: '/users/customers', permission: 'users:view', section: 'nav.mainMenu' },
     { label: 'nav.admins', icon: 'admin_panel_settings', route: '/users/admins', permission: 'admins:view', section: 'nav.mainMenu' },
