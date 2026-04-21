@@ -4,6 +4,7 @@ import com.speedline.promotion.domain.Promotion;
 import com.speedline.promotion.domain.PromotionStatus;
 import com.speedline.promotion.domain.PromotionType;
 import com.speedline.promotion.event.PromotionEventPublisher;
+import com.speedline.promotion.repository.PromotionAuditLogRepository;
 import com.speedline.promotion.repository.PromotionRepository;
 import com.speedline.promotion.service.RedisPromotionCacheService;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +24,7 @@ import static org.mockito.Mockito.*;
 class PromotionExpirationSchedulerTest {
 
     @Mock private PromotionRepository promotionRepository;
+    @Mock private PromotionAuditLogRepository auditLogRepository;
     @Mock private RedisPromotionCacheService cacheService;
     @Mock private PromotionEventPublisher eventPublisher;
 
@@ -30,7 +32,7 @@ class PromotionExpirationSchedulerTest {
 
     @BeforeEach
     void setUp() {
-        scheduler = new PromotionExpirationScheduler(promotionRepository, cacheService, eventPublisher);
+        scheduler = new PromotionExpirationScheduler(promotionRepository, auditLogRepository, cacheService, eventPublisher);
     }
 
     @Test

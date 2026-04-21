@@ -95,10 +95,35 @@ dispatch:
   solver:
     greedy-max-orders: ${DISPATCH_SOLVER_GREEDY_MAX_ORDERS:5}
     hungarian-max-orders: ${DISPATCH_SOLVER_HUNGARIAN_MAX_ORDERS:10}
+    inf-cost-placeholder: ${DISPATCH_SOLVER_INF_COST_PLACEHOLDER:1000000000000.0}
     ortools:
       url: ${DISPATCH_SOLVER_ORTOOLS_URL:http://localhost:5001}
       timeout-ms: ${DISPATCH_SOLVER_ORTOOLS_TIMEOUT_MS:2000}
       enabled: ${DISPATCH_SOLVER_ORTOOLS_ENABLED:true}
+  eligibility:
+    order-waiting-threshold-seconds: ${DISPATCH_ELIG_WAITING_SECONDS:180}
+    internal-shortage-threshold: ${DISPATCH_ELIG_SHORTAGE:2}
+  pre-assignment:
+    finish-window-seconds: ${DISPATCH_PREASSIGN_WINDOW_SECONDS:180}
+    cost-penalty: ${DISPATCH_PREASSIGN_PENALTY:1.2}
+  refusal:
+    internal-warning-threshold: ${DISPATCH_REFUSAL_INTERNAL_WARN:2}
+    internal-hr-threshold: ${DISPATCH_REFUSAL_INTERNAL_HR:3}
+    external-score-degradation-threshold: ${DISPATCH_REFUSAL_EXTERNAL_SCORE:5}
+    counter-ttl-hours: 24
+    blacklist-ttl-seconds: 300
+  response-timeout:
+    deadline-seconds: ${DISPATCH_RESPONSE_TIMEOUT_SECONDS:45}
+    poll-interval-ms: 5000
+  inactivity:
+    scheduler-interval-seconds: 60
+    threshold-minutes: ${DISPATCH_INACTIVITY_THRESHOLD_MIN:15}
+  courier-response:
+    refusal-subscription: ${DISPATCH_COURIER_REFUSED_SUB:courier-order-refused-delivery-sub}
+  admin-alerts:
+    topic: ${DISPATCH_ADMIN_ALERTS_TOPIC:admin-alerts}
+    hr-topic: ${DISPATCH_HR_NOTIFICATIONS_TOPIC:hr-notifications}
+    reliability-topic: ${DISPATCH_RELIABILITY_EVENTS_TOPIC:courier-reliability-events}
   zones:
     - id: 1
       mode: AUTO

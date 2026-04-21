@@ -37,6 +37,9 @@ class SolverSelectorTest {
         DispatchProperties.Solver solver = new DispatchProperties.Solver();
         solver.setGreedyMaxOrders(5);
         solver.setHungarianMaxOrders(10);
+        DispatchProperties.Solver.OrTools orTools = new DispatchProperties.Solver.OrTools();
+        orTools.setEnabled(true);
+        solver.setOrtools(orTools);
         properties.setSolver(solver);
 
         selector = new SolverSelector(properties, greedySolver, hungarianSolver, orToolsSolver);

@@ -17,7 +17,15 @@ import java.util.List;
 @Slf4j
 public class HungarianSolver implements DispatchSolver {
 
-    private static final double INF = HungarianAlgorithm.INF_COST_PLACEHOLDER;
+    private final double infCost;
+
+    public HungarianSolver() {
+        this(HungarianAlgorithm.INF_COST_PLACEHOLDER);
+    }
+
+    public HungarianSolver(double infCost) {
+        this.infCost = infCost > 0 ? infCost : HungarianAlgorithm.INF_COST_PLACEHOLDER;
+    }
 
     @Override
     public List<Assignment> solve(CostMatrix matrix) {
@@ -36,7 +44,7 @@ public class HungarianSolver implements DispatchSolver {
 
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
-                costs[i][j] = INF;
+                costs[i][j] = infCost;
             }
         }
 
@@ -46,7 +54,7 @@ public class HungarianSolver implements DispatchSolver {
                 AvailableCourier courier = couriers.get(j);
                 CostResult c = matrix.get(order.getId(), courier.getId());
                 if (c == null || !Boolean.TRUE.equals(c.getFeasible()) || c.getTotalCost() == null) {
-                    costs[i][j] = INF;
+                    costs[i][j] = infCost;
                 } else {
                     costs[i][j] = c.getTotalCost();
                 }
@@ -61,7 +69,7 @@ public class HungarianSolver implements DispatchSolver {
             if (col < 0 || col >= couriers.size()) {
                 continue;
             }
-            if (costs[i][col] >= INF / 2) {
+            if (costs[i][col] >= infCost / 2) {
                 continue;
             }
 

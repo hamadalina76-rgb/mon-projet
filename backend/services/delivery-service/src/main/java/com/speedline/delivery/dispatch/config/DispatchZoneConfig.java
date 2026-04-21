@@ -41,4 +41,11 @@ public class DispatchZoneConfig {
     public int getMaxCapacity(Long zoneId) {
         return findById(zoneId).map(DispatchProperties.ZoneConfig::getMaxCapacity).orElse(50);
     }
+
+    public int getInternalShortageThreshold(Long zoneId) {
+        return findById(zoneId)
+                .map(DispatchProperties.ZoneConfig::getInternalShortageThreshold)
+                .filter(v -> v != null && v > 0)
+                .orElse(properties.getEligibility().getInternalShortageThreshold());
+    }
 }

@@ -51,6 +51,12 @@ class DispatchCyclePerformanceTest {
     private StringRedisTemplate redisTemplate;
     @Mock
     private ValueOperations<String, String> valueOperations;
+    @Mock
+    private PreAssignmentCalculator preAssignmentCalculator;
+    @Mock
+    private EligibilityFilter eligibilityFilter;
+    @Mock
+    private CourierResponseTimeoutTracker responseTimeoutTracker;
 
     private DispatchCycleService service;
 
@@ -77,15 +83,21 @@ class DispatchCyclePerformanceTest {
                 costFunction,
                 dispatchSolver,
                 bundlingEngine,
+                preAssignmentCalculator,
+                eligibilityFilter,
+                responseTimeoutTracker,
                 deliveryEventProducer,
                 dispatchMetrics,
                 redisTemplate);
+
+            when(preAssignmentCalculator.enrichPreAssignable(anyList(), any(), any())).thenAnswer(inv -> inv.getArgument(0));
+            when(eligibilityFilter.selectPool(anyList(), anyList(), any(), any())).thenAnswer(inv -> inv.getArgument(1));
     }
 
     @Test
     void hundredOrdersFiftyCouriers_cycleUnderThreeSeconds() {
         when(pendingOrderRedisRepository.findByZone(1L)).thenReturn(buildOrders(100));
-        when(courierAvailabilityService.findAvailableByZone(1L)).thenReturn(buildCouriers(50));
+        when(courierAvailabilityService.findOnlineByZone(1L)).thenReturn(buildCouriers(50));
         when(pendingOrderRedisRepository.countByZone(1L)).thenReturn(0L);
 
         assertTimeoutPreemptively(Duration.ofSeconds(3), () -> service.runCycle(1L));

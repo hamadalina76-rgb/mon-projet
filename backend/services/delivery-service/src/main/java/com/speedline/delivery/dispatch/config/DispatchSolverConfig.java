@@ -16,8 +16,8 @@ public class DispatchSolverConfig {
     }
 
     @Bean
-    public HungarianSolver hungarianSolver() {
-        return new HungarianSolver();
+    public HungarianSolver hungarianSolver(DispatchProperties dispatchProperties) {
+        return new HungarianSolver(dispatchProperties.getSolver().getInfCostPlaceholder());
     }
 
     @Bean
