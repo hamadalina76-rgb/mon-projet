@@ -52,7 +52,11 @@ public class CostFunctionServiceImpl implements CostFunctionService {
 
     @Override
     public CostResult calculate(ScoringContext context) {
-        DispatchConfigSnapshot snapshot = dispatchConfigService.getCurrentConfig();
+        return calculate(context, dispatchConfigService.getCurrentConfig());
+    }
+
+    @Override
+    public CostResult calculate(ScoringContext context, DispatchConfigSnapshot snapshot) {
         ETAEstimation eta = etaEstimator.estimate(context);
 
         CostResult.CostResultBuilder builder = CostResult.builder()

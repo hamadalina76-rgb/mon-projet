@@ -35,6 +35,8 @@ public class DispatchProperties {
     private Bundling bundling = new Bundling();
     private Compensation compensation = new Compensation();
     private Matching matching = new Matching();
+    private Urgent urgent = new Urgent();
+    private ScheduledOrders scheduledOrders = new ScheduledOrders();
 
     private List<ZoneConfig> zones = new ArrayList<>();
 
@@ -197,6 +199,23 @@ public class DispatchProperties {
             private double motorTricycleSpeedKmh = 22.0;
             private double carSpeedKmh = 28.0;
         }
+    }
+
+    @Data
+    public static class Urgent {
+        private int maxDeviationMinutes = 5;
+        private double bonusAmount = 2.0;
+        private int alertIntervalSeconds = 300;
+        private double courierSpeedMps = 8.33;
+    }
+
+    @Data
+    public static class ScheduledOrders {
+        private int leadTimeMinutes = 30;
+        private int injectionIntervalSeconds = 60;
+        private int noCourierAlertLeadMinutes = 120;
+        private int noCourierAlertWindowMinutes = 5;
+        private int ttlHours = 48;
     }
 
     @Data

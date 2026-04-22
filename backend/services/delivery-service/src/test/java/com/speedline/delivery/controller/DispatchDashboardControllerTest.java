@@ -5,6 +5,7 @@ import com.speedline.delivery.dispatch.dto.DispatchDashboardKpisResponse;
 import com.speedline.delivery.dispatch.dto.ZoneStatusRequest;
 import com.speedline.delivery.dispatch.service.DispatchAdminActionService;
 import com.speedline.delivery.dispatch.service.DispatchDashboardQueryService;
+import com.speedline.delivery.dispatch.service.DispatchProposalService;
 import com.speedline.delivery.dispatch.service.DispatchRealtimePublisher;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -34,6 +35,8 @@ class DispatchDashboardControllerTest {
     private DispatchDashboardQueryService queryService;
     @MockBean
     private DispatchAdminActionService adminActionService;
+    @MockBean
+    private DispatchProposalService dispatchProposalService;
     @MockBean
     private DispatchRealtimePublisher realtimePublisher;
 

@@ -2,6 +2,8 @@ package com.speedline.delivery.dispatch.service;
 
 import com.speedline.delivery.dispatch.config.DispatchMode;
 import com.speedline.delivery.dispatch.config.DispatchProperties;
+import com.speedline.delivery.dispatch.config.runtime.RuntimeDispatchTuningService;
+import com.speedline.delivery.dispatch.config.service.DispatchCycleCaptureRecorder;
 import com.speedline.delivery.dispatch.config.DispatchZoneConfig;
 import com.speedline.delivery.dispatch.contract.engine.BundlingEngine;
 import com.speedline.delivery.dispatch.contract.engine.BundlingResult;
@@ -14,9 +16,11 @@ import com.speedline.delivery.dispatch.contract.model.AvailableCourier;
 import com.speedline.delivery.dispatch.contract.model.PendingOrder;
 import com.speedline.delivery.dispatch.engine.bundling.BundleAssignmentBatch;
 import com.speedline.delivery.dispatch.engine.bundling.BundleDispatchOrchestrator;
+import com.speedline.delivery.client.OrderServiceClient;
 import com.speedline.delivery.dispatch.event.DispatchAssignedEvent;
 import com.speedline.delivery.dispatch.metrics.DispatchMetrics;
 import com.speedline.delivery.event.producer.DeliveryEventProducer;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -32,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -54,11 +59,18 @@ public class DispatchCycleService {
     private final BundleDispatchOrchestrator bundleDispatchOrchestrator;
     private final PreAssignmentCalculator preAssignmentCalculator;
     private final EligibilityFilter eligibilityFilter;
+    private final UrgentOrderPrePassService urgentOrderPrePassService;
+    private final UrgentBonusService urgentBonusService;
     private final CourierResponseTimeoutTracker responseTimeoutTracker;
     private final DeliveryEventProducer deliveryEventProducer;
     private final DispatchMetrics dispatchMetrics;
     private final DispatchRealtimePublisher dispatchRealtimePublisher;
     private final StringRedisTemplate redisTemplate;
+    private final RuntimeDispatchTuningService runtimeDispatchTuningService;
+    private final DispatchCycleCaptureRecorder cycleCaptureRecorder;
+    private final DispatchProposalService dispatchProposalService;
+    private final DispatchDeliveryRecordService dispatchDeliveryRecordService;
+    private final OrderServiceClient orderServiceClient;
 
     public void runCycle(Long zoneId) {
         if (zoneId == null) return;
@@ -71,6 +83,9 @@ public class DispatchCycleService {
         Instant start = Instant.now();
         try {
             List<PendingOrder> pendingOrders = pendingOrderRedisRepository.findByZone(zoneId);
+            pendingOrders = pendingOrders.stream()
+                    .filter(o -> o != null && o.getId() != null && !dispatchProposalService.hasPendingProposal(o.getId()))
+                    .collect(Collectors.toCollection(ArrayList::new));
             if (pendingOrders.isEmpty()) {
                 dispatchMetrics.recordCycle(zoneId, 0, 0, 0, 0, Duration.between(start, Instant.now()),
                         pendingOrderRedisRepository.countByZone(zoneId));
@@ -93,6 +108,11 @@ public class DispatchCycleService {
             couriers = preAssignmentCalculator.enrichPreAssignable(couriers, zoneId, Clock.systemUTC());
             EligibilityPool pool = eligibilityFilter.selectPoolDetailed(pendingOrders, couriers, zoneId, Clock.systemUTC());
             couriers = pool.pool();
+            cycleCaptureRecorder.captureSnapshot(
+                    zoneId,
+                    new ArrayList<>(pendingOrders),
+                    new ArrayList<>(couriers),
+                    !pool.internalOnly().isEmpty());
             if (couriers.isEmpty()) {
                 dispatchMetrics.recordCycle(zoneId, pendingOrders.size(), 0, 0, pendingOrders.size(),
                         Duration.between(start, Instant.now()), pendingOrderRedisRepository.countByZone(zoneId));
@@ -101,9 +121,32 @@ public class DispatchCycleService {
                 return;
             }
 
+                List<AvailableCourier> allOnlineCouriers = courierAvailabilityService.findOnlineByZone(zoneId);
+                UrgentOrderPrePassService.UrgentPrePassResult urgentResult =
+                    urgentOrderPrePassService.runPrePass(pendingOrders, allOnlineCouriers, couriers, zoneId);
+                int assigned = publishAssignments(urgentResult.assignments(), mode, zoneId, orderById);
+                urgentResult.assignments().stream()
+                    .filter(a -> a != null && a.getCourierId() != null && a.getOrderId() != null)
+                    .forEach(a -> urgentBonusService.creditBonus(a.getCourierId(), a.getOrderId()));
+                if (!urgentResult.consumedOrderIds().isEmpty()) {
+                pendingOrders = pendingOrders.stream()
+                    .filter(o -> !urgentResult.consumedOrderIds().contains(o.getId()))
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+                urgentResult.consumedOrderIds().forEach(orderById::remove);
+                couriers = couriers.stream()
+                    .filter(c -> urgentResult.assignments().stream()
+                        .noneMatch(a -> a != null && c.getId().equals(a.getCourierId())))
+                    .toList();
+                }
+
             BundlingResult bundling = bundlingEngine.detectBundles(pendingOrders);
-            BundleAssignmentBatch bundleBatch = bundleDispatchOrchestrator.dispatchBundles(bundling, orderById, couriers, pool.internalOnly(), zoneId);
-            int assigned = publishAssignments(bundleBatch.assignments(), mode, zoneId, orderById);
+            BundleAssignmentBatch bundleBatch = bundleDispatchOrchestrator.dispatchBundles(
+                    bundling,
+                    orderById,
+                    couriers,
+                    pool.internalOnly(),
+                    zoneId);
+                assigned += publishAssignments(bundleBatch.assignments(), mode, zoneId, orderById);
 
             List<PendingOrder> remainingOrders = new ArrayList<>(bundleBatch.remainingOrders());
             List<AvailableCourier> remainingCouriers = new ArrayList<>(bundleBatch.remainingCouriers());
@@ -130,10 +173,34 @@ public class DispatchCycleService {
 
     private int publishAssignments(List<Assignment> assignments, DispatchMode mode, Long zoneId, Map<Long, PendingOrder> orderById) {
         if (assignments == null || assignments.isEmpty()) return 0;
+        if (mode == DispatchMode.SEMI_AUTO) {
+            int published = 0;
+            for (Assignment assignment : assignments) {
+                if (assignment == null || assignment.getOrderId() == null || assignment.getCourierId() == null) {
+                    continue;
+                }
+                if (dispatchProposalService.hasPendingProposal(assignment.getOrderId())) {
+                    continue;
+                }
+                dispatchProposalService.enqueueProposal(zoneId, assignment, orderById);
+                published++;
+            }
+            return published;
+        }
         int published = 0;
         for (Assignment assignment : assignments) {
             if (assignment == null || assignment.getOrderId() == null || assignment.getCourierId() == null) continue;
+            try {
+                orderServiceClient.assignCourierToOrder(
+                        assignment.getOrderId(), Map.of("courierId", assignment.getCourierId()));
+            } catch (FeignException e) {
+                log.warn("Auto dispatch: order-service assign failed orderId={} status={} — skipping this assignment",
+                        assignment.getOrderId(), e.status());
+                continue;
+            }
             pendingOrderRedisRepository.remove(assignment.getOrderId());
+            PendingOrder pendingForDb = orderById.get(assignment.getOrderId());
+            dispatchDeliveryRecordService.createFromAssignment(pendingForDb, assignment);
             deliveryEventProducer.publishAssigned(DispatchAssignedEvent.builder()
                     .zoneId(zoneId)
                     .orderId(assignment.getOrderId())
@@ -143,14 +210,14 @@ public class DispatchCycleService {
                     .etaPickupMin(assignment.getEtaPickupMin())
                     .etaDeliveryMin(assignment.getEtaDeliveryMin())
                     .dispatchMode(mode)
-                    .proposal(mode == DispatchMode.SEMI_AUTO)
+                    .proposal(false)
                     .build());
 
             PendingOrder pendingOrder = orderById.get(assignment.getOrderId());
             responseTimeoutTracker.trackProposal(
                     assignment.getOrderId(),
                     assignment.getCourierId(),
-                    Duration.ofSeconds(dispatchProperties.getResponseTimeout().getDeadlineSeconds()),
+                    Duration.ofSeconds(runtimeDispatchTuningService.responseTimeoutDeadlineSeconds()),
                     pendingOrder);
             redisTemplate.opsForValue().set(
                     "courier:" + assignment.getCourierId() + ":lastAssignedAt",
@@ -162,7 +229,7 @@ public class DispatchCycleService {
     }
 
     private boolean tryAcquireZoneLock(Long zoneId, String token) {
-        Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey(zoneId), token, Duration.ofSeconds(dispatchProperties.getLock().getTtlSeconds()));
+        Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey(zoneId), token, Duration.ofSeconds(runtimeDispatchTuningService.lockTtlSeconds()));
         return Boolean.TRUE.equals(acquired);
     }
 

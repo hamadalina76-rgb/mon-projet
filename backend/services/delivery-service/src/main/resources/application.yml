@@ -138,6 +138,19 @@ dispatch:
     topic: ${DISPATCH_ADMIN_ALERTS_TOPIC:admin-alerts}
     hr-topic: ${DISPATCH_HR_NOTIFICATIONS_TOPIC:hr-notifications}
     reliability-topic: ${DISPATCH_RELIABILITY_EVENTS_TOPIC:courier-reliability-events}
+  urgent:
+    max-deviation-minutes: ${DISPATCH_URGENT_MAX_DEVIATION_MINUTES:5}
+    bonus-amount: ${DISPATCH_URGENT_BONUS_AMOUNT:2.0}
+    alert-interval-seconds: ${DISPATCH_URGENT_ALERT_INTERVAL_SECONDS:300}
+    courier-speed-mps: ${DISPATCH_URGENT_COURIER_SPEED_MPS:8.33}
+  scheduled-orders:
+    lead-time-minutes: ${DISPATCH_SCHEDULED_LEAD_TIME_MINUTES:30}
+    injection-interval-seconds: ${DISPATCH_SCHEDULED_INJECTION_INTERVAL_SECONDS:60}
+    no-courier-alert-lead-minutes: ${DISPATCH_SCHEDULED_NO_COURIER_ALERT_LEAD_MINUTES:120}
+    no-courier-alert-window-minutes: ${DISPATCH_SCHEDULED_NO_COURIER_ALERT_WINDOW_MINUTES:5}
+    ttl-hours: ${DISPATCH_SCHEDULED_TTL_HOURS:48}
+  partner-notifications:
+    topic: ${DISPATCH_PARTNER_NOTIFICATIONS_TOPIC:partner-notifications}
   bundling:
     enabled: ${DISPATCH_BUNDLING_ENABLED:true}
     max-bundle-size: ${DISPATCH_BUNDLING_MAX_BUNDLE_SIZE:4}

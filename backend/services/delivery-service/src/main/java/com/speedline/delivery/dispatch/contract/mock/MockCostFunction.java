@@ -26,7 +26,7 @@ public class MockCostFunction implements CostFunction {
     @Override
     public CostResult calculate(PendingOrder order, AvailableCourier courier) {
         double score = 10.0;
-        if (Boolean.TRUE.equals(order.getIsUrgent())) score -= 1.0;
+        if (Boolean.TRUE.equals(order.getIsUrgent())) score -= 80.0;
         if (courier.getRating() != null) score -= Math.min(2.0, courier.getRating() / 3.0);
 
         int etaPickupMin = 10;

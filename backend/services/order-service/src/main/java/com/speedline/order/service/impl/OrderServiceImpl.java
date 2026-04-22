@@ -339,6 +339,12 @@ public class OrderServiceImpl implements OrderService {
 
     // ==================== ASSIGNATION LIVREUR ====================
 
+    /**
+     * Pre-assignation "Jarvis-style" : un livreur peut etre affecte des que la commande
+     * existe (PENDING/CONFIRMED/PREPARING) et roule vers le partenaire pendant la
+     * preparation, pour converger avec le READY_FOR_PICKUP. Refus uniquement si la
+     * commande est deja recuperee, annulee ou livree.
+     */
     @Override
     @Transactional
     public OrderResponse assignCourier(Long orderId, Long courierId) {
@@ -347,11 +353,20 @@ public class OrderServiceImpl implements OrderService {
         }
 
         final Order order = getOrderOrThrow(orderId);
-        if (order.getStatus() != OrderStatus.READY_FOR_PICKUP) {
+        final OrderStatus status = order.getStatus();
+        switch (status) {
+            case PICKED_UP, IN_DELIVERY, DELIVERED, CANCELLED -> throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Impossible d'assigner un livreur sur une commande au statut " + status);
+            default -> {
+                // PENDING, CONFIRMED, PREPARING, READY_FOR_PICKUP acceptes (pre-assignation).
+            }
+        }
+
+        if (order.getCourierId() != null && !courierId.equals(order.getCourierId())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Un livreur ne peut être assigné que sur une commande READY_FOR_PICKUP"
-            );
+                    "Un livreur est deja assigne a cette commande (courierId=" + order.getCourierId() + ")");
         }
 
         order.setCourierId(courierId);
@@ -361,10 +376,10 @@ public class OrderServiceImpl implements OrderService {
                 .orderId(order.getId())
                 .previousStatus(order.getStatus())
                 .status(order.getStatus())
-                .description("Livreur assigné")
+                .description("Livreur pre-assigne (Jarvis)")
                 .updatedBy("SYSTEM")
                 .actorType("SYSTEM")
-                .notes("courierId=" + courierId)
+                .notes("courierId=" + courierId + " status=" + status)
                 .build());
 
         return toResponse(order);
@@ -1607,6 +1622,8 @@ public class OrderServiceImpl implements OrderService {
                     .status(order.getStatus())
                     .itemCount(itemCount)
                     .createdAt(order.getCreatedAt() == null ? LocalDateTime.now() : order.getCreatedAt())
+                    .deliveryLatitude(order.getDeliveryLatitude())
+                    .deliveryLongitude(order.getDeliveryLongitude())
                     .build();
 
             orderEventProducer.publishOrderCreated(event);

@@ -22,6 +22,13 @@ export const MONITORING_ROUTES: Routes = [
       ),
   },
   {
+    path: 'dispatch',
+    loadComponent: () =>
+      import('./dispatch-monitor/dispatch-monitor.component').then(
+        (m) => m.DispatchMonitorComponent
+      ),
+  },
+  {
     path: '',
     redirectTo: 'health',
     pathMatch: 'full',

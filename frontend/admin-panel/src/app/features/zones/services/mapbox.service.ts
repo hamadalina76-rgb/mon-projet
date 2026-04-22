@@ -23,6 +23,8 @@ export interface GeocodingResult {
 export class MapboxService {
   private map: Map | null = null;
   private markers: Marker[] = [];
+  /** Marqueurs commandes (carte dispatch) — séparés des marqueurs livreur */
+  private orderMarkers: Marker[] = [];
 
   /**
    * Initialiser la carte Mapbox
@@ -100,11 +102,137 @@ export class MapboxService {
   }
 
   /**
-   * Supprimer tous les marqueurs
+   * Marqueur commande (ex. en attente livreur) — couleur distincte
+   */
+  addOrderMarker(lngLat: [number, number], options: { popup?: string; color?: string } = {}): Marker {
+    if (!this.map) {
+      throw new Error('La carte n\'est pas initialisée');
+    }
+    const el = document.createElement('div');
+    el.className = 'custom-marker order-pin';
+    el.style.width = '14px';
+    el.style.height = '14px';
+    el.style.borderRadius = '2px';
+    el.style.backgroundColor = options.color || '#e11d48';
+    el.style.border = '2px solid white';
+    el.style.boxShadow = '0 0 0 1px rgba(0,0,0,0.2)';
+    el.style.transform = 'rotate(45deg)';
+    const marker = new mapboxgl.Marker({ element: el })
+      .setLngLat(lngLat)
+      .addTo(this.map);
+    if (options.popup) {
+      marker.setPopup(new Popup({ offset: 18 }).setHTML(options.popup));
+    }
+    this.orderMarkers.push(marker);
+    return marker;
+  }
+
+  clearOrderMarkers(): void {
+    this.orderMarkers.forEach((m) => m.remove());
+    this.orderMarkers = [];
+  }
+
+  /**
+   * Supprimer tous les marqueurs (livreurs)
    */
   clearMarkers(): void {
     this.markers.forEach(marker => marker.remove());
     this.markers = [];
+  }
+
+  /** Livreurs + commandes (carte dispatch) */
+  clearPlacementMarkers(): void {
+    this.clearMarkers();
+    this.clearOrderMarkers();
+  }
+
+  private static readonly DISPATCH_ZONE_SOURCE = 'dispatch-zone-boundary';
+  private static readonly DISPATCH_ZONE_FILL = 'dispatch-zone-fill';
+  private static readonly DISPATCH_ZONE_LINE = 'dispatch-zone-line';
+
+  removeDispatchZoneOverlay(): void {
+    if (!this.map) return;
+    for (const id of [MapboxService.DISPATCH_ZONE_LINE, MapboxService.DISPATCH_ZONE_FILL]) {
+      if (this.map.getLayer(id)) {
+        this.map.removeLayer(id);
+      }
+    }
+    if (this.map.getSource(MapboxService.DISPATCH_ZONE_SOURCE)) {
+      this.map.removeSource(MapboxService.DISPATCH_ZONE_SOURCE);
+    }
+  }
+
+  /**
+   * Contour de zone (boundaryJson = [[lat,lon],…]) + zoom
+   */
+  drawDispatchZoneFromBoundary(
+    boundaryJson: string,
+    _zoneName: string
+  ): [number, number][] | null {
+    if (!this.map) {
+      return null;
+    }
+    this.removeDispatchZoneOverlay();
+    let ring: [number, number][];
+    try {
+      const raw = JSON.parse(boundaryJson) as unknown;
+      if (!Array.isArray(raw) || raw.length < 3) {
+        return null;
+      }
+      ring = (raw as [number, number][]).map(([a, b]) => [b, a] as [number, number]);
+      const [fLon, fLat] = ring[0]!;
+      const [lLon, lLat] = ring[ring.length - 1]!;
+      if (fLon !== lLon || fLat !== lLat) {
+        ring = [...ring, [fLon, fLat]];
+      }
+    } catch {
+      return null;
+    }
+    const fc: GeoJSON.FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'Polygon', coordinates: [ring] },
+        },
+      ],
+    };
+    this.map.addSource(MapboxService.DISPATCH_ZONE_SOURCE, { type: 'geojson', data: fc as any });
+    this.map.addLayer({
+      id: MapboxService.DISPATCH_ZONE_FILL,
+      type: 'fill',
+      source: MapboxService.DISPATCH_ZONE_SOURCE,
+      paint: {
+        'fill-color': '#2563eb',
+        'fill-opacity': 0.1,
+      },
+    });
+    this.map.addLayer({
+      id: MapboxService.DISPATCH_ZONE_LINE,
+      type: 'line',
+      source: MapboxService.DISPATCH_ZONE_SOURCE,
+      paint: {
+        'line-color': '#1d4ed8',
+        'line-width': 2,
+      },
+    });
+    return ring;
+  }
+
+  /**
+   * Style avec trafic (Navigation) vs plan standard. Après changement, recréer zones + marqueurs côté app.
+   */
+  setStyleWithTraffic(navigation: boolean, onComplete: () => void): void {
+    if (!this.map) {
+      onComplete();
+      return;
+    }
+    const next = navigation
+      ? 'mapbox://styles/mapbox/navigation-day-v1'
+      : 'mapbox://styles/mapbox/streets-v12';
+    this.map.setStyle(next);
+    this.map.once('style.load', () => onComplete());
   }
 
   /**
@@ -388,7 +516,7 @@ export class MapboxService {
    * Nettoyer les ressources
    */
   destroy(): void {
-    this.clearMarkers();
+    this.clearPlacementMarkers();
     if (this.map) {
       this.map.remove();
       this.map = null;

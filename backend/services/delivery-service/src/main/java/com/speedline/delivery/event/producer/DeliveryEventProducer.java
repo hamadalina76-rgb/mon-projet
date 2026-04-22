@@ -6,6 +6,9 @@ import com.speedline.delivery.dispatch.event.CourierInactivityAlertEvent;
 import com.speedline.delivery.dispatch.event.CourierIncidentAlertEvent;
 import com.speedline.delivery.dispatch.event.CourierRefusalEscalationEvent;
 import com.speedline.delivery.dispatch.event.DispatchAssignedEvent;
+import com.speedline.delivery.dispatch.event.PartnerPreparationStartEvent;
+import com.speedline.delivery.dispatch.event.ScheduledOrderNoCourierAlertEvent;
+import com.speedline.delivery.dispatch.event.UrgentOrderUnassignedAlertEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -47,6 +50,9 @@ public class DeliveryEventProducer {
     @Value("${dispatch.admin-alerts.reliability-topic:courier-reliability-events}")
     private String reliabilityTopic;
 
+    @Value("${dispatch.partner-notifications.topic:partner-notifications}")
+    private String partnerNotificationsTopic;
+
     public void publishAssigned(DispatchAssignedEvent event) {
         if (event == null) return;
         publish(dispatchEventsTopic, event.getEventType(), event.getOrderId(), event);
@@ -70,6 +76,21 @@ public class DeliveryEventProducer {
     public void publishCourierIncidentAlert(CourierIncidentAlertEvent event) {
         if (event == null) return;
         publish(adminAlertsTopic, event.getEventType(), event.getOrderId(), event);
+    }
+
+    public void publishUrgentOrderUnassignedAlert(UrgentOrderUnassignedAlertEvent event) {
+        if (event == null) return;
+        publish(adminAlertsTopic, event.getEventType(), event.getOrderId(), event);
+    }
+
+    public void publishScheduledOrderNoCourierAlert(ScheduledOrderNoCourierAlertEvent event) {
+        if (event == null) return;
+        publish(adminAlertsTopic, event.getEventType(), event.getOrderId(), event);
+    }
+
+    public void publishPartnerPreparationStart(PartnerPreparationStartEvent event) {
+        if (event == null) return;
+        publish(partnerNotificationsTopic, event.getEventType(), event.getOrderId(), event);
     }
 
     private void publish(String topic, String eventName, Long orderId, Object payload) {

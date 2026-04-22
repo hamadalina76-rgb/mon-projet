@@ -16,6 +16,9 @@ public interface PaymentServiceClient {
     @PostMapping("/payments/wallet/credits")
     void creditWallet(@RequestBody WalletCreditRequest request);
 
+    @PostMapping("/wallets/{courierId}/bonus")
+    void creditBonus(@PathVariable("courierId") Long courierId, @RequestBody BonusRequest request);
+
     record CreditRequest(BigDecimal amount, String currency, String referenceId, String reason) {
     }
 
@@ -25,5 +28,8 @@ public interface PaymentServiceClient {
                                Double amount,
                                String currency,
                                String reason) {
+    }
+
+    record BonusRequest(BigDecimal amount, String description, String referenceId) {
     }
 }

@@ -1,10 +1,14 @@
 package com.speedline.delivery.controller;
 
+import com.speedline.delivery.dispatch.dto.DispatchProposalView;
 import com.speedline.delivery.dispatch.dto.ManualAssignRequest;
 import com.speedline.delivery.dispatch.dto.ManualBundleRequest;
+import com.speedline.delivery.dispatch.dto.ZoneModePutRequest;
+import com.speedline.delivery.dispatch.dto.ZoneModeResponse;
 import com.speedline.delivery.dispatch.dto.ZoneStatusRequest;
 import com.speedline.delivery.dispatch.service.DispatchAdminActionService;
 import com.speedline.delivery.dispatch.service.DispatchDashboardQueryService;
+import com.speedline.delivery.dispatch.service.DispatchProposalService;
 import com.speedline.delivery.dispatch.service.DispatchRealtimePublisher;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -29,6 +34,7 @@ public class DispatchDashboardController {
     private final DispatchDashboardQueryService queryService;
     private final DispatchAdminActionService adminActionService;
     private final DispatchRealtimePublisher realtimePublisher;
+    private final DispatchProposalService proposalService;
 
     @GetMapping("/dashboard/kpis")
     public ResponseEntity<?> getDashboardKpis() {
@@ -38,6 +44,32 @@ public class DispatchDashboardController {
     @GetMapping("/zones/{id}/metrics")
     public ResponseEntity<?> getZoneMetrics(@PathVariable("id") Long zoneId) {
         return ResponseEntity.ok(queryService.getZoneMetrics(zoneId));
+    }
+
+    @GetMapping("/zones/{id}/mode")
+    public ResponseEntity<ZoneModeResponse> getZoneMode(@PathVariable("id") Long zoneId) {
+        return ResponseEntity.ok(adminActionService.getZoneMode(zoneId));
+    }
+
+    @PutMapping("/zones/{id}/mode")
+    public ResponseEntity<ZoneModeResponse> putZoneMode(
+            @PathVariable("id") Long zoneId, @Valid @RequestBody ZoneModePutRequest request) {
+        return ResponseEntity.ok(adminActionService.setZoneMode(zoneId, request.getMode()));
+    }
+
+    @GetMapping("/zones/{id}/proposals")
+    public ResponseEntity<List<DispatchProposalView>> listProposals(@PathVariable("id") Long zoneId) {
+        return ResponseEntity.ok(proposalService.listForZone(zoneId));
+    }
+
+    @PostMapping("/proposals/{orderId}/approve")
+    public ResponseEntity<Map<String, Object>> approveProposal(@PathVariable Long orderId) {
+        return ResponseEntity.ok(proposalService.approve(orderId));
+    }
+
+    @PostMapping("/proposals/{orderId}/reject")
+    public ResponseEntity<Map<String, Object>> rejectProposal(@PathVariable Long orderId) {
+        return ResponseEntity.ok(proposalService.reject(orderId));
     }
 
     @GetMapping("/couriers/positions")

@@ -53,3 +53,21 @@ class SolveResponse(BaseModel):
     status: Literal["ok", "partial"] = "ok"
     solverUsed: Literal["MCF", "VRPPD"] = "MCF"
     assignments: List[Assignment] = Field(default_factory=list)
+
+
+# Bundle route optimization (aligns with Java BundleRouteRequest / BundleRouteResponse)
+class BundleStop(BaseModel):
+    orderId: int
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+
+
+class BundleRouteRequest(BaseModel):
+    startLat: Optional[float] = None
+    startLon: Optional[float] = None
+    stops: List[BundleStop] = Field(default_factory=list)
+
+
+class BundleRouteResponse(BaseModel):
+    orderSequence: List[int] = Field(default_factory=list)
+    cumulativeEtaMinutes: List[int] = Field(default_factory=list)

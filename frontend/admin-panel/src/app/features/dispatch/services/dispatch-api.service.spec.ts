@@ -25,4 +25,11 @@ describe('DispatchApiService', () => {
     expect(req.request.method).toBe('GET');
     req.flush({});
   });
+
+  it('calls dispatch-config general endpoint', () => {
+    service.getDispatchConfigGeneral().subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/dispatch/dispatch-config/general`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ meta: { activeVersion: 1, optimisticLock: 1, redisConfigVersion: 1 }, data: {} });
+  });
 });

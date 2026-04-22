@@ -2,6 +2,7 @@ package com.speedline.delivery.dispatch.impl.bundling;
 
 import com.speedline.delivery.dispatch.client.SolverServiceClient;
 import com.speedline.delivery.dispatch.config.DispatchProperties;
+import com.speedline.delivery.dispatch.config.runtime.RuntimeDispatchTuningService;
 import com.speedline.delivery.dispatch.contract.engine.BundlingEngine;
 import com.speedline.delivery.dispatch.contract.engine.BundlingResult;
 import com.speedline.delivery.dispatch.contract.model.PendingOrder;
@@ -25,6 +26,7 @@ import java.util.Set;
 public class RuleBasedBundlingEngine implements BundlingEngine {
 
 	private final DispatchProperties dispatchProperties;
+	private final RuntimeDispatchTuningService runtimeDispatchTuningService;
 	private final SolverServiceClient solverServiceClient;
 
 	@Override
@@ -42,7 +44,7 @@ public class RuleBasedBundlingEngine implements BundlingEngine {
 			return BundlingResult.builder().build();
 		}
 
-		int maxOrders = Math.max(2, dispatchProperties.getBundling().getMaxBundleSize());
+		int maxOrders = Math.max(2, runtimeDispatchTuningService.bundling().getMaxBundleSize());
 		Set<Long> assigned = new HashSet<>();
 		List<List<Long>> bundles = new ArrayList<>();
 		Map<Long, Long> orderToBundle = new HashMap<>();
@@ -113,12 +115,12 @@ public class RuleBasedBundlingEngine implements BundlingEngine {
 			return false;
 		}
 
-		if (customerDistanceMeters(seed, candidate) > dispatchProperties.getBundling().getDropoffRadiusMeters()) {
+		if (customerDistanceMeters(seed, candidate) > runtimeDispatchTuningService.bundling().getDropoffRadiusMeters()) {
 			return false;
 		}
 
 		boolean samePartner = seed.getPartnerId() != null && seed.getPartnerId().equals(candidate.getPartnerId());
-		if (!samePartner && partnerDistanceMeters(seed, candidate) > dispatchProperties.getBundling().getMerchantRadiusMeters()) {
+		if (!samePartner && partnerDistanceMeters(seed, candidate) > runtimeDispatchTuningService.bundling().getMerchantRadiusMeters()) {
 			return false;
 		}
 
@@ -130,7 +132,7 @@ public class RuleBasedBundlingEngine implements BundlingEngine {
 			return true;
 		}
 		long deltaSeconds = Math.abs(left.getCreatedAt().getEpochSecond() - right.getCreatedAt().getEpochSecond());
-		return deltaSeconds <= dispatchProperties.getBundling().getTimeWindowSeconds();
+		return deltaSeconds <= runtimeDispatchTuningService.bundling().getTimeWindowSeconds();
 	}
 
 	private RoutePlan computeRoute(List<PendingOrder> orders) {
@@ -223,7 +225,7 @@ public class RuleBasedBundlingEngine implements BundlingEngine {
 
 			PendingOrder next = byId.get(nearestOrderId);
 			double distanceKm = haversineKm(currentLat, currentLon, next.getCustomerLat(), next.getCustomerLon());
-			int travelMinutes = (int) Math.ceil((distanceKm / dispatchProperties.getBundling().getAverageSpeedKmh()) * 60.0);
+			int travelMinutes = (int) Math.ceil((distanceKm / runtimeDispatchTuningService.bundling().getAverageSpeedKmh()) * 60.0);
 			cumulativeMinutes += Math.max(1, travelMinutes);
 
 			sequence.add(nearestOrderId);

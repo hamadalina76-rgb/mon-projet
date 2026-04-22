@@ -318,7 +318,12 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     // ==================== COMMANDES EN ATTENTE D'ASSIGNATION ====================
 
-    @Query("SELECT o FROM Order o WHERE o.status = 'READY_FOR_PICKUP' AND o.courierId IS NULL ORDER BY o.createdAt ASC")
+    /**
+     * Jarvis-style : renvoie TOUTES les commandes actives qui n'ont pas encore de
+     * livreur, quel que soit le statut (PENDING / CONFIRMED / PREPARING / READY_FOR_PICKUP).
+     * Le dispatch pre-assigne au plus tot puis le livreur roule en parallele de la preparation.
+     */
+    @Query("SELECT o FROM Order o WHERE o.status IN ('PENDING','CONFIRMED','PREPARING','READY_FOR_PICKUP') AND o.courierId IS NULL ORDER BY o.createdAt ASC")
     List<Order> findOrdersAwaitingCourier();
 
     // ==================== MISE À JOUR ====================

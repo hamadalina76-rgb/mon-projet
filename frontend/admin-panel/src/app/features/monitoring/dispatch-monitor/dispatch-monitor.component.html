@@ -1,0 +1,93 @@
+<div class="dispatch-monitor">
+  <header class="page-header">
+    <div>
+      <h1>{{ 'monitoring.dispatchMonitor.title' | translate }}</h1>
+      <p class="muted">{{ 'monitoring.dispatchMonitor.subtitle' | translate }}</p>
+    </div>
+    <a mat-stroked-button routerLink="/dispatch">
+      <mat-icon>arrow_back</mat-icon>
+      {{ 'monitoring.dispatchMonitor.back' | translate }}
+    </a>
+  </header>
+
+  @if (loading() && !metrics()) {
+    <app-loading-spinner [diameter]="32" />
+  } @else if (zones().length === 0) {
+    <app-empty-state icon="map" title="monitoring.dispatchMonitor.noZones" />
+  } @else {
+    <mat-form-field appearance="outline" class="zone-field">
+      <mat-label>{{ 'dispatch.zoneSearchLabel' | translate }}</mat-label>
+      <mat-select
+        [ngModel]="selectedZoneId()"
+        (ngModelChange)="onZoneChange($event)"
+        [ngModelOptions]="{ standalone: true }"
+      >
+        @for (z of zones(); track z.id) {
+          <mat-option [value]="z.id">{{ z.name }} ({{ z.city }})</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (alerts().length > 0) {
+      <div class="alerts">
+        @for (a of alerts(); track a.key) {
+          <mat-card [class.danger]="a.severity === 'danger'" [class.warn]="a.severity === 'warn'">
+            <mat-icon>warning_amber</mat-icon>
+            <span>{{ a.key | translate }}</span>
+          </mat-card>
+        }
+      </div>
+    }
+
+    @if (metrics(); as m) {
+      <div class="metrics-row">
+        <mat-card>
+          <span class="m-label">{{ 'dispatch.metricPending' | translate }}</span>
+          <span class="m-val">{{ m.pendingOrders }}</span>
+        </mat-card>
+        <mat-card>
+          <span class="m-label">{{ 'dispatch.metricOnline' | translate }}</span>
+          <span class="m-val">{{ m.onlineCouriers }}</span>
+        </mat-card>
+        <mat-card>
+          <span class="m-label">{{ 'dispatch.currentMode' | translate }}</span>
+          <span class="m-val mode">{{ m.mode ?? '—' }}</span>
+        </mat-card>
+      </div>
+    }
+
+    <mat-card class="feed-card">
+      <h2>{{ 'dispatch.cycleFeedTitle' | translate }}</h2>
+      @if (cycleFeed().length === 0) {
+        <p class="muted">{{ 'dispatch.cycleFeedEmpty' | translate }}</p>
+      } @else {
+        <ul class="cycle-ul">
+          @for (ev of cycleFeed(); track ev.occurredAt + '-' + ev.assignedOrders) {
+            <li>
+              <time>{{ ev.occurredAt | date: 'medium' }}</time>
+              <span
+                >{{ 'dispatch.cycleAssigned' | translate: { n: ev.assignedOrders } }} ·
+                {{ 'dispatch.cycleUnmatched' | translate: { n: ev.unmatchedOrders } }}</span
+              >
+            </li>
+          }
+        </ul>
+      }
+    </mat-card>
+
+    <mat-card class="feed-card">
+      <h2>{{ 'monitoring.dispatchMonitor.activity' | translate }}</h2>
+      @if (activityFeed().length === 0) {
+        <p class="muted">{{ 'monitoring.dispatchMonitor.activityEmpty' | translate }}</p>
+      } @else {
+        <ul class="act-ul">
+          @for (line of activityFeed(); track line) {
+            <li>
+              <code>{{ line }}</code>
+            </li>
+          }
+        </ul>
+      }
+    </mat-card>
+  }
+</div>

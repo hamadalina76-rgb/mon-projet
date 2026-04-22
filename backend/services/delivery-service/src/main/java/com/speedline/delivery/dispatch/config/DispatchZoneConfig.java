@@ -10,12 +10,16 @@ import java.util.Optional;
  * DISP-101: read-accessor over {@link DispatchProperties} zone list.
  * Day-1 the list is static (application.yml). Later this can be replaced
  * by a DB-backed zone registry without touching callers.
+ *
+ * <p>Per-zone {@link DispatchMode} can be overridden at runtime via Redis
+ * ({@link DispatchZoneModeStore}).
  */
 @Service
 @RequiredArgsConstructor
 public class DispatchZoneConfig {
 
     private final DispatchProperties properties;
+    private final DispatchZoneModeStore modeStore;
 
     public List<DispatchProperties.ZoneConfig> getZones() {
         return properties.getZones();
@@ -23,7 +27,8 @@ public class DispatchZoneConfig {
 
     public List<DispatchProperties.ZoneConfig> getActiveZones() {
         return properties.getZones().stream()
-                .filter(z -> z.getMode() != DispatchMode.MANUAL)
+                .filter(z -> z.getId() != null)
+                .filter(z -> getMode(z.getId()) != DispatchMode.MANUAL)
                 .toList();
     }
 
@@ -34,7 +39,17 @@ public class DispatchZoneConfig {
                 .findFirst();
     }
 
+    /**
+     * Effective mode: Redis override if set, otherwise YAML per zone, otherwise {@link DispatchMode#AUTO}.
+     */
     public DispatchMode getMode(Long zoneId) {
+        if (zoneId == null) {
+            return DispatchMode.AUTO;
+        }
+        Optional<DispatchMode> override = modeStore.getOverride(zoneId);
+        if (override.isPresent()) {
+            return override.get();
+        }
         return findById(zoneId).map(DispatchProperties.ZoneConfig::getMode).orElse(DispatchMode.AUTO);
     }
 

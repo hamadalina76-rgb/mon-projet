@@ -43,4 +43,11 @@ public class OrderCreatedEvent {
 
     private Integer itemCount;
     private LocalDateTime createdAt;
+
+    /**
+     * Coordonnees de livraison — necessaires au dispatch "Jarvis" pour pre-assigner
+     * un livreur des ORDER_CREATED sans aller-retour order-service.
+     */
+    private BigDecimal deliveryLatitude;
+    private BigDecimal deliveryLongitude;
 }
