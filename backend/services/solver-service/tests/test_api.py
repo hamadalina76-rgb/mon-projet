@@ -33,6 +33,23 @@ def test_solve_invalid_payload_422():
     assert res.status_code == 422
 
 
+def test_optimize_route_nearest_neighbor():
+    payload = {
+        "startLat": 36.8,
+        "startLon": 10.2,
+        "stops": [
+            {"orderId": 1, "lat": 36.81, "lon": 10.21},
+            {"orderId": 2, "lat": 36.79, "lon": 10.19},
+        ],
+    }
+    res = client.post("/optimize-route", json=payload)
+    assert res.status_code == 200
+    body = res.json()
+    assert len(body["orderSequence"]) == 2
+    assert set(body["orderSequence"]) == {1, 2}
+    assert len(body["cumulativeEtaMinutes"]) == 2
+
+
 def test_solve_20x10_under_2s():
     orders = [{"id": i + 1, "guaranteedDeliveryMinutes": 60} for i in range(20)]
     couriers = [{"id": 100 + j, "vehicleType": "MOTO", "capacity": 2} for j in range(10)]

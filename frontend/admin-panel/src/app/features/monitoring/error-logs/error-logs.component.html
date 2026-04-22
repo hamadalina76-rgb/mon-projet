@@ -12,7 +12,12 @@
   <mat-card class="table-card">
     <app-data-table
       [data]="errors"
-      [loading]="loading">
+      [columns]="columns"
+      [loading]="loading"
+      [totalItems]="total"
+      [pageIndex]="page"
+      [pageSize]="pageSize"
+    >
     </app-data-table>
   </mat-card>
 </div>

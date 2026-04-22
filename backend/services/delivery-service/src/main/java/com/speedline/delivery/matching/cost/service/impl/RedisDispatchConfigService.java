@@ -5,9 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.speedline.delivery.matching.cost.model.CostComponentKey;
 import com.speedline.delivery.matching.cost.model.DispatchComponentConfig;
 import com.speedline.delivery.matching.cost.model.DispatchConfigSnapshot;
+import com.speedline.delivery.matching.cost.service.DispatchConfigRuntimeWriter;
 import com.speedline.delivery.matching.cost.service.DispatchConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.RedisOperations;
+import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -19,26 +23,80 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class RedisDispatchConfigService implements DispatchConfigService {
-
-    private static final String DISPATCH_CONFIG_KEY = "dispatch:cost:components";
+public class RedisDispatchConfigService implements DispatchConfigService, DispatchConfigRuntimeWriter {
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
+    private volatile long localVersion = Long.MIN_VALUE;
+    private volatile DispatchConfigSnapshot cachedSnapshot = null;
+
     @Override
     public DispatchConfigSnapshot getCurrentConfig() {
         try {
-            String payload = redisTemplate.opsForValue().get(DISPATCH_CONFIG_KEY);
-            if (payload == null || payload.isBlank()) {
-                return defaultSnapshot();
+            String versionStr = redisTemplate.opsForValue().get(KEY_CONFIG_VERSION);
+            long remote = versionStr == null || versionStr.isBlank() ? -1L : Long.parseLong(versionStr.trim());
+            if (cachedSnapshot != null && remote == localVersion) {
+                return cachedSnapshot;
             }
+            DispatchConfigSnapshot parsed = parseSnapshotFromRedis();
+            localVersion = remote;
+            cachedSnapshot = parsed;
+            return parsed;
+        } catch (Exception ex) {
+            log.warn("Failed to read dispatch config from Redis; using defaults", ex);
+            return defaultSnapshot();
+        }
+    }
 
+    @Override
+    public void publishAtomic(long version, String componentsJson, String generalJson,
+                              String internalExternalJson, String bundlingJson, String exclusivityJson) {
+        redisTemplate.execute(new SessionCallback<>() {
+            @Override
+            @SuppressWarnings("unchecked")
+            public Object execute(RedisOperations operations) throws DataAccessException {
+                operations.multi();
+                operations.opsForValue().set(KEY_CONFIG_VERSION, Long.toString(version));
+                operations.opsForValue().set(KEY_COST_COMPONENTS, componentsJson);
+                operations.opsForValue().set(KEY_GENERAL, generalJson);
+                operations.opsForValue().set(KEY_INTERNAL_EXTERNAL, internalExternalJson);
+                operations.opsForValue().set(KEY_BUNDLING, bundlingJson);
+                operations.opsForValue().set(KEY_EXCLUSIVITY, exclusivityJson);
+                return operations.exec();
+            }
+        });
+        localVersion = Long.MIN_VALUE;
+        cachedSnapshot = null;
+    }
+
+    @Override
+    public long readPublishedVersion() {
+        String v = redisTemplate.opsForValue().get(KEY_CONFIG_VERSION);
+        if (v == null || v.isBlank()) {
+            return -1L;
+        }
+        try {
+            return Long.parseLong(v.trim());
+        } catch (NumberFormatException ex) {
+            return -1L;
+        }
+    }
+
+    private DispatchConfigSnapshot parseSnapshotFromRedis() {
+        String payload = redisTemplate.opsForValue().get(KEY_COST_COMPONENTS);
+        if (payload == null || payload.isBlank()) {
+            return defaultSnapshot();
+        }
+        return parseComponentsArray(payload);
+    }
+
+    public DispatchConfigSnapshot parseComponentsArray(String payload) {
+        try {
             JsonNode node = objectMapper.readTree(payload);
             if (!node.isArray()) {
                 return defaultSnapshot();
             }
-
             List<DispatchComponentConfig> components = new ArrayList<>();
             for (JsonNode item : node) {
                 CostComponentKey key = CostComponentKey.valueOf(item.path("key").asText());
@@ -50,18 +108,16 @@ public class RedisDispatchConfigService implements DispatchConfigService {
                         .mandatory(isMandatory(key))
                         .build());
             }
-
             for (CostComponentKey key : EnumSet.allOf(CostComponentKey.class)) {
                 boolean alreadyPresent = components.stream().anyMatch(c -> c.getKey() == key);
                 if (!alreadyPresent) {
                     components.add(defaultConfig(key));
                 }
             }
-
             components.sort(Comparator.comparingInt(DispatchComponentConfig::getOrder));
             return DispatchConfigSnapshot.builder().components(components).build();
         } catch (Exception ex) {
-            log.warn("Failed to parse dispatch config from Redis. Falling back to defaults", ex);
+            log.warn("Failed to parse scoring payload; using defaults", ex);
             return defaultSnapshot();
         }
     }

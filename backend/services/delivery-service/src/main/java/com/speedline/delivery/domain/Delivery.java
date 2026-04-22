@@ -47,9 +47,9 @@ public class Delivery {
     private String orderNumber;
 
     /**
-     * Référence vers le livreur (user-service)
+     * Référence vers le livreur (user-service) ; null si {@link DeliveryStatus#PENDING} non encore assigné
      */
-    @Column(nullable = false)
+    @Column
     private Long courierId;
 
     // ==================== DONNÉES DÉNORMALISÉES ====================

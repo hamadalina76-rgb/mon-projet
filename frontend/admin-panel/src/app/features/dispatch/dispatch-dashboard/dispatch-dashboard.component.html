@@ -9,18 +9,45 @@
       <h1 class="page-title">{{ 'dispatch.title' | translate }}</h1>
       <p class="page-subtitle">{{ 'dispatch.subtitle' | translate }}</p>
     </div>
+    <div class="page-header-zone">
+      <mat-form-field appearance="outline" class="header-zone-field" subscriptSizing="dynamic">
+        <mat-label>{{ 'dispatch.headerZoneLabel' | translate }}</mat-label>
+        <mat-icon matPrefix>place</mat-icon>
+        <mat-select
+          [value]="selectedZone()?.id ?? null"
+          (selectionChange)="onHeaderZoneSelect($event.value)"
+          [disabled]="loadingZones() || allZones().length === 0"
+          [attr.aria-label]="'dispatch.headerZoneLabel' | translate"
+        >
+          @for (z of allZones(); track z.id) {
+            <mat-option [value]="z.id">{{ z.name }}{{ z.city ? ' — ' + z.city : '' }}</mat-option>
+          }
+        </mat-select>
+        @if (loadingZones()) {
+          <mat-spinner matSuffix diameter="18" />
+        }
+      </mat-form-field>
+    </div>
+    @if (canManageDispatchConfig()) {
+      <a mat-stroked-button color="primary" routerLink="/dispatch/config" class="config-link">
+        <mat-icon>tune</mat-icon>
+        {{ 'dispatch.openConfig' | translate }}
+      </a>
+    }
     <div class="page-header-bar" aria-hidden="true"></div>
   </header>
 
   <!-- ── KPI Cards (shared StatsCardComponent) ─── -->
   <div class="kpi-grid">
     @for (stat of kpiStats(); track stat.label) {
-      <app-stats-card
-        [label]="stat.label"
-        [value]="stat.value"
-        [icon]="stat.icon"
-        [color]="stat.color"
-      />
+      <div class="kpi-item">
+        <app-stats-card
+          [label]="stat.label"
+          [value]="stat.value"
+          [icon]="stat.icon"
+          [color]="stat.color"
+        />
+      </div>
     }
     @if (kpiStats().length === 0) {
       <div class="kpi-loading-row">
@@ -40,11 +67,21 @@
           <mat-icon aria-hidden="true">location_on</mat-icon>
           <span>{{ 'dispatch.mapLiveTitle' | translate }}</span>
         </div>
-        <div class="map-legend" [attr.aria-label]="'dispatch.legendAria' | translate">
-          <span class="lg"><span class="dot d-int-idle"></span>{{ 'dispatch.legendInterneIdle' | translate }}</span>
-          <span class="lg"><span class="dot d-int-del"></span>{{ 'dispatch.legendInterneDelivery' | translate }}</span>
-          <span class="lg"><span class="dot d-ext-idle"></span>{{ 'dispatch.legendExterneIdle' | translate }}</span>
-          <span class="lg"><span class="dot d-ext-del"></span>{{ 'dispatch.legendExterneDelivery' | translate }}</span>
+        <div class="map-toolbar-right">
+          <mat-slide-toggle
+            color="primary"
+            [checked]="showTrafficOnMap()"
+            (change)="onTrafficToggle($event.checked)"
+            [matTooltip]="'dispatch.mapTrafficHint' | translate"
+          >
+            {{ 'dispatch.mapTraffic' | translate }}
+          </mat-slide-toggle>
+          <div class="map-legend" [attr.aria-label]="'dispatch.legendAria' | translate">
+            <span class="lg"><span class="dot d-int-idle"></span>{{ 'dispatch.legendInterneIdle' | translate }}</span>
+            <span class="lg"><span class="dot d-int-del"></span>{{ 'dispatch.legendInterneDelivery' | translate }}</span>
+            <span class="lg"><span class="dot d-ext-idle"></span>{{ 'dispatch.legendExterneIdle' | translate }}</span>
+            <span class="lg"><span class="dot d-ext-del"></span>{{ 'dispatch.legendExterneDelivery' | translate }}</span>
+          </div>
         </div>
       </div>
       <div class="map-container">
@@ -154,8 +191,120 @@
                     </div>
                   </div>
                 </div>
+                @if (m.mode) {
+                  <p class="mode-hint">
+                    {{ 'dispatch.currentMode' | translate }}: <strong>{{ 'dispatch.mode.' + m.mode | translate }}</strong>
+                    @if (m.runtimeModeOverride) {
+                      <span class="override-pill">{{ 'dispatch.modeRuntimeOverride' | translate }}</span>
+                    }
+                  </p>
+                }
+                <div class="mode-cards" role="group" [attr.aria-label]="'dispatch.modeSelectAria' | translate">
+                  <button
+                    type="button"
+                    class="mode-card"
+                    [class.active]="isModeActive('AUTO')"
+                    [disabled]="settingMode"
+                    (click)="setDispatchMode('AUTO')"
+                  >
+                    <mat-icon>bolt</mat-icon>
+                    <span class="mode-title">{{ 'dispatch.mode.AUTO' | translate }}</span>
+                    <span class="mode-desc">{{ 'dispatch.mode.AUTO.desc' | translate }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="mode-card"
+                    [class.active]="isModeActive('SEMI_AUTO')"
+                    [disabled]="settingMode"
+                    (click)="setDispatchMode('SEMI_AUTO')"
+                  >
+                    <mat-icon>rule</mat-icon>
+                    <span class="mode-title">{{ 'dispatch.mode.SEMI_AUTO' | translate }}</span>
+                    <span class="mode-desc">{{ 'dispatch.mode.SEMI_AUTO.desc' | translate }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="mode-card"
+                    [class.active]="isModeActive('MANUAL')"
+                    [disabled]="settingMode"
+                    (click)="setDispatchMode('MANUAL')"
+                  >
+                    <mat-icon>pan_tool</mat-icon>
+                    <span class="mode-title">{{ 'dispatch.mode.MANUAL' | translate }}</span>
+                    <span class="mode-desc">{{ 'dispatch.mode.MANUAL.desc' | translate }}</span>
+                  </button>
+                </div>
               }
             }
+          }
+        </div>
+      </mat-card>
+
+      <!-- Live cycle feed -->
+      <mat-card class="panel-card">
+        <div class="panel-card-head">
+          <span class="picon cycle-picon"><mat-icon>analytics</mat-icon></span>
+          <div>
+            <h3>{{ 'dispatch.cycleFeedTitle' | translate }}</h3>
+            <p>{{ 'dispatch.cycleFeedDesc' | translate }}</p>
+          </div>
+        </div>
+        <div class="panel-card-body cycle-feed">
+          @if (state().zoneCycleFeed.length === 0) {
+            <p class="muted">{{ 'dispatch.cycleFeedEmpty' | translate }}</p>
+          } @else {
+            <ul class="cycle-list">
+              @for (ev of state().zoneCycleFeed; track ev.occurredAt + '-' + ev.assignedOrders) {
+                <li>
+                  <span class="cycle-time">{{ ev.occurredAt | date:'mediumTime' }}</span>
+                  <span class="cycle-stats"
+                    >{{ 'dispatch.cycleAssigned' | translate: { n: ev.assignedOrders } }} ·
+                    {{ 'dispatch.cycleUnmatched' | translate: { n: ev.unmatchedOrders } }} ·
+                    {{ 'dispatch.cyclePool' | translate: { o: ev.totalOrders, c: ev.availableCouriers } }}</span
+                  >
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </mat-card>
+
+      <!-- Semi-auto proposals -->
+      <mat-card class="panel-card">
+        <div class="panel-card-head">
+          <span class="picon prop-picon"><mat-icon>checklist</mat-icon></span>
+          <div>
+            <h3>{{ 'dispatch.proposalsTitle' | translate }}</h3>
+            <p>{{ 'dispatch.proposalsDesc' | translate }}</p>
+          </div>
+        </div>
+        <div class="panel-card-body">
+          @if (state().proposals.length === 0) {
+            <p class="muted">{{ 'dispatch.proposalsEmpty' | translate }}</p>
+          } @else {
+            <ul class="proposal-list">
+              @for (p of state().proposals; track p.orderId) {
+                <li class="proposal-row">
+                  <div class="prop-main">
+                    <span class="prop-id">#{{ p.orderId }}</span>
+                    <span class="prop-courier"
+                      >{{ 'dispatch.proposalCourier' | translate }} #{{ p.courierId }}</span
+                    >
+                    @if (p.etaDeliveryMin != null) {
+                      <span class="prop-eta">~{{ p.etaDeliveryMin }} min</span>
+                    }
+                  </div>
+                  <div class="prop-actions">
+                    <button mat-stroked-button color="primary" type="button" (click)="approveProposal(p)">
+                      {{ 'dispatch.proposalApprove' | translate }}
+                    </button>
+                    <button mat-stroked-button type="button" (click)="rejectProposal(p)">
+                      {{ 'dispatch.proposalReject' | translate }}
+                    </button>
+                  </div>
+                </li>
+              }
+            </ul>
           }
         </div>
       </mat-card>
@@ -181,7 +330,9 @@
                   <span class="order-opt">
                     <b>#{{ order.id }}</b>
                     @if (order.orderNumber) { <span> · {{ order.orderNumber }}</span> }
-                    @if (order.deliveryAddress) { <span class="order-addr-hint"> · {{ order.deliveryAddress }}</span> }
+                    @if (formatDeliveryAddress(order.deliveryAddress); as addr) {
+                      <span class="order-addr-hint"> · {{ addr }}</span>
+                    }
                   </span>
                 </mat-option>
               }
@@ -305,15 +456,24 @@
           <div class="order-card">
             <div class="order-card-top">
               <span class="order-id">#{{ order.id }}</span>
-              <span class="order-status-badge">{{ 'common.pending' | translate }}</span>
+              <span
+                class="order-status-badge"
+                [class.status-pending]="(order.status ?? 'PENDING') === 'PENDING'"
+                [class.status-confirmed]="order.status === 'CONFIRMED'"
+                [class.status-preparing]="order.status === 'PREPARING'"
+                [class.status-ready]="order.status === 'READY_FOR_PICKUP'"
+                [matTooltip]="'dispatch.pendingStatusHint' | translate"
+              >
+                {{ (order.status ? 'dispatch.orderStatus.' + order.status : 'common.pending') | translate }}
+              </span>
             </div>
             @if (order.orderNumber) {
               <div class="order-num">{{ order.orderNumber }}</div>
             }
-            @if (order.deliveryAddress) {
+            @if (formatDeliveryAddress(order.deliveryAddress); as addr) {
               <div class="order-info-row">
                 <mat-icon>location_on</mat-icon>
-                <span>{{ order.deliveryAddress }}</span>
+                <span>{{ addr }}</span>
               </div>
             }
             @if (order.createdAt) {

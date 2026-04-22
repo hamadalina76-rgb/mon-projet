@@ -2,6 +2,7 @@ package com.speedline.delivery.repository;
 
 import com.speedline.delivery.domain.TrackingPoint;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -48,4 +49,8 @@ public interface TrackingPointRepository extends JpaRepository<TrackingPoint, Lo
      */
     @Query("SELECT COUNT(t) FROM TrackingPoint t WHERE t.deliveryId = :deliveryId")
     long countPointsByDelivery(@Param("deliveryId") Long deliveryId);
+
+    @Modifying
+    @Query("DELETE FROM TrackingPoint t WHERE t.timestamp < :before")
+    int deleteByTimestampBefore(@Param("before") java.time.LocalDateTime before);
 }

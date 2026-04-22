@@ -7,6 +7,8 @@
 @use 'assets/styles/mixins' as m;
 @use 'assets/styles/utilities' as u;
 
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+
 /* Reset & Base
    ========================================================================== */
 *,
@@ -23,9 +25,10 @@ html {
 }
 
 body {
-  font-family: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Manrope', 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 1rem;
   line-height: 1.5;
+  letter-spacing: 0.003em;
   color: v.$text-primary;
   background-color: v.$background-default;
   -webkit-font-smoothing: antialiased;
@@ -35,7 +38,9 @@ body {
 /* Typography
    ========================================================================== */
 h1, h2, h3, h4, h5, h6 {
-  font-weight: 500;
+  font-family: 'Space Grotesk', 'Manrope', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   line-height: 1.2;
   color: v.$text-primary;
 }

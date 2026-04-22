@@ -3,6 +3,8 @@ package com.speedline.delivery.dispatch.service;
 import com.speedline.delivery.dispatch.config.DispatchMode;
 import com.speedline.delivery.dispatch.config.DispatchProperties;
 import com.speedline.delivery.dispatch.config.DispatchZoneConfig;
+import com.speedline.delivery.dispatch.config.runtime.RuntimeDispatchTuningService;
+import com.speedline.delivery.dispatch.config.service.DispatchCycleCaptureRecorder;
 import com.speedline.delivery.dispatch.contract.engine.BundlingEngine;
 import com.speedline.delivery.dispatch.contract.engine.CostFunction;
 import com.speedline.delivery.dispatch.contract.engine.DispatchSolver;
@@ -15,6 +17,7 @@ import com.speedline.delivery.dispatch.contract.model.CourierType;
 import com.speedline.delivery.dispatch.contract.model.PendingOrder;
 import com.speedline.delivery.dispatch.engine.bundling.BundleDispatchOrchestrator;
 import com.speedline.delivery.dispatch.engine.bundling.BundleAssignmentBatch;
+import com.speedline.delivery.client.OrderServiceClient;
 import com.speedline.delivery.dispatch.metrics.DispatchMetrics;
 import com.speedline.delivery.event.producer.DeliveryEventProducer;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +36,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -60,9 +64,23 @@ class DispatchCyclePerformanceTest {
     @Mock
     private EligibilityFilter eligibilityFilter;
     @Mock
+    private UrgentOrderPrePassService urgentOrderPrePassService;
+    @Mock
+    private UrgentBonusService urgentBonusService;
+    @Mock
     private CourierResponseTimeoutTracker responseTimeoutTracker;
     @Mock
     private BundleDispatchOrchestrator bundleDispatchOrchestrator;
+    @Mock
+    private RuntimeDispatchTuningService runtimeDispatchTuningService;
+    @Mock
+    private DispatchCycleCaptureRecorder cycleCaptureRecorder;
+    @Mock
+    private DispatchProposalService dispatchProposalService;
+    @Mock
+    private DispatchDeliveryRecordService dispatchDeliveryRecordService;
+    @Mock
+    private OrderServiceClient orderServiceClient;
 
     private DispatchCycleService service;
 
@@ -78,8 +96,10 @@ class DispatchCyclePerformanceTest {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);
         when(redisTemplate.execute(any(), anyList(), anyString())).thenReturn(1L);
+        when(dispatchProposalService.hasPendingProposal(anyLong())).thenReturn(false);
         when(zoneConfig.getMode(1L)).thenReturn(DispatchMode.AUTO);
         when(zoneConfig.getMaxCapacity(1L)).thenReturn(200);
+        when(runtimeDispatchTuningService.lockTtlSeconds()).thenReturn(properties.getLock().getTtlSeconds());
 
         service = new DispatchCycleService(
                 zoneConfig,
@@ -92,17 +112,26 @@ class DispatchCyclePerformanceTest {
                 bundleDispatchOrchestrator,
                 preAssignmentCalculator,
                 eligibilityFilter,
+                urgentOrderPrePassService,
+                urgentBonusService,
                 responseTimeoutTracker,
                 deliveryEventProducer,
                 dispatchMetrics,
                 dispatchRealtimePublisher,
-                redisTemplate);
+                redisTemplate,
+                runtimeDispatchTuningService,
+                cycleCaptureRecorder,
+                dispatchProposalService,
+                dispatchDeliveryRecordService,
+                orderServiceClient);
 
             when(preAssignmentCalculator.enrichPreAssignable(anyList(), any(), any())).thenAnswer(inv -> inv.getArgument(0));
             when(eligibilityFilter.selectPoolDetailed(anyList(), anyList(), any(), any())).thenAnswer(inv -> {
                 List<AvailableCourier> pool = inv.getArgument(1);
                 return EligibilityPool.builder().pool(pool).internalOnly(pool).fallbackApplied(false).build();
             });
+                when(urgentOrderPrePassService.runPrePass(anyList(), anyList(), anyList(), any())).thenReturn(
+                    new UrgentOrderPrePassService.UrgentPrePassResult(List.of(), java.util.Set.of()));
                 when(bundleDispatchOrchestrator.dispatchBundles(any(), any(), anyList(), anyList(), any())).thenReturn(
                     BundleAssignmentBatch.builder()
                         .assignments(List.of())

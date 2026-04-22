@@ -113,6 +113,9 @@ public class PendingOrderEnricher {
             zoneId = dispatchProperties.getEnricher().getDefaultZoneId();
         }
 
+        EnrichmentExtras extras = EnrichmentExtras.fromEvent(event);
+        mergeOrderAndPartner(extras, orderId, partnerId);
+
         return Optional.of(PendingOrder.builder()
                 .id(orderId)
                 .partnerId(partnerId)
@@ -125,11 +128,170 @@ public class PendingOrderEnricher {
                 .guaranteedDeliveryMinutes(asInteger(
                     event.get("guaranteedDeliveryMinutes"),
                     dispatchProperties.getEnricher().getDefaultGuaranteedDeliveryMinutes()))
+                .orderNumber(extras.orderNumber)
+                .customerName(extras.customerName)
+                .customerPhone(extras.customerPhone)
+                .partnerName(extras.partnerName)
+                .pickupAddress(extras.pickupAddress)
+                .dropoffAddress(extras.dropoffAddress)
+                .deliveryInstructions(extras.deliveryInstructions)
+                .deliveryFee(extras.deliveryFee)
                 .isUrgent(asBoolean(event.get("isUrgent"), false))
                 .isLargeOrder(asBoolean(event.get("isLargeOrder"), false))
                 .isScheduled(asBoolean(event.get("isScheduled"), false))
+                .scheduledDeliveryAt(asInstant(event.get("scheduledDeliveryAt"), null))
                 .createdAt(asInstant(event.get("createdAt"), Instant.now()))
                 .build());
+    }
+
+    private void mergeOrderAndPartner(EnrichmentExtras e, Long orderId, Long partnerId) {
+        if (e.needsOrderDetails()) {
+            try {
+                Map<String, Object> order = orderServiceClient.getOrderById(orderId);
+                e.mergeFromOrder(order);
+            } catch (Exception ex) {
+                log.debug("Order enrich failed orderId={}: {}", orderId, ex.getMessage());
+            }
+        }
+        if (e.partnerName == null || e.pickupAddress == null) {
+            try {
+                Map<String, Object> partner = partnerServiceClient.getPartnerById(partnerId);
+                if (e.partnerName == null) {
+                    e.partnerName = firstString(partner, "name", "displayName", "businessName");
+                }
+                if (e.pickupAddress == null) {
+                    e.pickupAddress = firstString(partner, "address", "fullAddress", "pickupAddress");
+                }
+            } catch (Exception ex) {
+                log.debug("Partner enrich failed partnerId={}: {}", partnerId, ex.getMessage());
+            }
+        }
+    }
+
+    private static final class EnrichmentExtras {
+        String orderNumber;
+        String customerName;
+        String customerPhone;
+        String partnerName;
+        String pickupAddress;
+        String dropoffAddress;
+        String deliveryInstructions;
+        BigDecimal deliveryFee;
+
+        static EnrichmentExtras fromEvent(Map<String, Object> event) {
+            EnrichmentExtras e = new EnrichmentExtras();
+            e.orderNumber = firstString(
+                    event, "orderNumber", "orderCode", "reference", "orderReference");
+            e.customerName = firstString(
+                    event, "customerName", "customerDisplayName", "clientName");
+            e.customerPhone = firstString(
+                    event, "customerPhone", "clientPhone", "phone", "phoneNumber");
+            e.partnerName = firstString(
+                    event, "partnerName", "merchantName", "restaurantName");
+            e.pickupAddress = firstString(
+                    event, "pickupAddress", "partnerAddress", "restaurantAddress");
+            e.dropoffAddress = firstString(
+                    event, "dropoffAddress", "deliveryAddress", "address");
+            e.deliveryInstructions = firstString(
+                    event, "deliveryInstructions", "specialInstructions", "note");
+            e.deliveryFee = firstDecimal(event, "deliveryFee", "shippingFee", "totalDeliveryFee")
+                    .orElse(null);
+            return e;
+        }
+
+        void mergeFromOrder(Map<String, Object> order) {
+            if (orderNumber == null) {
+                orderNumber = firstString(
+                        order, "orderNumber", "number", "reference", "displayId");
+            }
+            if (deliveryFee == null) {
+                deliveryFee = firstDecimal(
+                        order, "deliveryFee", "shippingAmount", "deliveryCharge").orElse(null);
+            }
+            if (deliveryInstructions == null) {
+                deliveryInstructions = firstString(
+                        order, "deliveryInstructions", "note", "specialNotes");
+            }
+            Object u = order.get("customer");
+            if (u instanceof Map<?, ?> m) {
+                if (customerName == null) {
+                    customerName = firstString(
+                            m, "name", "firstName", "fullName", "displayName");
+                }
+                if (customerPhone == null) {
+                    customerPhone = firstString(m, "phone", "phoneNumber", "mobile");
+                }
+            }
+            if (dropoffAddress == null) {
+                Object d = order.get("deliveryAddress");
+                if (d instanceof Map<?, ?> m) {
+                    String line = firstString(
+                            m, "formattedAddress", "fullAddress", "street", "line1", "line2");
+                    if (line != null) {
+                        dropoffAddress = line;
+                    } else {
+                        StringBuilder b = new StringBuilder();
+                        appendIf(b, m.get("line1"));
+                        appendIf(b, m.get("line2"));
+                        appendIf(b, m.get("city"));
+                        if (!b.isEmpty()) {
+                            dropoffAddress = b.toString().trim();
+                        }
+                    }
+                }
+            }
+        }
+
+        boolean needsOrderDetails() {
+            return firstBlank(orderNumber)
+                    || firstBlank(customerName)
+                    || firstBlank(customerPhone)
+                    || firstBlank(dropoffAddress)
+                    || deliveryFee == null;
+        }
+
+        private static void appendIf(StringBuilder b, Object part) {
+            if (part == null) {
+                return;
+            }
+            String s = String.valueOf(part).trim();
+            if (s.isEmpty()) {
+                return;
+            }
+            if (!b.isEmpty()) {
+                b.append(", ");
+            }
+            b.append(s);
+        }
+
+        private static boolean firstBlank(String s) {
+            return s == null || s.isBlank();
+        }
+    }
+
+    private static String firstString(Map<?, ?> m, String... keys) {
+        for (String k : keys) {
+            Object v = m.get(k);
+            if (v == null) {
+                continue;
+            }
+            String s = String.valueOf(v).trim();
+            if (!s.isEmpty()) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    private static Optional<BigDecimal> firstDecimal(Map<?, ?> m, String... keys) {
+        for (String k : keys) {
+            Object v = m.get(k);
+            Optional<BigDecimal> d = toDecimal(v);
+            if (d.isPresent()) {
+                return d;
+            }
+        }
+        return Optional.empty();
     }
 
     private Optional<Long> resolveZoneId(BigDecimal lat, BigDecimal lon) {
@@ -142,14 +304,6 @@ public class PendingOrderEnricher {
         } catch (Exception ex) {
             return Optional.empty();
         }
-    }
-
-    private static Optional<BigDecimal> firstDecimal(Map<String, Object> map, String... keys) {
-        return Stream.of(keys)
-                .map(map::get)
-                .map(PendingOrderEnricher::toDecimal)
-                .flatMap(Optional::stream)
-                .findFirst();
     }
 
     private static Optional<BigDecimal> toDecimal(Object value) {

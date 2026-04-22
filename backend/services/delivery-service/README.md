@@ -167,3 +167,12 @@ Le filtrage interne/externe et la pré-assignation de DISP-103 s’appuient sur 
 
 Si ces clés sont absentes, le moteur de dispatch applique des valeurs sûres par défaut, mais la priorisation DISP-103 ne peut pas être validée complètement sans elles.
 
+### DISP-205 — Admin dispatch configuration
+
+- **REST** (via API gateway `StripPrefix` → service): `GET/PUT /dispatch/dispatch-config/{general|scoring|internal-external|bundling|exclusivity}`, `POST /dispatch/dispatch-config/simulate`, `GET /dispatch/dispatch-config/replay/{cycleId}`, `GET /dispatch/dispatch-config/audit/export`.
+- **Persistence**: Flyway `V5__disp205_dispatch_admin_config.sql` — versions/snapshots, audit, simulation runs, cycle captures + replay pair scores, exclusivity tables.
+- **Redis**: atomic publish via `DispatchConfigRuntimeWriter` — keys `dispatch:config:version`, `dispatch:cost:components` (legacy array preserved), `dispatch:config:general`, `dispatch:config:internal-external`, `dispatch:config:bundling`, `dispatch:config:exclusivity`.
+- **Runtime**: `RuntimeDispatchTuningService` merges Redis JSON with YAML for bundling + response timeout + lock TTL each cycle; `CostFunctionService` reads scoring from Redis with versioned cache invalidation.
+- **Security**: `DispatchConfigManageSecurityFilter` requires `X-User-Role` `ADMIN` or `SUPER_ADMIN` (align with admin-panel `delivery:manage` until JWT permissions are forwarded).
+- **Admin UI**: Angular route `/dispatch/config` (permission `delivery:manage`), six tabs + state service + API client extensions.
+

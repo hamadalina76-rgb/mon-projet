@@ -34,7 +34,12 @@
   <mat-card class="table-card">
     <app-data-table
       [data]="auditLogs"
-      [loading]="loading">
+      [columns]="columns"
+      [loading]="loading"
+      [totalItems]="total"
+      [pageIndex]="page"
+      [pageSize]="pageSize"
+    >
     </app-data-table>
   </mat-card>
 </div>

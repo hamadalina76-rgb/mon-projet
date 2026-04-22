@@ -3,6 +3,7 @@ package com.speedline.delivery.dispatch.service;
 import com.speedline.delivery.client.LocationServiceClient;
 import com.speedline.delivery.client.OrderServiceClient;
 import com.speedline.delivery.dispatch.config.DispatchZoneConfig;
+import com.speedline.delivery.dispatch.config.DispatchZoneModeStore;
 import com.speedline.delivery.dispatch.contract.model.AvailableCourier;
 import com.speedline.delivery.dispatch.dto.CourierPositionView;
 import com.speedline.delivery.dispatch.dto.DispatchDashboardKpisResponse;
@@ -28,6 +29,7 @@ public class DispatchDashboardQueryService {
     private final PendingOrderRedisRepository pendingOrderRedisRepository;
     private final OrderServiceClient orderServiceClient;
     private final LocationServiceClient locationServiceClient;
+    private final DispatchZoneModeStore zoneModeStore;
 
     public DispatchDashboardKpisResponse getKpis() {
         return kpiService.getGlobalKpis();
@@ -56,6 +58,8 @@ public class DispatchDashboardQueryService {
                 .zoneId(zoneId)
                 .zoneName(zoneName)
                 .zoneActive(zoneActive)
+                .mode(zoneConfig.getMode(zoneId))
+                .runtimeModeOverride(zoneModeStore.getOverride(zoneId).isPresent())
                 .onlineCouriers(online.size())
                 .idleCouriers(idle)
                 .onDeliveryCouriers(onDelivery)

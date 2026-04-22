@@ -20,6 +20,15 @@ public interface OrderServiceClient {
     @GetMapping("/orders/awaiting-courier")
     List<Map<String, Object>> getOrdersAwaitingCourier();
 
+    /**
+     * Persists courier on the order (READY_FOR_PICKUP, no courier). Required for any dispatch path;
+     * otherwise only Redis/delivery local state would change.
+     */
+    @PostMapping("/orders/{id}/courier/assign")
+    Map<String, Object> assignCourierToOrder(
+            @PathVariable("id") Long orderId,
+            @RequestBody Map<String, Long> body);
+
     @DeleteMapping("/orders/{id}")
     void cancelOrder(@PathVariable("id") Long orderId, @RequestBody CancelOrderRequest request);
 

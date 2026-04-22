@@ -70,6 +70,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     // ── System ──
     { label: 'nav.settings', icon: 'settings', route: '/settings', permission: 'settings:view', section: 'nav.system' },
     { label: 'nav.monitoring', icon: 'monitor_heart', route: '/monitoring', permission: 'monitoring:view', section: 'nav.system' },
+    { label: 'nav.dispatchMonitor', icon: 'radar', route: '/monitoring/dispatch', permission: 'monitoring:view', section: 'nav.system' },
   ];
 
   ngOnInit(): void {

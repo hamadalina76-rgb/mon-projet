@@ -144,6 +144,45 @@ public class DispatchMetrics {
                 .record(duration);
     }
 
+        public void recordUrgentPrePass(Long zoneId, int urgentOrders, int urgentAssigned) {
+        Counter.builder("dispatch.urgent.prepass.orders")
+            .tags(zoneTags(zoneId))
+            .register(registry)
+            .increment(Math.max(0, urgentOrders));
+        Counter.builder("dispatch.urgent.prepass.assigned")
+            .tags(zoneTags(zoneId))
+            .register(registry)
+            .increment(Math.max(0, urgentAssigned));
+        }
+
+        public void recordUrgentDeviationEligible(Long zoneId, int count) {
+        Counter.builder("dispatch.urgent.deviation.eligible")
+            .tags(zoneTags(zoneId))
+            .register(registry)
+            .increment(Math.max(0, count));
+        }
+
+        public void recordUrgentOrderUnassignedAlert(Long zoneId) {
+        Counter.builder("dispatch.urgent.unassigned.alert")
+            .tags(zoneTags(zoneId))
+            .register(registry)
+            .increment();
+        }
+
+        public void recordScheduledOrderInjected(Long zoneId) {
+        Counter.builder("dispatch.scheduled.injected")
+            .tags(zoneTags(zoneId))
+            .register(registry)
+            .increment();
+        }
+
+        public void recordScheduledNoCourierAlert(Long zoneId) {
+        Counter.builder("dispatch.scheduled.nocourier.alert")
+            .tags(zoneTags(zoneId))
+            .register(registry)
+            .increment();
+        }
+
     private AtomicReference<Double> gaugeMatchRate(Long zoneId) {
         return matchRateByZone.computeIfAbsent(zoneId, id -> {
             AtomicReference<Double> ref = new AtomicReference<>(0.0d);

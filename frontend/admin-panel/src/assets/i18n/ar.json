@@ -28,7 +28,8 @@
     "error": "خطأ",
     "appearance": "المظهر",
     "apply": "تطبيق",
-    "reset": "إعادة تعيين"
+    "reset": "إعادة تعيين",
+    "close": "إغلاق"
   },
   "nav": {
     "collapseSidebar": "طي القائمة",
@@ -67,6 +68,7 @@
   },
   "dispatch": {
     "title": "التوزيع",
+    "openConfig": "الإعدادات",
     "subtitle": "لوحة عمليات: الطابور، الخريطة المباشرة والإجراءات السريعة — مثل غرفة مراقبة التوصيل.",
     "kpiFirstCycle": "معدل الدورة الأولى",
     "kpiAssignDelay": "تأخير الإسناد",
@@ -76,6 +78,9 @@
     "kpiOnTime": "الالتزام بالوقت",
     "kpiThresholdExceeded": "تجاوز العتبة التشغيلية",
     "mapLiveTitle": "خريطة مباشرة",
+    "mapTraffic": "المرور",
+    "mapTrafficHint": "نمط الملاحة (Mapbox) لعرض حركة المرور على الطرق (أقل وضوحاً خارج المدن الكبرى).",
+    "mapPendingOrder": "طلب قيد الانتظار",
     "legendAria": "دليل ألوان السعاة",
     "legendInterneIdle": "داخلي · متاح",
     "legendInterneDelivery": "داخلي · في التوصيل",
@@ -101,8 +106,15 @@
     "bundleIdsLabel": "معرّفات الطلبات (مثال 12، 13، 14)",
     "bundleBtn": "إنشاء التجميعة",
     "pendingTitle": "طلبات تنتظر ساعياً",
-    "pendingDesc": "قائمة من خدمة الطلبات (في انتظار الإسناد).",
+    "pendingDesc": "أسلوب Jarvis: يتم تعيين الساعي مسبقاً منذ إنشاء الطلب، ويتحرك نحو المطعم بالتوازي مع التحضير.",
     "pendingEmpty": "لا توجد طلبات قيد الانتظار حالياً.",
+    "pendingStatusHint": "دورة حياة الطلب. يستطيع التوزيع التعيين المسبق منذ PENDING (دون انتظار READY_FOR_PICKUP).",
+    "orderStatus": {
+      "PENDING": "قيد الانتظار",
+      "CONFIRMED": "مؤكّد",
+      "PREPARING": "قيد التحضير",
+      "READY_FOR_PICKUP": "جاهز"
+    },
     "orderNumberFallback": "—",
     "zoneUpdated": "تم تحديث المنطقة",
     "zoneUpdateError": "تعذّر تحديث المنطقة (تحقق من خدمة المواقع ومعرّف المنطقة).",
@@ -116,8 +128,90 @@
     "noCourier": "لا يوجد ساعٍ متاح",
     "assignSuccess": "تم الإسناد",
     "assignError": "فشل الإسناد (تحقق من الطلب والساعي)",
+    "assignErrorDetail": "رفض order-service الإسناد. {{detail}}",
+    "headerZoneLabel": "المنطقة النشطة (الخريطة والقوائم)",
     "bundleSuccess": "تم إنشاء التجميعة",
+    "bundleError": "فشل إنشاء التجميعة (تحقق من المعرّفات والمنطقة)",
     "bundleIdsPlaceholder": "12، 13، 14"
+  },
+  "dispatchConfig": {
+    "title": "إعدادات التوزيع",
+    "subtitle": "DISP-205 — إعدادات مجمّعة، محاكاة، إعادة تشغيل، وتصدير التدقيق.",
+    "metaVersion": "نسخة قاعدة البيانات النشطة",
+    "metaRedis": "نسخة Redis",
+    "backDashboard": "العودة إلى لوحة الإرسال",
+    "refresh": "إعادة التحميل من الخادم",
+    "save": "حفظ",
+    "saveOrder": "حفظ ترتيب التقييم",
+    "loadError": "تعذّر تحميل إعدادات الإرسال.",
+    "saved": "تم الحفظ",
+    "saveError": "فشل الحفظ (التحقق من الإصدار أو الصلاحيات).",
+    "tabs": {
+      "general": "عام",
+      "scoring": "التسجيل",
+      "ie": "داخلي / خارجي",
+      "bundling": "التجميعات",
+      "exclusivity": "الحصرية",
+      "simAudit": "المحاكاة والتدقيق"
+    },
+    "general": {
+      "interval": "فترة الدورة (ث)",
+      "responseTimeout": "مهلة الاستجابة (ث)",
+      "lockTtl": "TTL للقفل (ث)",
+      "preAssignWindow": "نافذة ما قبل الإسناد (ث)"
+    },
+    "scoring": {
+      "dragHint": "اسحب الصفوف لترتيب التقييم. الأوزان 0–10.",
+      "enabled": "مفعّل",
+      "weight": "الوزن",
+      "componentKeys": {
+        "ETA_TOTAL_ESTIMATED": "إجمالي الوقت المتوقع",
+        "COURIER_TYPE": "نوع الساعي",
+        "AVAILABILITY": "التوفر",
+        "ROUTE_ALIGNMENT": "توافق المسار",
+        "TOUR_COMPATIBILITY": "توافق الجولة",
+        "PERFORMANCE_RATING": "تقييم الأداء",
+        "GUARANTEED_DEADLINE": "الموعد النهائي المضمون",
+        "RECENT_REFUSAL": "رفض حديث",
+        "WORKLOAD_FAIRNESS": "عدالة توزيع الحمل",
+        "MERCHANT_KNOWLEDGE": "معرفة التاجر",
+        "VEHICLE_COMPATIBILITY": "توافق المركبة"
+      }
+    },
+    "ie": {
+      "internalPriority": "أولوية السعاة الداخليين",
+      "externalDegrade": "عتبة تدهور درجة الساعي الخارجي"
+    },
+    "bundling": {
+      "maxBundle": "الحد الأقصى للتجميعة",
+      "dropoffRadius": "نصف قطر التسليم (م)",
+      "merchantRadius": "نصف قطر التاجر (م)",
+      "timeWindow": "النافذة الزمنية (ث)",
+      "internalOnly": "تجميعات للداخليين فقط"
+    },
+    "exclusivity": {
+      "hint": "مصفوفة المنطقة × نوع التجارة. أضف صفوفًا ثم احفظ.",
+      "addCell": "إضافة صف",
+      "zoneId": "معرّف المنطقة",
+      "commerceType": "نوع التجارة",
+      "allowed": "مسموح"
+    },
+    "sim": {
+      "title": "محاكاة (قراءة فقط)",
+      "zoneId": "معرّف المنطقة (اختياري)",
+      "run": "تشغيل المحاكاة"
+    },
+    "replay": {
+      "title": "إعادة تشغيل دورة",
+      "cycleId": "معرّف الدورة UUID",
+      "run": "تشغيل إعادة التشغيل"
+    },
+    "audit": {
+      "title": "تصدير CSV للتدقيق",
+      "fromUtc": "من (ISO-8601 UTC)",
+      "toUtc": "إلى غير شامل (ISO-8601 UTC)",
+      "export": "تنزيل CSV"
+    }
   },
   "header": {
     "searchPlaceholder": "بحث عن طلبات، عملاء، شركاء...",

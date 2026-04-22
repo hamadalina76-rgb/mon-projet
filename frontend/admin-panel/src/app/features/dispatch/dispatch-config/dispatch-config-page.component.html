@@ -1,0 +1,283 @@
+<section class="dispatch-config">
+  <header class="page-header">
+    <div class="header-title-wrap">
+      <div class="title-badge"><mat-icon>settings_suggest</mat-icon></div>
+      <div>
+        <h1>{{ 'dispatchConfig.title' | translate }}</h1>
+        <p class="muted">{{ 'dispatchConfig.subtitle' | translate }}</p>
+      </div>
+      @if (state.meta(); as m) {
+        <p class="meta">
+          {{ 'dispatchConfig.metaVersion' | translate }}: {{ m.activeVersion }} · {{ 'dispatchConfig.metaRedis' | translate }}: {{ m.redisConfigVersion }}
+        </p>
+      }
+    </div>
+    <div class="actions">
+      <a mat-stroked-button routerLink="/dispatch">
+        <mat-icon>arrow_back</mat-icon>
+        {{ 'dispatchConfig.backDashboard' | translate }}
+      </a>
+      <button mat-flat-button color="primary" type="button" (click)="reload()" [disabled]="state.loading()">
+        <mat-icon>refresh</mat-icon>
+        {{ 'dispatchConfig.refresh' | translate }}
+      </button>
+    </div>
+  </header>
+
+  <mat-tab-group animationDuration="0ms">
+    <mat-tab [label]="'dispatchConfig.tabs.general' | translate">
+      <mat-card class="tab-card">
+        <div class="section-head">
+          <h3>{{ 'dispatchConfig.tabs.general' | translate }}</h3>
+        </div>
+        <div class="grid-2">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'dispatchConfig.general.interval' | translate }}</mat-label>
+            <input matInput type="number" name="intervalSeconds" [(ngModel)]="draftGeneral.intervalSeconds" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'dispatchConfig.general.responseTimeout' | translate }}</mat-label>
+            <input matInput type="number" name="responseTimeoutSeconds" [(ngModel)]="draftGeneral.responseTimeoutSeconds" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'dispatchConfig.general.lockTtl' | translate }}</mat-label>
+            <input matInput type="number" name="lockTtlSeconds" [(ngModel)]="draftGeneral.lockTtlSeconds" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'dispatchConfig.general.preAssignWindow' | translate }}</mat-label>
+            <input matInput type="number" name="preAssignmentFinishWindowSeconds" [(ngModel)]="draftGeneral.preAssignmentFinishWindowSeconds" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'dispatchConfig.general.preAssignCostPenalty' | translate }}</mat-label>
+            <input matInput type="number" name="preAssignmentCostPenalty" [(ngModel)]="draftGeneral.preAssignmentCostPenalty" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'dispatchConfig.general.eligibilityWait' | translate }}</mat-label>
+            <input matInput type="number" name="eligibilityOrderWaitingThresholdSeconds" [(ngModel)]="draftGeneral.eligibilityOrderWaitingThresholdSeconds" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'dispatchConfig.general.eligibilityShortage' | translate }}</mat-label>
+            <input matInput type="number" name="eligibilityInternalShortageThreshold" [(ngModel)]="draftGeneral.eligibilityInternalShortageThreshold" />
+          </mat-form-field>
+        </div>
+        <div class="section-actions">
+          <button mat-flat-button color="primary" type="button" (click)="saveGeneral()" [disabled]="!canManage()">
+            {{ 'dispatchConfig.save' | translate }}
+          </button>
+        </div>
+      </mat-card>
+    </mat-tab>
+
+    <mat-tab [label]="'dispatchConfig.tabs.scoring' | translate">
+      <mat-card class="tab-card">
+        <div class="section-head">
+          <h3>{{ 'dispatchConfig.tabs.scoring' | translate }}</h3>
+          <p class="muted">{{ 'dispatchConfig.scoring.dragHint' | translate }}</p>
+        </div>
+        <div cdkDropList (cdkDropListDropped)="drop($event)" class="scoring-list">
+          @for (row of scoringRows(); track row.key) {
+            <div class="scoring-row" cdkDrag>
+              <mat-icon cdkDragHandle class="drag-handle">drag_indicator</mat-icon>
+              <span class="key">{{ ('dispatchConfig.scoring.componentKeys.' + row.key) | translate }}</span>
+              <mat-slide-toggle [(ngModel)]="row.enabled" [name]="'en-' + row.key">{{ 'dispatchConfig.scoring.enabled' | translate }}</mat-slide-toggle>
+              <label class="weight">
+                {{ 'dispatchConfig.scoring.weight' | translate }}: {{ row.weight }}
+                <input type="number" min="0" max="10" [(ngModel)]="row.weight" [name]="'w-' + row.key" />
+              </label>
+            </div>
+          }
+        </div>
+        <div class="section-actions">
+          <button mat-flat-button color="primary" type="button" (click)="saveScoringOrder()" [disabled]="!canManage()">
+            {{ 'dispatchConfig.saveOrder' | translate }}
+          </button>
+        </div>
+      </mat-card>
+    </mat-tab>
+
+    <mat-tab [label]="'dispatchConfig.tabs.ie' | translate">
+      <mat-card class="tab-card">
+        <div class="section-head">
+          <h3>{{ 'dispatchConfig.tabs.ie' | translate }}</h3>
+        </div>
+        <mat-slide-toggle [(ngModel)]="draftIe.internalPriorityOverExternal" name="intPri">
+          {{ 'dispatchConfig.ie.internalPriority' | translate }}
+        </mat-slide-toggle>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>{{ 'dispatchConfig.ie.externalDegrade' | translate }}</mat-label>
+          <input matInput type="number" name="extDegrade" [(ngModel)]="draftIe.externalScoreDegradationThreshold" />
+        </mat-form-field>
+        <div class="section-actions">
+          <button mat-flat-button color="primary" type="button" (click)="saveIe()" [disabled]="!canManage()">
+            {{ 'dispatchConfig.save' | translate }}
+          </button>
+        </div>
+      </mat-card>
+    </mat-tab>
+
+    <mat-tab [label]="'dispatchConfig.tabs.bundling' | translate">
+      <mat-card class="tab-card">
+        <div class="section-head">
+          <h3>{{ 'dispatchConfig.tabs.bundling' | translate }}</h3>
+        </div>
+        <div class="grid-2">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'dispatchConfig.bundling.maxBundle' | translate }}</mat-label>
+            <input matInput type="number" name="maxBundleSize" [(ngModel)]="draftBundling.maxBundleSize" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'dispatchConfig.bundling.dropoffRadius' | translate }}</mat-label>
+            <input matInput type="number" name="dropoffRadiusMeters" [(ngModel)]="draftBundling.dropoffRadiusMeters" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'dispatchConfig.bundling.merchantRadius' | translate }}</mat-label>
+            <input matInput type="number" name="merchantRadiusMeters" [(ngModel)]="draftBundling.merchantRadiusMeters" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'dispatchConfig.bundling.timeWindow' | translate }}</mat-label>
+            <input matInput type="number" name="timeWindowSeconds" [(ngModel)]="draftBundling.timeWindowSeconds" />
+          </mat-form-field>
+        </div>
+        <mat-slide-toggle [(ngModel)]="draftBundling.internalOnly" name="internalOnly">
+          {{ 'dispatchConfig.bundling.internalOnly' | translate }}
+        </mat-slide-toggle>
+        <mat-slide-toggle [(ngModel)]="draftBundling.enabled" name="bundlingEnabled" class="block-toggle">
+          {{ 'dispatchConfig.bundling.enabled' | translate }}
+        </mat-slide-toggle>
+        <mat-slide-toggle [(ngModel)]="draftBundling.respectUrgentFlag" name="respectUrgent" class="block-toggle">
+          {{ 'dispatchConfig.bundling.respectUrgent' | translate }}
+        </mat-slide-toggle>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>{{ 'dispatchConfig.bundling.assignmentStrategy' | translate }}</mat-label>
+          <input matInput name="assignmentStrategy" [(ngModel)]="draftBundling.assignmentStrategy" />
+        </mat-form-field>
+        <div class="section-actions">
+          <button mat-flat-button color="primary" type="button" (click)="saveBundling()" [disabled]="!canManage()">
+            {{ 'dispatchConfig.save' | translate }}
+          </button>
+        </div>
+      </mat-card>
+    </mat-tab>
+
+    <mat-tab [label]="'dispatchConfig.tabs.exclusivity' | translate">
+      <mat-card class="tab-card">
+        <div class="section-head">
+          <h3>{{ 'dispatchConfig.tabs.exclusivity' | translate }}</h3>
+        </div>
+        <p class="muted">{{ 'dispatchConfig.exclusivity.hint' | translate }}</p>
+        <div class="section-actions">
+          <button mat-stroked-button type="button" (click)="addExclusivityCell()">
+            {{ 'dispatchConfig.exclusivity.addCell' | translate }}
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table mat-table [dataSource]="draftExclusivity.cells || []" class="mat-elevation-z1">
+            <ng-container matColumnDef="zoneId">
+              <th mat-header-cell *matHeaderCellDef>{{ 'dispatchConfig.exclusivity.zoneId' | translate }}</th>
+              <td mat-cell *matCellDef="let row">
+                <input type="number" [(ngModel)]="row.zoneId" [ngModelOptions]="{ standalone: true }" />
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="commerceType">
+              <th mat-header-cell *matHeaderCellDef>{{ 'dispatchConfig.exclusivity.commerceType' | translate }}</th>
+              <td mat-cell *matCellDef="let row">
+                <input [(ngModel)]="row.commerceType" [ngModelOptions]="{ standalone: true }" />
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="allowed">
+              <th mat-header-cell *matHeaderCellDef>{{ 'dispatchConfig.exclusivity.allowed' | translate }}</th>
+              <td mat-cell *matCellDef="let row">
+                <mat-slide-toggle [(ngModel)]="row.allowed" [ngModelOptions]="{ standalone: true }" />
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['zoneId', 'commerceType', 'allowed']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['zoneId', 'commerceType', 'allowed']"></tr>
+          </table>
+        </div>
+        <h4 class="subhead">{{ 'dispatchConfig.exclusivity.partnersTitle' | translate }}</h4>
+        <div class="section-actions">
+          <button mat-stroked-button type="button" (click)="addPartnerOverride()">
+            {{ 'dispatchConfig.exclusivity.addPartner' | translate }}
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table mat-table [dataSource]="draftExclusivity.partnerOverrides || []" class="mat-elevation-z1">
+            <ng-container matColumnDef="partnerId">
+              <th mat-header-cell *matHeaderCellDef>{{ 'dispatchConfig.exclusivity.partnerId' | translate }}</th>
+              <td mat-cell *matCellDef="let row">
+                <input type="number" [(ngModel)]="row.partnerId" [ngModelOptions]="{ standalone: true }" />
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="poZoneId">
+              <th mat-header-cell *matHeaderCellDef>{{ 'dispatchConfig.exclusivity.zoneId' | translate }}</th>
+              <td mat-cell *matCellDef="let row">
+                <input type="number" [(ngModel)]="row.zoneId" [ngModelOptions]="{ standalone: true }" />
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="poCommerceType">
+              <th mat-header-cell *matHeaderCellDef>{{ 'dispatchConfig.exclusivity.commerceType' | translate }}</th>
+              <td mat-cell *matCellDef="let row">
+                <input [(ngModel)]="row.commerceType" [ngModelOptions]="{ standalone: true }" />
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="poAllowed">
+              <th mat-header-cell *matHeaderCellDef>{{ 'dispatchConfig.exclusivity.allowed' | translate }}</th>
+              <td mat-cell *matCellDef="let row">
+                <mat-slide-toggle [(ngModel)]="row.allowed" [ngModelOptions]="{ standalone: true }" />
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['partnerId', 'poZoneId', 'poCommerceType', 'poAllowed']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['partnerId', 'poZoneId', 'poCommerceType', 'poAllowed']"></tr>
+          </table>
+        </div>
+        <div class="section-actions">
+          <button mat-flat-button color="primary" type="button" (click)="saveExclusivity()" [disabled]="!canManage()">
+            {{ 'dispatchConfig.save' | translate }}
+          </button>
+        </div>
+      </mat-card>
+    </mat-tab>
+
+    <mat-tab [label]="'dispatchConfig.tabs.simAudit' | translate">
+      <mat-card class="tab-card">
+        <div class="section-head">
+          <h3>{{ 'dispatchConfig.tabs.simAudit' | translate }}</h3>
+        </div>
+        <h3>{{ 'dispatchConfig.sim.title' | translate }}</h3>
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'dispatchConfig.sim.zoneId' | translate }}</mat-label>
+          <input
+            matInput
+            type="number"
+            [ngModel]="simZoneId()"
+            (ngModelChange)="simZoneId.set($event === null || $event === '' ? null : +$event)"
+            name="simZone"
+          />
+        </mat-form-field>
+        <button mat-flat-button color="primary" type="button" (click)="runSim()">{{ 'dispatchConfig.sim.run' | translate }}</button>
+        <pre class="json-out">{{ simResult() }}</pre>
+        <mat-divider />
+        <h3>{{ 'dispatchConfig.replay.title' | translate }}</h3>
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>{{ 'dispatchConfig.replay.cycleId' | translate }}</mat-label>
+          <input matInput [ngModel]="replayId()" (ngModelChange)="replayId.set($event)" name="replayId" />
+        </mat-form-field>
+        <button mat-flat-button color="primary" type="button" (click)="runReplay()">{{ 'dispatchConfig.replay.run' | translate }}</button>
+        <pre class="json-out">{{ replayOut() }}</pre>
+        <mat-divider />
+        <h3>{{ 'dispatchConfig.audit.title' | translate }}</h3>
+        <div class="grid-2">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'dispatchConfig.audit.fromUtc' | translate }}</mat-label>
+            <input matInput [ngModel]="auditFrom()" (ngModelChange)="auditFrom.set($event)" name="af" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'dispatchConfig.audit.toUtc' | translate }}</mat-label>
+            <input matInput [ngModel]="auditTo()" (ngModelChange)="auditTo.set($event)" name="at" />
+          </mat-form-field>
+        </div>
+        <button mat-stroked-button type="button" (click)="exportAudit()">{{ 'dispatchConfig.audit.export' | translate }}</button>
+      </mat-card>
+    </mat-tab>
+  </mat-tab-group>
+</section>

@@ -2,6 +2,7 @@ package com.speedline.delivery.dispatch.impl.bundling;
 
 import com.speedline.delivery.dispatch.client.SolverServiceClient;
 import com.speedline.delivery.dispatch.config.DispatchProperties;
+import com.speedline.delivery.dispatch.config.runtime.RuntimeDispatchTuningService;
 import com.speedline.delivery.dispatch.contract.engine.BundlingResult;
 import com.speedline.delivery.dispatch.contract.model.PendingOrder;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +27,8 @@ class RuleBasedBundlingEngineTest {
 
     @Mock
     private SolverServiceClient solverServiceClient;
+    @Mock
+    private RuntimeDispatchTuningService runtimeDispatchTuningService;
 
     private DispatchProperties properties;
     private RuleBasedBundlingEngine engine;
@@ -40,7 +43,9 @@ class RuleBasedBundlingEngineTest {
         properties.getBundling().setAverageSpeedKmh(22.0);
         properties.getSolver().getOrtools().setEnabled(false);
 
-        engine = new RuleBasedBundlingEngine(properties, solverServiceClient);
+        org.mockito.Mockito.when(runtimeDispatchTuningService.bundling()).thenReturn(properties.getBundling());
+
+        engine = new RuleBasedBundlingEngine(properties, runtimeDispatchTuningService, solverServiceClient);
     }
 
     @Test

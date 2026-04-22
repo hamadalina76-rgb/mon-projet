@@ -3,7 +3,12 @@ import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { Subject } from 'rxjs';
 import { environment } from '@environments/environment';
-import { DispatchCourierPosition, DispatchCycleEvent } from '../models/dispatch-dashboard.model';
+import {
+  DispatchCourierPosition,
+  DispatchCycleEvent,
+  DispatchProposal,
+  DispatchProposalResolvedEvent,
+} from '../models/dispatch-dashboard.model';
 
 @Injectable({ providedIn: 'root' })
 export class DispatchRealtimeService implements OnDestroy {
@@ -12,12 +17,18 @@ export class DispatchRealtimeService implements OnDestroy {
   private positionSub: StompSubscription | null = null;
   private zoneSubs = new Map<number, StompSubscription>();
   private pendingZoneSubscriptions = new Set<number>();
+  private proposalSub: StompSubscription | null = null;
+  private proposalResolvedSub: StompSubscription | null = null;
 
   private courierPositionsSubject = new Subject<DispatchCourierPosition[]>();
   private zoneCycleSubject = new Subject<DispatchCycleEvent>();
+  private proposalSubject = new Subject<DispatchProposal>();
+  private proposalResolvedSubject = new Subject<DispatchProposalResolvedEvent>();
 
   courierPositions$ = this.courierPositionsSubject.asObservable();
   zoneCycle$ = this.zoneCycleSubject.asObservable();
+  proposalEvents$ = this.proposalSubject.asObservable();
+  proposalResolved$ = this.proposalResolvedSubject.asObservable();
 
   connect(): void {
     if (this.client?.active) return;
@@ -34,6 +45,20 @@ export class DispatchRealtimeService implements OnDestroy {
         this.positionSub = this.client?.subscribe('/topic/couriers/positions', (message: IMessage) => {
           try {
             this.courierPositionsSubject.next(JSON.parse(message.body));
+          } catch {
+            // no-op
+          }
+        }) ?? null;
+        this.proposalSub = this.client?.subscribe('/topic/dispatch/proposals', (message: IMessage) => {
+          try {
+            this.proposalSubject.next(JSON.parse(message.body));
+          } catch {
+            // no-op
+          }
+        }) ?? null;
+        this.proposalResolvedSub = this.client?.subscribe('/topic/dispatch/proposals/resolved', (message: IMessage) => {
+          try {
+            this.proposalResolvedSubject.next(JSON.parse(message.body));
           } catch {
             // no-op
           }
@@ -69,6 +94,10 @@ export class DispatchRealtimeService implements OnDestroy {
   disconnect(): void {
     this.positionSub?.unsubscribe();
     this.positionSub = null;
+    this.proposalSub?.unsubscribe();
+    this.proposalSub = null;
+    this.proposalResolvedSub?.unsubscribe();
+    this.proposalResolvedSub = null;
     this.zoneSubs.forEach((s) => s.unsubscribe());
     this.zoneSubs.clear();
     this.pendingZoneSubscriptions.clear();
@@ -81,5 +110,7 @@ export class DispatchRealtimeService implements OnDestroy {
     this.disconnect();
     this.courierPositionsSubject.complete();
     this.zoneCycleSubject.complete();
+    this.proposalSubject.complete();
+    this.proposalResolvedSubject.complete();
   }
 }

@@ -7,8 +7,10 @@ import com.google.cloud.spring.pubsub.integration.AckMode;
 import com.google.cloud.spring.pubsub.integration.inbound.PubSubInboundChannelAdapter;
 import com.google.cloud.spring.pubsub.support.BasicAcknowledgeablePubsubMessage;
 import com.google.cloud.spring.pubsub.support.GcpPubSubHeaders;
+import com.speedline.delivery.dispatch.config.DispatchProperties;
 import com.speedline.delivery.dispatch.event.PendingOrderEnricher;
 import com.speedline.delivery.dispatch.service.PendingOrderRedisRepository;
+import com.speedline.delivery.dispatch.service.ScheduledOrderRedisRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -22,6 +24,7 @@ import org.springframework.messaging.MessageHandler;
 
 import java.util.Locale;
 import java.util.Map;
+import java.time.Instant;
 
 @Configuration
 @RequiredArgsConstructor
@@ -30,6 +33,8 @@ public class OrderEventConsumer {
 
     private final PendingOrderEnricher pendingOrderEnricher;
     private final PendingOrderRedisRepository pendingOrderRedisRepository;
+    private final ScheduledOrderRedisRepository scheduledOrderRedisRepository;
+    private final DispatchProperties properties;
     private final ObjectMapper objectMapper;
     private final PubSubTemplate pubSubTemplate;
 
@@ -63,8 +68,16 @@ public class OrderEventConsumer {
                 });
                 final String eventType = resolveEventType(event);
                 if ("ORDER_CREATED".equals(eventType)) {
-                    pendingOrderEnricher.enrichOptional(event)
-                            .ifPresent(pendingOrderRedisRepository::add);
+                    pendingOrderEnricher.enrichOptional(event).ifPresent(order -> {
+                        Instant nowWithLead = Instant.now().plusSeconds(properties.getScheduledOrders().getLeadTimeMinutes() * 60L);
+                        if (Boolean.TRUE.equals(order.getIsScheduled())
+                                && order.getScheduledDeliveryAt() != null
+                                && order.getScheduledDeliveryAt().isAfter(nowWithLead)) {
+                            scheduledOrderRedisRepository.add(order);
+                        } else {
+                            pendingOrderRedisRepository.add(order);
+                        }
+                    });
                 }
                 if (originalMessage != null) {
                     originalMessage.ack();

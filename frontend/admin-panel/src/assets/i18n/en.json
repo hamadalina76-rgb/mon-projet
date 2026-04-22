@@ -41,7 +41,8 @@
     "apply": "Apply",
     "reset": "Reset",
     "activate": "Activate",
-    "deactivate": "Deactivate"
+    "deactivate": "Deactivate",
+    "close": "Close"
   },
   "nav": {
     "collapseSidebar": "Collapse menu",
@@ -76,10 +77,12 @@
     "settings": "Settings",
     "monitoring": "Monitoring",
     "scheduleTemplates": "Work Schedules",
-    "dispatch": "Dispatch"
+    "dispatch": "Dispatch",
+    "dispatchMonitor": "Dispatch monitor"
   },
   "dispatch": {
     "title": "Dispatch",
+    "openConfig": "Configuration",
     "subtitle": "Operations view: queue, live map and quick actions — like a delivery control room.",
     "kpiFirstCycle": "First-cycle rate",
     "kpiAssignDelay": "Assignment delay",
@@ -89,6 +92,9 @@
     "kpiOnTime": "On-time",
     "kpiThresholdExceeded": "Operational threshold exceeded",
     "mapLiveTitle": "Live map",
+    "mapTraffic": "Traffic",
+    "mapTrafficHint": "Use Mapbox navigation style to show live traffic on roads (may be lighter outside major cities).",
+    "mapPendingOrder": "Pending order",
     "legendAria": "Courier colour legend",
     "legendInterneIdle": "Internal · available",
     "legendInterneDelivery": "Internal · on delivery",
@@ -114,8 +120,15 @@
     "bundleIdsLabel": "Order IDs (e.g. 12, 13, 14)",
     "bundleBtn": "Create bundle",
     "pendingTitle": "Orders waiting for a courier",
-    "pendingDesc": "List from order-service (awaiting assignment).",
+    "pendingDesc": "Jarvis-style: couriers are pre-assigned as soon as the order is created — they roll towards the restaurant in parallel with preparation.",
     "pendingEmpty": "No pending orders right now.",
+    "pendingStatusHint": "Order life-cycle. Dispatch can pre-assign from PENDING onwards (no need to wait for READY_FOR_PICKUP).",
+    "orderStatus": {
+      "PENDING": "Pending",
+      "CONFIRMED": "Confirmed",
+      "PREPARING": "Preparing",
+      "READY_FOR_PICKUP": "Ready"
+    },
     "orderNumberFallback": "—",
     "zoneUpdated": "Zone updated",
     "zoneUpdateError": "Could not update the zone (check location-service and zone ID).",
@@ -129,8 +142,149 @@
     "noCourier": "No available courier",
     "assignSuccess": "Assignment done",
     "assignError": "Assignment failed (check order and courier)",
+    "assignErrorDetail": "Assignment was rejected by order-service. {{detail}}",
+    "headerZoneLabel": "Active zone (map & list)",
     "bundleSuccess": "Bundle created",
-    "bundleIdsPlaceholder": "12, 13, 14"
+    "bundleError": "Bundle creation failed (check order IDs and zone)",
+    "bundleIdsPlaceholder": "12, 13, 14",
+    "currentMode": "Mode",
+    "modeRuntimeOverride": "Redis override",
+    "modeSelectAria": "Dispatch mode for this zone",
+    "modeUpdated": "Dispatch mode updated",
+    "modeUpdateError": "Could not update dispatch mode",
+    "mode": {
+      "AUTO": "Automatic",
+      "AUTO.desc": "Solver assigns continuously; events are firm assignments.",
+      "SEMI_AUTO": "Semi-automatic",
+      "SEMI_AUTO.desc": "Solver proposes; you approve or reject before the rider is confirmed.",
+      "MANUAL": "Manual",
+      "MANUAL.desc": "Automatic cycles are skipped; use manual assignment below."
+    },
+    "cycleFeedTitle": "Dispatch cycles (live)",
+    "cycleFeedDesc": "Last runs for the selected zone (from real-time feed).",
+    "cycleFeedEmpty": "No cycle events yet for this zone.",
+    "cycleAssigned": "Assigned: {{n}}",
+    "cycleUnmatched": "Unmatched: {{n}}",
+    "cyclePool": "Pool: {{o}} orders / {{c}} couriers",
+    "proposalsTitle": "Assignment proposals",
+    "proposalsDesc": "SEMI_AUTO: confirm or reject suggested order–rider pairs.",
+    "proposalsEmpty": "No pending proposals.",
+    "proposalCourier": "Courier",
+    "proposalApprove": "Approve",
+    "proposalReject": "Reject",
+    "proposalApproved": "Proposal approved",
+    "proposalRejected": "Proposal rejected",
+    "proposalError": "Proposal action failed"
+  },
+  "monitoring": {
+    "systemHealth": "System health",
+    "errorLogs": "Error logs",
+    "auditLogs": "Audit logs",
+    "errorColTime": "Time",
+    "errorColMessage": "Message",
+    "errorColSource": "Source",
+    "auditColTime": "Time",
+    "auditColAction": "Action",
+    "auditColUser": "User / actor",
+    "auditExportDone": "Export started",
+    "dispatchMonitor": {
+      "title": "Dispatch monitor",
+      "subtitle": "Alerts, live cycle history, and activity for operations.",
+      "back": "Back to dispatch",
+      "noZones": "No active zones",
+      "activity": "Activity feed",
+      "activityEmpty": "Waiting for WebSocket events (cycles, proposal resolutions)…",
+      "alertPending": "High number of pending orders in this zone",
+      "alertCouriers": "Very few online couriers — risk of delay"
+    }
+  },
+  "dispatchConfig": {
+    "title": "Dispatch configuration",
+    "subtitle": "DISP-205 — grouped runtime settings, simulation, replay, and audit export.",
+    "metaVersion": "Active DB version",
+    "metaRedis": "Redis version",
+    "backDashboard": "Back to dispatch",
+    "refresh": "Reload from server",
+    "save": "Save",
+    "saveOrder": "Save scoring order",
+    "loadError": "Could not load dispatch configuration.",
+    "saved": "Saved",
+    "saveError": "Save failed (check version / permissions).",
+    "tabs": {
+      "general": "General",
+      "scoring": "Scoring",
+      "ie": "Internal / External",
+      "bundling": "Bundling",
+      "exclusivity": "Exclusivity",
+      "simAudit": "Simulation & audit"
+    },
+    "general": {
+      "interval": "Cycle interval (seconds)",
+      "responseTimeout": "Response timeout (seconds)",
+      "lockTtl": "Lock TTL (seconds)",
+      "preAssignWindow": "Pre-assignment finish window (seconds)",
+      "preAssignCostPenalty": "Pre-assignment cost penalty",
+      "eligibilityWait": "Order waiting threshold (seconds)",
+      "eligibilityShortage": "Internal shortage threshold"
+    },
+    "scoring": {
+      "dragHint": "Drag rows to change evaluation order. Weights 0–10.",
+      "enabled": "Enabled",
+      "weight": "Weight",
+      "componentKeys": {
+        "ETA_TOTAL_ESTIMATED": "Estimated total ETA",
+        "COURIER_TYPE": "Courier type",
+        "AVAILABILITY": "Availability",
+        "ROUTE_ALIGNMENT": "Route alignment",
+        "TOUR_COMPATIBILITY": "Tour compatibility",
+        "PERFORMANCE_RATING": "Performance rating",
+        "GUARANTEED_DEADLINE": "Guaranteed deadline",
+        "RECENT_REFUSAL": "Recent refusal",
+        "WORKLOAD_FAIRNESS": "Workload fairness",
+        "MERCHANT_KNOWLEDGE": "Merchant knowledge",
+        "VEHICLE_COMPATIBILITY": "Vehicle compatibility"
+      }
+    },
+    "ie": {
+      "internalPriority": "Prioritize internal couriers",
+      "externalDegrade": "External score degradation threshold"
+    },
+    "bundling": {
+      "maxBundle": "Max bundle size",
+      "dropoffRadius": "Drop-off radius (m)",
+      "merchantRadius": "Merchant radius (m)",
+      "timeWindow": "Time window (seconds)",
+      "internalOnly": "Internal couriers only for bundles",
+      "enabled": "Bundling enabled",
+      "respectUrgent": "Respect urgent flag",
+      "assignmentStrategy": "Assignment strategy (e.g. NEAREST, COST)"
+    },
+    "exclusivity": {
+      "hint": "Matrix of zone × commerce type. Add rows then save.",
+      "addCell": "Add row",
+      "zoneId": "Zone ID",
+      "commerceType": "Commerce type",
+      "allowed": "Allowed",
+      "partnersTitle": "Partner overrides",
+      "addPartner": "Add partner override",
+      "partnerId": "Partner ID"
+    },
+    "sim": {
+      "title": "Simulation (read-only)",
+      "zoneId": "Zone ID (optional)",
+      "run": "Run simulation"
+    },
+    "replay": {
+      "title": "Replay cycle",
+      "cycleId": "Cycle UUID",
+      "run": "Run replay"
+    },
+    "audit": {
+      "title": "Audit CSV export",
+      "fromUtc": "From (ISO-8601 UTC)",
+      "toUtc": "To exclusive (ISO-8601 UTC)",
+      "export": "Download CSV"
+    }
   },
   "header": {
     "searchPlaceholder": "Search orders, customers, partners...",

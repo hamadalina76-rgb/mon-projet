@@ -25,4 +25,22 @@ public final class GeoUtil {
         double hours = km / speedKmh;
         return (int) Math.ceil(hours * 60.0);
     }
+
+    /**
+     * Extra meters compared to going directly from courier to destination.
+     */
+    public static double detourMeters(double courierLat, double courierLon,
+                                      double waypointLat, double waypointLon,
+                                      double destinationLat, double destinationLon) {
+        return haversineMeters(courierLat, courierLon, waypointLat, waypointLon)
+                + haversineMeters(waypointLat, waypointLon, destinationLat, destinationLon)
+                - haversineMeters(courierLat, courierLon, destinationLat, destinationLon);
+    }
+
+    public static double toMinutes(double meters, double speedMps) {
+        if (meters <= 0.0 || speedMps <= 0.0) {
+            return 0.0;
+        }
+        return (meters / speedMps) / 60.0;
+    }
 }

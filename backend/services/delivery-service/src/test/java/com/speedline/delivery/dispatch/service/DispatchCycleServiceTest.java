@@ -3,6 +3,8 @@ package com.speedline.delivery.dispatch.service;
 import com.speedline.delivery.dispatch.config.DispatchMode;
 import com.speedline.delivery.dispatch.config.DispatchProperties;
 import com.speedline.delivery.dispatch.config.DispatchZoneConfig;
+import com.speedline.delivery.dispatch.config.runtime.RuntimeDispatchTuningService;
+import com.speedline.delivery.dispatch.config.service.DispatchCycleCaptureRecorder;
 import com.speedline.delivery.dispatch.contract.engine.BundlingEngine;
 import com.speedline.delivery.dispatch.contract.engine.BundlingResult;
 import com.speedline.delivery.dispatch.contract.engine.CostFunction;
@@ -14,6 +16,7 @@ import com.speedline.delivery.dispatch.contract.model.CourierStatus;
 import com.speedline.delivery.dispatch.contract.model.CourierType;
 import com.speedline.delivery.dispatch.contract.model.PendingOrder;
 import com.speedline.delivery.dispatch.engine.bundling.BundleDispatchOrchestrator;
+import com.speedline.delivery.client.OrderServiceClient;
 import com.speedline.delivery.dispatch.event.DispatchAssignedEvent;
 import com.speedline.delivery.dispatch.metrics.DispatchMetrics;
 import com.speedline.delivery.event.producer.DeliveryEventProducer;
@@ -29,6 +32,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
@@ -36,7 +40,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -64,6 +70,10 @@ class DispatchCycleServiceTest {
     @Mock
     private EligibilityFilter eligibilityFilter;
     @Mock
+    private UrgentOrderPrePassService urgentOrderPrePassService;
+    @Mock
+    private UrgentBonusService urgentBonusService;
+    @Mock
     private CourierResponseTimeoutTracker responseTimeoutTracker;
     @Mock
     private DeliveryEventProducer deliveryEventProducer;
@@ -75,6 +85,16 @@ class DispatchCycleServiceTest {
     private StringRedisTemplate redisTemplate;
     @Mock
     private ValueOperations<String, String> valueOperations;
+    @Mock
+    private RuntimeDispatchTuningService runtimeDispatchTuningService;
+    @Mock
+    private DispatchCycleCaptureRecorder cycleCaptureRecorder;
+    @Mock
+    private DispatchProposalService dispatchProposalService;
+    @Mock
+    private DispatchDeliveryRecordService dispatchDeliveryRecordService;
+    @Mock
+    private OrderServiceClient orderServiceClient;
 
     private DispatchCycleService service;
     private AutoCloseable mocks;
@@ -84,6 +104,10 @@ class DispatchCycleServiceTest {
         mocks = MockitoAnnotations.openMocks(this);
         DispatchProperties properties = new DispatchProperties();
         properties.getLock().setTtlSeconds(30);
+        org.mockito.Mockito.when(runtimeDispatchTuningService.responseTimeoutDeadlineSeconds())
+                .thenReturn(properties.getResponseTimeout().getDeadlineSeconds());
+        org.mockito.Mockito.when(runtimeDispatchTuningService.lockTtlSeconds())
+                .thenReturn(properties.getLock().getTtlSeconds());
 
         service = new DispatchCycleService(
                 zoneConfig,
@@ -96,11 +120,18 @@ class DispatchCycleServiceTest {
                 bundleDispatchOrchestrator,
                 preAssignmentCalculator,
                 eligibilityFilter,
+                urgentOrderPrePassService,
+                urgentBonusService,
                 responseTimeoutTracker,
                 deliveryEventProducer,
                 dispatchMetrics,
                 dispatchRealtimePublisher,
-                redisTemplate);
+                redisTemplate,
+                runtimeDispatchTuningService,
+                cycleCaptureRecorder,
+                dispatchProposalService,
+                dispatchDeliveryRecordService,
+                orderServiceClient);
     }
 
     @AfterEach
@@ -141,7 +172,7 @@ class DispatchCycleServiceTest {
     }
 
     @Test
-    void semiAuto_setsProposalTrue() {
+    void semiAuto_enqueuesProposalWithoutPublishingDispatchEvent() {
         stubCycleDefaults();
         when(zoneConfig.getMode(1L)).thenReturn(DispatchMode.SEMI_AUTO);
         when(pendingOrderRedisRepository.findByZone(1L)).thenReturn(List.of(order(1L)));
@@ -151,10 +182,8 @@ class DispatchCycleServiceTest {
 
         service.runCycle(1L);
 
-        ArgumentCaptor<DispatchAssignedEvent> eventCaptor = ArgumentCaptor.forClass(DispatchAssignedEvent.class);
-        verify(deliveryEventProducer).publishAssigned(eventCaptor.capture());
-        assertTrue(eventCaptor.getValue().isProposal());
-        assertEquals(DispatchMode.SEMI_AUTO, eventCaptor.getValue().getDispatchMode());
+        verify(deliveryEventProducer, never()).publishAssigned(any(DispatchAssignedEvent.class));
+        verify(dispatchProposalService).enqueueProposal(eq(1L), any(Assignment.class), anyMap());
     }
 
     @Test
@@ -263,9 +292,11 @@ class DispatchCycleServiceTest {
     }
 
     private void stubCycleDefaults() {
+        when(orderServiceClient.assignCourierToOrder(anyLong(), anyMap())).thenReturn(Map.of());
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);
         when(redisTemplate.execute(any(), anyList(), anyString())).thenReturn(1L);
+        when(dispatchProposalService.hasPendingProposal(anyLong())).thenReturn(false);
         when(zoneConfig.getMode(anyLong())).thenReturn(DispatchMode.AUTO);
         when(zoneConfig.getMaxCapacity(anyLong())).thenReturn(50);
         when(preAssignmentCalculator.enrichPreAssignable(anyList(), anyLong(), any())).thenAnswer(inv -> inv.getArgument(0));
@@ -274,6 +305,8 @@ class DispatchCycleServiceTest {
             List<AvailableCourier> internals = pool.stream().filter(c -> c.getType() == CourierType.INTERNAL).toList();
             return EligibilityPool.builder().pool(pool).internalOnly(internals).fallbackApplied(false).build();
         });
+        when(urgentOrderPrePassService.runPrePass(anyList(), anyList(), anyList(), anyLong()))
+                .thenReturn(new UrgentOrderPrePassService.UrgentPrePassResult(List.of(), java.util.Set.of()));
         when(bundleDispatchOrchestrator.dispatchBundles(any(), any(), anyList(), anyList(), anyLong())).thenAnswer(inv -> {
             java.util.Map<Long, PendingOrder> orderById = inv.getArgument(1);
             List<AvailableCourier> couriers = inv.getArgument(2);

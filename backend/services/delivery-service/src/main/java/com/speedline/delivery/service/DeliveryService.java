@@ -18,26 +18,18 @@ public interface DeliveryService {
     /**
      * Créer une livraison pour une commande
      * Appelé automatiquement quand une commande est confirmée
-     * 
-     * @param orderId ID de la commande
-     * @param orderNumber Numéro de la commande
-     * @param customerName Nom du client
-     * @param customerPhone Téléphone du client
-     * @param partnerName Nom du partenaire
-     * @param pickupLat Latitude de pickup
-     * @param pickupLon Longitude de pickup
-     * @param pickupAddress Adresse de pickup
-     * @param dropoffLat Latitude de dropoff
-     * @param dropoffLon Longitude de dropoff
-     * @param dropoffAddress Adresse de dropoff
-     * @param deliveryInstructions Instructions de livraison
-     * @param deliveryFee Frais de livraison
-     * @return DeliveryDTO avec id, status=PENDING, deliveryCode
+     *
+     * @param assignedCourierId si non null : statut {@code ASSIGNED} + assignation immédiate (dispatch)
+     * @param bundleId identifiant de bundle (optionnel)
+     * @param etaPickupMin / etaDeliveryMin estimations (optionnel)
+     * @return DeliveryDTO avec id, status=PENDING ou ASSIGNED, deliveryCode
      */
     DeliveryDTO createDelivery(Long orderId, String orderNumber, String customerName, String customerPhone,
                                 String partnerName, BigDecimal pickupLat, BigDecimal pickupLon, String pickupAddress,
                                 BigDecimal dropoffLat, BigDecimal dropoffLon, String dropoffAddress,
-                                String deliveryInstructions, BigDecimal deliveryFee);
+                                String deliveryInstructions, BigDecimal deliveryFee,
+                                Long assignedCourierId, Long bundleId,
+                                Integer etaPickupMin, Integer etaDeliveryMin);
 
     // ==================== LECTURE ====================
 

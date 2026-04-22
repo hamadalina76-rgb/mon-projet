@@ -42,7 +42,8 @@
     "sortBy": "Trier par",
     "of": "de",
     "createdAt": "Créé le",
-    "updatedAt": "Mis à jour le"
+    "updatedAt": "Mis à jour le",
+    "close": "Fermer"
   },
   "nav": {
     "collapseSidebar": "Replier le menu",
@@ -78,10 +79,12 @@
     "settings": "Paramètres",
     "monitoring": "Monitoring",
     "scheduleTemplates": "Modèles horaires",
-    "dispatch": "Dispatch"
+    "dispatch": "Dispatch",
+    "dispatchMonitor": "Surveillance dispatch"
   },
   "dispatch": {
     "title": "Dispatch",
+    "openConfig": "Configuration",
     "subtitle": "Vue opérationnelle : file d’attente, carte en direct et actions rapides — comme une salle de contrôle livraison.",
     "kpiFirstCycle": "Taux 1er cycle",
     "kpiAssignDelay": "Délai affectation",
@@ -91,6 +94,9 @@
     "kpiOnTime": "Respect délai",
     "kpiThresholdExceeded": "Seuil opérationnel dépassé",
     "mapLiveTitle": "Carte en direct",
+    "mapTraffic": "Trafic",
+    "mapTrafficHint": "Style Navigation Mapbox pour afficher le trafic sur les routes (moins visible hors grandes villes).",
+    "mapPendingOrder": "Commande en attente",
     "legendAria": "Légende des couleurs livreurs",
     "legendInterneIdle": "Interne dispo",
     "legendInterneDelivery": "Interne en course",
@@ -116,8 +122,15 @@
     "bundleIdsLabel": "IDs commandes (ex. 12, 13, 14)",
     "bundleBtn": "Créer le bundle",
     "pendingTitle": "Commandes en attente de livreur",
-    "pendingDesc": "Liste issue d’order-service (en attente d’affectation).",
+    "pendingDesc": "Style Jarvis : le livreur est pré-assigné dès la création de la commande et roule vers le restaurant en parallèle de la préparation.",
     "pendingEmpty": "Aucune commande en attente pour le moment.",
+    "pendingStatusHint": "Cycle de vie. Le dispatch peut pré-assigner dès PENDING (pas besoin d'attendre READY_FOR_PICKUP).",
+    "orderStatus": {
+      "PENDING": "En attente",
+      "CONFIRMED": "Confirmée",
+      "PREPARING": "En préparation",
+      "READY_FOR_PICKUP": "Prête"
+    },
     "orderNumberFallback": "—",
     "zoneUpdated": "Zone mise à jour",
     "zoneUpdateError": "Impossible de mettre à jour la zone (vérifiez location-service et l’ID de zone).",
@@ -131,8 +144,149 @@
     "noCourier": "Aucun livreur disponible",
     "assignSuccess": "Assignation effectuée",
     "assignError": "Échec de l'assignation (vérifiez la commande et le livreur)",
+    "assignErrorDetail": "L’order-service a refusé l’assignation. {{detail}}",
+    "headerZoneLabel": "Zone active (carte & listes)",
     "bundleSuccess": "Bundle créé",
-    "bundleIdsPlaceholder": "12, 13, 14"
+    "bundleError": "Échec de la création du bundle (vérifiez les IDs et la zone)",
+    "bundleIdsPlaceholder": "12, 13, 14",
+    "currentMode": "Mode",
+    "modeRuntimeOverride": "Surcharge Redis",
+    "modeSelectAria": "Mode de dispatch pour cette zone",
+    "modeUpdated": "Mode de dispatch mis à jour",
+    "modeUpdateError": "Impossible de mettre à jour le mode",
+    "mode": {
+      "AUTO": "Automatique",
+      "AUTO.desc": "Le moteur assigne en continu ; les événements sont des affectations fermes.",
+      "SEMI_AUTO": "Semi-automatique",
+      "SEMI_AUTO.desc": "Le moteur propose ; vous validez ou rejetez avant confirmation livreur.",
+      "MANUAL": "Manuel",
+      "MANUAL.desc": "Les cycles auto sont ignorés ; utilisez l'assignation manuelle ci-dessous."
+    },
+    "cycleFeedTitle": "Cycles dispatch (temps réel)",
+    "cycleFeedDesc": "Derniers cycles pour la zone sélectionnée (flux WebSocket).",
+    "cycleFeedEmpty": "Aucun cycle pour cette zone pour l'instant.",
+    "cycleAssigned": "Assignées : {{n}}",
+    "cycleUnmatched": "Non matchées : {{n}}",
+    "cyclePool": "File : {{o}} commandes / {{c}} livreurs",
+    "proposalsTitle": "Propositions d'affectation",
+    "proposalsDesc": "SEMI_AUTO : confirmez ou rejetez les paires commande–livreur.",
+    "proposalsEmpty": "Aucune proposition en attente.",
+    "proposalCourier": "Livreur",
+    "proposalApprove": "Approuver",
+    "proposalReject": "Rejeter",
+    "proposalApproved": "Proposition approuvée",
+    "proposalRejected": "Proposition rejetée",
+    "proposalError": "Action sur la proposition impossible"
+  },
+  "monitoring": {
+    "systemHealth": "Santé du système",
+    "errorLogs": "Journaux d'erreurs",
+    "auditLogs": "Journaux d'audit",
+    "errorColTime": "Heure",
+    "errorColMessage": "Message",
+    "errorColSource": "Source",
+    "auditColTime": "Heure",
+    "auditColAction": "Action",
+    "auditColUser": "Utilisateur / acteur",
+    "auditExportDone": "Export lancé",
+    "dispatchMonitor": {
+      "title": "Surveillance dispatch",
+      "subtitle": "Alertes, historique des cycles et activité pour les opérations.",
+      "back": "Retour au dispatch",
+      "noZones": "Aucune zone active",
+      "activity": "Fil d'activité",
+      "activityEmpty": "En attente d'événements WebSocket (cycles, résolution des propositions)…",
+      "alertPending": "Beaucoup de commandes en attente sur cette zone",
+      "alertCouriers": "Très peu de livreurs en ligne — risque de retard"
+    }
+  },
+  "dispatchConfig": {
+    "title": "Configuration dispatch",
+    "subtitle": "DISP-205 — paramètres groupés, simulation, replay et export d’audit.",
+    "metaVersion": "Version DB active",
+    "metaRedis": "Version Redis",
+    "backDashboard": "Retour au dispatch",
+    "refresh": "Recharger depuis le serveur",
+    "save": "Enregistrer",
+    "saveOrder": "Enregistrer l’ordre de scoring",
+    "loadError": "Impossible de charger la configuration dispatch.",
+    "saved": "Enregistré",
+    "saveError": "Échec de l’enregistrement (version / droits).",
+    "tabs": {
+      "general": "Général",
+      "scoring": "Scoring",
+      "ie": "Interne / Externe",
+      "bundling": "Tournées",
+      "exclusivity": "Exclusivité",
+      "simAudit": "Simulation & audit"
+    },
+    "general": {
+      "interval": "Intervalle de cycle (s)",
+      "responseTimeout": "Délai de réponse (s)",
+      "lockTtl": "TTL du verrou (s)",
+      "preAssignWindow": "Fenêtre pré-assignation (s)",
+      "preAssignCostPenalty": "Pénalité de coût pré-assignation",
+      "eligibilityWait": "Seuil d’attente commande (s)",
+      "eligibilityShortage": "Seuil de pénurie couriers internes"
+    },
+    "scoring": {
+      "dragHint": "Glissez les lignes pour l’ordre d’évaluation. Poids 0–10.",
+      "enabled": "Activé",
+      "weight": "Poids",
+      "componentKeys": {
+        "ETA_TOTAL_ESTIMATED": "Temps estimé total",
+        "COURIER_TYPE": "Type de livreur",
+        "AVAILABILITY": "Disponibilité",
+        "ROUTE_ALIGNMENT": "Alignement de l’itinéraire",
+        "TOUR_COMPATIBILITY": "Compatibilité de tournée",
+        "PERFORMANCE_RATING": "Performance",
+        "GUARANTEED_DEADLINE": "Délai garanti",
+        "RECENT_REFUSAL": "Refus récent",
+        "WORKLOAD_FAIRNESS": "Équilibrage de charge",
+        "MERCHANT_KNOWLEDGE": "Connaissance marchand",
+        "VEHICLE_COMPATIBILITY": "Compatibilité véhicule"
+      }
+    },
+    "ie": {
+      "internalPriority": "Prioriser les livreurs internes",
+      "externalDegrade": "Seuil de dégradation score externe"
+    },
+    "bundling": {
+      "maxBundle": "Taille max de bundle",
+      "dropoffRadius": "Rayon livraison (m)",
+      "merchantRadius": "Rayon marchand (m)",
+      "timeWindow": "Fenêtre temps (s)",
+      "internalOnly": "Bundles internes seulement",
+      "enabled": "Bundles activés",
+      "respectUrgent": "Respecter le flag urgent",
+      "assignmentStrategy": "Stratégie d’assignation (ex. NEAREST, COST)"
+    },
+    "exclusivity": {
+      "hint": "Matrice zone × type de commerce. Ajoutez des lignes puis enregistrez.",
+      "addCell": "Ajouter une ligne",
+      "zoneId": "ID zone",
+      "commerceType": "Type de commerce",
+      "allowed": "Autorisé",
+      "partnersTitle": "Dérogations partenaires",
+      "addPartner": "Ajouter une dérogation",
+      "partnerId": "ID partenaire"
+    },
+    "sim": {
+      "title": "Simulation (lecture seule)",
+      "zoneId": "ID zone (optionnel)",
+      "run": "Lancer la simulation"
+    },
+    "replay": {
+      "title": "Replay d’un cycle",
+      "cycleId": "UUID du cycle",
+      "run": "Lancer le replay"
+    },
+    "audit": {
+      "title": "Export CSV d’audit",
+      "fromUtc": "Depuis (ISO-8601 UTC)",
+      "toUtc": "Jusqu’à exclus (ISO-8601 UTC)",
+      "export": "Télécharger CSV"
+    }
   },
   "header": {
     "searchPlaceholder": "Rechercher des commandes, clients, partenaires...",

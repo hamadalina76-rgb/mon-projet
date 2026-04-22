@@ -152,6 +152,19 @@ dispatch:
     topic: admin-alerts
     hr-topic: hr-notifications
     reliability-topic: courier-reliability-events
+  urgent:
+    max-deviation-minutes: 5
+    bonus-amount: 2.0
+    alert-interval-seconds: 300
+    courier-speed-mps: 8.33
+  scheduled-orders:
+    lead-time-minutes: 30
+    injection-interval-seconds: 60
+    no-courier-alert-lead-minutes: 120
+    no-courier-alert-window-minutes: 5
+    ttl-hours: 48
+  partner-notifications:
+    topic: partner-notifications
   zones:
     - id: 1
       mode: AUTO
