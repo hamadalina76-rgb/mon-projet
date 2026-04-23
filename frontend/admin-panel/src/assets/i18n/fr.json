@@ -96,6 +96,8 @@
     "mapLiveTitle": "Carte en direct",
     "mapTraffic": "Trafic",
     "mapTrafficHint": "Style Navigation Mapbox pour afficher le trafic sur les routes (moins visible hors grandes villes).",
+    "mapRecenter": "Recentrer sur la zone",
+    "noGpsHint": "Livreurs connectés mais sans position GPS active (pas encore de signal)",
     "mapPendingOrder": "Commande en attente",
     "legendAria": "Légende des couleurs livreurs",
     "legendInterneIdle": "Interne dispo",

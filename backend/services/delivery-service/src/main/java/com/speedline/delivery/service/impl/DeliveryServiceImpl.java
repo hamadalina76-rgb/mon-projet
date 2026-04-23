@@ -2,6 +2,8 @@ package com.speedline.delivery.service.impl;
 
 import com.speedline.delivery.client.UserServiceClient;
 import com.speedline.delivery.compensation.LateDeliveryCompensationService;
+import com.speedline.delivery.dispatch.service.CourierResponseTimeoutTracker;
+import com.speedline.delivery.dispatch.service.RefusalHandler;
 import com.speedline.delivery.domain.Delivery;
 import com.speedline.delivery.domain.DeliveryStatus;
 import com.speedline.delivery.dto.DeliveryDTO;
@@ -40,6 +42,8 @@ public class DeliveryServiceImpl implements DeliveryService {
     private final DeliveryRepository deliveryRepository;
     private final LateDeliveryCompensationService lateDeliveryCompensationService;
     private final UserServiceClient userServiceClient;
+    private final CourierResponseTimeoutTracker responseTimeoutTracker;
+    private final RefusalHandler refusalHandler;
 
     // ==================== CRÉATION ====================
 
@@ -171,7 +175,19 @@ public class DeliveryServiceImpl implements DeliveryService {
         }
         d.setStatus(DeliveryStatus.ACCEPTED);
         d.setAcceptedAt(LocalDateTime.now());
-        return toDTO(deliveryRepository.save(d));
+        Delivery saved = deliveryRepository.save(d);
+        if (d.getOrderId() != null) {
+            responseTimeoutTracker.markResponded(d.getOrderId(), courierId);
+        }
+        return toDTO(saved);
+    }
+
+    @Override
+    @Transactional
+    public DeliveryDTO acceptDeliveryByOrderId(Long orderId, Long courierId) {
+        Delivery d = deliveryRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Livraison introuvable pour la commande: " + orderId));
+        return acceptDelivery(d.getId(), courierId);
     }
 
     @Override
@@ -184,6 +200,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         if (d.getStatus() != DeliveryStatus.ASSIGNED) {
             throw new IllegalStateException("Statut incorrect pour refuser: " + d.getStatus());
         }
+        Long orderId = d.getOrderId();
         d.setStatus(DeliveryStatus.PENDING);
         d.setCourierId(null);
         d.setBundleId(null);
@@ -191,7 +208,20 @@ public class DeliveryServiceImpl implements DeliveryService {
         d.setCourierName(null);
         d.setCourierPhone(null);
         d.setDeliveryNotes(safeNote(d.getDeliveryNotes(), "Declined: " + reason));
-        return toDTO(deliveryRepository.save(d));
+        Delivery saved = deliveryRepository.save(d);
+        // Re-queue the order for next dispatch cycle
+        if (orderId != null) {
+            refusalHandler.handleRefusal(orderId, courierId, reason != null ? reason : "DECLINED");
+        }
+        return toDTO(saved);
+    }
+
+    @Override
+    @Transactional
+    public DeliveryDTO declineDeliveryByOrderId(Long orderId, Long courierId, String reason) {
+        Delivery d = deliveryRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Livraison introuvable pour la commande: " + orderId));
+        return declineDelivery(d.getId(), courierId, reason);
     }
 
     @Override

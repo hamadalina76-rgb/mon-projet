@@ -1,5 +1,6 @@
 package com.speedline.delivery.websocket;
 
+import com.speedline.delivery.client.UserServiceClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,22 +33,25 @@ public class TrackingWebSocketHandler extends TextWebSocketHandler {
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserServiceClient userServiceClient;
     private final Map<String, WebSocketSession> activeSessionsByCourier = new ConcurrentHashMap<>();
     private final Duration positionTtl = Duration.ofSeconds(30);
 
     public TrackingWebSocketHandler(
             StringRedisTemplate stringRedisTemplate,
             ObjectMapper objectMapper,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            UserServiceClient userServiceClient
     ) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.objectMapper = objectMapper;
         this.eventPublisher = eventPublisher;
+        this.userServiceClient = userServiceClient;
     }
 
     @Override
     public void afterConnectionEstablished(@NonNull WebSocketSession session) throws Exception {
-        getStringAttribute(session, "userId").ifPresentOrElse(courierId -> {
+        resolveCourierId(session).ifPresentOrElse(courierId -> {
             var isCourier = getStringAttribute(session, "role")
                     .filter(TrackingWebSocketHandler::isCourierRole)
                     .isPresent();
@@ -77,7 +81,7 @@ public class TrackingWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(@NonNull WebSocketSession session, @NonNull TextMessage message) {
-        getStringAttribute(session, "userId").ifPresentOrElse(courierId -> {
+        resolveCourierId(session).ifPresentOrElse(courierId -> {
             String payload = message.getPayload();
             log.debug("Received WS message from courier {}: {}", courierId, payload);
 
@@ -150,6 +154,26 @@ public class TrackingWebSocketHandler extends TextWebSocketHandler {
         // Le passage hors ligne s’appuie sur le TTL Redis.
     }
 
+    /**
+     * Push a typed JSON message to a specific courier's WebSocket session.
+     * No-op if the courier has no active session.
+     */
+    public void sendToCourier(String courierId, String type, Map<String, Object> payload) {
+        if (courierId == null) return;
+        WebSocketSession session = activeSessionsByCourier.get(courierId);
+        if (session == null || !session.isOpen()) {
+            log.debug("No active WS session for courier {}, skipping push of type={}", courierId, type);
+            return;
+        }
+        try {
+            Map<String, Object> envelope = Map.of("type", type, "payload", payload);
+            session.sendMessage(new TextMessage(objectMapper.writeValueAsString(envelope)));
+            log.info("Pushed type={} to courier {}", type, courierId);
+        } catch (Exception e) {
+            log.warn("Failed to push type={} to courier {}: {}", type, courierId, e.getMessage());
+        }
+    }
+
     private void markCourierOnline(String courierId) {
         String onlineKey = Objects.requireNonNull("courier:%s:isOnline".formatted(courierId));
         stringRedisTemplate.opsForValue().set(
@@ -173,6 +197,34 @@ public class TrackingWebSocketHandler extends TextWebSocketHandler {
                 .map(String.class::cast)
                 .map(String::trim)
                 .filter(s -> !s.isBlank());
+    }
+
+    private Optional<String> resolveCourierId(WebSocketSession session) {
+        Optional<String> cached = getStringAttribute(session, "courierId");
+        if (cached.isPresent()) {
+            return cached;
+        }
+        Optional<String> rawUserId = getStringAttribute(session, "userId");
+        if (rawUserId.isEmpty()) {
+            return Optional.empty();
+        }
+        String userId = rawUserId.get();
+        try {
+            Long uid = Long.parseLong(userId);
+            Map<String, Object> profile = userServiceClient.getCourierProfileByUserId(uid);
+            Object id = profile == null ? null : profile.get("id");
+            if (id != null) {
+                String resolved = String.valueOf(id).trim();
+                if (!resolved.isBlank()) {
+                    session.getAttributes().put("courierId", resolved);
+                    return Optional.of(resolved);
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Could not resolve courier profile ID from userId={} (fallback to userId key): {}", userId, ex.getMessage());
+        }
+        session.getAttributes().put("courierId", userId);
+        return Optional.of(userId);
     }
 
     private static boolean isCourierRole(String role) {

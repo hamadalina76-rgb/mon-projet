@@ -18,6 +18,7 @@ import com.speedline.delivery.dispatch.contract.model.PendingOrder;
 import com.speedline.delivery.dispatch.engine.bundling.BundleDispatchOrchestrator;
 import com.speedline.delivery.dispatch.engine.bundling.BundleAssignmentBatch;
 import com.speedline.delivery.client.OrderServiceClient;
+import com.speedline.delivery.dispatch.event.PendingOrderEnricher;
 import com.speedline.delivery.dispatch.metrics.DispatchMetrics;
 import com.speedline.delivery.event.producer.DeliveryEventProducer;
 import org.junit.jupiter.api.BeforeEach;
@@ -81,6 +82,8 @@ class DispatchCyclePerformanceTest {
     private DispatchDeliveryRecordService dispatchDeliveryRecordService;
     @Mock
     private OrderServiceClient orderServiceClient;
+    @Mock
+    private PendingOrderEnricher pendingOrderEnricher;
 
     private DispatchCycleService service;
 
@@ -123,7 +126,8 @@ class DispatchCyclePerformanceTest {
                 cycleCaptureRecorder,
                 dispatchProposalService,
                 dispatchDeliveryRecordService,
-                orderServiceClient);
+                orderServiceClient,
+                pendingOrderEnricher);
 
             when(preAssignmentCalculator.enrichPreAssignable(anyList(), any(), any())).thenAnswer(inv -> inv.getArgument(0));
             when(eligibilityFilter.selectPoolDetailed(anyList(), anyList(), any(), any())).thenAnswer(inv -> {

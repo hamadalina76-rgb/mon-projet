@@ -5,6 +5,7 @@ import com.speedline.delivery.dispatch.config.DispatchProperties;
 import com.speedline.delivery.dispatch.config.runtime.RuntimeDispatchTuningService;
 import com.speedline.delivery.dispatch.config.service.DispatchCycleCaptureRecorder;
 import com.speedline.delivery.dispatch.config.DispatchZoneConfig;
+import com.speedline.delivery.dispatch.event.PendingOrderEnricher;
 import com.speedline.delivery.dispatch.contract.engine.BundlingEngine;
 import com.speedline.delivery.dispatch.contract.engine.BundlingResult;
 import com.speedline.delivery.dispatch.contract.engine.CostFunction;
@@ -20,6 +21,7 @@ import com.speedline.delivery.client.OrderServiceClient;
 import com.speedline.delivery.dispatch.event.DispatchAssignedEvent;
 import com.speedline.delivery.dispatch.metrics.DispatchMetrics;
 import com.speedline.delivery.event.producer.DeliveryEventProducer;
+import com.speedline.delivery.websocket.TrackingWebSocketHandler;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -71,6 +74,10 @@ public class DispatchCycleService {
     private final DispatchProposalService dispatchProposalService;
     private final DispatchDeliveryRecordService dispatchDeliveryRecordService;
     private final OrderServiceClient orderServiceClient;
+    private final PendingOrderEnricher pendingOrderEnricher;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TrackingWebSocketHandler trackingWebSocketHandler;
 
     public void runCycle(Long zoneId) {
         if (zoneId == null) return;
@@ -83,6 +90,9 @@ public class DispatchCycleService {
         Instant start = Instant.now();
         try {
             List<PendingOrder> pendingOrders = pendingOrderRedisRepository.findByZone(zoneId);
+            if (pendingOrders.isEmpty()) {
+                pendingOrders = hydratePendingOrdersFromOrderService(zoneId);
+            }
             pendingOrders = pendingOrders.stream()
                     .filter(o -> o != null && o.getId() != null && !dispatchProposalService.hasPendingProposal(o.getId()))
                     .collect(Collectors.toCollection(ArrayList::new));
@@ -201,6 +211,7 @@ public class DispatchCycleService {
             pendingOrderRedisRepository.remove(assignment.getOrderId());
             PendingOrder pendingForDb = orderById.get(assignment.getOrderId());
             dispatchDeliveryRecordService.createFromAssignment(pendingForDb, assignment);
+            pushDeliveryOfferToWs(assignment, pendingForDb, mode.name());
             deliveryEventProducer.publishAssigned(DispatchAssignedEvent.builder()
                     .zoneId(zoneId)
                     .orderId(assignment.getOrderId())
@@ -239,5 +250,55 @@ public class DispatchCycleService {
 
     private static String lockKey(Long zoneId) {
         return LOCK_PREFIX + zoneId;
+    }
+
+    private void pushDeliveryOfferToWs(Assignment assignment, PendingOrder order, String dispatchMode) {
+        if (trackingWebSocketHandler == null || assignment.getCourierId() == null) return;
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("orderId", assignment.getOrderId());
+            payload.put("dispatchMode", dispatchMode);
+            payload.put("etaPickupMin", assignment.getEtaPickupMin());
+            payload.put("etaDeliveryMin", assignment.getEtaDeliveryMin());
+            payload.put("offeredAt", Instant.now().toString());
+            if (order != null) {
+                payload.put("orderNumber", order.getOrderNumber());
+                payload.put("partnerName", order.getPartnerName());
+                payload.put("pickupAddress", order.getPickupAddress());
+                payload.put("dropoffAddress", order.getDropoffAddress());
+                payload.put("deliveryFee", order.getDeliveryFee() != null ? order.getDeliveryFee().doubleValue() : 0.0);
+                payload.put("isUrgent", Boolean.TRUE.equals(order.getIsUrgent()));
+                payload.put("partnerLat", order.getPartnerLat());
+                payload.put("partnerLon", order.getPartnerLon());
+                payload.put("customerLat", order.getCustomerLat());
+                payload.put("customerLon", order.getCustomerLon());
+            }
+            trackingWebSocketHandler.sendToCourier(String.valueOf(assignment.getCourierId()), "DELIVERY_OFFER", payload);
+        } catch (Exception ex) {
+            log.warn("Could not push DELIVERY_OFFER to courier {}: {}", assignment.getCourierId(), ex.getMessage());
+        }
+    }
+
+    /**
+     * Fallback de résilience : si la queue Redis est vide (ex. consommateur Pub/Sub indisponible),
+     * hydrate depuis order-service pour éviter un pool à 0 commande.
+     */
+    private List<PendingOrder> hydratePendingOrdersFromOrderService(Long zoneId) {
+        try {
+            List<java.util.Map<String, Object>> awaiting = orderServiceClient.getOrdersAwaitingCourier();
+            if (awaiting == null || awaiting.isEmpty()) {
+                return List.of();
+            }
+            List<PendingOrder> recovered = awaiting.stream()
+                    .map(pendingOrderEnricher::enrichOptional)
+                    .flatMap(Optional::stream)
+                    .filter(o -> o.getZoneId() != null && o.getZoneId().equals(zoneId))
+                    .collect(Collectors.toList());
+            recovered.forEach(pendingOrderRedisRepository::add);
+            return recovered;
+        } catch (Exception ex) {
+            log.warn("Unable to hydrate pending orders from order-service for zone {}: {}", zoneId, ex.getMessage());
+            return List.of();
+        }
     }
 }

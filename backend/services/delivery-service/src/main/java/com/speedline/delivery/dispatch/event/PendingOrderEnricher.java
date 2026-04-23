@@ -38,7 +38,10 @@ public class PendingOrderEnricher {
             return Optional.empty();
         }
 
-        final Long orderId = toLong(event.get("orderId")).orElse(null);
+        // Fallback hydration may receive order-service payloads using "id" instead of "orderId".
+        final Long orderId = toLong(event.get("orderId"))
+                .or(() -> toLong(event.get("id")))
+                .orElse(null);
         final Long partnerId = toLong(event.get("partnerId")).orElse(null);
         final Long customerId = toLong(event.get("customerId")).orElse(null);
         if (orderId == null || partnerId == null || customerId == null) {

@@ -64,8 +64,12 @@
     <mat-card class="map-card">
       <div class="map-toolbar">
         <div class="map-toolbar-title">
+          <span class="live-pulse" aria-hidden="true"></span>
           <mat-icon aria-hidden="true">location_on</mat-icon>
           <span>{{ 'dispatch.mapLiveTitle' | translate }}</span>
+          @if (selectedZone()) {
+            <span class="map-zone-pill">{{ selectedZone()?.name }}</span>
+          }
         </div>
         <div class="map-toolbar-right">
           <mat-slide-toggle
@@ -86,6 +90,66 @@
       </div>
       <div class="map-container">
         <div id="dispatch-map"></div>
+
+        <!-- Overlay live: snapshot opérationnel sur la carte -->
+        <div class="map-overlay-stats" aria-hidden="false">
+          <div class="overlay-stat">
+            <span class="overlay-dot d-int-idle"></span>
+            <div>
+              <span class="overlay-num">{{ liveOverlay().internal }}</span>
+              <span class="overlay-lbl">{{ 'dispatch.legendInterneIdle' | translate }}</span>
+            </div>
+          </div>
+          <div class="overlay-stat">
+            <span class="overlay-dot d-ext-idle"></span>
+            <div>
+              <span class="overlay-num">{{ liveOverlay().external }}</span>
+              <span class="overlay-lbl">{{ 'dispatch.legendExterneIdle' | translate }}</span>
+            </div>
+          </div>
+          <div class="overlay-stat">
+            <mat-icon class="overlay-icon">delivery_dining</mat-icon>
+            <div>
+              <span class="overlay-num">{{ liveOverlay().onDelivery }}</span>
+              <span class="overlay-lbl">{{ 'dispatch.metricOnDelivery' | translate }}</span>
+            </div>
+          </div>
+          <div class="overlay-stat overlay-stat--accent">
+            <mat-icon class="overlay-icon">pending_actions</mat-icon>
+            <div>
+              <span class="overlay-num">{{ liveOverlay().pending }}</span>
+              <span class="overlay-lbl">{{ 'dispatch.metricPending' | translate }}</span>
+            </div>
+          </div>
+          @if (liveOverlay().noGps > 0) {
+            <div class="overlay-stat overlay-stat--nogps" [matTooltip]="'dispatch.noGpsHint' | translate">
+              <mat-icon class="overlay-icon">gps_off</mat-icon>
+              <div>
+                <span class="overlay-num">{{ liveOverlay().noGps }}</span>
+                <span class="overlay-lbl">Sans GPS</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Quick map controls -->
+        <div class="map-quick-controls" aria-label="Map controls">
+          <button mat-icon-button class="map-fab" type="button"
+                  [matTooltip]="'dispatch.mapRecenter' | translate"
+                  (click)="recenterMap()">
+            <mat-icon>my_location</mat-icon>
+          </button>
+          <button mat-icon-button class="map-fab" type="button"
+                  matTooltip="Zoom +"
+                  (click)="zoomMap('in')">
+            <mat-icon>add</mat-icon>
+          </button>
+          <button mat-icon-button class="map-fab" type="button"
+                  matTooltip="Zoom -"
+                  (click)="zoomMap('out')">
+            <mat-icon>remove</mat-icon>
+          </button>
+        </div>
       </div>
     </mat-card>
 

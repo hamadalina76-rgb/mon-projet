@@ -143,6 +143,8 @@ export class DispatchDashboardComponent implements OnInit, AfterViewInit, OnDest
   /** Carte: style navigation = trafic temps réel Mapbox */
   readonly showTrafficOnMap = signal(false);
   private mapLayersReady = false;
+  private mapResizeObserver?: ResizeObserver;
+  private mapVisibilityHandler?: () => void;
 
   /* ── KPI stats (mapped to shared StatsCard) ──────── */
   readonly kpiStats = computed(() => {
@@ -188,6 +190,24 @@ export class DispatchDashboardComponent implements OnInit, AfterViewInit, OnDest
         color: (k.onTimeRate < 92 ? 'warning' : 'success') as KpiColor,
       },
     ];
+  });
+
+  /* ── Map live overlay summary ────────────────────── */
+  readonly liveOverlay = computed(() => {
+    const zid = this.selectedZone()?.id;
+    const couriers = this.state().couriers.filter((c) =>
+      zid == null || c.zoneId == null ? true : c.zoneId === zid,
+    );
+    // Couriers WITH GPS position (visible on the map)
+    const withGps = couriers.filter((c) => c.lat != null && c.lon != null);
+    const noGps   = couriers.length - withGps.length;
+
+    const internal   = withGps.filter((c) => c.type === 'INTERNAL').length;
+    const external   = withGps.filter((c) => c.type !== 'INTERNAL').length;
+    const onDelivery = withGps.filter((c) => c.status === 'ON_DELIVERY').length;
+    const idle       = withGps.filter((c) => c.status === 'IDLE').length;
+    const pending    = this.state().pendingOrders.length;
+    return { internal, external, onDelivery, idle, pending, total: withGps.length, noGps };
   });
 
   /* ── Helpers for mat-autocomplete displayWith ─────── */
@@ -253,19 +273,64 @@ export class DispatchDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngAfterViewInit(): void {
-    setTimeout(() => {
+    // Attendre que le DOM soit peint pour éviter les tuiles grises (container 0×0).
+    requestAnimationFrame(() => {
       this.mapbox.initializeMap('dispatch-map', { center: [10.1815, 36.8065], zoom: 11 });
-      this.mapbox.resize();
-      this.mapLayersReady = true;
-      this.refreshMapLayers();
-    }, 0);
+
+      // ResizeObserver: garantit que la carte suit la taille du conteneur (sidebar, mobile, fullscreen…)
+      const container = document.getElementById('dispatch-map');
+      if (container && typeof ResizeObserver !== 'undefined') {
+        this.mapResizeObserver = new ResizeObserver(() => this.mapbox.resize());
+        this.mapResizeObserver.observe(container);
+      }
+
+      // Quand le navigateur revient en avant-plan, force un resize (tab switch).
+      this.mapVisibilityHandler = () => {
+        if (document.visibilityState === 'visible') {
+          this.mapbox.resize();
+        }
+      };
+      document.addEventListener('visibilitychange', this.mapVisibilityHandler);
+      window.addEventListener('resize', this.mapVisibilityHandler);
+
+      // Attendre que le style soit complètement chargé avant de poser zones/marqueurs.
+      this.mapbox.onStyleReady(() => {
+        this.mapbox.resize();
+        this.mapLayersReady = true;
+        this.refreshMapLayers();
+      });
+    });
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
     this.realtime.disconnect();
+    if (this.mapResizeObserver) {
+      this.mapResizeObserver.disconnect();
+      this.mapResizeObserver = undefined;
+    }
+    if (this.mapVisibilityHandler) {
+      document.removeEventListener('visibilitychange', this.mapVisibilityHandler);
+      window.removeEventListener('resize', this.mapVisibilityHandler);
+      this.mapVisibilityHandler = undefined;
+    }
     this.mapbox.destroy();
+  }
+
+  /* ── Map quick actions ─────────────────────────────────────── */
+  recenterMap(): void {
+    const zone = this.selectedZone();
+    if (zone) {
+      this.refreshMapLayers();
+    } else {
+      this.mapbox.flyTo([10.1815, 36.8065], 11);
+    }
+  }
+
+  zoomMap(direction: 'in' | 'out'): void {
+    if (direction === 'in') this.mapbox.zoomIn();
+    else this.mapbox.zoomOut();
   }
 
   /* ── Zone loading ────────────────────────────────── */
@@ -506,8 +571,10 @@ export class DispatchDashboardComponent implements OnInit, AfterViewInit, OnDest
     if (!map) {
       return;
     }
+    // 'load' fires only once at startup; after setStyle() the correct event is 'style.load'.
+    // onStyleReady() handles both cases correctly.
     if (!map.isStyleLoaded()) {
-      map.once('load', () => this.refreshMapLayers());
+      this.mapbox.onStyleReady(() => this.refreshMapLayers());
       return;
     }
     const zone = this.selectedZone();
@@ -538,6 +605,7 @@ export class DispatchDashboardComponent implements OnInit, AfterViewInit, OnDest
       this.mapbox.addMarker([c.lon, c.lat], {
         color: this.courierColor(c),
         popup: `<b>${title}</b><br/>${sub}`,
+        pulse: c.status === 'IDLE',
       });
     }
     for (const o of this.state().pendingOrders) {
@@ -581,19 +649,29 @@ export class DispatchDashboardComponent implements OnInit, AfterViewInit, OnDest
   }
 
   /**
-   * Fallback de recadrage: si la boundary n'est pas exploitable, utilise `zone.center` ([lat, lon]).
+   * Fly to zone center.
+   * Priority: zone.center → Mapbox geocoding of city name → silent no-op.
    */
   private flyToZoneCenter(zone: Zone): void {
+    // 1st: use zone.center [lat, lon] if available
     const center = zone.center;
-    if (!Array.isArray(center) || center.length < 2) {
-      return;
+    if (Array.isArray(center) && center.length >= 2) {
+      const lat = this.toNum(center[0]);
+      const lon = this.toNum(center[1]);
+      if (lat != null && lon != null) {
+        this.mapbox.flyTo([lon, lat], 13);
+        return;
+      }
     }
-    const lat = this.toNum(center[0]);
-    const lon = this.toNum(center[1]);
-    if (lat == null || lon == null) {
-      return;
-    }
-    this.mapbox.flyTo([lon, lat], 12);
+    // 2nd fallback: geocode zone city (or zone name) via Mapbox API
+    const query = (zone.city || zone.name || '').trim();
+    if (!query) return;
+    this.mapbox.geocode(query, 'TN').then((results) => {
+      if (results.length > 0) {
+        const zoom = results[0].bbox ? 12 : 13;
+        this.mapbox.flyTo(results[0].center, zoom);
+      }
+    });
   }
 
   private courierColor(courier: DispatchCourierPosition): string {

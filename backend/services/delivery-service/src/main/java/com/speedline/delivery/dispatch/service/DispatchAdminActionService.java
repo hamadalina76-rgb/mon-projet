@@ -14,6 +14,7 @@ import com.speedline.delivery.dispatch.dto.ZoneModeResponse;
 import com.speedline.delivery.dispatch.event.DispatchAssignedEvent;
 import com.speedline.delivery.dispatch.event.PendingOrderEnricher;
 import com.speedline.delivery.event.producer.DeliveryEventProducer;
+import com.speedline.delivery.websocket.TrackingWebSocketHandler;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,9 @@ public class DispatchAdminActionService {
     private final DispatchDeliveryRecordService dispatchDeliveryRecordService;
     private final DeliveryEventProducer deliveryEventProducer;
     private final RuntimeDispatchTuningService runtimeDispatchTuningService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TrackingWebSocketHandler trackingWebSocketHandler;
 
     public ZoneModeResponse getZoneMode(Long zoneId) {
         return ZoneModeResponse.builder()
@@ -114,9 +118,11 @@ public class DispatchAdminActionService {
                     "courier:" + request.getCourierId() + ":lastAssignedAt",
                     Instant.now().toString(),
                     Duration.ofHours(24));
+            pushDeliveryOfferToWs(request.getOrderId(), request.getCourierId(), order);
         } else {
             log.warn("manual assign: no local PendingOrder for orderId={}, order updated in order-service only",
                     request.getOrderId());
+            pushDeliveryOfferToWs(request.getOrderId(), request.getCourierId(), null);
         }
 
         return Map.of(
@@ -143,6 +149,31 @@ public class DispatchAdminActionService {
 
     public Map<String, Object> updateZoneStatus(Long zoneId, boolean active) {
         return locationServiceClient.updateZoneStatus(zoneId, Map.of("isActive", active));
+    }
+
+    private void pushDeliveryOfferToWs(Long orderId, Long courierId, PendingOrder order) {
+        if (trackingWebSocketHandler == null || courierId == null) return;
+        try {
+            Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("orderId", orderId);
+            payload.put("dispatchMode", "MANUAL");
+            payload.put("offeredAt", Instant.now().toString());
+            if (order != null) {
+                payload.put("orderNumber", order.getOrderNumber());
+                payload.put("partnerName", order.getPartnerName());
+                payload.put("pickupAddress", order.getPickupAddress());
+                payload.put("dropoffAddress", order.getDropoffAddress());
+                payload.put("deliveryFee", order.getDeliveryFee() != null ? order.getDeliveryFee().doubleValue() : 0.0);
+                payload.put("isUrgent", Boolean.TRUE.equals(order.getIsUrgent()));
+                payload.put("partnerLat", order.getPartnerLat());
+                payload.put("partnerLon", order.getPartnerLon());
+                payload.put("customerLat", order.getCustomerLat());
+                payload.put("customerLon", order.getCustomerLon());
+            }
+            trackingWebSocketHandler.sendToCourier(String.valueOf(courierId), "DELIVERY_OFFER", payload);
+        } catch (Exception ex) {
+            log.warn("Could not push DELIVERY_OFFER to courier {}: {}", courierId, ex.getMessage());
+        }
     }
 
     private PendingOrder resolvePendingOrderFromOrderService(Long orderId) {

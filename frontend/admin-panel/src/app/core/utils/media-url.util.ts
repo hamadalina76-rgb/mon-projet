@@ -5,7 +5,7 @@ const UPLOADS_BASE = env.uploadsBaseUrl ?? 'http://localhost:8080';
 
 /**
  * Transforme une URL d'image stockée (ex: profil) pour qu'elle soit accessible depuis l'admin panel.
- * Les URLs venant de l'app mobile peuvent contenir 10.0.2.2 (émulateur Android) qui n'est pas
+ * Les URLs venant de l'app mobile peuvent contenir 192.168.1.249 (émulateur Android) qui n'est pas
  * accessible depuis un navigateur desktop. On utilise uploadsBaseUrl (gateway) à la place.
  */
 export function getMediaUrl(url: string | null | undefined): string | null {

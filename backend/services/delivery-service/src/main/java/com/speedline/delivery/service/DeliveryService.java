@@ -51,11 +51,17 @@ public interface DeliveryService {
      */
     DeliveryDTO acceptDelivery(Long deliveryId, Long courierId);
 
+    /** Accepter par orderId — utile depuis l'app courier qui ne connaît que l'orderId */
+    DeliveryDTO acceptDeliveryByOrderId(Long orderId, Long courierId);
+
     /**
      * Refuser une livraison (livreur)
      * Retourne la livraison en PENDING pour réassignation
      */
     DeliveryDTO declineDelivery(Long deliveryId, Long courierId, String reason);
+
+    /** Refuser par orderId */
+    DeliveryDTO declineDeliveryByOrderId(Long orderId, Long courierId, String reason);
 
     /**
      * Signaler l'arrivée au point de pickup
