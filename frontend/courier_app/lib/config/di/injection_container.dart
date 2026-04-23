@@ -6,6 +6,9 @@ import '../../features/auth/data/datasources/auth_local_datasource.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/orders/data/datasources/orders_remote_datasource.dart';
+import '../../features/orders/data/repositories/orders_repository_impl.dart';
+import '../../features/orders/domain/repositories/orders_repository.dart';
 
 final getIt = GetIt.instance;
 
@@ -31,12 +34,20 @@ Future<void> setupDependencies() async {
     ),
   );
 
+  getIt.registerLazySingleton<OrdersRemoteDataSource>(
+    () => OrdersRemoteDataSourceImpl(dio: getIt<ApiClient>().dio),
+  );
+
   // Repositories
   getIt.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(
       remoteDataSource: getIt<AuthRemoteDataSource>(),
       localDataSource: getIt<AuthLocalDataSource>(),
     ),
+  );
+
+  getIt.registerLazySingleton<OrdersRepository>(
+    () => OrdersRepositoryImpl(remoteDataSource: getIt<OrdersRemoteDataSource>()),
   );
 
   print('✅ All dependencies registered successfully!');

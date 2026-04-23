@@ -2,6 +2,7 @@ package com.speedline.delivery.dispatch.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.speedline.delivery.client.LocationServiceClient;
 import com.speedline.delivery.dispatch.contract.model.AvailableCourier;
 import com.speedline.delivery.dispatch.contract.model.CourierStatus;
 import com.speedline.delivery.dispatch.contract.model.CourierType;
@@ -12,6 +13,7 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -50,6 +52,7 @@ public class CourierAvailabilityService {
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final LocationServiceClient locationServiceClient;
 
     /** Return all couriers available to dispatch for the given zone (IDLE or PRE_ASSIGNABLE, online). */
     public List<AvailableCourier> findAvailableByZone(Long zoneId) {
@@ -105,10 +108,6 @@ public class CourierAvailabilityService {
         if (!"true".equalsIgnoreCase(redisTemplate.opsForValue().get(COURIER_PREFIX + courierId + ONLINE_SUFFIX))) {
             return null;
         }
-        final String courierZone = redisTemplate.opsForValue().get(COURIER_PREFIX + courierId + ZONE_SUFFIX);
-        if (courierZone != null && !courierZone.isBlank() && !courierZone.equals(String.valueOf(requestedZoneId))) {
-            return null;
-        }
 
         final CourierStatus status = readStatus(courierId);
         if (!includeOnDelivery && status == CourierStatus.ON_DELIVERY) {
@@ -128,6 +127,11 @@ public class CourierAvailabilityService {
             } catch (Exception e) {
                 log.warn("Invalid position JSON for courier {}: {}", courierId, e.getMessage());
             }
+        }
+
+        final String courierZone = redisTemplate.opsForValue().get(COURIER_PREFIX + courierId + ZONE_SUFFIX);
+        if (!belongsToRequestedZone(courierId, requestedZoneId, courierZone, lat, lon)) {
+            return null;
         }
 
         CourierType type = readType(courierId);
@@ -150,6 +154,58 @@ public class CourierAvailabilityService {
             .shiftStart(shiftStart)
             .shiftEnd(shiftEnd)
                 .build();
+    }
+
+    private boolean belongsToRequestedZone(
+            String courierId,
+            Long requestedZoneId,
+            String storedZone,
+            Double lat,
+            Double lon
+    ) {
+        if (storedZone != null && !storedZone.isBlank()) {
+            if (storedZone.equals(String.valueOf(requestedZoneId))) {
+                return true;
+            }
+            Long inferred = inferZoneIdFromPoint(lat, lon);
+            if (inferred != null && inferred.equals(requestedZoneId)) {
+                // auto-heal: zone stale in Redis
+                redisTemplate.opsForValue().set(COURIER_PREFIX + courierId + ZONE_SUFFIX, String.valueOf(inferred));
+                return true;
+            }
+            return false;
+        }
+        // No explicit zone: infer from point if possible. If not inferable, avoid leaking courier into all zones.
+        Long inferred = inferZoneIdFromPoint(lat, lon);
+        if (inferred == null) {
+            return false;
+        }
+        if (inferred.equals(requestedZoneId)) {
+            redisTemplate.opsForValue().set(COURIER_PREFIX + courierId + ZONE_SUFFIX, String.valueOf(inferred));
+            return true;
+        }
+        return false;
+    }
+
+    private Long inferZoneIdFromPoint(Double lat, Double lon) {
+        if (lat == null || lon == null) {
+            return null;
+        }
+        try {
+            final double latValue = lat;
+            final double lonValue = lon;
+            var zone = locationServiceClient.findZoneForPoint(BigDecimal.valueOf(latValue), BigDecimal.valueOf(lonValue));
+            if (zone == null || zone.get("id") == null) {
+                return null;
+            }
+            Object id = zone.get("id");
+            if (id instanceof Number n) {
+                return n.longValue();
+            }
+            return Long.parseLong(String.valueOf(id));
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     private CourierStatus readStatus(String courierId) {

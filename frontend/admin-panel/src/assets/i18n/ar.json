@@ -80,6 +80,8 @@
     "mapLiveTitle": "خريطة مباشرة",
     "mapTraffic": "المرور",
     "mapTrafficHint": "نمط الملاحة (Mapbox) لعرض حركة المرور على الطرق (أقل وضوحاً خارج المدن الكبرى).",
+    "mapRecenter": "إعادة التوسيط على المنطقة",
+    "noGpsHint": "سعاة متصلون لكن بدون إشارة GPS نشطة",
     "mapPendingOrder": "طلب قيد الانتظار",
     "legendAria": "دليل ألوان السعاة",
     "legendInterneIdle": "داخلي · متاح",

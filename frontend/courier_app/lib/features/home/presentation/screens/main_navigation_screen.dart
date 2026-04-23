@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,32 +9,36 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../config/di/injection_container.dart';
 import '../../../../services/notification_service.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
+import '../../../orders/presentation/providers/orders_provider.dart';
+import '../../../orders/presentation/screens/incoming_offer_screen.dart';
 import 'courier_home_screen.dart';
 import 'courier_status_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 
-class MainNavigationScreen extends StatefulWidget {
+class MainNavigationScreen extends ConsumerStatefulWidget {
   const MainNavigationScreen({super.key});
 
   @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+  ConsumerState<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
+class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
   int _currentIndex = 0;
   bool _canAccessApp = true;
   bool _isInternalCourier = true;
   StreamSubscription<void>? _profileRefreshedSub;
+  bool _offerOverlayVisible = false;
+  bool _listenerRegistered = false;
 
   @override
   void initState() {
     super.initState();
     _loadCourierAccess();
-    // Rafraîchir l'accès en temps réel quand une notif "compte approuvé/bloqué" est reçue
     _profileRefreshedSub = NotificationService().onProfileRefreshed.listen((_) {
       if (mounted) _loadCourierAccess();
     });
   }
+
 
   @override
   void dispose() {
@@ -68,10 +73,31 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen for incoming DELIVERY_OFFER and show overlay — runs once per state change
+    ref.listen<OrdersState>(ordersProvider, (prev, next) {
+      if (next.incomingOffer != null &&
+          (prev?.incomingOffer == null) &&
+          !_offerOverlayVisible) {
+        _offerOverlayVisible = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Navigator.of(context)
+              .push(PageRouteBuilder(
+                opaque: false,
+                pageBuilder: (_, __, ___) =>
+                    IncomingOfferOverlay(offer: next.incomingOffer!),
+              ))
+              .whenComplete(() {
+            if (mounted) setState(() => _offerOverlayVisible = false);
+          });
+        });
+      }
+    });
+
     final l10n = AppLocalizations.of(context)!;
     final screens = <Widget>[
       CourierHomeScreen(canAccessApp: _canAccessApp),
-      Center(child: Text(l10n.translate('orders'))), // TODO: Implement OrdersScreen
+      const _OrdersTabPlaceholder(),
       if (_isInternalCourier) const CourierStatusScreen(),
       const ProfileScreen(),
     ];
@@ -132,6 +158,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     required IconData icon,
     required IconData activeIcon,
     required int index,
+    bool showBadge = false,
   }) {
     final isActive = _currentIndex == index;
     final isProfile = index == 3;
@@ -158,6 +185,31 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               : (isDisabled ? Colors.grey[400] : Colors.grey[600]),
           size: 28.sp,
         ),
+      ),
+    );
+  }
+}
+
+class _OrdersTabPlaceholder extends ConsumerWidget {
+  const _OrdersTabPlaceholder();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ordersState = ref.watch(ordersProvider);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Mes commandes')),
+      body: Center(
+        child: ordersState.successMessage != null
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green, size: 60),
+                  const SizedBox(height: 12),
+                  Text(ordersState.successMessage!,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                ],
+              )
+            : const Text('Aucune commande active'),
       ),
     );
   }

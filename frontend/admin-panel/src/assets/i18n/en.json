@@ -94,6 +94,8 @@
     "mapLiveTitle": "Live map",
     "mapTraffic": "Traffic",
     "mapTrafficHint": "Use Mapbox navigation style to show live traffic on roads (may be lighter outside major cities).",
+    "mapRecenter": "Recenter on zone",
+    "noGpsHint": "Couriers connected but without active GPS position (no signal yet)",
     "mapPendingOrder": "Pending order",
     "legendAria": "Courier colour legend",
     "legendInterneIdle": "Internal · available",

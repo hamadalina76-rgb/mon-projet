@@ -18,6 +18,7 @@ import com.speedline.delivery.dispatch.contract.model.PendingOrder;
 import com.speedline.delivery.dispatch.engine.bundling.BundleDispatchOrchestrator;
 import com.speedline.delivery.client.OrderServiceClient;
 import com.speedline.delivery.dispatch.event.DispatchAssignedEvent;
+import com.speedline.delivery.dispatch.event.PendingOrderEnricher;
 import com.speedline.delivery.dispatch.metrics.DispatchMetrics;
 import com.speedline.delivery.event.producer.DeliveryEventProducer;
 import org.junit.jupiter.api.AfterEach;
@@ -95,6 +96,8 @@ class DispatchCycleServiceTest {
     private DispatchDeliveryRecordService dispatchDeliveryRecordService;
     @Mock
     private OrderServiceClient orderServiceClient;
+    @Mock
+    private PendingOrderEnricher pendingOrderEnricher;
 
     private DispatchCycleService service;
     private AutoCloseable mocks;
@@ -131,7 +134,8 @@ class DispatchCycleServiceTest {
                 cycleCaptureRecorder,
                 dispatchProposalService,
                 dispatchDeliveryRecordService,
-                orderServiceClient);
+                orderServiceClient,
+                pendingOrderEnricher);
     }
 
     @AfterEach

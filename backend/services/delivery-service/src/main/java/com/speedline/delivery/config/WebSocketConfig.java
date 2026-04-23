@@ -1,6 +1,7 @@
 package com.speedline.delivery.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.speedline.delivery.client.UserServiceClient;
 import com.speedline.delivery.security.JwtUtil;
 import com.speedline.delivery.websocket.TrackingBroadcastWebSocketHandler;
 import com.speedline.delivery.websocket.TrackingWebSocketHandler;
@@ -28,15 +29,18 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserServiceClient userServiceClient;
 
     public WebSocketConfig(StringRedisTemplate stringRedisTemplate,
                            JwtUtil jwtUtil,
                            ObjectMapper objectMapper,
-                           ApplicationEventPublisher eventPublisher) {
+                           ApplicationEventPublisher eventPublisher,
+                           UserServiceClient userServiceClient) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.jwtUtil = jwtUtil;
         this.objectMapper = objectMapper;
         this.eventPublisher = eventPublisher;
+        this.userServiceClient = userServiceClient;
     }
 
     @Override
@@ -54,8 +58,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
     }
 
     @Bean
-    public WebSocketHandler locationWebSocketHandler() {
-        return new TrackingWebSocketHandler(stringRedisTemplate, objectMapper, eventPublisher);
+    public TrackingWebSocketHandler locationWebSocketHandler() {
+        return new TrackingWebSocketHandler(stringRedisTemplate, objectMapper, eventPublisher, userServiceClient);
     }
 
     @Bean

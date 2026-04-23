@@ -38,6 +38,22 @@ export class MapboxService {
       throw new Error('Mapbox token non configuré dans environment');
     }
 
+    // Détruire toute instance précédente pour éviter les fuites mémoire / conteneurs morts
+    if (this.map) {
+      try {
+        this.clearPlacementMarkers();
+        this.map.remove();
+      } catch {
+        // ignore — instance déjà détruite par le DOM
+      }
+      this.map = null;
+    }
+
+    const container = document.getElementById(containerId);
+    if (!container) {
+      throw new Error(`Conteneur de carte introuvable: #${containerId}`);
+    }
+
     mapboxgl.accessToken = environment.mapboxToken;
 
     this.map = new mapboxgl.Map({
@@ -45,14 +61,43 @@ export class MapboxService {
       style: options.style || 'mapbox://styles/mapbox/streets-v12',
       center: options.center || [10.1815, 36.8065], // Tunis par défaut
       zoom: options.zoom || 12,
-      attributionControl: true
+      attributionControl: true,
     });
 
     // Ajouter les contrôles de navigation
     this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
     this.map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
 
+    // Force un resize quand la map est prête (évite les tuiles grises au premier rendu)
+    this.map.on('load', () => {
+      this.map?.resize();
+    });
+
     return this.map;
+  }
+
+  /**
+   * Exécute le callback quand le style est totalement chargé.
+   * - Si déjà chargé : exécute immédiatement.
+   * - Sinon : attend 'style.load' (après setStyle) ou 'load' (init initiale).
+   *   Un guard `done` empêche la double exécution.
+   */
+  onStyleReady(cb: () => void): void {
+    if (!this.map) {
+      return;
+    }
+    if (this.map.isStyleLoaded()) {
+      cb();
+      return;
+    }
+    let done = false;
+    const run = () => {
+      if (done) return;
+      done = true;
+      cb();
+    };
+    this.map.once('style.load', run);
+    this.map.once('load', run);
   }
 
   /**
@@ -63,35 +108,86 @@ export class MapboxService {
   }
 
   /**
-   * Ajouter un marqueur sur la carte
+   * Ajouter un marqueur courier sur la carte.
+   * Le marqueur est composé d'un anneau blanc + centre coloré, avec une ombre portée.
+   * Pour les statuts IDLE, une animation pulse attire l'attention.
    */
   addMarker(lngLat: [number, number], options: {
     popup?: string | HTMLElement;
     color?: string;
     draggable?: boolean;
+    pulse?: boolean;
   } = {}): Marker {
     if (!this.map) {
       throw new Error('La carte n\'est pas initialisée');
     }
 
+    const color = options.color || '#3b82f6';
+
+    // Wrapper — size of the clickable zone
     const el = document.createElement('div');
-    el.className = 'custom-marker';
-    el.style.width = '20px';
-    el.style.height = '20px';
-    el.style.borderRadius = '50%';
-    el.style.backgroundColor = options.color || '#3b82f6';
-    el.style.border = '2px solid white';
-    el.style.cursor = 'pointer';
+    el.className = 'custom-marker' + (options.pulse ? ' custom-marker--pulse' : '');
+    Object.assign(el.style, {
+      width: '34px',
+      height: '34px',
+      position: 'relative',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    });
+
+    // Outer ring (white, colored border)
+    const ring = document.createElement('div');
+    Object.assign(ring.style, {
+      width: '30px',
+      height: '30px',
+      borderRadius: '50%',
+      backgroundColor: '#ffffff',
+      border: `3px solid ${color}`,
+      boxShadow: `0 2px 10px rgba(0,0,0,0.30), 0 0 0 2px ${color}33`,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+    });
+
+    // Inner dot
+    const dot = document.createElement('div');
+    Object.assign(dot.style, {
+      width: '14px',
+      height: '14px',
+      borderRadius: '50%',
+      backgroundColor: color,
+    });
+
+    ring.appendChild(dot);
+    el.appendChild(ring);
+
+    // Pulse halo (optional — for IDLE couriers)
+    if (options.pulse) {
+      const halo = document.createElement('div');
+      Object.assign(halo.style, {
+        position: 'absolute',
+        inset: '0',
+        borderRadius: '50%',
+        border: `2px solid ${color}`,
+        opacity: '0',
+        animation: 'markerHalo 1.8s ease-out infinite',
+      });
+      el.appendChild(halo);
+    }
 
     const marker = new mapboxgl.Marker({
       element: el,
-      draggable: options.draggable || false
+      draggable: options.draggable || false,
+      anchor: 'center',
     })
       .setLngLat(lngLat)
       .addTo(this.map);
 
     if (options.popup) {
-      const popup = new Popup({ offset: 25 }).setHTML(
+      const popup = new Popup({ offset: 20 }).setHTML(
         typeof options.popup === 'string' ? options.popup : ''
       );
       marker.setPopup(popup);
@@ -108,20 +204,26 @@ export class MapboxService {
     if (!this.map) {
       throw new Error('La carte n\'est pas initialisée');
     }
+    const color = options.color || '#e11d48';
+
     const el = document.createElement('div');
     el.className = 'custom-marker order-pin';
-    el.style.width = '14px';
-    el.style.height = '14px';
-    el.style.borderRadius = '2px';
-    el.style.backgroundColor = options.color || '#e11d48';
-    el.style.border = '2px solid white';
-    el.style.boxShadow = '0 0 0 1px rgba(0,0,0,0.2)';
-    el.style.transform = 'rotate(45deg)';
-    const marker = new mapboxgl.Marker({ element: el })
+    Object.assign(el.style, {
+      width: '22px',
+      height: '22px',
+      borderRadius: '50% 50% 0 50%',
+      backgroundColor: color,
+      border: '2px solid #ffffff',
+      boxShadow: `0 2px 8px rgba(0,0,0,0.30), 0 0 0 2px ${color}44`,
+      transform: 'rotate(-45deg)',
+      cursor: 'pointer',
+    });
+
+    const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom-right' })
       .setLngLat(lngLat)
       .addTo(this.map);
     if (options.popup) {
-      marker.setPopup(new Popup({ offset: 18 }).setHTML(options.popup));
+      marker.setPopup(new Popup({ offset: 14 }).setHTML(options.popup));
     }
     this.orderMarkers.push(marker);
     return marker;
@@ -231,8 +333,21 @@ export class MapboxService {
     const next = navigation
       ? 'mapbox://styles/mapbox/navigation-day-v1'
       : 'mapbox://styles/mapbox/streets-v12';
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      this.map?.resize();
+      onComplete();
+    };
+
+    // 'style.load' : déclenché après chaque setStyle().
+    // Timeout de 2s en filet de sécurité (network lent, style déjà en cache).
+    this.map.once('style.load', finish);
+    setTimeout(finish, 2000);
+
     this.map.setStyle(next);
-    this.map.once('style.load', () => onComplete());
   }
 
   /**

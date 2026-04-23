@@ -121,6 +121,21 @@ public class DeliveryController {
         return deliveryService.declineDelivery(id, courierId, reason);
     }
 
+    @Operation(summary = "Accepter par orderId (courier app)")
+    @PutMapping("/by-order/{orderId}/accept")
+    public DeliveryDTO acceptByOrder(@PathVariable Long orderId, @RequestParam @NotNull Long courierId) {
+        return deliveryService.acceptDeliveryByOrderId(orderId, courierId);
+    }
+
+    @Operation(summary = "Refuser par orderId (courier app)")
+    @PutMapping("/by-order/{orderId}/decline")
+    public DeliveryDTO declineByOrder(
+            @PathVariable Long orderId,
+            @RequestParam @NotNull Long courierId,
+            @RequestParam(required = false) String reason) {
+        return deliveryService.declineDeliveryByOrderId(orderId, courierId, reason);
+    }
+
     @Operation(summary = "Arrivée au pickup")
     @PutMapping("/{id}/arrived-pickup")
     public DeliveryDTO arrivedPickup(@PathVariable Long id, @RequestParam @NotNull Long courierId) {
