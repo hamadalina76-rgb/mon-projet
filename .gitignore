@@ -22,3 +22,7 @@ backend/services/auth-service/src/main/resources/application.yml
 frontend/admin-panel/src/environments/environment.development.ts 
 frontend/admin-panel/src/environments/environment.production.ts 
 frontend/partner-dashboard/src/environments/environment.production.ts 
+backend/services/location-service/src/main/resources/application.yml 
+frontend/admin-panel/src/environments/environment.ts 
+frontend/courier_app/assets/config/config.json 
+frontend/partner-dashboard/src/environments/environment.ts 
