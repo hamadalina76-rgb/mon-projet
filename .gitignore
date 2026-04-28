@@ -27,3 +27,12 @@ frontend/admin-panel/src/environments/environment.ts
 frontend/courier_app/assets/config/config.json 
 frontend/partner-dashboard/src/environments/environment.ts 
 frontend/partner-dashboard/src/environments/environment.development.ts 
+node_modules/ 
+__pycache__/ 
+*.pyc 
+reports/ 
+results*/ 
+*.png 
+*.html 
+*.xml 
+.pytest_cache/ 
