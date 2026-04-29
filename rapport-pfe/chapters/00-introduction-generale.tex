@@ -1,0 +1,202 @@
+% ==============================================================================
+% Introduction Generale - Rapport PFE - ISET Nabeul
+% ==============================================================================
+
+\chapter*{Introduction g\'{e}n\'{e}rale}
+\addcontentsline{toc}{chapter}{Introduction g\'{e}n\'{e}rale}
+\markboth{Introduction g\'{e}n\'{e}rale}{Introduction g\'{e}n\'{e}rale}
+
+\vspace{0.5cm}
+
+% ---------------------------------------------------------------------------
+% Contexte general : transformation numerique et livraison
+% ---------------------------------------------------------------------------
+
+La transformation num\'{e}rique constitue aujourd'hui un levier strat\'{e}gique
+pour les entreprises de tous les secteurs. Dans le domaine de la gestion
+commerciale et de la livraison, cette transformation se traduit par le
+d\'{e}ploiement de solutions logicielles de plus en plus sophistiqu\'{e}es,
+capables de g\'{e}rer l'ensemble de la cha\^{i}ne de valeur~: de la prise de
+commande \`{a} la facturation, en passant par le suivi en temps r\'{e}el des
+livraisons et la gestion des stocks.
+
+Le march\'{e} tunisien, \`{a} l'instar des march\'{e}s internationaux, conna\^{i}t une
+croissance significative de la demande en solutions de gestion int\'{e}gr\'{e}es.
+Les entreprises cherchent \`{a} optimiser leurs processus op\'{e}rationnels, \`{a}
+r\'{e}duire les erreurs humaines et \`{a} am\'{e}liorer la satisfaction de leurs
+clients. Cette tendance s'accompagne d'exigences croissantes en mati\`{e}re de
+fiabilit\'{e}, de performance et de qualit\'{e} des applications d\'{e}ploy\'{e}es.
+
+\vspace{0.3cm}
+
+% ---------------------------------------------------------------------------
+% Presentation de DevWise et de ses projets
+% ---------------------------------------------------------------------------
+
+C'est dans ce contexte que s'inscrit l'activit\'{e} de \textbf{DevWise}, une
+entreprise bas\'{e}e \`{a} Nabeul sp\'{e}cialis\'{e}e dans le d\'{e}veloppement de solutions
+logicielles innovantes. DevWise con\c{c}oit et maintient deux produits
+phares~:
+
+\begin{itemize}
+  \item \textbf{Speed Line}~: une application de gestion commerciale
+    compl\`{e}te permettant aux entreprises de g\'{e}rer leurs ventes, leurs
+    achats, leur stock, leur facturation et leurs tableaux de bord
+    d\'{e}cisionnels. Speed Line se d\'{e}cline en version web et bureau, offrant
+    une flexibilit\'{e} d'utilisation adapt\'{e}e aux besoins de chaque
+    utilisateur.
+
+  \item \textbf{Delivery App}~: un \'{e}cosyst\`{e}me de quatre applications
+    (web et mobile) d\'{e}di\'{e}es \`{a} la gestion du cycle complet de livraison.
+    Cet \'{e}cosyst\`{e}me couvre les besoins des diff\'{e}rents acteurs~: les
+    administrateurs pour le pilotage global, les livreurs pour le suivi
+    terrain, les clients pour le passage et le suivi de commandes, ainsi
+    qu'une interface de gestion des restaurants et commerces partenaires.
+\end{itemize}
+
+Ces deux produits, en \'{e}volution constante, repr\'{e}sentent un p\'{e}rim\`{e}tre
+fonctionnel riche et complexe. Chaque nouvelle version apporte son lot de
+fonctionnalit\'{e}s, de corrections et d'am\'{e}liorations, ce qui multiplie les
+sc\'{e}narios \`{a} valider avant chaque mise en production.
+
+\vspace{0.3cm}
+
+% ---------------------------------------------------------------------------
+% Problematique : qualite logicielle et tests
+% ---------------------------------------------------------------------------
+
+Face \`{a} cette complexit\'{e} croissante, la qualit\'{e} logicielle devient un
+enjeu majeur. Les tests manuels, bien qu'indispensables dans certaines
+phases du d\'{e}veloppement, pr\'{e}sentent des limites significatives lorsqu'ils
+constituent l'unique m\'{e}thode de validation~:
+
+\begin{itemize}
+  \item \textbf{Co\^{u}t en temps}~: l'ex\'{e}cution manuelle de l'ensemble des
+    sc\'{e}narios de test devient de plus en plus chronophage \`{a} mesure que
+    l'application s'\'{e}toffe. Un cycle de test complet peut n\'{e}cessiter
+    plusieurs jours de travail.
+
+  \item \textbf{Risque d'erreur humaine}~: la r\'{e}p\'{e}tition de t\^{a}ches
+    identiques favorise l'inattention et les oublis. Certains cas limites
+    ou r\'{e}gressions peuvent passer inaper\c{c}us.
+
+  \item \textbf{Fr\'{e}quence de test limit\'{e}e}~: le co\^{u}t des tests manuels
+    emp\^{e}che leur ex\'{e}cution syst\'{e}matique \`{a} chaque modification du code
+    source, retardant ainsi la d\'{e}tection des anomalies.
+
+  \item \textbf{Difficult\'{e} de mise \`{a} l'\'{e}chelle}~: avec la multiplication
+    des plateformes (web, Android, iOS) et des configurations, la
+    couverture exhaustive devient pratiquement impossible par des moyens
+    exclusivement manuels.
+\end{itemize}
+
+L'automatisation des tests appara\^{i}t donc comme une r\'{e}ponse adapt\'{e}e \`{a}
+ces d\'{e}fis. En mettant en place un robot de tests automatis\'{e}s, il devient
+possible d'ex\'{e}cuter rapidement et de mani\`{e}re r\'{e}p\'{e}table un grand nombre de
+sc\'{e}narios, d'identifier les r\'{e}gressions d\`{e}s leur apparition et de
+lib\'{e}rer du temps pour les \'{e}quipes de d\'{e}veloppement, qui peuvent alors se
+concentrer sur des t\^{a}ches \`{a} plus forte valeur ajout\'{e}e.
+
+\vspace{0.3cm}
+
+% ---------------------------------------------------------------------------
+% Objectifs du stage
+% ---------------------------------------------------------------------------
+
+C'est dans cette perspective que s'inscrit notre projet de fin d'\'{e}tudes,
+r\'{e}alis\'{e} au sein de l'entreprise DevWise sur une p\'{e}riode de quatre mois,
+sous l'encadrement de M.~Mahmoud Slama. Les objectifs principaux de ce
+stage sont les suivants~:
+
+\begin{enumerate}
+  \item \textbf{\'{E}tudier l'existant}~: analyser l'architecture des projets
+    Speed Line et Delivery App, identifier les fonctionnalit\'{e}s critiques
+    et recenser les sc\'{e}narios de test prioritaires.
+
+  \item \textbf{Concevoir une architecture de tests}~: d\'{e}finir une
+    architecture modulaire et maintenable pour le robot de tests, en
+    s\'{e}lectionnant les outils et frameworks les plus adapt\'{e}s au contexte
+    technique des projets.
+
+  \item \textbf{Impl\'{e}menter les tests automatis\'{e}s}~: d\'{e}velopper les
+    scripts de tests couvrant les sc\'{e}narios fonctionnels principaux des
+    deux produits, en adoptant les bonnes pratiques du \textit{test
+    automation}.
+
+  \item \textbf{Int\'{e}grer les tests dans le processus de d\'{e}veloppement}~:
+    mettre en place un pipeline d'int\'{e}gration continue permettant
+    l'ex\'{e}cution automatique des tests \`{a} chaque modification du code.
+
+  \item \textbf{Produire des rapports de tests}~: g\'{e}n\'{e}rer des rapports
+    d\'{e}taill\'{e}s et exploitables pour faciliter le suivi de la qualit\'{e} et
+    la prise de d\'{e}cision.
+\end{enumerate}
+
+\vspace{0.3cm}
+
+% ---------------------------------------------------------------------------
+% Methodologie adoptee
+% ---------------------------------------------------------------------------
+
+Pour mener \`{a} bien ce projet, nous avons adopt\'{e} une \textbf{m\'{e}thodologie
+agile} inspir\'{e}e du framework \textbf{Scrum}. Cette approche it\'{e}rative et
+incr\'{e}mentale nous a permis de~:
+
+\begin{itemize}
+  \item D\'{e}couper le projet en \textit{sprints} de deux semaines, chacun
+    d\'{e}livrant un ensemble coh\'{e}rent de tests automatis\'{e}s.
+  \item Organiser des r\'{e}unions r\'{e}guli\`{e}res avec l'encadrant pour
+    synchroniser les priorit\'{e}s et ajuster le plan de travail.
+  \item Int\'{e}grer les retours d'\'{e}quipe de mani\`{e}re continue pour
+    am\'{e}liorer la qualit\'{e} des livrables.
+  \item Maintenir un backlog prioris\'{e} des sc\'{e}narios \`{a} automatiser, en
+    fonction de leur criticit\'{e} et de leur fr\'{e}quence d'utilisation.
+\end{itemize}
+
+Cette m\'{e}thodologie s'est av\'{e}r\'{e}e particuli\`{e}rement adapt\'{e}e au contexte du
+projet, o\`{u} les exigences pouvaient \'{e}voluer en fonction des nouvelles
+versions des applications et des retours des utilisateurs.
+
+\vspace{0.3cm}
+
+% ---------------------------------------------------------------------------
+% Organisation du rapport
+% ---------------------------------------------------------------------------
+
+Le pr\'{e}sent rapport est structur\'{e} en plusieurs chapitres, organis\'{e}s de
+mani\`{e}re \`{a} retracer la d\'{e}marche suivie tout au long de ce stage~:
+
+\begin{itemize}
+  \item \textbf{Chapitre 1~: Pr\'{e}sentation de l'organisme d'accueil et
+    cadre du projet.} Ce chapitre pr\'{e}sente l'entreprise DevWise, son
+    domaine d'activit\'{e}, les projets Speed Line et Delivery App, ainsi
+    que le cadre g\'{e}n\'{e}ral et la probl\'{e}matique du stage.
+
+  \item \textbf{Chapitre 2~: \'{E}tat de l'art et \'{e}tude th\'{e}orique.} Nous y
+    passons en revue les concepts fondamentaux li\'{e}s aux tests logiciels,
+    les diff\'{e}rentes strat\'{e}gies d'automatisation, ainsi qu'une \'{e}tude
+    comparative des outils et frameworks disponibles sur le march\'{e}.
+
+  \item \textbf{Chapitre 3~: Analyse et sp\'{e}cification des besoins.} Ce
+    chapitre d\'{e}taille l'analyse des besoins fonctionnels et non
+    fonctionnels, la d\'{e}finition des sc\'{e}narios de test prioritaires et
+    la mod\'{e}lisation UML associ\'{e}e.
+
+  \item \textbf{Chapitre 4~: Conception et architecture de la solution.}
+    Nous y pr\'{e}sentons l'architecture technique retenue pour le robot de
+    tests, les choix technologiques effectu\'{e}s et la conception d\'{e}taill\'{e}e
+    des diff\'{e}rents modules.
+
+  \item \textbf{Chapitre 5~: R\'{e}alisation et mise en \oe uvre.} Ce dernier
+    chapitre couvre l'impl\'{e}mentation des tests automatis\'{e}s, leur
+    int\'{e}gration dans le pipeline CI/CD, les r\'{e}sultats obtenus et les
+    captures d'\'{e}cran illustrant le fonctionnement du robot.
+\end{itemize}
+
+\vspace{0.3cm}
+
+Enfin, nous conclurons ce rapport par un bilan g\'{e}n\'{e}ral du stage, en
+mettant en \'{e}vidence les comp\'{e}tences acquises, les difficult\'{e}s
+rencontr\'{e}es et les perspectives d'\'{e}volution du projet.
+
+\newpage

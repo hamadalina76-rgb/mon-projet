@@ -1,0 +1,280 @@
+# ==============================================================================
+# CI/CD - SpeedLine Test Robot
+# ==============================================================================
+# Include this file in the main .gitlab-ci.yml:
+#
+#   include:
+#     - local: 'tests/ci/.gitlab-ci-tests.yml'
+#
+# Requires these stages to be defined in the main pipeline:
+#   - test
+#   - report
+# ==============================================================================
+
+# ==============================================================================
+# TEMPLATES
+# ==============================================================================
+
+.test-node-cache:
+  cache:
+    key: "$CI_COMMIT_REF_SLUG-test-robot"
+    paths:
+      - tests/playwright/node_modules/
+      - tests/seed/node_modules/
+      - .cache/ms-playwright/
+
+.test-playwright-base:
+  image: mcr.microsoft.com/playwright:v1.49.0-noble
+  stage: test
+  extends: .test-node-cache
+  before_script:
+    - cd tests/playwright
+    - npm ci
+    - cp .env.example .env
+  artifacts:
+    when: always
+    paths:
+      - tests/playwright/test-results/
+      - tests/playwright/allure-results/
+      - tests/playwright/playwright-report/
+    expire_in: 7 days
+    reports:
+      junit: tests/playwright/test-results/results.xml
+
+# ==============================================================================
+# BACKEND UNIT TESTS + CODE COVERAGE (JaCoCo)
+# ==============================================================================
+
+test-robot:backend-unit-tests:
+  stage: test
+  image: maven:3.9-eclipse-temurin-17
+  script:
+    - cd backend
+    - mvn test -pl services/auth-service,services/order-service,services/partner-service,services/payment-service,services/user-service,services/notification-service,services/review-service,services/support-service,services/analytics-service,services/location-service,services/promotion-service,services/delivery-service --fail-at-end
+  artifacts:
+    when: always
+    paths:
+      - backend/services/*/target/surefire-reports/
+      - backend/services/*/target/site/jacoco/
+    reports:
+      junit: backend/services/*/target/surefire-reports/TEST-*.xml
+    expire_in: 7 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - backend/**/*
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "staging"'
+
+# ==============================================================================
+# FRONTEND UNIT TESTS + CODE COVERAGE (Istanbul/Karma)
+# ==============================================================================
+
+test-robot:admin-panel-unit-tests:
+  stage: test
+  image: node:20
+  script:
+    - cd frontend/admin-panel
+    - npm ci
+    - npx ng test --watch=false --browsers=ChromeHeadless
+  artifacts:
+    when: always
+    paths:
+      - frontend/admin-panel/coverage/
+    expire_in: 7 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - frontend/admin-panel/**/*
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+  allow_failure: true
+
+test-robot:partner-dashboard-unit-tests:
+  stage: test
+  image: node:20
+  script:
+    - cd frontend/partner-dashboard
+    - npm ci
+    - npx ng test --watch=false --browsers=ChromeHeadless
+  artifacts:
+    when: always
+    paths:
+      - frontend/partner-dashboard/coverage/
+    expire_in: 7 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - frontend/partner-dashboard/**/*
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+  allow_failure: true
+
+# ==============================================================================
+# SEED TEST DATA
+# ==============================================================================
+
+seed-test-data:
+  stage: test
+  image: node:20
+  extends: .test-node-cache
+  script:
+    - cd tests/seed
+    - npm ci
+    - node seed-test-data.js
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "staging"'
+
+# ==============================================================================
+# API TESTS
+# ==============================================================================
+
+test-robot:api:
+  extends: .test-playwright-base
+  script:
+    - npx playwright test --project=api-tests --reporter=list,allure-playwright,junit
+  needs:
+    - job: seed-test-data
+      optional: true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "staging"'
+    - if: '$CI_COMMIT_TAG =~ /^staging-.*$/'
+
+# ==============================================================================
+# WEB UI TESTS
+# ==============================================================================
+
+test-robot:admin-panel:
+  extends: .test-playwright-base
+  script:
+    - npx playwright test --project=admin-panel --reporter=list,allure-playwright,junit
+  needs:
+    - job: seed-test-data
+      optional: true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - frontend/admin-panel/**/*
+        - backend/**/*
+        - tests/playwright/**/*
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "staging"'
+
+test-robot:partner-dashboard:
+  extends: .test-playwright-base
+  script:
+    - npx playwright test --project=partner-dashboard --reporter=list,allure-playwright,junit
+  needs:
+    - job: seed-test-data
+      optional: true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - frontend/partner-dashboard/**/*
+        - backend/**/*
+        - tests/playwright/**/*
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "staging"'
+
+# ==============================================================================
+# MOBILE TESTS (Flutter Integration Tests)
+# ==============================================================================
+
+test-robot:customer-app:
+  stage: test
+  image: cirrusci/flutter:stable
+  script:
+    - cd frontend/customer_app
+    - flutter pub get
+    - flutter test integration_test/app_test.dart || true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - frontend/customer_app/**/*
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+  allow_failure: true
+  artifacts:
+    when: always
+    paths:
+      - frontend/customer_app/build/test-results/
+    expire_in: 7 days
+
+test-robot:courier-app:
+  stage: test
+  image: cirrusci/flutter:stable
+  script:
+    - cd frontend/courier_app
+    - flutter pub get
+    - flutter test integration_test/app_test.dart || true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - frontend/courier_app/**/*
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+  allow_failure: true
+  artifacts:
+    when: always
+    paths:
+      - frontend/courier_app/build/test-results/
+    expire_in: 7 days
+
+# ==============================================================================
+# PERFORMANCE TESTS (k6)
+# ==============================================================================
+
+test-robot:performance-load:
+  stage: test
+  image:
+    name: grafana/k6:latest
+    entrypoint: ['']
+  script:
+    - k6 run --quiet --summary-trend-stats="avg,min,med,max,p(90),p(95)" tests/performance/k6-load-test.js
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "staging"'
+    - if: '$CI_COMMIT_TAG =~ /^staging-.*$/'
+  allow_failure: true
+  artifacts:
+    when: always
+    paths:
+      - tests/performance/
+    expire_in: 7 days
+
+test-robot:performance-spike:
+  stage: test
+  image:
+    name: grafana/k6:latest
+    entrypoint: ['']
+  script:
+    - k6 run --quiet tests/performance/k6-spike-test.js
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^staging-.*$/'
+  allow_failure: true
+
+# ==============================================================================
+# ALLURE REPORT
+# ==============================================================================
+
+test-robot:allure-report:
+  stage: report
+  image: node:20
+  script:
+    - npm install -g allure-commandline
+    - allure generate tests/playwright/allure-results --clean -o allure-report
+  needs:
+    - job: test-robot:api
+      optional: true
+    - job: test-robot:admin-panel
+      optional: true
+    - job: test-robot:partner-dashboard
+      optional: true
+  artifacts:
+    when: always
+    paths:
+      - allure-report/
+    expire_in: 30 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "staging"'

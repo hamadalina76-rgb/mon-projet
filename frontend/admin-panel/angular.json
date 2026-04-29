@@ -125,7 +125,13 @@
               "@angular/material/prebuilt-themes/azure-blue.css",
               "src/styles.scss"
             ],
-            "scripts": []
+            "scripts": [],
+            "codeCoverage": true,
+            "codeCoverageExclude": [
+              "src/test-setup.ts",
+              "**/*.spec.ts",
+              "**/environments/**"
+            ]
           }
         },
         "lint": {

@@ -98,7 +98,10 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  
+  integration_test:
+    sdk: flutter
+  patrol: ^3.13.0
+
   # Code Generation
   build_runner: ^2.4.7
   riverpod_generator: ^2.3.9

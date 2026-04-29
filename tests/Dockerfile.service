@@ -1,0 +1,18 @@
+ARG SERVICE_NAME=auth-service
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
+ARG SERVICE_NAME
+WORKDIR /workspace
+COPY . .
+RUN mvn -q -DskipTests -pl services/${SERVICE_NAME} -am clean package spring-boot:repackage -Djacoco.skip=true 2>/dev/null \
+    || mvn -q -DskipTests -pl services/${SERVICE_NAME} -am clean package -Djacoco.skip=true
+
+FROM eclipse-temurin:17-jre-jammy
+ARG SERVICE_NAME
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /workspace/services/${SERVICE_NAME}/target/*.jar /tmp/
+# Pick the largest JAR (fat jar) — spring-boot:repackage produces a bigger file
+RUN JAR=$(ls -S /tmp/*.jar | head -1) && cp "$JAR" /app/app.jar && rm -f /tmp/*.jar
+EXPOSE 8080
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=70 -XX:+UseG1GC"
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar /app/app.jar"]

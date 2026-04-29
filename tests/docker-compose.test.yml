@@ -1,0 +1,247 @@
+# =============================================================================
+# Docker Compose - SpeedLine Full Test Environment
+# All services + API Gateway behind localhost:8080
+#
+# Usage:
+#   cd tests
+#   docker compose -f docker-compose.test.yml up -d --build
+#   # Wait ~5 min for all services to start
+#   cd playwright && npm test
+# =============================================================================
+
+x-service-defaults: &service-defaults
+  build:
+    context: ../backend
+    dockerfile: ../tests/Dockerfile.service
+  networks:
+    - test-network
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: on-failure
+
+x-env-defaults: &env-defaults
+  PORT: 8080
+  SPRING_PROFILES_ACTIVE: dev
+  SPRING_MAIN_LAZY_INITIALIZATION: "false"
+  SPRING_DATASOURCE_USERNAME: postgres
+  SPRING_DATASOURCE_PASSWORD: postgres123
+  SPRING_DATA_REDIS_HOST: redis
+  REDIS_HOST: redis
+  FILE_GCS_BUCKET: test-bucket
+  JWT_SECRET: speedline-super-secret-key-for-jwt-token-generation-minimum-256-bits
+  SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+  PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
+  SPRING_CLOUD_GCP_PROJECT_ID: speedline-test
+  GOOGLE_APPLICATION_CREDENTIALS: ""
+  MAPBOX_ACCESS_TOKEN: pk.test-placeholder-token
+  MAPBOX_ACCESS-TOKEN: pk.test-placeholder-token
+  AUTH_SERVICE_URL: http://auth-service:8080
+  USER_SERVICE_URL: http://user-service:8080
+  PARTNER_SERVICE_URL: http://partner-service:8080
+  ORDER_SERVICE_URL: http://order-service:8080
+  DELIVERY_SERVICE_URL: http://delivery-service:8080
+  PAYMENT_SERVICE_URL: http://payment-service:8080
+  NOTIFICATION_SERVICE_URL: http://notification-service:8080
+  LOCATION_SERVICE_URL: http://location-service:8080
+  PROMOTION_SERVICE_URL: http://promotion-service:8080
+
+services:
+  # ==================== INFRASTRUCTURE ====================
+
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: sl-test-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_MULTIPLE_DATABASES: speedline_auth,speedline_users,speedline_partners,speedline_orders,speedline_order,speedline_delivery,speedline_dev,speedline_payments,speedline_payment,speedline_locations,speedline_promotions,speedline_promotion,speedline_support
+    volumes:
+      - ../backend/scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: sl-test-redis
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  pubsub-emulator:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    container_name: sl-test-pubsub
+    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=speedline-test
+    networks:
+      - test-network
+
+  # ==================== API GATEWAY ====================
+
+  api-gateway:
+    build:
+      context: ../backend
+      dockerfile: ../tests/Dockerfile.gateway
+    container_name: sl-test-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - test-network
+    depends_on:
+      auth-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  # ==================== MICROSERVICES ====================
+
+  auth-service:
+    <<: *service-defaults
+    build:
+      context: ../backend
+      dockerfile: ../tests/Dockerfile.service
+      args:
+        SERVICE_NAME: auth-service
+    container_name: sl-test-auth
+    environment:
+      <<: *env-defaults
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/speedline_auth
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  user-service:
+    <<: *service-defaults
+    build:
+      context: ../backend
+      dockerfile: ../tests/Dockerfile.service
+      args:
+        SERVICE_NAME: user-service
+    container_name: sl-test-user
+    environment:
+      <<: *env-defaults
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/speedline_users
+
+  partner-service:
+    <<: *service-defaults
+    build:
+      context: ../backend
+      dockerfile: ../tests/Dockerfile.service
+      args:
+        SERVICE_NAME: partner-service
+    container_name: sl-test-partner
+    environment:
+      <<: *env-defaults
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/speedline_partners
+
+  order-service:
+    <<: *service-defaults
+    build:
+      context: ../backend
+      dockerfile: ../tests/Dockerfile.service
+      args:
+        SERVICE_NAME: order-service
+    container_name: sl-test-order
+    environment:
+      <<: *env-defaults
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/speedline_orders
+
+  delivery-service:
+    <<: *service-defaults
+    build:
+      context: ../backend
+      dockerfile: ../tests/Dockerfile.service
+      args:
+        SERVICE_NAME: delivery-service
+    container_name: sl-test-delivery
+    environment:
+      <<: *env-defaults
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/speedline_delivery
+
+  payment-service:
+    <<: *service-defaults
+    build:
+      context: ../backend
+      dockerfile: ../tests/Dockerfile.service
+      args:
+        SERVICE_NAME: payment-service
+    container_name: sl-test-payment
+    environment:
+      <<: *env-defaults
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/speedline_payments
+
+  location-service:
+    <<: *service-defaults
+    build:
+      context: ../backend
+      dockerfile: ../tests/Dockerfile.service
+      args:
+        SERVICE_NAME: location-service
+    container_name: sl-test-location
+    environment:
+      <<: *env-defaults
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/speedline_locations
+
+  promotion-service:
+    <<: *service-defaults
+    build:
+      context: ../backend
+      dockerfile: ../tests/Dockerfile.service
+      args:
+        SERVICE_NAME: promotion-service
+    container_name: sl-test-promotion
+    environment:
+      <<: *env-defaults
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/speedline_promotions
+
+  support-service:
+    <<: *service-defaults
+    build:
+      context: ../backend
+      dockerfile: ../tests/Dockerfile.service
+      args:
+        SERVICE_NAME: support-service
+    container_name: sl-test-support
+    environment:
+      <<: *env-defaults
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/speedline_support
+
+  analytics-service:
+    <<: *service-defaults
+    build:
+      context: ../backend
+      dockerfile: ../tests/Dockerfile.service
+      args:
+        SERVICE_NAME: analytics-service
+    container_name: sl-test-analytics
+    environment:
+      <<: *env-defaults
+    depends_on:
+      redis:
+        condition: service_healthy
+
+networks:
+  test-network:
+    driver: bridge

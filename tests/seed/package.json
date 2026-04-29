@@ -1,0 +1,14 @@
+{
+  "name": "speedline-test-seeder",
+  "version": "1.0.0",
+  "description": "Database seeder for SpeedLine test environment",
+  "main": "seed-test-data.js",
+  "scripts": {
+    "seed": "node seed-test-data.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.7"
+  }
+}

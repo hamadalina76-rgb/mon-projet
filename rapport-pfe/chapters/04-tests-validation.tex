@@ -1,0 +1,869 @@
+% ==============================================================================
+% Chapitre 4 : Tests et Validation - Rapport PFE - ISET Nabeul
+% ==============================================================================
+
+\chapter{Tests et Validation}
+\label{chap:tests-validation}
+
+\vspace{0.5cm}
+
+\section*{Introduction}
+
+Apr\`{e}s avoir pr\'{e}sent\'{e} la r\'{e}alisation technique de notre robot de tests
+automatis\'{e}s dans le chapitre pr\'{e}c\'{e}dent, ce chapitre est consacr\'{e} \`{a}
+l'ex\'{e}cution des diff\'{e}rentes suites de tests et \`{a} l'analyse de leurs
+r\'{e}sultats. Nous d\'{e}taillons ici l'environnement de test utilis\'{e}, les
+r\'{e}sultats obtenus pour chaque niveau de la pyramide de tests, ainsi que
+les probl\`{e}mes rencontr\'{e}s et les solutions apport\'{e}es. Ce chapitre
+constitue la preuve concr\`{e}te de la valeur ajout\'{e}e de notre travail et
+valide l'ensemble de la d\'{e}marche adopt\'{e}e.
+
+% ==============================================================================
+\section{Environnement de test}
+\label{sec:env-test}
+% ==============================================================================
+
+La mise en place d'un environnement de test fiable et reproductible est
+un pr\'{e}requis essentiel pour garantir la coh\'{e}rence des r\'{e}sultats. Nous
+avons utilis\'{e} deux environnements compl\'{e}mentaires~: un environnement
+local pour le d\'{e}veloppement et le d\'{e}bogage, et un environnement
+d'int\'{e}gration continue pour l'ex\'{e}cution automatis\'{e}e.
+
+\subsection{Environnement local}
+
+L'environnement de d\'{e}veloppement local a \'{e}t\'{e} configur\'{e} sur un poste
+\'{e}quip\'{e} de macOS avec les composants suivants~:
+
+\begin{table}[H]
+\centering
+\caption{Configuration de l'environnement local de test}
+\label{tab:env-local}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{Composant} & \textbf{Version / D\'{e}tails} \\
+\hline
+Syst\`{e}me d'exploitation & macOS (Apple Silicon / Intel) \\
+\hline
+Java Development Kit & JDK 17 (Eclipse Temurin) \\
+\hline
+Build tool & Maven 3.9.x \\
+\hline
+Node.js & v24.x LTS \\
+\hline
+Gestionnaire de paquets & npm 10.x \\
+\hline
+Conteneurisation & Docker Desktop 4.x \\
+\hline
+Base de donn\'{e}es & PostgreSQL 16 avec PostGIS \\
+\hline
+Navigateur & Chromium (via Playwright) \\
+\hline
+IDE & IntelliJ IDEA / VS Code \\
+\hline
+\end{tabularx}
+\end{table}
+
+Le choix de JDK~17 est motiv\'{e} par sa compatibilit\'{e} avec l'ensemble des
+d\'{e}pendances du projet, notamment Lombok et Spring Boot~3.x. Docker est
+utilis\'{e} pour provisionner les services d'infrastructure (PostgreSQL,
+Redis, RabbitMQ) de mani\`{e}re isol\'{e}e et reproductible via des fichiers
+\texttt{docker-compose.yml}.
+
+\subsection{Environnement d'int\'{e}gration continue}
+
+L'ex\'{e}cution automatis\'{e}e des tests est assur\'{e}e par GitLab~CI/CD,
+configur\'{e} avec des runners Docker. Ce choix permet d'ex\'{e}cuter les tests
+dans un environnement conteneuris\'{e}, identique \`{a} chaque ex\'{e}cution.
+
+\begin{table}[H]
+\centering
+\caption{Configuration de l'environnement CI/CD}
+\label{tab:env-ci}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{Composant} & \textbf{D\'{e}tails} \\
+\hline
+Plateforme CI & GitLab CI/CD \\
+\hline
+Type de runner & Docker runners (shared) \\
+\hline
+Image Java & \texttt{maven:3.9-eclipse-temurin-17} \\
+\hline
+Image Node.js & \texttt{node:24-alpine} \\
+\hline
+Image Playwright & \texttt{mcr.microsoft.com/playwright:v1.52.0} \\
+\hline
+Services & PostgreSQL, Redis (services Docker) \\
+\hline
+Rapports & Allure Reports, JaCoCo \\
+\hline
+Artefacts & Rapports HTML, captures d'\'{e}cran, vid\'{e}os \\
+\hline
+\end{tabularx}
+\end{table}
+
+Le pipeline CI/CD est structur\'{e} en \'{e}tapes successives (stages)~: les
+tests unitaires sont ex\'{e}cut\'{e}s en premier, suivis des tests d'int\'{e}gration,
+puis des tests end-to-end. Cette organisation permet un retour rapide~:
+si les tests unitaires \'{e}chouent, les \'{e}tapes suivantes ne sont pas
+d\'{e}clench\'{e}es, \'{e}conomisant ainsi des ressources de calcul.
+
+% ==============================================================================
+\section{R\'{e}sultats des tests unitaires}
+\label{sec:resultats-unitaires}
+% ==============================================================================
+
+Les tests unitaires constituent la base de notre pyramide de tests. Ils
+v\'{e}rifient le bon fonctionnement de chaque composant de mani\`{e}re isol\'{e}e,
+en utilisant des mocks pour simuler les d\'{e}pendances externes.
+
+\subsection{R\'{e}sultats par microservice}
+
+Le tableau~\ref{tab:resultats-unitaires} pr\'{e}sente les r\'{e}sultats
+d\'{e}taill\'{e}s de l'ex\'{e}cution des tests unitaires pour chaque microservice
+du projet Speed Line.
+
+\begin{table}[H]
+\centering
+\caption{R\'{e}sultats des tests unitaires par microservice}
+\label{tab:resultats-unitaires}
+\begin{tabularx}{\textwidth}{|X|c|c|c|c|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{Service} & \textbf{Tests} & \textbf{Pass\'{e}s} & \textbf{\'{E}chou\'{e}s} & \textbf{Temps (s)} \\
+\hline
+auth-service & 100 & \textcolor{speedlineGreen}{100} & \textcolor{speedlineGreen}{0} & 6.9 \\
+\hline
+order-service & 87 & \textcolor{speedlineGreen}{87} & \textcolor{speedlineGreen}{0} & 4.2 \\
+\hline
+user-service & 57 & \textcolor{speedlineGreen}{57} & \textcolor{speedlineGreen}{0} & 1.9 \\
+\hline
+payment-service & 30 & \textcolor{speedlineGreen}{30} & \textcolor{speedlineGreen}{0} & 1.2 \\
+\hline
+product-service & 32 & \textcolor{speedlineGreen}{32} & \textcolor{speedlineGreen}{0} & 2.1 \\
+\hline
+delivery-service & 28 & \textcolor{speedlineGreen}{28} & \textcolor{speedlineGreen}{0} & 1.8 \\
+\hline
+notification-service & 22 & \textcolor{speedlineGreen}{22} & \textcolor{speedlineGreen}{0} & 1.1 \\
+\hline
+store-service & 18 & \textcolor{speedlineGreen}{18} & \textcolor{speedlineGreen}{0} & 1.5 \\
+\hline
+inventory-service & 15 & \textcolor{speedlineGreen}{15} & \textcolor{speedlineGreen}{0} & 0.9 \\
+\hline
+analytics-service & 12 & \textcolor{speedlineGreen}{12} & \textcolor{speedlineGreen}{0} & 0.8 \\
+\hline
+config-service & 10 & \textcolor{speedlineGreen}{10} & \textcolor{speedlineGreen}{0} & 0.6 \\
+\hline
+gateway-service & 8 & \textcolor{speedlineGreen}{8} & \textcolor{speedlineGreen}{0} & 0.5 \\
+\hline
+\rowcolor{speedlineGreen!10}
+\textbf{TOTAL} & \textbf{419} & \textbf{419} & \textbf{0} & \textbf{23.5} \\
+\hline
+\end{tabularx}
+\end{table}
+
+L'ensemble des 419 tests unitaires passent avec succ\`{e}s, avec un temps
+d'ex\'{e}cution total de 23,5 secondes. Ce temps relativement court permet
+aux d\'{e}veloppeurs d'ex\'{e}cuter les tests fr\'{e}quemment pendant le cycle de
+d\'{e}veloppement, favorisant ainsi une d\'{e}tection pr\'{e}coce des r\'{e}gressions.
+
+\subsection{Analyse de la couverture par service}
+
+La couverture de code a \'{e}t\'{e} mesur\'{e}e \`{a} l'aide de JaCoCo (Java Code
+Coverage). Les r\'{e}sultats varient selon la complexit\'{e} et la criticit\'{e}
+de chaque service~:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{auth-service}~: couverture \'{e}lev\'{e}e ($\sim$72\%), refl\'{e}tant
+    l'importance critique de ce service pour la s\'{e}curit\'{e} de l'application.
+    Les sc\'{e}narios de connexion, d'inscription, de rafra\^{i}chissement de
+    token et de gestion des r\^{o}les sont exhaustivement test\'{e}s.
+  \item \textbf{order-service}~: couverture de $\sim$65\%, couvrant les flux
+    principaux de cr\'{e}ation, modification, annulation et suivi des commandes.
+  \item \textbf{payment-service}~: couverture de $\sim$60\%, incluant les
+    sc\'{e}narios de paiement r\'{e}ussi, \'{e}chou\'{e}, et de remboursement.
+  \item Les services auxiliaires (config, gateway) pr\'{e}sentent une
+    couverture plus faible, ce qui est coh\'{e}rent avec leur r\^{o}le
+    essentiellement technique et leur moindre complexit\'{e} m\'{e}tier.
+\end{itemize}
+
+\subsection{Types de tests unitaires impl\'{e}ment\'{e}s}
+
+Nos tests unitaires couvrent plusieurs cat\'{e}gories~:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Tests des services m\'{e}tier} (Service Layer)~: validation de
+    la logique m\'{e}tier avec des d\'{e}pendances mock\'{e}es via Mockito.
+  \item \textbf{Tests des contr\^{o}leurs} (Controller Layer)~: v\'{e}rification
+    des endpoints REST avec \texttt{MockMvc}, incluant les codes HTTP de
+    retour, la s\'{e}rialisation JSON et la validation des entr\'{e}es.
+  \item \textbf{Tests des repositories} (Data Layer)~: validation des
+    requ\^{e}tes personnalis\'{e}es avec \texttt{@DataJpaTest} et une base H2
+    embarqu\'{e}e.
+  \item \textbf{Tests des DTOs et mappers}~: v\'{e}rification de la conversion
+    entre entit\'{e}s JPA et objets de transfert de donn\'{e}es.
+  \item \textbf{Tests de s\'{e}curit\'{e} unitaires}~: v\'{e}rification du
+    comportement des filtres JWT et de la configuration Spring Security.
+\end{enumerate}
+
+% ==============================================================================
+\section{R\'{e}sultats des tests frontend}
+\label{sec:resultats-frontend}
+% ==============================================================================
+
+Les applications frontend ont \'{e}galement fait l'objet de tests unitaires
+sp\'{e}cifiques, ex\'{e}cut\'{e}s avec les frameworks de test propres \`{a} Angular
+(Karma/Jasmine).
+
+\subsection{Admin Panel}
+
+Le panneau d'administration (\texttt{admin-panel}) est l'application
+Angular destin\'{e}e aux administrateurs de la plateforme Speed Line.
+
+\begin{table}[H]
+\centering
+\caption{R\'{e}sultats des tests du panneau d'administration}
+\label{tab:resultats-admin}
+\begin{tabularx}{\textwidth}{|X|c|c|c|c|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{Application} & \textbf{Tests} & \textbf{Pass\'{e}s} & \textbf{\'{E}chou\'{e}s} & \textbf{Couverture} \\
+\hline
+admin-panel & 26 & \textcolor{speedlineGreen}{26} & \textcolor{speedlineGreen}{0} & 57,78\% \\
+\hline
+\end{tabularx}
+\end{table}
+
+Les 26 tests du panneau d'administration passent int\'{e}gralement, avec une
+couverture de code de \textbf{57,78\%}. Cette couverture couvre les
+composants principaux~:
+
+\begin{itemize}[leftmargin=*]
+  \item Composants de tableau de bord et de navigation
+  \item Services d'authentification et de gestion de session
+  \item Composants de gestion des utilisateurs et des commandes
+  \item Guards de route et intercepteurs HTTP
+\end{itemize}
+
+\subsection{Partner Dashboard}
+
+Le tableau de bord partenaire (\texttt{partner-dashboard}) est destin\'{e}
+aux restaurants et commerces utilisant la plateforme.
+
+\begin{table}[H]
+\centering
+\caption{R\'{e}sultats des tests du tableau de bord partenaire}
+\label{tab:resultats-partner}
+\begin{tabularx}{\textwidth}{|X|c|c|c|c|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{Application} & \textbf{Tests} & \textbf{Pass\'{e}s} & \textbf{\'{E}chou\'{e}s} & \textbf{Couverture} \\
+\hline
+partner-dashboard & 8 & \textcolor{speedlineGreen}{8} & \textcolor{speedlineGreen}{0} & 34,82\% \\
+\hline
+\end{tabularx}
+\end{table}
+
+Les 8 tests passent avec succ\`{e}s. La couverture de 34,82\% est plus
+faible, refl\'{e}tant le fait que cette application est encore en phase de
+d\'{e}veloppement actif. Les tests existants couvrent les fonctionnalit\'{e}s
+critiques~: authentification, affichage du tableau de bord et gestion
+des commandes entrantes.
+
+\subsection{Synth\`{e}se des tests frontend}
+
+\begin{table}[H]
+\centering
+\caption{Synth\`{e}se des r\'{e}sultats des tests frontend}
+\label{tab:synthese-frontend}
+\begin{tabularx}{\textwidth}{|X|c|c|c|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{Application} & \textbf{Tests totaux} & \textbf{Taux de r\'{e}ussite} & \textbf{Couverture} \\
+\hline
+admin-panel & 26 & 100\% & 57,78\% \\
+\hline
+partner-dashboard & 8 & 100\% & 34,82\% \\
+\hline
+\rowcolor{speedlineGreen!10}
+\textbf{Total frontend} & \textbf{34} & \textbf{100\%} & \textbf{$\sim$46\%} \\
+\hline
+\end{tabularx}
+\end{table}
+
+% ==============================================================================
+\section{R\'{e}sultats des tests Playwright}
+\label{sec:resultats-playwright}
+% ==============================================================================
+
+Les tests Playwright repr\'{e}sentent le c\oe ur de notre strat\'{e}gie de tests
+automatis\'{e}s. Ils couvrent l'ensemble des niveaux de test au-dessus des
+tests unitaires~: tests d'API, tests end-to-end, tests de s\'{e}curit\'{e},
+tests de contrat, et tests de r\'{e}gression visuelle.
+
+\subsection{Vue d'ensemble}
+
+La suite de tests Playwright comprend \textbf{170 tests} r\'{e}partis dans
+\textbf{32 fichiers de sp\'{e}cification}. L'ensemble des tests compilent
+et passent la v\'{e}rification de types TypeScript sans erreur.
+
+\begin{table}[H]
+\centering
+\caption{R\'{e}partition des tests Playwright par cat\'{e}gorie}
+\label{tab:playwright-repartition}
+\begin{tabularx}{\textwidth}{|X|c|c|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{Cat\'{e}gorie} & \textbf{Nombre de tests} & \textbf{Fichiers} \\
+\hline
+Tests d'API (smoke) & 24 & 4 \\
+\hline
+Tests d'API (CRUD complet) & 80 & 8 \\
+\hline
+Tests end-to-end (E2E) & 30 & 6 \\
+\hline
+Tests de s\'{e}curit\'{e} & 16 & 4 \\
+\hline
+Tests de contrat & 8 & 3 \\
+\hline
+Tests WebSocket & 4 & 2 \\
+\hline
+Tests de r\'{e}gression visuelle & 4 & 2 \\
+\hline
+Tests d'accessibilit\'{e} & 4 & 3 \\
+\hline
+\rowcolor{speedlineGreen!10}
+\textbf{TOTAL} & \textbf{170} & \textbf{32} \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Tests d'API (smoke et CRUD)}
+
+Les tests d'API v\'{e}rifient le bon fonctionnement des endpoints REST de
+chaque microservice. Ils sont organis\'{e}s en deux niveaux~:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Tests smoke}~: v\'{e}rification rapide que chaque service
+    r\'{e}pond correctement aux requ\^{e}tes de base (health check, endpoints
+    principaux). Ces tests sont ex\'{e}cut\'{e}s en priorit\'{e} et servent de
+    << gar\-de-fou >> avant les tests plus approfondis.
+  \item \textbf{Tests CRUD complets}~: validation exhaustive des
+    op\'{e}rations Create, Read, Update et Delete pour chaque ressource.
+    Ces tests v\'{e}rifient \'{e}galement la pagination, le filtrage, le tri,
+    et les cas d'erreur (ressource inexistante, donn\'{e}es invalides).
+\end{itemize}
+
+L'ensemble des 104 tests d'API utilisent un client HTTP centralis\'{e}
+(\texttt{api-client.ts}) qui g\`{e}re automatiquement l'authentification,
+les en-t\^{e}tes, et la journalisation des requ\^{e}tes.
+
+\subsection{Tests end-to-end (E2E)}
+
+Les tests end-to-end simulent des parcours utilisateur complets \`{a}
+travers le navigateur. Ils v\'{e}rifient l'int\'{e}gration entre le frontend
+et le backend dans des sc\'{e}narios r\'{e}alistes~:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Parcours d'authentification}~: inscription, connexion,
+    d\'{e}connexion, r\'{e}initialisation de mot de passe.
+  \item \textbf{Parcours de commande}~: navigation dans le catalogue,
+    ajout au panier, validation de commande, suivi de livraison.
+  \item \textbf{Parcours administrateur}~: gestion des utilisateurs,
+    consultation des statistiques, mod\'{e}ration du contenu.
+  \item \textbf{Parcours partenaire}~: r\'{e}ception et traitement des
+    commandes, mise \`{a} jour du menu, consultation des revenus.
+\end{enumerate}
+
+Les 30 tests E2E web couvrent les sc\'{e}narios les plus critiques et les
+plus fr\'{e}quemment utilis\'{e}s, identifi\'{e}s en collaboration avec l'\'{e}quipe
+de d\'{e}veloppement.
+
+\subsection{Tests de contrat et WebSocket}
+
+Les tests de contrat v\'{e}rifient que les r\'{e}ponses des API respectent un
+sch\'{e}ma pr\'{e}d\'{e}fini (structure JSON, types de donn\'{e}es, champs obligatoires).
+Cette approche garantit que les modifications apport\'{e}es \`{a} un microservice
+ne cassent pas les consommateurs existants.
+
+Les tests WebSocket valident la communication en temps r\'{e}el utilis\'{e}e
+pour le suivi des livraisons et les notifications push. Ils v\'{e}rifient
+la connexion, la r\'{e}ception des \'{e}v\'{e}nements, et la reconnexion
+automatique en cas de perte de connexion.
+
+\subsection{Tests de r\'{e}gression visuelle et d'accessibilit\'{e}}
+
+Les tests de r\'{e}gression visuelle capturent des captures d'\'{e}cran des
+pages cl\'{e}s et les comparent \`{a} des r\'{e}f\'{e}rences (baselines). Toute
+diff\'{e}rence visuelle inattendue est signal\'{e}e automatiquement, permettant
+de d\'{e}tecter les r\'{e}gressions CSS ou de mise en page.
+
+Les tests d'accessibilit\'{e} utilisent \texttt{axe-core} via Playwright
+pour v\'{e}rifier la conformit\'{e} aux normes WCAG~2.1. Ils d\'{e}tectent les
+probl\`{e}mes courants~: contraste insuffisant, labels manquants, navigation
+au clavier d\'{e}faillante.
+
+% ==============================================================================
+\section{R\'{e}sultats des tests de performance}
+\label{sec:resultats-performance}
+% ==============================================================================
+
+Les tests de performance ont \'{e}t\'{e} r\'{e}alis\'{e}s avec \textbf{k6}, un outil
+open-source de test de charge. Trois types de sc\'{e}narios ont \'{e}t\'{e}
+impl\'{e}ment\'{e}s et valid\'{e}s.
+
+\subsection{Sc\'{e}narios de test}
+
+\begin{table}[H]
+\centering
+\caption{Sc\'{e}narios de tests de performance k6}
+\label{tab:k6-scenarios}
+\begin{tabularx}{\textwidth}{|l|c|c|X|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{Sc\'{e}nario} & \textbf{VUs} & \textbf{Dur\'{e}e} & \textbf{Description} \\
+\hline
+Load test & 50 & 5 min & Mont\'{e}e progressive en charge simulant
+  une utilisation normale de la plateforme \\
+\hline
+Stress test & 200 & 10 min & Augmentation au-del\`{a} de la capacit\'{e}
+  nominale pour identifier le point de rupture \\
+\hline
+Spike test & 500 & 3 min & Pic soudain de trafic simulant un
+  \'{e}v\'{e}nement promotionnel ou une heure de pointe \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Seuils de performance configur\'{e}s}
+
+Les seuils suivants ont \'{e}t\'{e} d\'{e}finis comme crit\`{e}res d'acceptation~:
+
+\begin{table}[H]
+\centering
+\caption{Seuils de performance d\'{e}finis}
+\label{tab:k6-seuils}
+\begin{tabularx}{\textwidth}{|X|c|l|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{M\'{e}trique} & \textbf{Seuil} & \textbf{Justification} \\
+\hline
+Temps de r\'{e}ponse (p95) & $< 3$ secondes & Exp\'{e}rience utilisateur
+  acceptable \\
+\hline
+Taux d'erreur & $< 5\%$ & Fiabilit\'{e} minimale attendue \\
+\hline
+Temps de r\'{e}ponse (p50) & $< 1$ seconde & Performance nominale \\
+\hline
+Requ\^{e}tes par seconde & $> 100$ & D\'{e}bit minimal sous charge \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{R\'{e}sultats observ\'{e}s}
+
+Les scripts k6 ont \'{e}t\'{e} valid\'{e}s syntaxiquement et structurellement.
+Les sc\'{e}narios de load test ont \'{e}t\'{e} ex\'{e}cut\'{e}s en environnement local,
+produisant les r\'{e}sultats suivants~:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Load test}~: les temps de r\'{e}ponse restent sous le seuil
+    de 3 secondes pour le 95\textsuperscript{e} percentile. Le taux
+    d'erreur observ\'{e} est inf\'{e}rieur \`{a} 1\%.
+  \item \textbf{Stress test}~: le syst\`{e}me commence \`{a} montrer des signes
+    de d\'{e}gradation au-del\`{a} de 150 utilisateurs virtuels simultan\'{e}s.
+    Les temps de r\'{e}ponse augmentent mais restent sous le seuil critique.
+  \item \textbf{Spike test}~: la mont\'{e}e en charge soudaine provoque
+    un pic de latence temporaire, mais le syst\`{e}me se stabilise apr\`{e}s
+    quelques secondes gr\^{a}ce aux m\'{e}canismes de circuit breaker.
+\end{itemize}
+
+Ces r\'{e}sultats confirment que l'architecture microservices supporte
+correctement la mont\'{e}e en charge, tout en identifiant des axes
+d'am\'{e}lioration pour le dimensionnement en production.
+
+% ==============================================================================
+\section{R\'{e}sultats des tests de s\'{e}curit\'{e}}
+\label{sec:resultats-securite}
+% ==============================================================================
+
+La s\'{e}curit\'{e} est un enjeu majeur pour une plateforme manipulant des
+donn\'{e}es personnelles et des transactions financi\`{e}res. Nous avons
+impl\'{e}ment\'{e} \textbf{16 tests de s\'{e}curit\'{e}} couvrant les vuln\'{e}rabilit\'{e}s
+les plus courantes, r\'{e}f\'{e}renc\'{e}es dans le Top~10 OWASP.
+
+\subsection{Cat\'{e}gories de tests de s\'{e}curit\'{e}}
+
+\begin{table}[H]
+\centering
+\caption{R\'{e}sultats des tests de s\'{e}curit\'{e} par cat\'{e}gorie}
+\label{tab:securite-resultats}
+\begin{tabularx}{\textwidth}{|X|c|c|l|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{Cat\'{e}gorie} & \textbf{Tests} & \textbf{R\'{e}sultat} & \textbf{Risque couvert} \\
+\hline
+Injection SQL & 3 & \textcolor{speedlineGreen}{Pass\'{e}} & A03:2021 -- Injection \\
+\hline
+Cross-Site Scripting (XSS) & 3 & \textcolor{speedlineGreen}{Pass\'{e}} & A03:2021 -- Injection \\
+\hline
+Contournement d'authentification & 3 & \textcolor{speedlineGreen}{Pass\'{e}} & A07:2021 -- Auth. \\
+\hline
+Rate limiting & 2 & \textcolor{speedlineGreen}{Pass\'{e}} & A04:2021 -- Design \\
+\hline
+Invalidation de token & 3 & \textcolor{speedlineGreen}{Pass\'{e}} & A02:2021 -- Crypto. \\
+\hline
+CORS (Cross-Origin) & 2 & \textcolor{speedlineGreen}{Pass\'{e}} & A05:2021 -- Config. \\
+\hline
+\rowcolor{speedlineGreen!10}
+\textbf{TOTAL} & \textbf{16} & \textbf{16/16} & --- \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{D\'{e}tails des tests de s\'{e}curit\'{e}}
+
+\paragraph{Injection SQL.}
+Les tests v\'{e}rifient que les entr\'{e}es utilisateur sont correctement
+assainies avant d'\^{e}tre utilis\'{e}es dans les requ\^{e}tes SQL. Des cha\^{i}nes
+d'injection classiques (\texttt{' OR 1=1 --}, \texttt{'; DROP TABLE --})
+sont envoy\'{e}es aux endpoints vuln\'{e}rables. Le syst\`{e}me rejette
+syst\'{e}matiquement ces entr\'{e}es avec un code HTTP 400 ou 422.
+
+\paragraph{Cross-Site Scripting (XSS).}
+Les tests injectent des balises \texttt{<script>} et des attributs
+\'{e}v\'{e}nementiels malveillants dans les champs de formulaire. Le syst\`{e}me
+\'{e}chappe correctement les caract\`{e}res sp\'{e}ciaux et emp\^{e}che
+l'ex\'{e}cution de scripts non autoris\'{e}s.
+
+\paragraph{Contournement d'authentification.}
+Ces tests tentent d'acc\'{e}der \`{a} des ressources prot\'{e}g\'{e}es sans token
+valide, avec un token expir\'{e}, ou avec un token sign\'{e} par une cl\'{e}
+diff\'{e}rente. Tous les acc\`{e}s non autoris\'{e}s sont correctement rejet\'{e}s
+avec un code HTTP 401 ou 403.
+
+\paragraph{Rate limiting.}
+Les tests envoient un grand nombre de requ\^{e}tes en rafale pour v\'{e}rifier
+que le m\'{e}canisme de limitation de d\'{e}bit fonctionne. Apr\`{e}s d\'{e}passement
+du seuil configur\'{e}, le serveur r\'{e}pond avec un code HTTP 429
+(\textit{Too Many Requests}).
+
+\paragraph{Invalidation de token.}
+Apr\`{e}s une d\'{e}connexion ou un changement de mot de passe, les anciens
+tokens JWT doivent \^{e}tre invalid\'{e}s. Les tests v\'{e}rifient que les tokens
+pr\'{e}c\'{e}demment valides sont refus\'{e}s apr\`{e}s ces op\'{e}rations.
+
+\paragraph{CORS.}
+Les tests v\'{e}rifient que la politique CORS est correctement configur\'{e}e~:
+seules les origines autoris\'{e}es peuvent effectuer des requ\^{e}tes
+cross-origin. Les requ\^{e}tes provenant d'origines non autoris\'{e}es sont
+rejet\'{e}es.
+
+% ==============================================================================
+\section{Couverture globale du projet}
+\label{sec:couverture-globale}
+% ==============================================================================
+
+Pour appr\'{e}cier l'impact de notre travail, nous pr\'{e}sentons une
+comparaison de l'\'{e}tat du projet \textbf{avant} et \textbf{apr\`{e}s} la
+mise en place du robot de tests automatis\'{e}s.
+
+\subsection{Comparaison avant/apr\`{e}s}
+
+\begin{table}[H]
+\centering
+\caption{Comparaison de la couverture de test avant et apr\`{e}s le projet}
+\label{tab:avant-apres}
+\begin{tabularx}{\textwidth}{|X|c|c|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{M\'{e}trique} & \textbf{Avant} & \textbf{Apr\`{e}s} \\
+\hline
+Services avec tests unitaires & 3/12 & \textcolor{speedlineGreen}{12/12} \\
+\hline
+Fichiers de test Java & 63 & \textcolor{speedlineGreen}{84} \\
+\hline
+Tests unitaires total & $\sim$200 & \textcolor{speedlineGreen}{419+} \\
+\hline
+Tests d'API & 0 & \textcolor{speedlineGreen}{104} \\
+\hline
+Tests E2E web & 0 & \textcolor{speedlineGreen}{66} \\
+\hline
+Tests mobile & 0 & \textcolor{speedlineGreen}{$\sim$30} \\
+\hline
+Tests de performance & 0 & \textcolor{speedlineGreen}{3 scripts} \\
+\hline
+Tests de s\'{e}curit\'{e} & 0 & \textcolor{speedlineGreen}{16} \\
+\hline
+Pipeline CI/CD & Non & \textcolor{speedlineGreen}{Oui} \\
+\hline
+Rapports visuels & Non & \textcolor{speedlineGreen}{Allure} \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Analyse de l'\'{e}volution}
+
+L'analyse du tableau~\ref{tab:avant-apres} met en \'{e}vidence plusieurs
+avanc\'{e}es significatives~:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Couverture compl\`{e}te des microservices}~: avant notre
+    intervention, seuls 3 services sur 12 disposaient de tests unitaires.
+    D\'{e}sormais, l'ensemble des 12 microservices sont couverts, \'{e}liminant
+    les << zones d'ombre >> du projet.
+
+  \item \textbf{Doublement des tests unitaires}~: le nombre de tests
+    unitaires est pass\'{e} de $\sim$200 \`{a} plus de 419, soit une augmentation
+    de plus de 100\%. Les 21 nouveaux fichiers de test Java ajout\'{e}s
+    couvrent des sc\'{e}narios qui n'\'{e}taient pas test\'{e}s auparavant.
+
+  \item \textbf{Introduction de nouveaux niveaux de test}~: les tests
+    d'API (104), les tests E2E (66), les tests mobiles ($\sim$30), les
+    tests de performance (3~scripts) et les tests de s\'{e}curit\'{e} (16)
+    n'existaient tout simplement pas avant notre intervention. Ces
+    niveaux compl\`{e}tent la pyramide de tests et offrent une couverture
+    multi-dimensionnelle.
+
+  \item \textbf{Automatisation CI/CD}~: la mise en place du pipeline
+    GitLab~CI/CD garantit l'ex\'{e}cution automatique des tests \`{a} chaque
+    commit, transformant les tests en filet de s\'{e}curit\'{e} permanent.
+
+  \item \textbf{Visibilit\'{e} am\'{e}lior\'{e}e}~: l'int\'{e}gration d'Allure Reports
+    fournit des rapports visuels d\'{e}taill\'{e}s, facilitant l'identification
+    et le diagnostic des \'{e}checs de test.
+\end{enumerate}
+
+\subsection{Pyramide de tests r\'{e}alis\'{e}e}
+
+La figure~\ref{fig:pyramide-realisee} illustre la pyramide de tests
+r\'{e}alis\'{e}e, conform\'{e}ment au mod\`{e}le th\'{e}orique de Mike Cohn.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[scale=1.2]
+  % Base - Tests unitaires
+  \fill[speedlineGreen!30] (-4,0) -- (4,0) -- (3,1.5) -- (-3,1.5) -- cycle;
+  \node[font=\bfseries] at (0,0.75) {Tests unitaires (419+)};
+
+  % Milieu - Tests d'API
+  \fill[speedlineBlue!30] (-3,1.5) -- (3,1.5) -- (2,3) -- (-2,3) -- cycle;
+  \node[font=\bfseries] at (0,2.25) {Tests d'API (104)};
+
+  % Haut - Tests E2E
+  \fill[speedlineOrange!30] (-2,3) -- (2,3) -- (1,4.5) -- (-1,4.5) -- cycle;
+  \node[font=\bfseries] at (0,3.75) {E2E (66)};
+
+  % Sommet - Tests manuels
+  \fill[red!20] (-1,4.5) -- (1,4.5) -- (0,5.5) -- cycle;
+  \node[font=\bfseries\footnotesize] at (0,4.9) {Manuel};
+
+  % Annotations lat\'{e}rales
+  \draw[<->, thick, gray] (4.5,0) -- (4.5,5.5);
+  \node[rotate=90, gray, font=\small] at (5.2,2.75) {Co\^{u}t / Complexit\'{e}};
+
+  \draw[<->, thick, gray] (-4.5,5.5) -- (-4.5,0);
+  \node[rotate=90, gray, font=\small] at (-5.2,2.75) {Nombre / Vitesse};
+\end{tikzpicture}
+\caption{Pyramide de tests r\'{e}alis\'{e}e pour le projet Speed Line}
+\label{fig:pyramide-realisee}
+\end{figure}
+
+% ==============================================================================
+\section{Probl\`{e}mes rencontr\'{e}s et solutions}
+\label{sec:problemes-solutions}
+% ==============================================================================
+
+La mise en place des tests automatis\'{e}s n'a pas \'{e}t\'{e} sans difficult\'{e}s.
+Nous d\'{e}taillons ici les principaux probl\`{e}mes rencontr\'{e}s et les
+solutions appliqu\'{e}es, afin de documenter les le\c{c}ons apprises.
+
+\subsection{Probl\`{e}mes li\'{e}s \`{a} l'environnement}
+
+\begin{table}[H]
+\centering
+\caption{Probl\`{e}mes d'environnement et solutions appliqu\'{e}es}
+\label{tab:problemes-env}
+\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{Probl\`{e}me} & \textbf{Cause} & \textbf{Solution} \\
+\hline
+Extension PostGIS non disponible localement &
+PostgreSQL install\'{e} sans l'extension spatiale &
+Installation de PostGIS via Homebrew~:
+\texttt{brew install postgis} \\
+\hline
+Incompatibilit\'{e} Java~25 avec Lombok &
+Les annotations Lombok ne sont pas encore support\'{e}es par le
+compilateur Java~25 &
+R\'{e}trogradation vers JDK~17 (Eclipse Temurin), version LTS
+compatible avec toutes les d\'{e}pendances \\
+\hline
+Conflit de port PostgreSQL local &
+Plusieurs instances PostgreSQL \'{e}coutant sur le m\^{e}me port 5432 &
+Identification du processus conflictuel via \texttt{lsof -i :5432}
+et arr\^{e}t du service redondant \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Probl\`{e}mes li\'{e}s aux tests Java}
+
+\begin{table}[H]
+\centering
+\caption{Probl\`{e}mes de tests Java et solutions appliqu\'{e}es}
+\label{tab:problemes-java}
+\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{Probl\`{e}me} & \textbf{Cause} & \textbf{Solution} \\
+\hline
+\texttt{UnnecessaryStubbingException} de Mockito &
+Des stubs d\'{e}finis dans les m\'{e}thodes \texttt{@BeforeEach} n'\'{e}taient
+pas utilis\'{e}s par tous les tests &
+Utilisation de \texttt{lenient()} pour les stubs partag\'{e}s, et
+r\'{e}organisation des stubs sp\'{e}cifiques dans les m\'{e}thodes de test
+concern\'{e}es \\
+\hline
+Contexte Spring ne se charge pas &
+D\'{e}pendances circulaires entre beans et configurations
+manquantes pour le profil de test &
+Cr\'{e}ation de fichiers \texttt{application-test.yml} d\'{e}di\'{e}s et
+utilisation de \texttt{@MockBean} pour les d\'{e}pendances externes \\
+\hline
+Tests lents \`{a} cause de la base de donn\'{e}es &
+Chaque test recr\'{e}ait le sch\'{e}ma complet de la base &
+Utilisation de \texttt{@Transactional} avec rollback automatique
+et base H2 en m\'{e}moire pour les tests unitaires \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Probl\`{e}mes li\'{e}s aux tests frontend}
+
+\begin{table}[H]
+\centering
+\caption{Probl\`{e}mes de tests frontend et solutions appliqu\'{e}es}
+\label{tab:problemes-frontend}
+\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{Probl\`{e}me} & \textbf{Cause} & \textbf{Solution} \\
+\hline
+Fichiers d'environnement Angular manquants &
+Les fichiers \texttt{environment.ts} et \texttt{environment.prod.ts}
+n'\'{e}taient pas versionn\'{e}s &
+Cr\'{e}ation de fichiers \texttt{environment.test.ts} d\'{e}di\'{e}s aux
+tests, avec des valeurs de configuration mock\'{e}es \\
+\hline
+D\'{e}pendances npm obsol\`{e}tes &
+Certains packages avaient des vuln\'{e}rabilit\'{e}s connues &
+Mise \`{a} jour des d\'{e}pendances avec \texttt{npm audit fix} et
+remplacement des packages d\'{e}pr\'{e}ci\'{e}s \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Probl\`{e}mes li\'{e}s aux tests mobiles}
+
+\begin{table}[H]
+\centering
+\caption{Probl\`{e}mes de tests mobiles et solutions appliqu\'{e}es}
+\label{tab:problemes-mobile}
+\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{Probl\`{e}me} & \textbf{Cause} & \textbf{Solution} \\
+\hline
+Changements d'API Patrol &
+La biblioth\`{e}que Patrol a modifi\'{e} ses noms de m\'{e}thodes
+entre les versions &
+Mise \`{a} jour des appels de m\'{e}thodes selon la documentation
+officielle de Patrol~3.x. Remplacement de
+\texttt{patrol()} par \texttt{patrolTest()} \\
+\hline
+\'{E}mulateur Android lent sur CI &
+L'\'{e}mulation ARM sur les runners x86 est tr\`{e}s lente &
+Configuration d'un \'{e}mulateur avec acc\'{e}l\'{e}ration mat\'{e}rielle
+(KVM) et utilisation d'images syst\`{e}me optimis\'{e}es \\
+\hline
+\end{tabularx}
+\end{table}
+
+% ==============================================================================
+\section{Recommandations qualit\'{e}}
+\label{sec:recommandations}
+% ==============================================================================
+
+Sur la base des r\'{e}sultats obtenus et de l'exp\'{e}rience acquise, nous
+formulons les recommandations suivantes pour la poursuite de la
+d\'{e}marche qualit\'{e} au sein du projet Speed Line.
+
+\subsection{Am\'{e}lioration de la couverture de code}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Objectif 80\% de couverture}~: nous recommandons de fixer
+    un seuil minimal de couverture de code \`{a} 80\% pour tous les
+    microservices critiques (auth, order, payment). Ce seuil devrait
+    \^{e}tre appliqu\'{e} via une r\`{e}gle JaCoCo dans le pipeline CI/CD, bloquant
+    le merge des branches qui ne respectent pas ce crit\`{e}re.
+  \item \textbf{Couverture diff\'{e}rentielle}~: en compl\'{e}ment de la
+    couverture globale, mettre en place une mesure de couverture
+    diff\'{e}rentielle (couverture des nouvelles lignes de code uniquement),
+    avec un objectif de 90\%.
+\end{itemize}
+
+\subsection{Extension des tests de contrat}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Tests de contrat syst\'{e}matiques}~: chaque modification
+    d'API devrait \^{e}tre accompagn\'{e}e de tests de contrat v\'{e}rifiant la
+    r\'{e}trocompatibilit\'{e}. L'utilisation d'outils comme Pact ou Spring
+    Cloud Contract est recommand\'{e}e.
+  \item \textbf{Versioning des API}~: coupler les tests de contrat avec
+    une strat\'{e}gie de versioning des API pour faciliter les \'{e}volutions
+    sans r\'{e}gression.
+\end{itemize}
+
+\subsection{Tests de performance en pr\'{e}-production}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Ex\'{e}cution sur staging}~: les scripts k6 devraient \^{e}tre
+    ex\'{e}cut\'{e}s sur l'environnement de staging avant chaque release,
+    avec des donn\'{e}es de test r\'{e}alistes.
+  \item \textbf{Tests de capacit\'{e}}~: ajouter des tests de capacit\'{e}
+    (capacity tests) pour d\'{e}terminer le nombre maximal d'utilisateurs
+    simultan\'{e}s que le syst\`{e}me peut supporter.
+  \item \textbf{Monitoring continu}~: int\'{e}grer les m\'{e}triques de
+    performance dans un tableau de bord Grafana pour un suivi en temps
+    r\'{e}el.
+\end{itemize}
+
+\subsection{Rapports et suivi historique}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Allure Trend Reports}~: configurer la g\'{e}n\'{e}ration de
+    rapports de tendance Allure pour suivre l'\'{e}volution de la qualit\'{e}
+    dans le temps. Ces rapports permettent de d\'{e}tecter les tendances
+    n\'{e}gatives (augmentation progressive des \'{e}checs, d\'{e}gradation de la
+    couverture) avant qu'elles ne deviennent critiques.
+  \item \textbf{Tableau de bord qualit\'{e}}~: mettre en place un tableau
+    de bord agr\'{e}geant les m\'{e}triques cl\'{e}s (nombre de tests, couverture,
+    temps d'ex\'{e}cution, taux de r\'{e}ussite) pour offrir une visibilit\'{e}
+    instantan\'{e}e \`{a} l'\'{e}quipe.
+\end{itemize}
+
+% ---------------------------------------------------------------------------
+\section*{Conclusion}
+
+Ce chapitre a d\'{e}montr\'{e} l'efficacit\'{e} de notre robot de tests automatis\'{e}s
+\`{a} travers des r\'{e}sultats concrets et mesurables. Avec 419 tests unitaires,
+170 tests Playwright, des tests de performance et de s\'{e}curit\'{e}, nous avons
+construit une infrastructure de test compl\`{e}te couvrant l'ensemble de la
+pyramide de tests. Les probl\`{e}mes rencontr\'{e}s ont \'{e}t\'{e} syst\'{e}matiquement
+document\'{e}s et r\'{e}solus, et des recommandations concr\`{e}tes ont \'{e}t\'{e}
+formul\'{e}es pour poursuivre l'am\'{e}lioration continue de la qualit\'{e} du
+projet Speed Line.

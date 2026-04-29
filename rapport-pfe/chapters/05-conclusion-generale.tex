@@ -1,0 +1,139 @@
+% =============================================================================
+% Conclusion Générale
+% =============================================================================
+\chapter*{Conclusion Générale}
+\addcontentsline{toc}{chapter}{Conclusion Générale}
+\markboth{Conclusion Générale}{Conclusion Générale}
+
+\section*{Bilan du projet}
+
+Le stage de fin d'études effectué au sein de l'entreprise DevWise à Nabeul avait
+pour objectif principal la mise en place d'un robot de tests automatisés pour les
+projets Speed Line et Delivery App. Au terme de ce stage de quatre mois, nous
+pouvons dresser un bilan positif des réalisations accomplies.
+
+Le robot de tests automatisés que nous avons conçu et développé couvre
+l'intégralité de la pyramide de tests, conformément aux bonnes pratiques de
+l'ingénierie logicielle~:
+
+\begin{itemize}[leftmargin=2cm]
+  \item \textbf{Tests unitaires} --- 419 tests répartis sur les 12 microservices
+    du backend (JUnit~5 + Mockito) et 34 tests pour les deux applications
+    Angular frontend (Jasmine + Karma), avec une couverture de code mesurée
+    par JaCoCo et Istanbul.
+
+  \item \textbf{Tests d'intégration et API} --- 104 tests Playwright couvrant
+    l'ensemble des endpoints REST des 12 microservices, incluant des tests
+    de contrats API, des tests de smoke et des tests de WebSocket.
+
+  \item \textbf{Tests end-to-end} --- 66 tests d'interface utilisateur pour le
+    panneau d'administration et le tableau de bord partenaire, ainsi que des
+    tests d'intégration Flutter avec Patrol pour les applications mobiles
+    client et livreur. Des tests de régression visuelle et d'accessibilité
+    WCAG~2.1 complètent cette couche.
+
+  \item \textbf{Tests de performance} --- 3 scénarios k6 (charge, stress et
+    spike) permettant de valider le comportement du système sous différentes
+    conditions de trafic.
+
+  \item \textbf{Tests de sécurité} --- 16 tests vérifiant la résistance aux
+    injections SQL, aux attaques XSS, au contournement d'authentification,
+    au rate limiting et à l'invalidation des tokens JWT.
+\end{itemize}
+
+\section*{Apports du projet}
+
+L'impact du robot de tests sur la qualité des projets Speed Line et Delivery App
+se mesure à travers plusieurs indicateurs~:
+
+\begin{table}[H]
+\centering
+\caption{Comparaison avant/après la mise en place du robot de tests}
+\begin{tabular}{|l|c|c|}
+\hline
+\rowcolor{speedlineBlue!10}
+\textbf{Métrique} & \textbf{Avant} & \textbf{Après} \\
+\hline
+Services avec tests unitaires & 3/12 & 12/12 \\
+\hline
+Fichiers de test Java & 63 & 84 \\
+\hline
+Tests unitaires (total) & $\sim$200 & 419+ \\
+\hline
+Tests API automatisés & 0 & 104 \\
+\hline
+Tests E2E web & 0 & 66 \\
+\hline
+Tests mobiles & 0 & $\sim$30 \\
+\hline
+Tests de performance & 0 & 3 scripts \\
+\hline
+Tests de sécurité & 0 & 16 \\
+\hline
+Pipeline CI/CD avec tests & Non & Oui \\
+\hline
+Rapports visuels (Allure) & Non & Oui \\
+\hline
+Couverture code (admin-panel) & 0\% & 57,78\% \\
+\hline
+\end{tabular}
+\end{table}
+
+Au-delà des chiffres, le robot de tests apporte une démarche qualité durable à
+l'entreprise. Chaque modification du code est désormais automatiquement validée
+par le pipeline CI/CD, réduisant significativement le risque de régressions en
+production.
+
+\section*{Compétences acquises}
+
+Ce stage nous a permis de développer des compétences techniques et
+méthodologiques variées~:
+
+\begin{itemize}
+  \item Maîtrise des frameworks de test modernes (Playwright, JUnit~5, Patrol, k6)
+  \item Compréhension approfondie de l'architecture microservices
+  \item Pratique du développement piloté par les tests (TDD)
+  \item Intégration continue et déploiement continu (CI/CD)
+  \item Méthodologie agile et travail en équipe
+  \item Rédaction de documentation technique
+  \item Analyse de la sécurité applicative (OWASP)
+\end{itemize}
+
+\section*{Perspectives et travaux futurs}
+
+Plusieurs axes d'amélioration peuvent être envisagés pour enrichir le robot de
+tests~:
+
+\begin{enumerate}
+  \item \textbf{Augmentation de la couverture de code} --- Atteindre un objectif
+    de 80\% de couverture sur l'ensemble des services, en ciblant
+    particulièrement les chemins critiques (paiement, livraison).
+
+  \item \textbf{Tests de contrat évolutifs} --- Implémenter des tests de contrat
+    avec Pact pour garantir la compatibilité entre microservices lors des
+    mises à jour indépendantes.
+
+  \item \textbf{Ferme de devices mobiles} --- Intégrer une ferme de devices
+    (Firebase Test Lab ou BrowserStack) pour exécuter les tests Patrol sur
+    de vrais appareils Android et iOS dans le pipeline CI.
+
+  \item \textbf{Tests de régression visuelle} --- Établir les baselines de
+    screenshots et activer la comparaison automatique à chaque merge
+    request.
+
+  \item \textbf{Monitoring en production} --- Compléter les tests par du
+    monitoring applicatif (Grafana, Prometheus) pour détecter les anomalies
+    en temps réel.
+
+  \item \textbf{Tests de chaos engineering} --- Introduire des tests de
+    résilience simulant des pannes de services (Chaos Monkey) pour valider
+    le comportement du système en conditions dégradées.
+\end{enumerate}
+
+\vspace{1cm}
+
+En définitive, ce projet de fin d'études nous a offert une expérience
+professionnelle riche et formatrice. La conception et le développement d'un robot
+de tests automatisés pour un écosystème aussi complexe que Speed Line et Delivery
+App nous a confrontés à des défis techniques réels et nous a préparés à notre
+future carrière d'ingénieurs en informatique.

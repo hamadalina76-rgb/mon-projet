@@ -137,6 +137,7 @@ dev_dependencies:
   # TESTING
   integration_test:
     sdk: flutter
+  patrol: ^3.13.0
   flutter_launcher_icons: ^0.14.4
 
 # Icône et nom de l'app (notifications, launcher) = SpeedLine

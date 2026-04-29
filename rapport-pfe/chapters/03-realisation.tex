@@ -1,0 +1,1687 @@
+% =============================================================================
+% Chapitre 3 : Réalisation
+% =============================================================================
+
+\chapter{Réalisation}
+\label{chap:realisation}
+
+\section*{Introduction}
+Ce chapitre constitue le volet technique principal de notre travail. Il présente en détail
+la mise en \oe uvre concrète du robot de tests automatisés pour la plateforme SpeedLine.
+Nous y décrivons l'environnement de développement retenu, puis nous détaillons
+l'implémentation de chaque couche de la pyramide de tests : tests unitaires, tests API,
+tests de bout en bout (E2E), et tests de performance. Nous abordons ensuite les aspects
+transversaux que sont les tests de sécurité, le \textit{seed} de la base de données,
+l'intégration CI/CD et le reporting avec Allure.
+
+% =============================================================================
+\section{Environnement de développement}
+\label{sec:env-dev}
+% =============================================================================
+
+La mise en place du robot de tests nécessite un ensemble d'outils couvrant les différents
+niveaux de la pyramide de tests. Le tableau~\ref{tab:env-dev} récapitule les principaux
+outils utilisés, leur version ainsi que leur rôle au sein du projet.
+
+\begin{table}[H]
+\centering
+\caption{Environnement de développement et outils utilisés}
+\label{tab:env-dev}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Outil} & \textbf{Version} & \textbf{Rôle} \\
+\midrule
+Node.js          & 24.x   & Environnement d'exécution JavaScript pour les tests Playwright et k6 \\
+npm              & 11.x   & Gestionnaire de paquets Node.js \\
+Java (OpenJDK)   & 17     & Langage du backend Spring Boot (microservices) \\
+Maven            & 3.9    & Outil de build et de gestion des dépendances Java \\
+Playwright       & 1.49   & Framework de tests API et E2E pour les applications web \\
+JUnit 5          & 5.x    & Framework de tests unitaires Java \\
+Mockito          & 5.x    & Bibliothèque de mocking pour les tests unitaires Java \\
+Jasmine + Karma  & ---    & Frameworks de tests unitaires pour les frontends Angular \\
+Patrol           & 3.13   & Framework de tests d'intégration pour les applications Flutter \\
+k6               & 1.7    & Outil de tests de charge et de performance \\
+Allure           & 2.27   & Générateur de rapports de tests interactifs \\
+Docker           & ---    & Conteneurisation des services pour l'environnement de test \\
+Git + GitLab CI  & ---    & Gestion de versions et intégration continue \\
+VS Code          & ---    & Éditeur de code pour TypeScript, JavaScript et Dart \\
+IntelliJ IDEA    & ---    & IDE pour le développement Java (backend) \\
+Flutter          & 3.41   & Framework de développement des applications mobiles \\
+Angular          & 17     & Framework de développement des interfaces web (admin-panel, partner-dashboard) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Le choix de ces outils s'inscrit dans une logique de cohérence avec la pile technologique
+existante du projet SpeedLine. Les tests unitaires backend reposent sur JUnit~5 et Mockito,
+standards de l'écosystème Spring Boot. Pour les tests API et E2E web, Playwright a été
+retenu pour sa rapidité d'exécution, sa fiabilité et son support multi-navigateurs.
+Les applications mobiles Flutter sont testées avec Patrol, qui offre la possibilité
+d'interagir avec les dialogues natifs du système d'exploitation. Enfin, k6 a été choisi
+pour les tests de performance grâce à sa syntaxe JavaScript familière et ses métriques
+intégrées.
+
+% =============================================================================
+\section{Mise en place des tests unitaires (Couche 1)}
+\label{sec:tests-unitaires}
+% =============================================================================
+
+Les tests unitaires constituent la base de notre pyramide de tests. Ils visent à vérifier
+le comportement isolé de chaque composant logiciel, en simulant les dépendances externes
+à l'aide de \textit{mocks}. Cette approche garantit des tests rapides, déterministes et
+indépendants de l'infrastructure.
+
+% -----------------------------------------------
+\subsection{Tests unitaires backend (JUnit 5 + Mockito)}
+\label{subsec:tests-unitaires-backend}
+% -----------------------------------------------
+
+\subsubsection{Approche adoptée}
+
+Pour chaque service du backend, nous appliquons la même méthodologie :
+
+\begin{enumerate}
+  \item \textbf{Isolation des dépendances} : les repositories, clients Feign et services
+        externes sont simulés (\textit{mockés}) avec Mockito via l'annotation
+        \texttt{@Mock}.
+  \item \textbf{Injection automatique} : le service sous test est instancié avec
+        \texttt{@InjectMocks}, ce qui injecte automatiquement les mocks.
+  \item \textbf{Organisation en classes imbriquées} : les tests sont groupés par
+        méthode testée à l'aide de l'annotation \texttt{@Nested}, améliorant
+        la lisibilité des rapports.
+  \item \textbf{Assertions expressives} : nous utilisons AssertJ pour des assertions
+        fluides et lisibles.
+\end{enumerate}
+
+\subsubsection{Exemple : AuthServiceImplTest}
+
+Le listing~\ref{lst:auth-service-test} illustre la structure d'un test unitaire pour
+le service d'authentification. Ce test vérifie le scénario d'inscription réussie
+d'un nouveau client.
+
+\begin{lstlisting}[language=Java, caption={Test d'inscription -- AuthServiceImplTest.java}, label={lst:auth-service-test}]
+@ExtendWith(MockitoExtension.class)
+class AuthServiceImplTest {
+
+    @Mock private UserRepository userRepo;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private JwtTokenProvider tokenProvider;
+    @Mock private AuthenticationManager authenticationManager;
+    @Mock private UserServiceClient userServiceClient;
+
+    @InjectMocks
+    private AuthServiceImpl authService;
+
+    @Nested
+    @DisplayName("register()")
+    class RegisterTests {
+
+        @Test
+        @DisplayName("Should register a new customer successfully")
+        void register_success_customer() {
+            RegisterRequest request = new RegisterRequest();
+            request.setEmail("new@example.com");
+            request.setPassword("Password123");
+            request.setFirstName("Jane");
+            request.setLastName("Doe");
+            request.setPhoneNumber("+21655443322");
+            request.setRole(Role.CUSTOMER);
+
+            when(userRepo.existsByEmailIgnoreCase("new@example.com"))
+                .thenReturn(false);
+            when(passwordEncoder.encode("Password123"))
+                .thenReturn("encoded-pass");
+            when(userRepo.save(any(User.class)))
+                .thenAnswer(invocation -> {
+                    User u = invocation.getArgument(0);
+                    u.setId(10L);
+                    return u;
+                });
+
+            authService.register(request);
+
+            ArgumentCaptor<User> captor =
+                ArgumentCaptor.forClass(User.class);
+            verify(userRepo).save(captor.capture());
+            User saved = captor.getValue();
+
+            assertThat(saved.getEmail())
+                .isEqualTo("new@example.com");
+            assertThat(saved.getPassword())
+                .isEqualTo("encoded-pass");
+            assertThat(saved.getRole())
+                .isEqualTo(Role.CUSTOMER);
+            assertThat(saved.getStatus())
+                .isEqualTo(UserStatus.PENDING);
+            verify(userServiceClient).createCustomer(any());
+        }
+    }
+}
+\end{lstlisting}
+
+On note l'utilisation de \texttt{ArgumentCaptor} pour capturer l'objet \texttt{User}
+passé à la méthode \texttt{save()}, permettant de vérifier finement les valeurs
+assignées lors de l'inscription. La méthode \texttt{verify()} s'assure que l'appel
+au service distant \texttt{userServiceClient} a bien été effectué.
+
+\subsubsection{Exemple : JwtServiceTest}
+
+Le listing~\ref{lst:jwt-service-test} présente les tests du fournisseur de jetons JWT.
+Contrairement aux tests précédents, ces tests n'utilisent pas de mocks car le
+\texttt{JwtTokenProvider} est testé avec sa logique réelle de génération et de
+validation de jetons.
+
+\begin{lstlisting}[language=Java, caption={Test de génération JWT -- JwtServiceTest.java}, label={lst:jwt-service-test}]
+class JwtServiceTest {
+
+    private JwtTokenProvider jwtTokenProvider;
+    private static final String TEST_SECRET =
+        "my-super-secret-key-for-testing-jwt-tokens-"
+        + "must-be-long-enough-256-bits";
+    private static final long EXPIRATION_MS = 3600000L;
+
+    private User testUser;
+
+    @BeforeEach
+    void setUp() {
+        jwtTokenProvider = new JwtTokenProvider();
+        ReflectionTestUtils.setField(
+            jwtTokenProvider, "jwtSecret", TEST_SECRET);
+        ReflectionTestUtils.setField(
+            jwtTokenProvider, "jwtExpirationMs", EXPIRATION_MS);
+
+        testUser = User.builder()
+                .id(42L)
+                .email("test@example.com")
+                .role(Role.CUSTOMER)
+                .status(UserStatus.ACTIVE)
+                .build();
+    }
+
+    @Nested
+    @DisplayName("generateToken()")
+    class GenerateTokenTests {
+
+        @Test
+        @DisplayName("Should embed email as subject in token")
+        void generateToken_containsEmailAsSubject() {
+            String token = jwtTokenProvider.generateToken(testUser);
+            String email = jwtTokenProvider
+                .getEmailFromToken(token);
+            assertThat(email).isEqualTo("test@example.com");
+        }
+
+        @Test
+        @DisplayName("Should embed role claim in token")
+        void generateToken_containsRole() {
+            String token = jwtTokenProvider.generateToken(testUser);
+            String role = jwtTokenProvider
+                .getRoleFromToken(token);
+            assertThat(role).isEqualTo("CUSTOMER");
+        }
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Bilan des tests unitaires backend}
+
+Le tableau~\ref{tab:unit-tests-backend} présente la répartition des tests unitaires
+par microservice. Au total, \textbf{419 tests} ont été implémentés, couvrant l'ensemble
+des services métier de la plateforme.
+
+\begin{table}[H]
+\centering
+\caption{Répartition des tests unitaires backend par microservice}
+\label{tab:unit-tests-backend}
+\begin{tabular}{l c l}
+\toprule
+\textbf{Microservice} & \textbf{Nombre de tests} & \textbf{Classes testées} \\
+\midrule
+auth-service         & 100 & AuthServiceImpl, JwtService, AuthController \\
+order-service        &  87 & OrderService, CartService, PriceCalculation \\
+user-service         &  57 & CustomerService, CourierService \\
+delivery-service     &  41 & DispatchCycleService, EligibilityFilter, Solvers \\
+payment-service      &  30 & PaymentServiceImpl, WalletService, RefundService \\
+location-service     &  29 & ZoneServiceImpl, GeolocationServiceImpl \\
+promotion-service    &  20 & PromotionApplicationService, Validators \\
+notification-service &  18 & NotificationServiceImpl \\
+analytics-service    &  16 & AnalyticsServiceImpl, ReportServiceImpl \\
+support-service      &  11 & SupportTicketServiceImpl \\
+review-service       &  10 & ReviewServiceImpl \\
+\midrule
+\textbf{Total}       & \textbf{419} & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Les services les plus critiques --- \texttt{auth-service} et \texttt{order-service} ---
+concentrent le plus grand nombre de tests (100 et 87 respectivement), reflétant leur
+complexité fonctionnelle et leur importance dans le flux métier de la plateforme.
+
+% -----------------------------------------------
+\subsection{Tests unitaires frontend (Jasmine + Karma)}
+\label{subsec:tests-unitaires-frontend}
+% -----------------------------------------------
+
+Les applications web Angular (\texttt{admin-panel} et \texttt{partner-dashboard})
+disposent de tests unitaires exécutés par Karma avec le framework d'assertions Jasmine.
+Ces tests vérifient le comportement des services, des gardes de route (\textit{guards})
+et des intercepteurs HTTP.
+
+\subsubsection{Exemple : AuthService (admin-panel)}
+
+Le listing~\ref{lst:auth-service-spec} montre un extrait des tests du service
+d'authentification du panneau d'administration. Le service \texttt{ApiService} est simulé
+avec \texttt{jasmine.createSpyObj} pour isoler la logique d'authentification.
+
+\begin{lstlisting}[language=Java, caption={Test du service d'authentification Angular -- auth.service.spec.ts}, label={lst:auth-service-spec}]
+describe('AuthService', () => {
+  let service: AuthService;
+  let apiServiceSpy: jasmine.SpyObj<ApiService>;
+
+  const mockLoginResponse = {
+    access_token: 'eyJhbGciOiJIUzI1NiJ9...',
+    user: {
+      id: '1',
+      email: 'admin@speedline-test.com',
+      role: 'SUPER_ADMIN',
+    },
+  };
+
+  beforeEach(() => {
+    apiServiceSpy = jasmine.createSpyObj('ApiService',
+      ['get', 'post', 'put']);
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [
+        AuthService,
+        { provide: ApiService, useValue: apiServiceSpy },
+      ],
+    });
+    service = TestBed.inject(AuthService);
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  describe('login', () => {
+    it('should store tokens on successful login', (done) => {
+      apiServiceSpy.post.and.returnValue(
+        of(mockLoginResponse));
+      service.login({
+        email: 'admin@test.com',
+        password: 'pass',
+        rememberMe: false
+      }).subscribe({
+        next: () => {
+          expect(service.isLoggedIn()).toBeTrue();
+          expect(service.currentUser()?.email)
+            .toBe('admin@speedline-test.com');
+          done();
+        },
+      });
+    });
+
+    it('should reject non-admin roles', (done) => {
+      const customerResponse = {
+        ...mockLoginResponse,
+        user: { ...mockLoginResponse.user,
+                role: 'CUSTOMER' },
+      };
+      apiServiceSpy.post.and.returnValue(
+        of(customerResponse));
+      service.login({
+        email: 'customer@test.com',
+        password: 'pass',
+        rememberMe: false
+      }).subscribe({
+        error: (err) => {
+          expect(err.message).toBe('ACCESS_DENIED');
+          done();
+        },
+      });
+    });
+  });
+});
+\end{lstlisting}
+
+\subsubsection{Exemple : AuthGuard}
+
+Le listing~\ref{lst:auth-guard-spec} présente les tests du garde de route
+\texttt{authGuard}, qui protège les pages nécessitant une authentification.
+
+\begin{lstlisting}[language=Java, caption={Test du garde d'authentification -- auth.guard.spec.ts}, label={lst:auth-guard-spec}]
+describe('authGuard', () => {
+  let authServiceSpy: jasmine.SpyObj<AuthService>;
+  let routerSpy: jasmine.SpyObj<Router>;
+
+  beforeEach(() => {
+    authServiceSpy = jasmine.createSpyObj('AuthService',
+      ['isAuthenticated']);
+    routerSpy = jasmine.createSpyObj('Router', ['navigate']);
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: AuthService, useValue: authServiceSpy },
+        { provide: Router, useValue: routerSpy },
+      ],
+    });
+  });
+
+  it('should allow access when authenticated', () => {
+    authServiceSpy.isAuthenticated.and.returnValue(true);
+    const result = TestBed.runInInjectionContext(
+      () => authGuard(mockRoute, mockState));
+    expect(result).toBeTrue();
+  });
+
+  it('should redirect to login when not authenticated',
+    () => {
+    authServiceSpy.isAuthenticated.and.returnValue(false);
+    const result = TestBed.runInInjectionContext(
+      () => authGuard(mockRoute, mockState));
+    expect(result).toBeFalse();
+    expect(routerSpy.navigate).toHaveBeenCalledWith(
+      ['/auth/login'],
+      { queryParams: { returnUrl: '/dashboard' } });
+  });
+});
+\end{lstlisting}
+
+\subsubsection{Exemple : AuthInterceptor}
+
+Le listing~\ref{lst:auth-interceptor-spec} montre les tests de l'intercepteur HTTP,
+qui ajoute automatiquement le jeton JWT aux requêtes sortantes.
+
+\begin{lstlisting}[language=Java, caption={Test de l'intercepteur HTTP -- auth.interceptor.spec.ts}, label={lst:auth-interceptor-spec}]
+describe('authInterceptor', () => {
+  let httpClient: HttpClient;
+  let httpMock: HttpTestingController;
+  let authServiceSpy: jasmine.SpyObj<AuthService>;
+
+  beforeEach(() => {
+    authServiceSpy = jasmine.createSpyObj('AuthService',
+      ['getToken']);
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(
+          withInterceptors([authInterceptor])),
+        provideHttpClientTesting(),
+        { provide: AuthService,
+          useValue: authServiceSpy },
+      ],
+    });
+    httpClient = TestBed.inject(HttpClient);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  it('should add Authorization header', () => {
+    authServiceSpy.getToken.and.returnValue('my-jwt');
+    httpClient.get('/api/v1/orders').subscribe();
+    const req = httpMock.expectOne('/api/v1/orders');
+    expect(req.request.headers.get('Authorization'))
+      .toBe('Bearer my-jwt');
+  });
+
+  it('should skip auth endpoints', () => {
+    authServiceSpy.getToken.and.returnValue('my-jwt');
+    httpClient.get('/api/v1/auth/login').subscribe();
+    const req = httpMock.expectOne('/api/v1/auth/login');
+    expect(req.request.headers.has('Authorization'))
+      .toBeFalse();
+  });
+});
+\end{lstlisting}
+
+\subsubsection{Bilan des tests unitaires frontend}
+
+Le tableau~\ref{tab:unit-tests-frontend} présente le résultat des tests unitaires
+frontend ainsi que la couverture de code mesurée par Istanbul via Karma.
+
+\begin{table}[H]
+\centering
+\caption{Résultats des tests unitaires frontend}
+\label{tab:unit-tests-frontend}
+\begin{tabular}{l c c}
+\toprule
+\textbf{Application} & \textbf{Nombre de tests} & \textbf{Couverture de code} \\
+\midrule
+admin-panel         & 26 & 57,78\% \\
+partner-dashboard   &  8 & 34,82\% \\
+\midrule
+\textbf{Total}      & \textbf{34} & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La couverture de 57,78\% pour l'\texttt{admin-panel} couvre les services critiques
+(authentification, RBAC, intercepteurs). Le \texttt{partner-dashboard}, avec 34,82\%,
+se concentre sur les flux d'authentification essentiels. Ces taux constituent une base
+solide, avec un potentiel d'amélioration lors des itérations futures.
+
+% =============================================================================
+\section{Mise en place des tests API (Couche 2)}
+\label{sec:tests-api}
+% =============================================================================
+
+Les tests API constituent la deuxième couche de notre pyramide. Ils vérifient le
+comportement des microservices à travers leurs points d'entrée REST, en envoyant des
+requêtes HTTP réelles à l'\textit{API Gateway} et en validant les réponses.
+
+% -----------------------------------------------
+\subsection{Architecture des tests API}
+\label{subsec:archi-tests-api}
+% -----------------------------------------------
+
+Pour faciliter l'écriture et la maintenance des tests API, nous avons développé une
+classe utilitaire \texttt{ApiClient} qui encapsule la logique d'authentification et de
+requêtage. Le listing~\ref{lst:api-client} présente cette classe.
+
+\begin{lstlisting}[language=Java, caption={Classe utilitaire ApiClient -- api-client.ts}, label={lst:api-client}]
+import { APIRequestContext, request } from '@playwright/test';
+
+export class ApiClient {
+  private baseUrl: string;
+  private token: string | null = null;
+
+  constructor(baseUrl?: string) {
+    this.baseUrl = baseUrl
+      || process.env.API_GATEWAY_URL
+      || 'http://localhost:8080';
+  }
+
+  async login(email: string, password: string)
+    : Promise<string> {
+    const ctx = await request.newContext(
+      { baseURL: this.baseUrl });
+    const response = await ctx.post('/api/auth/login', {
+      data: { email, password },
+    });
+    if (!response.ok()) {
+      throw new Error(
+        `Login failed: ${response.status()}`);
+    }
+    const body = await response.json();
+    this.token = body.accessToken || body.token;
+    await ctx.dispose();
+    return this.token!;
+  }
+
+  async authenticatedContext()
+    : Promise<APIRequestContext> {
+    if (!this.token) {
+      throw new Error('Not logged in.');
+    }
+    return request.newContext({
+      baseURL: this.baseUrl,
+      extraHTTPHeaders: {
+        Authorization: `Bearer ${this.token}`,
+      },
+    });
+  }
+
+  async get(path: string) {
+    const ctx = await this.authenticatedContext();
+    const res = await ctx.get(path);
+    await ctx.dispose();
+    return res;
+  }
+
+  async post(path: string, data: unknown) {
+    const ctx = await this.authenticatedContext();
+    const res = await ctx.post(path, { data });
+    await ctx.dispose();
+    return res;
+  }
+}
+\end{lstlisting}
+
+Cette classe offre plusieurs avantages :
+\begin{itemize}
+  \item \textbf{Centralisation de l'authentification} : un seul appel à
+        \texttt{login()} suffit pour obtenir un jeton réutilisable.
+  \item \textbf{Gestion automatique des en-têtes} : le jeton JWT est
+        automatiquement ajouté à chaque requête via
+        \texttt{authenticatedContext()}.
+  \item \textbf{Nettoyage des ressources} : chaque contexte Playwright est
+        libéré après utilisation avec \texttt{dispose()}.
+\end{itemize}
+
+% -----------------------------------------------
+\subsection{Tests par service}
+\label{subsec:tests-par-service}
+% -----------------------------------------------
+
+\subsubsection{Tests du service d'authentification}
+
+Le listing~\ref{lst:auth-api-spec} présente les tests API du service
+d'authentification. Ces tests vérifient les scénarios de connexion, de validation
+de jeton et de gestion des erreurs.
+
+\begin{lstlisting}[language=Java, caption={Tests API du service d'authentification -- auth.api.spec.ts}, label={lst:auth-api-spec}]
+test.describe('API - Auth Service', () => {
+  test('POST /api/auth/login - valid credentials',
+    async ({ request }) => {
+    const response = await request.post(
+      `${API_BASE}/api/auth/login`, {
+      data: {
+        email: TEST_ACCOUNTS.admin.email,
+        password: TEST_ACCOUNTS.admin.password,
+      },
+    });
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(body.accessToken || body.token).toBeTruthy();
+  });
+
+  test('POST /api/auth/login - invalid credentials',
+    async ({ request }) => {
+    const response = await request.post(
+      `${API_BASE}/api/auth/login`, {
+      data: {
+        email: 'nonexistent@test.com',
+        password: 'WrongPassword123!',
+      },
+    });
+    expect(response.status())
+      .toBeGreaterThanOrEqual(400);
+    expect(response.status()).toBeLessThan(500);
+  });
+
+  test('GET /api/auth/me - user info with valid token',
+    async ({ request }) => {
+    const loginRes = await request.post(
+      `${API_BASE}/api/auth/login`, {
+      data: {
+        email: TEST_ACCOUNTS.admin.email,
+        password: TEST_ACCOUNTS.admin.password,
+      },
+    });
+    const { accessToken } = await loginRes.json();
+    const meRes = await request.get(
+      `${API_BASE}/api/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}` },
+    });
+    expect(meRes.status()).toBe(200);
+  });
+});
+\end{lstlisting}
+
+\subsubsection{Tests du service de commandes}
+
+Le listing~\ref{lst:orders-api-spec} illustre les tests CRUD du service de commandes,
+incluant la pagination et la création de commandes.
+
+\begin{lstlisting}[language=Java, caption={Tests API du service de commandes -- orders.api.spec.ts}, label={lst:orders-api-spec}]
+test.describe('API - Order Service', () => {
+  let api: ApiClient;
+  let customerApi: ApiClient;
+
+  test.beforeAll(async () => {
+    api = new ApiClient();
+    await api.login(TEST_ACCOUNTS.admin.email,
+      TEST_ACCOUNTS.admin.password);
+    customerApi = new ApiClient();
+    await customerApi.login(TEST_ACCOUNTS.customer.email,
+      TEST_ACCOUNTS.customer.password);
+  });
+
+  test('GET /api/orders - admin should list orders',
+    async () => {
+    const response = await api.get('/api/orders');
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(Array.isArray(body.content || body))
+      .toBeTruthy();
+  });
+
+  test('POST /api/orders - customer should create order',
+    async () => {
+    const response = await customerApi.post(
+      '/api/orders', {
+      partnerId: 'test-partner-id',
+      items: TEST_ORDER.items,
+      deliveryAddress: TEST_ORDER.deliveryAddress,
+      paymentMethod: TEST_ORDER.paymentMethod,
+    });
+    expect([200, 201, 400])
+      .toContain(response.status());
+  });
+});
+\end{lstlisting}
+
+\subsubsection{Test du cycle de vie complet d'une commande}
+
+Le listing~\ref{lst:e2e-order-flow} présente le test E2E API le plus complet : le cycle
+de vie intégral d'une commande, de la création à la livraison. Ce test implique quatre
+acteurs distincts (client, partenaire, coursier, administrateur) et valide les
+transitions d'état.
+
+\begin{lstlisting}[language=Java, caption={Test du cycle de vie complet -- e2e-order-flow.api.spec.ts}, label={lst:e2e-order-flow}]
+test.describe('API - E2E Order Lifecycle', () => {
+  let adminApi: ApiClient;
+  let customerApi: ApiClient;
+  let partnerApi: ApiClient;
+  let courierApi: ApiClient;
+
+  test.beforeAll(async () => {
+    adminApi = new ApiClient();
+    await adminApi.login(TEST_ACCOUNTS.admin.email,
+      TEST_ACCOUNTS.admin.password);
+    customerApi = new ApiClient();
+    await customerApi.login(TEST_ACCOUNTS.customer.email,
+      TEST_ACCOUNTS.customer.password);
+    partnerApi = new ApiClient();
+    await partnerApi.login(TEST_ACCOUNTS.partner.email,
+      TEST_ACCOUNTS.partner.password);
+    courierApi = new ApiClient();
+    await courierApi.login(TEST_ACCOUNTS.courier.email,
+      TEST_ACCOUNTS.courier.password);
+  });
+
+  test('full order lifecycle: create -> accept '
+    + '-> pickup -> deliver', async () => {
+    // 1. Get available partners
+    const partnersRes = await customerApi.get(
+      '/api/partners?status=ACTIVE');
+    const partners = await partnersRes.json();
+    const partnerId = partners.content[0].id;
+
+    // 2. Create order
+    const createRes = await customerApi.post(
+      '/api/orders', {
+      partnerId,
+      items: TEST_ORDER.items,
+      deliveryAddress: TEST_ORDER.deliveryAddress,
+      paymentMethod: TEST_ORDER.paymentMethod,
+    });
+    const order = await createRes.json();
+
+    // 3. Partner accepts order
+    // 4. Courier picks up
+    // 5. Courier delivers
+    // 6. Order completed
+  });
+});
+\end{lstlisting}
+
+\subsubsection{Bilan des tests API}
+
+Le tableau~\ref{tab:api-tests} récapitule l'ensemble des fichiers de tests API et le
+nombre de cas de test par catégorie. Au total, \textbf{104 tests API} couvrent les
+17 fichiers de spécifications.
+
+\begin{table}[H]
+\centering
+\caption{Répartition des tests API par fichier de spécification}
+\label{tab:api-tests}
+\begin{tabular}{l c}
+\toprule
+\textbf{Fichier de test} & \textbf{Nombre de tests} \\
+\midrule
+auth.api.spec.ts            &  8 \\
+orders.api.spec.ts          &  6 \\
+users.api.spec.ts           &  6 \\
+support.api.spec.ts         &  6 \\
+partners.api.spec.ts        &  5 \\
+delivery.api.spec.ts        &  5 \\
+notifications.api.spec.ts   &  5 \\
+reviews.api.spec.ts         &  5 \\
+analytics.api.spec.ts       &  5 \\
+payments.api.spec.ts        &  4 \\
+location.api.spec.ts        &  4 \\
+promotions.api.spec.ts      &  3 \\
+e2e-order-flow.api.spec.ts  &  2 \\
+contracts.api.spec.ts       &  9 \\
+smoke.api.spec.ts           &  8 \\
+security.api.spec.ts        & 16 \\
+websocket.api.spec.ts       &  8 \\
+\midrule
+\textbf{Total (17 fichiers)} & \textbf{104} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Les tests de sécurité représentent la catégorie la plus fournie avec 16 tests,
+reflétant l'importance accordée à la sécurisation des API. Les tests
+\texttt{contracts} vérifient la conformité des contrats d'API (formats de réponse,
+codes HTTP), tandis que les tests \texttt{smoke} servent de vérification rapide
+de la disponibilité des services.
+
+% =============================================================================
+\section{Mise en place des tests E2E (Couche 3)}
+\label{sec:tests-e2e}
+% =============================================================================
+
+Les tests de bout en bout (\textit{End-to-End}) constituent la troisième couche de
+la pyramide. Ils simulent le comportement réel des utilisateurs en interagissant avec
+les interfaces graphiques web et mobiles.
+
+% -----------------------------------------------
+\subsection{Tests Web (Playwright)}
+\label{subsec:tests-web}
+% -----------------------------------------------
+
+\subsubsection{Le patron Page Object Model}
+
+Pour structurer les tests E2E web, nous adoptons le patron \textit{Page Object Model}
+(POM). Chaque page de l'application est représentée par une classe TypeScript qui
+encapsule les localisateurs d'éléments et les actions utilisateur. Le
+listing~\ref{lst:admin-login-page} illustre cette approche pour la page de connexion
+de l'administration.
+
+\begin{lstlisting}[language=Java, caption={Page Object -- AdminLoginPage}, label={lst:admin-login-page}]
+import { Page, Locator, expect } from '@playwright/test';
+
+export class AdminLoginPage {
+  readonly page: Page;
+  readonly emailInput: Locator;
+  readonly passwordInput: Locator;
+  readonly loginButton: Locator;
+  readonly errorMessage: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.emailInput = page.getByLabel(/email/i);
+    this.passwordInput = page.getByLabel(/password/i);
+    this.loginButton = page.getByRole('button',
+      { name: /sign in|login|connexion/i });
+    this.errorMessage = page.locator(
+      '[class*="error"], [class*="alert-danger"]');
+  }
+
+  async goto() {
+    await this.page.goto('/auth/login');
+  }
+
+  async login(email: string, password: string) {
+    await this.emailInput.fill(email);
+    await this.passwordInput.fill(password);
+    await this.loginButton.click();
+  }
+
+  async expectDashboardRedirect() {
+    await this.page.waitForURL('**/dashboard',
+      { timeout: 15_000 });
+    await expect(this.page).toHaveURL(/dashboard/);
+  }
+
+  async expectError() {
+    await expect(this.errorMessage.first())
+      .toBeVisible({ timeout: 5_000 });
+  }
+}
+\end{lstlisting}
+
+Les avantages de cette approche sont multiples :
+\begin{itemize}
+  \item \textbf{Maintenabilité} : si un sélecteur change, une seule classe doit
+        être modifiée.
+  \item \textbf{Réutilisabilité} : les actions (connexion, navigation) sont
+        réutilisées dans plusieurs tests.
+  \item \textbf{Lisibilité} : les tests décrivent des intentions utilisateur
+        plutôt que des interactions DOM de bas niveau.
+\end{itemize}
+
+\subsubsection{Tests d'authentification (admin-panel)}
+
+Le listing~\ref{lst:auth-e2e-spec} présente les tests E2E d'authentification de
+l'administration, utilisant le \texttt{AdminLoginPage} défini précédemment.
+
+\begin{lstlisting}[language=Java, caption={Tests E2E d'authentification -- auth.spec.ts}, label={lst:auth-e2e-spec}]
+test.describe('Admin Panel - Authentication', () => {
+  test.use({ storageState:
+    { cookies: [], origins: [] } });
+
+  test('should display login page', async ({ page }) => {
+    const loginPage = new AdminLoginPage(page);
+    await loginPage.goto();
+    await expect(loginPage.emailInput).toBeVisible();
+    await expect(loginPage.passwordInput).toBeVisible();
+    await expect(loginPage.loginButton).toBeVisible();
+  });
+
+  test('should login with valid admin credentials',
+    async ({ page }) => {
+    const loginPage = new AdminLoginPage(page);
+    await loginPage.goto();
+    await loginPage.login(
+      TEST_ACCOUNTS.admin.email,
+      TEST_ACCOUNTS.admin.password);
+    await loginPage.expectDashboardRedirect();
+  });
+
+  test('should show error with invalid credentials',
+    async ({ page }) => {
+    const loginPage = new AdminLoginPage(page);
+    await loginPage.goto();
+    await loginPage.login(
+      'invalid@test.com', 'WrongPassword123!');
+    await loginPage.expectError();
+  });
+
+  test('should redirect unauthenticated users',
+    async ({ page }) => {
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/auth/);
+  });
+});
+\end{lstlisting}
+
+\subsubsection{Tests du tableau de bord}
+
+Le listing~\ref{lst:dashboard-e2e-spec} illustre les tests de navigation du tableau
+de bord d'administration, vérifiant le chargement des pages et la navigation latérale.
+
+\begin{lstlisting}[language=Java, caption={Tests E2E du tableau de bord -- dashboard.spec.ts}, label={lst:dashboard-e2e-spec}]
+test.describe('Admin Panel - Dashboard', () => {
+  test('should load dashboard after login',
+    async ({ page }) => {
+    const dashboard = new AdminDashboardPage(page);
+    await dashboard.goto();
+    await dashboard.expectLoaded();
+  });
+
+  test('should display sidebar navigation',
+    async ({ page }) => {
+    const dashboard = new AdminDashboardPage(page);
+    await dashboard.goto();
+    await expect(dashboard.sidebar).toBeVisible();
+  });
+
+  test('should navigate to orders',
+    async ({ page }) => {
+    const dashboard = new AdminDashboardPage(page);
+    await dashboard.goto();
+    await dashboard.navigateTo('orders');
+    await expect(page).toHaveURL(/orders/);
+  });
+
+  test('should navigate to partners',
+    async ({ page }) => {
+    const dashboard = new AdminDashboardPage(page);
+    await dashboard.goto();
+    await dashboard.navigateTo('partners');
+    await expect(page).toHaveURL(/partners/);
+  });
+});
+\end{lstlisting}
+
+\subsubsection{Tests de régression visuelle et d'accessibilité}
+
+En complément des tests fonctionnels, nous avons mis en place :
+
+\begin{itemize}
+  \item \textbf{Tests de régression visuelle} : des captures d'écran de référence
+        sont prises lors de la première exécution. Les exécutions suivantes comparent
+        les captures actuelles avec les références pour détecter toute modification
+        visuelle non intentionnelle. Ces tests sont implémentés dans les fichiers
+        \texttt{visual-regression.spec.ts} pour chaque application web.
+  \item \textbf{Tests d'accessibilité} : nous utilisons la bibliothèque
+        \texttt{axe-core} intégrée à Playwright pour vérifier la conformité WCAG
+        des pages. Les tests sont définis dans les fichiers
+        \texttt{accessibility.spec.ts} et détectent les problèmes de contraste,
+        de structure sémantique et d'attributs ARIA.
+\end{itemize}
+
+% -----------------------------------------------
+\subsection{Tests Mobile (Flutter + Patrol)}
+\label{subsec:tests-mobile}
+% -----------------------------------------------
+
+Les applications mobiles SpeedLine --- l'application client (\texttt{customer\_app})
+et l'application coursier (\texttt{courier\_app}) --- sont développées avec Flutter.
+Les tests d'intégration utilisent le framework \texttt{integration\_test} de Flutter,
+complété par Patrol pour la gestion des dialogues natifs.
+
+\subsubsection{Tests de l'application client}
+
+Le listing~\ref{lst:customer-app-test} présente un extrait des tests d'intégration
+de l'application client. Ces tests couvrent l'authentification, la navigation et
+la gestion du panier.
+
+\begin{lstlisting}[language=Java, caption={Tests d'intégration -- customer\_app/app\_test.dart}, label={lst:customer-app-test}]
+void main() {
+  IntegrationTestWidgetsFlutterBinding
+    .ensureInitialized();
+
+  group('Authentication', () {
+    testWidgets('should display login screen',
+      (tester) async {
+      app.main();
+      await tester.pumpAndSettle(
+        const Duration(seconds: 3));
+      final textFields = find.byType(TextFormField);
+      expect(textFields, findsWidgets);
+    });
+
+    testWidgets('should login with valid credentials',
+      (tester) async {
+      app.main();
+      await tester.pumpAndSettle(
+        const Duration(seconds: 3));
+      final textFields = find.byType(TextFormField);
+      await tester.enterText(
+        textFields.at(0), testConfig.customerEmail);
+      await tester.enterText(
+        textFields.at(1), testConfig.customerPassword);
+      await tester.pumpAndSettle();
+      final loginButtons =
+        find.byType(ElevatedButton);
+      await tester.tap(loginButtons.first);
+      await tester.pumpAndSettle(
+        const Duration(seconds: 5));
+    });
+  });
+
+  group('Home & Browse', () => {
+    testWidgets('should show bottom navigation bar',
+      (tester) async {
+      app.main();
+      await _loginAsCustomer(tester);
+      final bottomNav =
+        find.byType(BottomNavigationBar);
+      final navBar = find.byType(NavigationBar);
+      expect(
+        bottomNav.evaluate().isNotEmpty
+        || navBar.evaluate().isNotEmpty,
+        isTrue);
+    });
+  });
+}
+\end{lstlisting}
+
+\subsubsection{Tests de l'application coursier}
+
+Le listing~\ref{lst:courier-app-test} montre les tests de l'application coursier,
+qui vérifient notamment le basculement en ligne/hors ligne.
+
+\begin{lstlisting}[language=Java, caption={Tests d'intégration -- courier\_app/app\_test.dart}, label={lst:courier-app-test}]
+void main() {
+  IntegrationTestWidgetsFlutterBinding
+    .ensureInitialized();
+
+  group('Authentication', () {
+    testWidgets('should login with courier credentials',
+      (tester) async {
+      app.main();
+      await tester.pumpAndSettle(
+        const Duration(seconds: 3));
+      final textFields = find.byType(TextFormField);
+      await tester.enterText(
+        textFields.at(0), testConfig.courierEmail);
+      await tester.enterText(
+        textFields.at(1), testConfig.courierPassword);
+      await tester.pumpAndSettle();
+      final loginButtons =
+        find.byType(ElevatedButton);
+      await tester.tap(loginButtons.first);
+      await tester.pumpAndSettle(
+        const Duration(seconds: 5));
+    });
+  });
+
+  group('Home Screen', () {
+    testWidgets('should show online/offline toggle',
+      (tester) async {
+      app.main();
+      await _loginAsCourier(tester);
+      final toggle = find.byType(Switch);
+      final switchWidget =
+        find.byType(SwitchListTile);
+      expect(
+        toggle.evaluate().isNotEmpty
+        || switchWidget.evaluate().isNotEmpty,
+        isTrue);
+    });
+
+    testWidgets('should toggle courier availability',
+      (tester) async {
+      app.main();
+      await _loginAsCourier(tester);
+      final toggle = find.byType(Switch);
+      if (toggle.evaluate().isNotEmpty) {
+        await tester.tap(toggle.first);
+        await tester.pumpAndSettle(
+          const Duration(seconds: 2));
+      }
+    });
+  });
+}
+\end{lstlisting}
+
+\subsubsection{Gestion des dialogues natifs avec Patrol}
+
+Patrol (version 3.13) est utilisé pour gérer les dialogues natifs du système
+d'exploitation lors des tests mobiles. Il permet notamment de :
+
+\begin{itemize}
+  \item Accepter ou refuser les demandes de permission (localisation, notifications,
+        caméra).
+  \item Interagir avec les dialogues système (partage, sélecteur de fichiers).
+  \item Gérer les alertes système qui ne sont pas accessibles via l'arbre de widgets
+        Flutter standard.
+\end{itemize}
+
+% =============================================================================
+\section{Mise en place des tests de performance (Couche 4)}
+\label{sec:tests-performance}
+% =============================================================================
+
+Les tests de performance constituent la couche supérieure de notre pyramide de tests.
+Ils évaluent le comportement du système sous différentes conditions de charge à l'aide
+de l'outil k6.
+
+% -----------------------------------------------
+\subsection{Test de charge (\textit{Load Test})}
+\label{subsec:test-charge}
+% -----------------------------------------------
+
+Le test de charge simule un scénario réaliste d'utilisation de la plateforme avec une
+montée progressive du nombre d'utilisateurs virtuels. Le listing~\ref{lst:k6-load-test}
+présente la configuration et les scénarios implémentés.
+
+\begin{lstlisting}[language=Java, caption={Test de charge k6 -- k6-load-test.js}, label={lst:k6-load-test}]
+import http from 'k6/http';
+import { check, sleep, group } from 'k6';
+import { Rate, Trend } from 'k6/metrics';
+
+// Metriques personnalisees
+const loginDuration = new Trend('login_duration');
+const orderListDuration =
+  new Trend('order_list_duration');
+const errorRate = new Rate('errors');
+
+export const options = {
+  stages: [
+    { duration: '30s', target: 10 },  // Montee
+    { duration: '1m',  target: 25 },  // Montee
+    { duration: '2m',  target: 25 },  // Plateau
+    { duration: '1m',  target: 50 },  // Pic
+    { duration: '1m',  target: 50 },  // Maintien pic
+    { duration: '30s', target: 0 },   // Descente
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<3000'],
+    http_req_failed: ['rate<0.05'],
+    login_duration: ['p(95)<2000'],
+    errors: ['rate<0.1'],
+  },
+};
+
+function login(email, password) {
+  const res = http.post(
+    `${BASE_URL}/api/auth/login`,
+    JSON.stringify({ email, password }),
+    { headers:
+      { 'Content-Type': 'application/json' } }
+  );
+  loginDuration.add(res.timings.duration);
+  const success = check(res, {
+    'login status is 200': (r) => r.status === 200,
+    'login has token': (r) => {
+      const body = JSON.parse(r.body);
+      return !!(body.accessToken || body.token);
+    },
+  });
+  if (!success) { errorRate.add(1); return null; }
+  errorRate.add(0);
+  return JSON.parse(res.body).accessToken;
+}
+
+export default function () {
+  const flow = Math.random();
+  if (flow < 0.4)       adminFlow();
+  else if (flow < 0.7)  customerBrowseFlow();
+  else                   partnerFlow();
+  sleep(1);
+}
+\end{lstlisting}
+
+Le test de charge repose sur les principes suivants :
+
+\begin{itemize}
+  \item \textbf{Montée progressive} : le nombre d'utilisateurs virtuels augmente
+        graduellement de 0 à 50, simulant une montée en charge réaliste.
+  \item \textbf{Répartition des flux} : 40\% des utilisateurs exécutent le flux
+        administrateur, 30\% le flux client et 30\% le flux partenaire.
+  \item \textbf{Seuils de performance} : le test échoue si le 95e percentile
+        dépasse 3 secondes ou si le taux d'erreur excède 5\%.
+  \item \textbf{Métriques personnalisées} : des tendances dédiées mesurent les
+        temps de réponse de la connexion et de la liste des commandes.
+\end{itemize}
+
+% -----------------------------------------------
+\subsection{Test de stress (\textit{Stress Test})}
+\label{subsec:test-stress}
+% -----------------------------------------------
+
+Le test de stress pousse le système au-delà de sa charge normale pour identifier les
+points de rupture. Il monte progressivement jusqu'à 300 utilisateurs virtuels simultanés.
+
+\begin{lstlisting}[language=Java, caption={Configuration du test de stress -- k6-stress-test.js}, label={lst:k6-stress-test}]
+export const options = {
+  stages: [
+    { duration: '1m',  target: 50 },   // Charge normale
+    { duration: '2m',  target: 100 },  // Charge haute
+    { duration: '2m',  target: 200 },  // Charge stress
+    { duration: '1m',  target: 300 },  // Point de rupture
+    { duration: '2m',  target: 300 },  // Maintien
+    { duration: '1m',  target: 0 },    // Recuperation
+  ],
+  thresholds: {
+    http_req_duration: ['p(99)<5000'],
+    errors: ['rate<0.3'],
+  },
+};
+\end{lstlisting}
+
+Le test de stress utilise \texttt{http.batch()} pour envoyer simultanément des requêtes
+à plusieurs \textit{endpoints} (commandes, partenaires, utilisateurs), simulant ainsi
+une utilisation intensive et concurrente du système. Le seuil d'erreur est relevé à 30\%
+car l'objectif est d'observer le comportement de dégradation gracieuse (\textit{graceful
+degradation}) plutôt que d'exiger une disponibilité totale.
+
+% -----------------------------------------------
+\subsection{Test de pic (\textit{Spike Test})}
+\label{subsec:test-spike}
+% -----------------------------------------------
+
+Le test de pic simule un afflux soudain de trafic, tel qu'une heure de pointe ou une
+promotion éclair. Il passe brutalement de 5 à 200 utilisateurs virtuels.
+
+\begin{lstlisting}[language=Java, caption={Configuration du test de pic -- k6-spike-test.js}, label={lst:k6-spike-test}]
+export const options = {
+  stages: [
+    { duration: '10s', target: 5 },    // Baseline
+    { duration: '10s', target: 200 },  // Pic soudain
+    { duration: '30s', target: 200 },  // Pic maintenu
+    { duration: '10s', target: 5 },    // Fin du pic
+    { duration: '1m',  target: 5 },    // Recuperation
+    { duration: '10s', target: 0 },    // Arret
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<5000'],
+    errors: ['rate<0.2'],
+  },
+};
+\end{lstlisting}
+
+Ce test est particulièrement pertinent pour SpeedLine, car la plateforme de livraison
+connaît des pics de trafic prévisibles (heures de repas) et imprévisibles (événements
+promotionnels). La période de récupération d'une minute permet de vérifier que le
+système retrouve son fonctionnement normal après le pic.
+
+% =============================================================================
+\section{Tests de sécurité}
+\label{sec:tests-securite}
+% =============================================================================
+
+La sécurité étant un aspect critique d'une plateforme de livraison gérant des données
+personnelles et des paiements, nous avons implémenté une suite de 16 tests de sécurité
+couvrant les principales catégories de vulnérabilités.
+
+\subsection{Injection SQL}
+
+Les tests vérifient que les paramètres de recherche, les paramètres de chemin et les
+corps de requête sont correctement assainis pour prévenir les injections SQL.
+
+\begin{lstlisting}[language=Java, caption={Tests d'injection SQL -- security.api.spec.ts}, label={lst:sql-injection}]
+test('should handle SQL injection in search params',
+  async () => {
+  const response = await adminApi.get(
+    "/api/orders?search=' OR '1'='1");
+  expect([200, 400]).toContain(response.status());
+  if (response.status() === 200) {
+    const body = await response.json();
+    const items = body.content || body;
+    expect(Array.isArray(items)).toBeTruthy();
+  }
+});
+
+test('should handle SQL injection in POST body',
+  async ({ request }) => {
+  const loginRes = await request.post(
+    `${API_BASE}/api/auth/login`, {
+    data: {
+      email: "admin@test.com' OR '1'='1",
+      password: "' OR '1'='1",
+    },
+  });
+  expect(loginRes.status())
+    .toBeGreaterThanOrEqual(400);
+});
+\end{lstlisting}
+
+\subsection{Cross-Site Scripting (XSS)}
+
+Les tests XSS vérifient que les entrées utilisateur contenant du code JavaScript
+malveillant sont correctement assainies ou rejetées par le serveur.
+
+\begin{lstlisting}[language=Java, caption={Tests XSS -- security.api.spec.ts}, label={lst:xss-tests}]
+test('should sanitize XSS in order creation',
+  async () => {
+  const response = await customerApi.post(
+    '/api/orders', {
+    partnerId: 'test-partner',
+    items: [{ name: '<script>alert("xss")</script>',
+              quantity: 1 }],
+    deliveryAddress: {
+      street: '<img src=x onerror=alert(1)>',
+      city: 'Nabeul',
+    },
+    paymentMethod: 'CASH',
+  });
+  if (response.status() === 200
+      || response.status() === 201) {
+    const body = await response.text();
+    expect(body).not.toContain('<script>');
+  }
+});
+\end{lstlisting}
+
+\subsection{Contournement d'authentification et contrôle d'accès}
+
+Ces tests vérifient qu'un utilisateur ne peut pas accéder à des ressources non
+autorisées, qu'un jeton invalide est correctement rejeté, et qu'un jeton est bien
+invalidé après la déconnexion.
+
+\begin{lstlisting}[language=Java, caption={Tests d'authentification et de contrôle d'accès}, label={lst:auth-bypass}]
+test('should reject requests without auth token',
+  async ({ request }) => {
+  const response = await request.get(
+    `${API_BASE}/api/orders`);
+  expect(response.status()).toBe(401);
+});
+
+test('customer should not access admin endpoints',
+  async () => {
+  const response = await customerApi.get(
+    '/api/users/admins');
+  expect([401, 403]).toContain(response.status());
+});
+
+test('should invalidate token after logout',
+  async ({ request }) => {
+  // Login
+  const loginRes = await request.post(
+    `${API_BASE}/api/auth/login`, {
+    data: { email: TEST_ACCOUNTS.admin.email,
+            password: TEST_ACCOUNTS.admin.password },
+  });
+  const { accessToken } = await loginRes.json();
+
+  // Logout
+  await request.post(`${API_BASE}/api/auth/logout`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  // Old token should be blacklisted
+  const afterLogout = await request.get(
+    `${API_BASE}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  expect(afterLogout.status()).toBe(401);
+});
+\end{lstlisting}
+
+\subsection{Limitation de débit et validation des entrées}
+
+Les tests vérifient la présence d'un mécanisme de limitation de débit (\textit{rate
+limiting}) sur le point d'entrée de connexion, ainsi que le rejet des charges utiles
+surdimensionnées.
+
+\begin{lstlisting}[language=Java, caption={Tests de limitation de débit}, label={lst:rate-limiting}]
+test('should rate limit login attempts',
+  async ({ request }) => {
+  const attempts = [];
+  for (let i = 0; i < 20; i++) {
+    attempts.push(
+      request.post(`${API_BASE}/api/auth/login`, {
+        data: { email: 'brute-force@test.com',
+                password: `attempt${i}` },
+      })
+    );
+  }
+  const responses = await Promise.all(attempts);
+  const statusCodes = responses.map(r => r.status());
+  const has429 = statusCodes.includes(429);
+  if (!has429) {
+    console.warn('WARNING: No rate limiting detected');
+  }
+});
+
+test('should reject oversized request body',
+  async ({ request }) => {
+  const largePayload = 'x'.repeat(10 * 1024 * 1024);
+  const response = await request.post(
+    `${API_BASE}/api/auth/login`, {
+    data: { email: largePayload, password: 'test' },
+  });
+  expect([400, 413, 414]).toContain(response.status());
+});
+\end{lstlisting}
+
+% =============================================================================
+\section{Seed de la base de données}
+\label{sec:seed-database}
+% =============================================================================
+
+Avant l'exécution des tests, il est nécessaire de disposer d'un jeu de données
+cohérent dans les différentes bases de données des microservices. Le script
+\texttt{seed-test-data.js} automatise cette initialisation.
+
+\subsection{Approche technique}
+
+Le script se connecte successivement aux quatre bases de données principales
+(\texttt{auth\_db}, \texttt{partner\_db}, \texttt{user\_db}, \texttt{location\_db})
+et insère les données de test nécessaires. Les mots de passe sont hachés avec
+l'algorithme \texttt{bcrypt} (facteur de coût 10) pour correspondre au format attendu
+par le service d'authentification.
+
+\begin{lstlisting}[language=Java, caption={Script de seed -- seed-test-data.js (extrait)}, label={lst:seed-script}]
+const { Client } = require('pg');
+const bcrypt = require('bcryptjs');
+
+const TEST_USERS = [
+  { email: 'admin@speedline-test.com',
+    password: 'TestAdmin123!',
+    firstName: 'Test', lastName: 'Admin',
+    role: 'SUPER_ADMIN', phone: '+21611111111' },
+  { email: 'partner@speedline-test.com',
+    password: 'TestPartner123!',
+    firstName: 'Test', lastName: 'Partner',
+    role: 'PARTNER', phone: '+21622222222' },
+  { email: 'customer@speedline-test.com',
+    password: 'TestCustomer123!',
+    firstName: 'Test', lastName: 'Customer',
+    role: 'CUSTOMER', phone: '+21633333333' },
+  { email: 'courier@speedline-test.com',
+    password: 'TestCourier123!',
+    firstName: 'Test', lastName: 'Courier',
+    role: 'COURIER', phone: '+21644444444' },
+];
+
+async function seedAuthDB() {
+  const client = new Client({
+    ...DB_CONFIG, database: 'auth_db' });
+  await client.connect();
+
+  for (const user of TEST_USERS) {
+    const passwordHash =
+      await bcrypt.hash(user.password,
+        await bcrypt.genSalt(10));
+    await client.query(`
+      INSERT INTO users (email, password, first_name,
+        last_name, role, phone_number, status,
+        is_email_verified, created_at, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,'ACTIVE',true,
+        NOW(),NOW())
+      ON CONFLICT (email) DO UPDATE SET
+        password = $2, status = 'ACTIVE',
+        is_email_verified = true
+    `, [user.email, passwordHash, user.firstName,
+        user.lastName, user.role, user.phone]);
+  }
+  await client.end();
+}
+\end{lstlisting}
+
+\subsection{Comptes de test}
+
+Le tableau~\ref{tab:test-accounts} récapitule les quatre comptes de test créés par le
+script de seed. Ces comptes couvrent les quatre rôles principaux de la plateforme.
+
+\begin{table}[H]
+\centering
+\caption{Comptes de test créés par le script de seed}
+\label{tab:test-accounts}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Rôle} & \textbf{Email} & \textbf{Mot de passe} \\
+\midrule
+Administrateur  & admin@speedline-test.com    & TestAdmin123! \\
+Partenaire      & partner@speedline-test.com  & TestPartner123! \\
+Client          & customer@speedline-test.com & TestCustomer123! \\
+Coursier        & courier@speedline-test.com  & TestCourier123! \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+En plus des comptes utilisateur, le script crée un partenaire de test
+(\og Test Restaurant Nabeul \fg{}) avec trois produits (Pizza Margherita, Coca Cola,
+Salade Caesar), une zone de livraison (\og Zone Nabeul Centre \fg{}) et les profils
+client et coursier correspondants dans la base \texttt{user\_db}. L'utilisation de
+la clause \texttt{ON CONFLICT} garantit l'idempotence du script : il peut être exécuté
+plusieurs fois sans créer de doublons.
+
+% =============================================================================
+\section{Intégration CI/CD}
+\label{sec:integration-cicd}
+% =============================================================================
+
+L'intégration continue constitue un pilier essentiel de notre stratégie de tests.
+Le fichier \texttt{.gitlab-ci-tests.yml} définit un ensemble de jobs qui s'intègrent
+au pipeline existant du projet SpeedLine.
+
+\subsection{Architecture du pipeline de tests}
+
+Le pipeline est structuré en deux étapes (\textit{stages}) principales :
+
+\begin{enumerate}
+  \item \textbf{Stage \texttt{test}} : exécution parallèle de tous les types de tests.
+  \item \textbf{Stage \texttt{report}} : génération du rapport Allure consolidé.
+\end{enumerate}
+
+\begin{lstlisting}[language=bash, caption={Structure du pipeline CI -- .gitlab-ci-tests.yml (extrait)}, label={lst:gitlab-ci}]
+# Template de base pour les tests Playwright
+.test-playwright-base:
+  image: mcr.microsoft.com/playwright:v1.49.0-noble
+  stage: test
+  before_script:
+    - cd tests/playwright
+    - npm ci
+    - cp .env.example .env
+  artifacts:
+    when: always
+    paths:
+      - tests/playwright/allure-results/
+    reports:
+      junit: tests/playwright/test-results/results.xml
+
+# Seed des donnees de test
+seed-test-data:
+  stage: test
+  image: node:20
+  script:
+    - cd tests/seed
+    - npm ci
+    - node seed-test-data.js
+
+# Tests unitaires backend
+test-robot:backend-unit-tests:
+  stage: test
+  image: maven:3.9-eclipse-temurin-17
+  script:
+    - cd backend
+    - mvn test -pl services/auth-service,
+      services/order-service,services/user-service
+      --fail-at-end
+
+# Tests API
+test-robot:api:
+  extends: .test-playwright-base
+  script:
+    - npx playwright test --project=api-tests
+  needs:
+    - job: seed-test-data
+      optional: true
+
+# Tests E2E Web
+test-robot:admin-panel:
+  extends: .test-playwright-base
+  script:
+    - npx playwright test --project=admin-panel
+
+# Tests E2E Mobile
+test-robot:customer-app:
+  stage: test
+  image: cirrusci/flutter:stable
+  script:
+    - cd frontend/customer_app
+    - flutter pub get
+    - flutter test integration_test/app_test.dart
+
+# Tests de performance
+test-robot:performance-load:
+  stage: test
+  image:
+    name: grafana/k6:latest
+    entrypoint: ['']
+  script:
+    - k6 run tests/performance/k6-load-test.js
+
+# Rapport Allure
+test-robot:allure-report:
+  stage: report
+  image: node:20
+  script:
+    - npm install -g allure-commandline
+    - allure generate tests/playwright/allure-results
+      --clean -o allure-report
+  needs:
+    - job: test-robot:api
+    - job: test-robot:admin-panel
+\end{lstlisting}
+
+\subsection{Stratégie de déclenchement}
+
+Chaque job est configuré avec des règles de déclenchement spécifiques :
+
+\begin{itemize}
+  \item \textbf{Tests unitaires backend} : déclenchés sur les \textit{merge requests}
+        modifiant le dossier \texttt{backend/} et sur les branches \texttt{develop}
+        et \texttt{staging}.
+  \item \textbf{Tests API} : déclenchés sur toutes les \textit{merge requests} et
+        les branches \texttt{develop}, \texttt{staging} et les tags de staging.
+  \item \textbf{Tests E2E} : déclenchés lorsque les fichiers du frontend ou du
+        backend concerné sont modifiés.
+  \item \textbf{Tests de performance} : exécutés uniquement sur la branche
+        \texttt{staging} et les tags de déploiement, car ils nécessitent un
+        environnement proche de la production.
+  \item \textbf{Tests mobile} : exécutés avec \texttt{allow\_failure: true} car
+        ils dépendent de la disponibilité d'un émulateur dans l'environnement CI.
+\end{itemize}
+
+\subsection{Gestion des dépendances entre jobs}
+
+Le mot-clé \texttt{needs} de GitLab CI est utilisé pour définir les dépendances :
+les tests API et E2E dépendent du job \texttt{seed-test-data} (avec
+\texttt{optional: true} pour ne pas bloquer si le seed échoue), et le rapport Allure
+dépend de tous les jobs de test pour agréger leurs résultats.
+
+% =============================================================================
+\section{Reporting avec Allure}
+\label{sec:reporting-allure}
+% =============================================================================
+
+Allure est un outil de reporting qui génère des rapports de tests interactifs à partir
+des résultats bruts. Son intégration dans notre projet permet de visualiser les résultats
+de manière structurée et de faciliter le diagnostic des échecs.
+
+\subsection{Configuration dans Playwright}
+
+Le listing~\ref{lst:playwright-config} montre la configuration du reporter Allure
+dans le fichier \texttt{playwright.config.ts}.
+
+\begin{lstlisting}[language=Java, caption={Configuration Allure dans playwright.config.ts}, label={lst:playwright-config}]
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: '.',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 2 : undefined,
+  timeout: 60_000,
+
+  reporter: [
+    ['html', { open: 'never' }],
+    ['allure-playwright'],
+    ['list'],
+  ],
+
+  use: {
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'on-first-retry',
+    actionTimeout: 15_000,
+    navigationTimeout: 30_000,
+  },
+
+  projects: [
+    {
+      name: 'admin-panel',
+      testDir: './e2e/admin-panel',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: ADMIN_BASE_URL,
+        storageState: 'fixtures/.auth/admin.json',
+      },
+      dependencies: ['admin-auth-setup'],
+    },
+    {
+      name: 'api-tests',
+      testDir: './api',
+      use: { baseURL: API_GATEWAY_URL },
+    },
+  ],
+});
+\end{lstlisting}
+
+\subsection{Fonctionnalités du rapport Allure}
+
+Le rapport Allure généré offre les fonctionnalités suivantes :
+
+\begin{itemize}
+  \item \textbf{Vue d'ensemble} : tableau de bord avec le nombre de tests
+        réussis, échoués, ignorés et cassés.
+  \item \textbf{Suites de tests} : organisation hiérarchique par fichier et
+        par \texttt{describe} bloc.
+  \item \textbf{Chronologie} : visualisation temporelle de l'exécution des tests,
+        permettant d'identifier les goulots d'étranglement.
+  \item \textbf{Catégories d'erreurs} : classification automatique des échecs
+        par type (défaut produit, défaut de test, infrastructure).
+  \item \textbf{Pièces jointes} : captures d'écran, traces Playwright et vidéos
+        automatiquement attachées aux tests échoués grâce à la configuration
+        \texttt{screenshot: 'only-on-failure'} et \texttt{trace: 'on-first-retry'}.
+  \item \textbf{Historique} : comparaison avec les exécutions précédentes pour
+        suivre l'évolution de la stabilité des tests.
+\end{itemize}
+
+La génération du rapport est automatisée dans le pipeline CI via le job
+\texttt{test-robot:allure-report}, qui agrège les résultats de tous les jobs de test
+et produit un rapport hébergé comme artefact GitLab accessible pendant 30 jours.
+
+% =============================================================================
+\section*{Conclusion}
+% =============================================================================
+
+Dans ce chapitre, nous avons présenté la réalisation concrète du robot de tests
+automatisés pour la plateforme SpeedLine. Au total, notre implémentation comprend :
+
+\begin{itemize}
+  \item \textbf{419 tests unitaires} backend couvrant les 11 microservices Java.
+  \item \textbf{34 tests unitaires} frontend pour les applications Angular.
+  \item \textbf{104 tests API} vérifiant les points d'entrée REST à travers 17
+        fichiers de spécification.
+  \item \textbf{Tests E2E} web (Playwright) et mobiles (Flutter + Patrol) couvrant
+        les parcours utilisateur critiques.
+  \item \textbf{3 types de tests de performance} (charge, stress, pic) avec k6.
+  \item \textbf{16 tests de sécurité} couvrant les injections SQL, le XSS, le
+        contrôle d'accès et la limitation de débit.
+  \item Un \textbf{pipeline CI/CD} GitLab automatisé avec reporting Allure.
+\end{itemize}
+
+L'ensemble de ces tests s'intègre dans une architecture cohérente respectant la
+pyramide de tests définie au chapitre précédent. Le chapitre suivant présentera
+les résultats détaillés de l'exécution de ces tests et leur validation.

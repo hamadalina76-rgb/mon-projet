@@ -1,0 +1,1211 @@
+% =============================================================================
+% Chapitre 2 : Analyse et Conception
+% =============================================================================
+\chapter{Analyse et Conception}
+\label{chap:analyse-conception}
+
+\section*{Introduction}
+Dans ce chapitre, nous présentons l'analyse détaillée des besoins fonctionnels et non fonctionnels de notre robot de tests automatisés, suivie de la conception architecturale à travers des diagrammes UML. Nous justifions également les choix techniques retenus et décrivons la stratégie globale de test adoptée pour les projets Speed Line et Delivery App.
+
+% =============================================================================
+\section{Analyse des besoins}
+\label{sec:analyse-besoins}
+
+L'analyse des besoins constitue une étape fondamentale dans tout projet logiciel. Elle permet de définir avec précision les fonctionnalités attendues du système ainsi que les contraintes qualitatives auxquelles il doit répondre. Dans le cadre de notre projet, nous distinguons les besoins fonctionnels, qui décrivent les capacités du robot de tests, et les besoins non fonctionnels, qui spécifient les critères de qualité.
+
+% -----------------------------------------------------------------------------
+\subsection{Besoins fonctionnels}
+\label{subsec:besoins-fonctionnels}
+
+Les besoins fonctionnels définissent l'ensemble des fonctionnalités que le robot de tests automatisés doit offrir. Ils ont été identifiés à partir de l'analyse des modules applicatifs des projets Speed Line et Delivery App, ainsi que des scénarios critiques de l'activité métier.
+
+Le tableau~\ref{tab:besoins-fonctionnels} récapitule l'ensemble des besoins fonctionnels identifiés.
+
+\begin{table}[H]
+\centering
+\caption{Besoins fonctionnels du robot de tests automatisés}
+\label{tab:besoins-fonctionnels}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{|c|l|X|}
+\hline
+\rowcolor{speedlineBlue!15}
+\textbf{ID} & \textbf{Module} & \textbf{Description} \\
+\hline
+BF01 & Authentification & Automatiser les tests de connexion, d'inscription et de vérification OTP pour les différentes interfaces (client, partenaire, livreur, administrateur). \\
+\hline
+BF02 & Cycle de commande & Automatiser les tests du cycle complet de commande : création, acceptation par le partenaire, préparation, affectation au livreur et livraison. \\
+\hline
+BF03 & Paiement & Automatiser les tests des différents modes de paiement (en ligne, à la livraison) et vérifier la cohérence des montants calculés. \\
+\hline
+BF04 & Affectation livreur & Automatiser les tests d'affectation des livreurs aux commandes et le suivi en temps réel (tracking GPS). \\
+\hline
+BF05 & Gestion partenaire & Automatiser les tests de gestion des menus, des catégories, de la disponibilité des produits et du traitement des commandes côté partenaire. \\
+\hline
+BF06 & Gestion utilisateurs & Automatiser les tests de gestion des comptes utilisateurs : création, modification, désactivation et gestion des rôles. \\
+\hline
+BF07 & Promotions & Automatiser les tests de création, d'application et de validation des codes promotionnels et des offres spéciales. \\
+\hline
+BF08 & Avis et évaluations & Automatiser les tests de soumission et d'affichage des avis clients sur les partenaires et les livreurs. \\
+\hline
+BF09 & Support client & Automatiser les tests du module de support : création de tickets, réponses et clôture des réclamations. \\
+\hline
+BF10 & Rapports visuels & Générer des rapports de tests visuels et interactifs à l'aide d'Allure Report, incluant les captures d'écran, les traces et les statistiques d'exécution. \\
+\hline
+BF11 & Intégration CI/CD & Intégrer l'exécution automatique des tests dans le pipeline CI/CD GitLab, avec déclenchement sur chaque \textit{push} et \textit{merge request}. \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsubsection{Détail des besoins fonctionnels}
+
+\paragraph{BF01 -- Automatisation des tests d'authentification.}
+Le module d'authentification est le point d'entrée de toutes les applications. Le robot doit vérifier les scénarios suivants :
+\begin{itemize}[nosep]
+    \item Connexion avec des identifiants valides et invalides.
+    \item Inscription d'un nouveau compte avec validation des champs obligatoires.
+    \item Envoi et vérification du code OTP par SMS.
+    \item Gestion de la session (expiration du token, rafraîchissement).
+    \item Réinitialisation du mot de passe.
+\end{itemize}
+
+\paragraph{BF02 -- Automatisation des tests du cycle de commande.}
+Le cycle de commande représente le flux métier principal de la plateforme Speed Line. Le robot doit couvrir l'intégralité du parcours :
+\begin{itemize}[nosep]
+    \item Ajout de produits au panier depuis l'application client.
+    \item Validation de la commande avec choix de l'adresse de livraison.
+    \item Réception et acceptation de la commande par le partenaire.
+    \item Changement de statut : en préparation, prête, en livraison, livrée.
+    \item Vérification de la cohérence des notifications à chaque étape.
+\end{itemize}
+
+\paragraph{BF03 -- Automatisation des tests de paiement.}
+Les tests de paiement doivent couvrir :
+\begin{itemize}[nosep]
+    \item Le paiement en ligne via passerelle sécurisée.
+    \item Le paiement à la livraison.
+    \item La vérification du calcul des montants (sous-total, frais de livraison, remises, total).
+    \item La gestion des échecs de paiement et des remboursements.
+\end{itemize}
+
+\paragraph{BF04 -- Automatisation des tests d'affectation livreur et tracking.}
+Ce module critique pour l'expérience utilisateur doit être testé pour :
+\begin{itemize}[nosep]
+    \item L'affectation automatique et manuelle des livreurs.
+    \item La mise à jour en temps réel de la position du livreur.
+    \item Le calcul des estimations de temps de livraison.
+    \item La gestion des cas d'indisponibilité des livreurs.
+\end{itemize}
+
+\paragraph{BF05 -- Automatisation des tests de gestion partenaire.}
+L'interface partenaire doit être testée pour :
+\begin{itemize}[nosep]
+    \item La gestion du menu (ajout, modification, suppression de produits).
+    \item La gestion des catégories et des prix.
+    \item Le basculement de la disponibilité des produits.
+    \item Le traitement et le suivi des commandes entrantes.
+\end{itemize}
+
+% -----------------------------------------------------------------------------
+\subsection{Besoins non fonctionnels}
+\label{subsec:besoins-non-fonctionnels}
+
+Les besoins non fonctionnels définissent les critères de qualité que le robot de tests doit respecter. Ils sont essentiels pour garantir l'efficacité et la pérennité de la solution mise en place.
+
+\begin{table}[H]
+\centering
+\caption{Besoins non fonctionnels du robot de tests}
+\label{tab:besoins-non-fonctionnels}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{|c|l|X|l|}
+\hline
+\rowcolor{speedlineBlue!15}
+\textbf{ID} & \textbf{Critère} & \textbf{Description} & \textbf{Métrique} \\
+\hline
+BNF01 & Performance & L'ensemble de la suite de tests doit s'exécuter en moins de 10 minutes afin de ne pas ralentir le pipeline CI/CD. & $< 10$ min \\
+\hline
+BNF02 & Fiabilité & Les tests doivent être déterministes : un même test exécuté plusieurs fois dans les mêmes conditions doit produire le même résultat. L'objectif est de minimiser les \textit{flaky tests}. & Taux de fiabilité $> 98\%$ \\
+\hline
+BNF03 & Maintenabilité & L'architecture du robot doit suivre le patron \textit{Page Object Model} (POM) pour séparer la logique de test de la description des pages, facilitant ainsi la maintenance. & Couplage faible \\
+\hline
+BNF04 & Portabilité & Les tests doivent être exécutables aussi bien en environnement local (machine du développeur) qu'en environnement CI/CD (conteneurs Docker dans GitLab). & 2 environnements \\
+\hline
+BNF05 & Sécurité & Le robot doit inclure des tests de sécurité de base : détection des vulnérabilités d'injection SQL, de \textit{Cross-Site Scripting} (XSS) et de contournement d'authentification. & Tests OWASP Top 10 \\
+\hline
+BNF06 & Extensibilité & Le robot doit être facilement extensible pour accueillir de nouveaux scénarios de test sans modification majeure de l'architecture existante. & Ajout en $< 1$ h \\
+\hline
+BNF07 & Traçabilité & Chaque exécution de test doit générer un rapport détaillé avec historique, permettant de suivre l'évolution de la qualité dans le temps. & Rapport Allure \\
+\hline
+\end{tabularx}
+\end{table}
+
+\paragraph{Performance.}
+La contrainte de temps d'exécution inférieur à 10 minutes est dictée par les bonnes pratiques DevOps. Un pipeline trop lent décourage les développeurs et ralentit le cycle de livraison. Pour atteindre cet objectif, nous prévoyons la parallélisation des tests et l'optimisation des temps d'attente.
+
+\paragraph{Fiabilité.}
+Les \textit{flaky tests} (tests instables qui échouent de manière aléatoire) sont l'un des principaux problèmes des suites de tests automatisés. Pour y remédier, nous adoptons les stratégies suivantes :
+\begin{itemize}[nosep]
+    \item Utilisation d'un script de \textit{seed} pour initialiser la base de données dans un état connu avant chaque exécution.
+    \item Attentes explicites (\textit{waitFor}) au lieu de délais fixes (\textit{sleep}).
+    \item Isolation des tests : chaque test est indépendant des autres.
+    \item Mécanisme de \textit{retry} automatique pour les tests sensibles au réseau.
+\end{itemize}
+
+\paragraph{Maintenabilité.}
+Le patron \textit{Page Object Model} permet de centraliser la description des éléments d'interface dans des classes dédiées. Ainsi, lorsqu'un sélecteur CSS ou un chemin d'API change, une seule modification suffit, au lieu de mettre à jour chaque test individuellement.
+
+\paragraph{Sécurité.}
+Bien que les tests de sécurité approfondis relèvent d'une démarche de \textit{penetration testing} dédiée, notre robot intègre des vérifications de base couvrant les vulnérabilités les plus courantes du référentiel OWASP Top 10, notamment les injections SQL et les attaques XSS.
+
+% =============================================================================
+\section{Diagrammes UML}
+\label{sec:diagrammes-uml}
+
+La modélisation UML (\textit{Unified Modeling Language}) permet de représenter graphiquement les différents aspects du système. Nous présentons dans cette section les diagrammes de cas d'utilisation, de séquence, de classes et de déploiement du robot de tests automatisés.
+
+% -----------------------------------------------------------------------------
+\subsection{Diagramme de cas d'utilisation}
+\label{subsec:diag-cas-utilisation}
+
+Le diagramme de cas d'utilisation (figure~\ref{fig:use-case-diagram}) présente les interactions entre les acteurs du système et les principales fonctionnalités du robot de tests.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    actor/.style={
+        rectangle, draw=speedlineBlue, fill=speedlineBlue!5,
+        minimum width=2.2cm, minimum height=0.8cm,
+        font=\footnotesize\bfseries, align=center, rounded corners=3pt
+    },
+    usecase/.style={
+        ellipse, draw=speedlineBlue, fill=white,
+        minimum width=3.2cm, minimum height=1.1cm,
+        font=\footnotesize, align=center, text width=2.8cm
+    },
+    systembox/.style={
+        draw=speedlineBlue!60, dashed, thick, rounded corners=5pt,
+        inner sep=12pt
+    }
+]
+
+% Actors - left side
+\node[actor] (testeur) at (-6, 2) {Testeur /\\Développeur};
+\node[actor] (cicd) at (-6, -2) {Pipeline\\CI/CD};
+
+% Actor - right side
+\node[actor] (robot) at (6, 0) {Robot\\de Test};
+
+% Use cases
+\node[usecase] (uc1) at (0, 4)   {Exécuter tests\\unitaires};
+\node[usecase] (uc2) at (0, 2.2) {Exécuter tests\\API};
+\node[usecase] (uc3) at (0, 0.4) {Exécuter tests\\E2E};
+\node[usecase] (uc4) at (0, -1.4) {Exécuter tests\\performance};
+\node[usecase] (uc5) at (0, -3.2) {Générer\\rapport};
+\node[usecase] (uc6) at (0, -5)  {Seed base\\de données};
+
+% System boundary
+\node[systembox, fit=(uc1)(uc2)(uc3)(uc4)(uc5)(uc6), label={[font=\bfseries\small, text=speedlineBlue]above:Robot de Tests Automatisés}] (system) {};
+
+% Connections - Testeur
+\draw[->, thick, speedlineBlue!70] (testeur) -- (uc1);
+\draw[->, thick, speedlineBlue!70] (testeur) -- (uc2);
+\draw[->, thick, speedlineBlue!70] (testeur) -- (uc3);
+\draw[->, thick, speedlineBlue!70] (testeur) -- (uc5);
+\draw[->, thick, speedlineBlue!70] (testeur) -- (uc6);
+
+% Connections - CI/CD
+\draw[->, thick, speedlineOrange!80] (cicd) -- (uc1);
+\draw[->, thick, speedlineOrange!80] (cicd) -- (uc2);
+\draw[->, thick, speedlineOrange!80] (cicd) -- (uc3);
+\draw[->, thick, speedlineOrange!80] (cicd) -- (uc4);
+\draw[->, thick, speedlineOrange!80] (cicd) -- (uc5);
+\draw[->, thick, speedlineOrange!80] (cicd) -- (uc6);
+
+% Connections - Robot
+\draw[->, thick, speedlineGreen!80] (robot) -- (uc1);
+\draw[->, thick, speedlineGreen!80] (robot) -- (uc2);
+\draw[->, thick, speedlineGreen!80] (robot) -- (uc3);
+\draw[->, thick, speedlineGreen!80] (robot) -- (uc4);
+\draw[->, thick, speedlineGreen!80] (robot) -- (uc5);
+
+\end{tikzpicture}
+\caption{Diagramme de cas d'utilisation du robot de tests}
+\label{fig:use-case-diagram}
+\end{figure}
+
+\paragraph{Description des acteurs.}
+\begin{itemize}[nosep]
+    \item \textbf{Testeur / Développeur} : l'utilisateur humain qui configure, lance et analyse les résultats des tests. Il peut déclencher manuellement l'exécution de n'importe quel type de test et consulter les rapports générés.
+    \item \textbf{Pipeline CI/CD} : le système automatisé GitLab CI qui déclenche l'exécution de la suite de tests complète à chaque événement de type \textit{push} ou \textit{merge request}. Il orchestre l'enchaînement des étapes de \textit{seed}, d'exécution et de génération de rapports.
+    \item \textbf{Robot de Test} : l'agent logiciel qui exécute effectivement les scénarios de test. Il interagit avec les applications web, les API et les applications mobiles selon les instructions codifiées dans les scripts de test.
+\end{itemize}
+
+\paragraph{Description des cas d'utilisation.}
+\begin{itemize}[nosep]
+    \item \textbf{Exécuter tests unitaires} : lancer les tests unitaires JUnit 5 (backend Spring Boot), Jasmine/Karma (frontend Angular) et les tests unitaires Flutter.
+    \item \textbf{Exécuter tests API} : lancer les tests d'intégration API via Playwright pour vérifier les endpoints REST.
+    \item \textbf{Exécuter tests E2E} : lancer les tests de bout en bout sur les interfaces web (Playwright) et mobile (Patrol/Flutter \textit{integration\_test}).
+    \item \textbf{Exécuter tests performance} : lancer les scénarios de charge k6 pour évaluer les performances sous contrainte.
+    \item \textbf{Générer rapport} : produire un rapport Allure interactif consolidant les résultats de toutes les couches de test.
+    \item \textbf{Seed base de données} : initialiser la base de données avec un jeu de données de test cohérent et reproductible.
+\end{itemize}
+
+% -----------------------------------------------------------------------------
+\subsection{Diagramme de séquence -- Exécution des tests}
+\label{subsec:diag-sequence}
+
+Le diagramme de séquence (figure~\ref{fig:sequence-diagram}) illustre le flux d'exécution complet des tests automatisés, depuis le déclenchement par le développeur jusqu'à la publication du rapport final.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    entity/.style={
+        rectangle, draw=speedlineBlue, fill=speedlineBlue!10,
+        minimum width=2cm, minimum height=0.7cm,
+        font=\footnotesize\bfseries, align=center
+    },
+    msg/.style={->, thick, >=stealth},
+    rmsg/.style={->, thick, >=stealth, dashed},
+    note/.style={
+        rectangle, draw=speedlineOrange, fill=speedlineOrange!10,
+        font=\scriptsize, align=left, rounded corners=2pt
+    }
+]
+
+% Entities
+\node[entity] (dev) at (0, 0)    {Développeur};
+\node[entity] (git) at (3, 0)    {GitLab CI};
+\node[entity] (seed) at (6, 0)   {Script Seed};
+\node[entity] (robot) at (9, 0)  {Robot Test};
+\node[entity] (allure) at (12, 0) {Allure};
+
+% Lifelines
+\foreach \n in {dev, git, seed, robot, allure} {
+    \draw[dashed, gray] (\n.south) -- ++(0, -15.5);
+}
+
+% Messages
+\draw[msg, speedlineBlue] (0, -1) -- node[above, font=\scriptsize] {1. git push} (3, -1);
+\draw[msg, speedlineBlue] (3, -2) -- node[above, font=\scriptsize] {2. Déclencher pipeline} (3, -2);
+
+% Activation box for GitLab
+\filldraw[fill=speedlineBlue!10, draw=speedlineBlue] (2.85, -1.5) rectangle (3.15, -14.5);
+
+\draw[msg, speedlineOrange] (3, -2.5) -- node[above, font=\scriptsize] {3. Seed DB} (6, -2.5);
+
+% Activation box for Seed
+\filldraw[fill=speedlineOrange!10, draw=speedlineOrange] (5.85, -2.5) rectangle (6.15, -4);
+\draw[rmsg, speedlineOrange] (6, -3.8) -- node[above, font=\scriptsize] {4. DB prête} (3, -3.8);
+
+\draw[msg, speedlineGreen] (3, -4.5) -- node[above, font=\scriptsize] {5. Tests unitaires} (9, -4.5);
+
+% Activation box for Robot
+\filldraw[fill=speedlineGreen!10, draw=speedlineGreen] (8.85, -4.5) rectangle (9.15, -12.5);
+\draw[rmsg, speedlineGreen] (9, -5.5) -- node[above, font=\scriptsize] {6. Résultats unitaires} (3, -5.5);
+
+\draw[msg, speedlineGreen] (3, -6.2) -- node[above, font=\scriptsize] {7. Tests API} (9, -6.2);
+\draw[rmsg, speedlineGreen] (9, -7.2) -- node[above, font=\scriptsize] {8. Résultats API} (3, -7.2);
+
+\draw[msg, speedlineGreen] (3, -8) -- node[above, font=\scriptsize] {9. Tests E2E} (9, -8);
+\draw[rmsg, speedlineGreen] (9, -9) -- node[above, font=\scriptsize] {10. Résultats E2E} (3, -9);
+
+\draw[msg, speedlineGreen] (3, -9.7) -- node[above, font=\scriptsize] {11. Tests performance} (9, -9.7);
+\draw[rmsg, speedlineGreen] (9, -10.7) -- node[above, font=\scriptsize] {12. Résultats perf.} (3, -10.7);
+
+\draw[msg, speedlineBlue] (3, -11.5) -- node[above, font=\scriptsize] {13. Générer rapport} (12, -11.5);
+
+% Activation box for Allure
+\filldraw[fill=speedlineBlue!10, draw=speedlineBlue] (11.85, -11.5) rectangle (12.15, -13.5);
+\draw[rmsg, speedlineBlue] (12, -13) -- node[above, font=\scriptsize] {14. Rapport publié} (3, -13);
+
+\draw[rmsg, speedlineBlue] (3, -14) -- node[above, font=\scriptsize] {15. Notification résultat} (0, -14);
+
+% Note
+\node[note] at (10.5, -14.8) {Rapport accessible\\via URL GitLab Pages};
+
+\end{tikzpicture}
+\caption{Diagramme de séquence -- Flux d'exécution des tests automatisés}
+\label{fig:sequence-diagram}
+\end{figure}
+
+\paragraph{Description du flux.}
+Le processus d'exécution des tests suit les étapes séquentielles suivantes :
+\begin{enumerate}[nosep]
+    \item Le développeur pousse son code sur le dépôt GitLab (\textit{git push}).
+    \item GitLab CI détecte l'événement et déclenche le pipeline de tests.
+    \item Le script de \textit{seed} initialise la base de données avec un jeu de données prédéfini.
+    \item Une fois la base de données prête, le robot exécute successivement les tests unitaires, les tests API, les tests E2E et les tests de performance.
+    \item À chaque étape, les résultats sont collectés et stockés.
+    \item Allure génère un rapport interactif consolidant l'ensemble des résultats.
+    \item Le rapport est publié sur GitLab Pages et une notification est envoyée au développeur.
+\end{enumerate}
+
+% -----------------------------------------------------------------------------
+\subsection{Diagramme de classes -- Architecture du Robot}
+\label{subsec:diag-classes}
+
+Le diagramme de classes (figure~\ref{fig:class-diagram}) présente l'architecture orientée objet du robot de tests, mettant en évidence les principales classes et leurs relations.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    class/.style={
+        rectangle, draw=speedlineBlue, fill=white,
+        minimum width=3.5cm, font=\footnotesize, align=left,
+        rounded corners=2pt
+    },
+    classname/.style={
+        rectangle, draw=speedlineBlue, fill=speedlineBlue!15,
+        minimum width=3.5cm, minimum height=0.6cm,
+        font=\footnotesize\bfseries, align=center
+    },
+    rel/.style={->, thick, >=stealth},
+    comp/.style={->, thick, >=stealth, dashed}
+]
+
+% === ApiClient ===
+\node[classname] (ac-name) at (0, 0) {ApiClient};
+\node[class, anchor=north, below=0pt of ac-name] (ac-attr) {
+    - baseUrl: string\\
+    - token: string\\
+    - headers: object
+};
+\node[class, anchor=north, below=0pt of ac-attr] (ac-meth) {
+    + login(email, pwd): Token\\
+    + get(endpoint): Response\\
+    + post(endpoint, data): Response\\
+    + put(endpoint, data): Response\\
+    + delete(endpoint): Response\\
+    + setAuth(token): void
+};
+
+% === TestData ===
+\node[classname] (td-name) at (6, 0) {TestData};
+\node[class, anchor=north, below=0pt of td-name] (td-attr) {
+    - testAccounts: Account[]\\
+    - testOrders: Order[]\\
+    - testProducts: Product[]\\
+    - testPartners: Partner[]
+};
+\node[class, anchor=north, below=0pt of td-attr] (td-meth) {
+    + getClientAccount(): Account\\
+    + getPartnerAccount(): Account\\
+    + getDriverAccount(): Account\\
+    + getTestOrder(): Order\\
+    + getTestProduct(): Product
+};
+
+% === TestConfig ===
+\node[classname] (tc-name) at (12, 0) {TestConfig};
+\node[class, anchor=north, below=0pt of tc-name] (tc-attr) {
+    - baseUrl: string\\
+    - apiUrl: string\\
+    - timeout: number\\
+    - retries: number\\
+    - headless: boolean
+};
+\node[class, anchor=north, below=0pt of tc-attr] (tc-meth) {
+    + getEnv(): string\\
+    + getBrowserConfig(): object\\
+    + getApiConfig(): object
+};
+
+% === Page Objects ===
+\node[classname] (po-name) at (0, -7) {\guillemotleft abstract\guillemotright\ BasePage};
+\node[class, anchor=north, below=0pt of po-name] (po-attr) {
+    \# page: Page\\
+    \# baseUrl: string
+};
+\node[class, anchor=north, below=0pt of po-attr] (po-meth) {
+    + navigate(path): void\\
+    + waitForLoad(): void\\
+    + screenshot(): Buffer
+};
+
+% Concrete pages
+\node[classname] (alp-name) at (-2.5, -11.5) {\small AdminLoginPage};
+\node[class, anchor=north, below=0pt of alp-name] (alp-meth) {
+    + login(user, pwd): void\\
+    + getError(): string
+};
+
+\node[classname] (adp-name) at (1.5, -11.5) {\small AdminDashboardPage};
+\node[class, anchor=north, below=0pt of adp-name] (adp-meth) {
+    + getStats(): Stats\\
+    + navigateTo(menu): void
+};
+
+\node[classname] (pop-name) at (5.5, -11.5) {\small PartnerOrdersPage};
+\node[class, anchor=north, below=0pt of pop-name] (pop-meth) {
+    + acceptOrder(id): void\\
+    + rejectOrder(id): void
+};
+
+% === SeedScript ===
+\node[classname] (ss-name) at (9, -7) {SeedScript};
+\node[class, anchor=north, below=0pt of ss-name] (ss-attr) {
+    - dbConnection: Connection\\
+    - seedData: object
+};
+\node[class, anchor=north, below=0pt of ss-attr] (ss-meth) {
+    + seedUsers(): void\\
+    + seedPartners(): void\\
+    + seedProducts(): void\\
+    + seedOrders(): void\\
+    + cleanDatabase(): void
+};
+
+% Relationships
+\draw[rel, speedlineBlue] (ac-meth.south) ++(0, -0.2) -- ++(0, -0.5) -| node[near start, above, font=\scriptsize] {utilise} (tc-attr.west);
+\draw[comp, speedlineOrange] (po-meth.south) ++(0, -0.2) -- (alp-name.north);
+\draw[comp, speedlineOrange] (po-meth.south) ++(0, -0.2) -- (adp-name.north);
+\draw[comp, speedlineOrange] (po-meth.south) ++(0, -0.2) -- (pop-name.north);
+\draw[rel, speedlineGreen] (ss-attr.west) ++(-0.2, 0) -- ++(-0.8, 0) |- node[near end, above, font=\scriptsize] {fournit données} (td-meth.south);
+
+\end{tikzpicture}
+\caption{Diagramme de classes -- Architecture du robot de tests}
+\label{fig:class-diagram}
+\end{figure}
+
+\paragraph{Description des classes.}
+\begin{itemize}[nosep]
+    \item \textbf{ApiClient} : classe centrale pour l'interaction avec les API REST. Elle encapsule les méthodes HTTP (\texttt{GET}, \texttt{POST}, \texttt{PUT}, \texttt{DELETE}) et gère l'authentification via un jeton JWT.
+    \item \textbf{TestData} : classe fournissant les données de test (comptes, commandes, produits) utilisées par les différents scénarios. Elle assure la cohérence des données entre les tests.
+    \item \textbf{TestConfig} : classe de configuration centralisant les paramètres d'environnement (URLs, timeouts, mode headless, nombre de tentatives).
+    \item \textbf{BasePage} : classe abstraite implémentant le patron \textit{Page Object Model}. Elle fournit les méthodes communes à toutes les pages (navigation, attente de chargement, capture d'écran).
+    \item \textbf{AdminLoginPage}, \textbf{AdminDashboardPage}, \textbf{PartnerOrdersPage} : classes concrètes héritant de \texttt{BasePage}, chacune décrivant les éléments et les actions propres à une page spécifique.
+    \item \textbf{SeedScript} : classe responsable de l'initialisation de la base de données avec un jeu de données de test reproductible.
+\end{itemize}
+
+% -----------------------------------------------------------------------------
+\subsection{Diagramme de déploiement}
+\label{subsec:diag-deploiement}
+
+Le diagramme de déploiement (figure~\ref{fig:deployment-diagram}) décrit l'infrastructure matérielle et logicielle sur laquelle le robot de tests est déployé, ainsi que les connexions entre les différents composants.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node3d/.style={
+        rectangle, draw=speedlineBlue, fill=speedlineBlue!8,
+        minimum width=3.8cm, minimum height=2.5cm,
+        font=\footnotesize, align=center, rounded corners=3pt,
+        drop shadow={shadow xshift=2pt, shadow yshift=-2pt, opacity=0.3}
+    },
+    component/.style={
+        rectangle, draw=speedlineGreen!80, fill=speedlineGreen!10,
+        minimum width=2.8cm, minimum height=0.5cm,
+        font=\scriptsize, align=center, rounded corners=2pt
+    },
+    conn/.style={<->, thick, >=stealth, speedlineOrange},
+    lbl/.style={font=\scriptsize, fill=white, inner sep=1pt}
+]
+
+% GitLab CI Runner
+\node[node3d] (runner) at (0, 0) {};
+\node[font=\footnotesize\bfseries, text=speedlineBlue] at (0, 1.5) {GitLab CI Runner};
+\node[component] (pw) at (0, 0.5)  {Playwright Container};
+\node[component] (k6) at (0, -0.2) {k6 Container};
+\node[component] (ft) at (0, -0.9) {Flutter Test Runner};
+
+% Backend services
+\node[node3d] (backend) at (7, 2) {};
+\node[font=\footnotesize\bfseries, text=speedlineBlue] at (7, 3.5) {Serveurs Backend};
+\node[component] (api) at (7, 2.7) {Spring Boot API};
+\node[component] (db) at (7, 2) {PostgreSQL};
+\node[component] (redis) at (7, 1.3) {Redis Cache};
+
+% Frontend apps
+\node[node3d] (frontend) at (7, -2) {};
+\node[font=\footnotesize\bfseries, text=speedlineBlue] at (7, -0.5) {Applications Frontend};
+\node[component] (admin) at (7, -1.2) {Admin Angular};
+\node[component] (partner) at (7, -1.9) {Partner Angular};
+\node[component] (client) at (7, -2.6) {Client Angular};
+
+% Mobile
+\node[node3d, minimum height=1.8cm] (mobile) at (0, -4.5) {};
+\node[font=\footnotesize\bfseries, text=speedlineBlue] at (0, -3.4) {Émulateur Mobile};
+\node[component] (flutter) at (0, -4.2) {Flutter App (Client)};
+\node[component] (fdriver) at (0, -4.9) {Flutter App (Livreur)};
+
+% Allure
+\node[node3d, minimum height=1.5cm] (allure) at (-5, -2) {};
+\node[font=\footnotesize\bfseries, text=speedlineBlue] at (-5, -1.2) {GitLab Pages};
+\node[component] (report) at (-5, -1.9) {Allure Report};
+
+% Connections
+\draw[conn] (pw.east) -- node[lbl, above] {HTTP/WS} (admin.west);
+\draw[conn] (k6.east) -- node[lbl] {HTTP} (api.west);
+\draw[conn] (runner.south) -- node[lbl, right] {ADB} (mobile.north);
+\draw[conn] (runner.west) -- node[lbl, above] {Résultats} (allure.east);
+\draw[conn] (frontend.north) -- node[lbl, right] {REST API} (backend.south);
+
+\end{tikzpicture}
+\caption{Diagramme de déploiement du robot de tests}
+\label{fig:deployment-diagram}
+\end{figure}
+
+\paragraph{Description des n\oe{}uds.}
+\begin{itemize}[nosep]
+    \item \textbf{GitLab CI Runner} : machine virtuelle ou conteneur Docker exécutant le pipeline CI/CD. Il héberge les trois environnements d'exécution des tests : le conteneur Playwright (tests web et API), le conteneur k6 (tests de performance) et le runner Flutter (tests mobiles).
+    \item \textbf{Serveurs Backend} : infrastructure hébergeant l'API Spring Boot, la base de données PostgreSQL et le cache Redis. Les tests interagissent avec ces services via des requêtes HTTP.
+    \item \textbf{Applications Frontend} : les trois applications Angular (administration, partenaire, client) déployées et accessibles via un navigateur contrôlé par Playwright.
+    \item \textbf{Émulateur Mobile} : émulateur Android ou simulateur iOS utilisé pour exécuter les tests d'intégration Flutter via Patrol et \textit{integration\_test}.
+    \item \textbf{GitLab Pages} : service d'hébergement statique de GitLab utilisé pour publier le rapport Allure, accessible à toute l'équipe via une URL dédiée.
+\end{itemize}
+
+% =============================================================================
+\section{Conception de la pyramide de tests}
+\label{sec:pyramide-tests}
+
+La pyramide de tests est un modèle conceptuel fondamental en ingénierie logicielle, popularisé par Mike Cohn~\cite{cohn2009succeeding}. Elle recommande de structurer les tests en couches hiérarchiques, avec une base large de tests rapides et peu coûteux et un sommet étroit de tests lents mais plus réalistes.
+
+Dans le cadre de notre projet, nous adoptons une pyramide à quatre couches, complétée par des tests de sécurité transversaux, comme l'illustre la figure~\ref{fig:pyramide-tests}.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+]
+
+% Pyramid layers (bottom to top)
+\node[trapezium, trapezium angle=75, draw=speedlineGreen, fill=speedlineGreen!15,
+  minimum height=1.2cm, minimum width=12cm, font=\footnotesize\bfseries, align=center] (l1) at (0, 0)
+    {Tests Unitaires (JUnit 5, Mockito, Jasmine, Flutter test)};
+
+\node[trapezium, trapezium angle=75, draw=speedlineBlue, fill=speedlineBlue!15,
+  minimum height=1.2cm, minimum width=9cm, font=\footnotesize\bfseries, align=center] (l2) at (0, 1.8)
+    {Tests d'Int\'{e}gration / API (Playwright API)};
+
+\node[trapezium, trapezium angle=75, draw=speedlineOrange, fill=speedlineOrange!15,
+  minimum height=1.2cm, minimum width=6cm, font=\footnotesize\bfseries, align=center] (l3) at (0, 3.6)
+    {Tests E2E (Playwright UI, Patrol)};
+
+\node[trapezium, trapezium angle=75, draw=red, fill=red!15,
+  minimum height=1.2cm, minimum width=3.5cm, font=\footnotesize\bfseries, align=center] (l4) at (0, 5.4)
+    {Tests Perf. (k6)};
+
+% Labels on the right
+\draw[<-, thick, gray] (6.5, 0) -- (7.5, 0) node[right, font=\scriptsize, align=left] {Rapides, nombreux,\\faible coût};
+\draw[<-, thick, gray] (5, 1.8) -- (7.5, 1.8) node[right, font=\scriptsize, align=left] {Vérifient les\\contrats API};
+\draw[<-, thick, gray] (3.5, 3.6) -- (7.5, 3.6) node[right, font=\scriptsize, align=left] {Scénarios\\utilisateur réels};
+\draw[<-, thick, gray] (2.2, 5.4) -- (7.5, 5.4) node[right, font=\scriptsize, align=left] {Charge et\\scalabilité};
+
+% Labels on the left
+\draw[<-, thick, gray] (-6.5, 0) -- (-7.5, 0) node[left, font=\scriptsize, align=right] {$\sim 60\%$\\des tests};
+\draw[<-, thick, gray] (-5, 1.8) -- (-7.5, 1.8) node[left, font=\scriptsize, align=right] {$\sim 25\%$\\des tests};
+\draw[<-, thick, gray] (-3.5, 3.6) -- (-7.5, 3.6) node[left, font=\scriptsize, align=right] {$\sim 10\%$\\des tests};
+\draw[<-, thick, gray] (-2.2, 5.4) -- (-7.5, 5.4) node[left, font=\scriptsize, align=right] {$\sim 5\%$\\des tests};
+
+% Security bar on the side
+\draw[thick, red!60, fill=red!10] (8.5, -0.6) rectangle (9.5, 6.2);
+\node[rotate=90, font=\footnotesize\bfseries, text=red!70] at (9, 2.8) {Tests de Sécurité (transversal)};
+
+\end{tikzpicture}
+\caption{Pyramide de tests adoptée pour le robot de tests automatisés}
+\label{fig:pyramide-tests}
+\end{figure}
+
+\subsection{Couche 1 -- Tests unitaires}
+\label{subsec:tests-unitaires}
+
+Les tests unitaires constituent la base de la pyramide et représentent environ 60\% de l'ensemble des tests. Ils vérifient le bon fonctionnement des unités de code individuelles (fonctions, méthodes, classes) de manière isolée.
+
+\begin{itemize}[nosep]
+    \item \textbf{Backend Spring Boot} : tests JUnit 5 avec Mockito pour moquer les dépendances. Couverture des services, des contrôleurs et des utilitaires.
+    \item \textbf{Frontend Angular} : tests Jasmine/Karma pour les composants, les services et les pipes Angular.
+    \item \textbf{Applications Flutter} : tests unitaires via le framework \texttt{flutter\_test} pour les modèles, les \textit{providers} et la logique métier.
+\end{itemize}
+
+\textbf{Caractéristiques} : exécution rapide ($< 1$ seconde par test), pas de dépendance externe, feedback immédiat au développeur.
+
+\subsection{Couche 2 -- Tests d'intégration et API}
+\label{subsec:tests-api}
+
+Les tests d'intégration vérifient que les différents modules communiquent correctement entre eux. Dans notre contexte, ils se concentrent principalement sur les tests API REST.
+
+\begin{itemize}[nosep]
+    \item Vérification des endpoints REST (codes de retour, format de réponse, validation des données).
+    \item Tests de contrat entre le frontend et le backend.
+    \item Tests d'authentification et d'autorisation (vérification des rôles).
+    \item Tests de la logique métier impliquant plusieurs services.
+\end{itemize}
+
+\textbf{Outil} : Playwright API Testing, qui permet d'envoyer des requêtes HTTP et de valider les réponses sans navigateur.
+
+\subsection{Couche 3 -- Tests End-to-End (E2E)}
+\label{subsec:tests-e2e}
+
+Les tests E2E simulent le comportement réel de l'utilisateur en interagissant avec l'application à travers son interface graphique. Ils couvrent les flux métier complets.
+
+\begin{itemize}[nosep]
+    \item \textbf{Applications web} : Playwright contrôle un navigateur Chromium, Firefox ou WebKit pour simuler les interactions utilisateur (clics, saisie de texte, navigation).
+    \item \textbf{Applications mobiles} : Patrol et \texttt{integration\_test} permettent de tester les applications Flutter sur un émulateur ou un appareil physique, y compris les dialogues natifs (permissions, notifications).
+\end{itemize}
+
+\textbf{Caractéristiques} : tests lents mais réalistes, couvrant l'intégralité de la pile applicative.
+
+\subsection{Couche 4 -- Tests de performance}
+\label{subsec:tests-performance}
+
+Les tests de performance se situent au sommet de la pyramide. Ils évaluent le comportement de l'application sous charge et identifient les goulots d'étranglement.
+
+\begin{itemize}[nosep]
+    \item Tests de charge (\textit{load testing}) : simulation de 100 à 500 utilisateurs simultanés.
+    \item Tests de stress (\textit{stress testing}) : montée progressive de la charge jusqu'à la rupture.
+    \item Tests d'endurance (\textit{soak testing}) : charge constante sur une durée prolongée.
+\end{itemize}
+
+\textbf{Outil} : k6, un outil de test de performance moderne, scriptable en JavaScript et optimisé pour l'intégration CI/CD.
+
+\subsection{Tests de sécurité -- Couche transversale}
+\label{subsec:tests-securite}
+
+Les tests de sécurité ne constituent pas une couche isolée mais traversent l'ensemble de la pyramide :
+\begin{itemize}[nosep]
+    \item \textbf{Niveau unitaire} : validation des entrées, échappement des caractères spéciaux.
+    \item \textbf{Niveau API} : tests d'injection SQL, vérification des en-têtes de sécurité (CORS, CSP, HSTS).
+    \item \textbf{Niveau E2E} : tests XSS, vérification du comportement face aux tentatives de contournement d'authentification.
+    \item \textbf{Niveau performance} : résistance aux attaques DDoS basiques.
+\end{itemize}
+
+% =============================================================================
+\section{Plan de test global}
+\label{sec:plan-test-global}
+
+Le plan de test global définit l'ensemble des scénarios de test à implémenter, classés par catégorie, type et priorité. Le tableau~\ref{tab:plan-test} présente les principaux scénarios identifiés.
+
+\begin{longtable}{|c|l|p{4.5cm}|l|c|l|}
+\caption{Plan de test global du robot de tests automatisés}
+\label{tab:plan-test} \\
+\hline
+\rowcolor{speedlineBlue!15}
+\textbf{ID} & \textbf{Catégorie} & \textbf{Scénario} & \textbf{Type} & \textbf{Priorité} & \textbf{Outil} \\
+\hline
+\endfirsthead
+\multicolumn{6}{c}{\tablename\ \thetable\ -- \textit{Suite de la page précédente}} \\
+\hline
+\rowcolor{speedlineBlue!15}
+\textbf{ID} & \textbf{Catégorie} & \textbf{Scénario} & \textbf{Type} & \textbf{Priorité} & \textbf{Outil} \\
+\hline
+\endhead
+\hline
+\multicolumn{6}{r}{\textit{Suite page suivante}} \\
+\endfoot
+\hline
+\endlastfoot
+
+% Authentification
+T01 & Auth & Connexion admin valide & E2E & Haute & Playwright \\
+\hline
+T02 & Auth & Connexion admin invalide & E2E & Haute & Playwright \\
+\hline
+T03 & Auth & Inscription client & API & Haute & Playwright API \\
+\hline
+T04 & Auth & Vérification OTP & API & Haute & Playwright API \\
+\hline
+T05 & Auth & Expiration du token JWT & API & Moyenne & Playwright API \\
+\hline
+T06 & Auth & Réinitialisation mot de passe & E2E & Moyenne & Playwright \\
+\hline
+
+% Commandes
+T07 & Commande & Création de commande complète & E2E & Haute & Playwright \\
+\hline
+T08 & Commande & Acceptation par partenaire & E2E & Haute & Playwright \\
+\hline
+T09 & Commande & Préparation de commande & API & Haute & Playwright API \\
+\hline
+T10 & Commande & Affectation livreur & API & Haute & Playwright API \\
+\hline
+T11 & Commande & Changement de statut livraison & API & Haute & Playwright API \\
+\hline
+T12 & Commande & Annulation de commande & API & Moyenne & Playwright API \\
+\hline
+T13 & Commande & Historique des commandes & E2E & Moyenne & Playwright \\
+\hline
+
+% Paiement
+T14 & Paiement & Paiement en ligne réussi & API & Haute & Playwright API \\
+\hline
+T15 & Paiement & Paiement en ligne échoué & API & Haute & Playwright API \\
+\hline
+T16 & Paiement & Paiement à la livraison & API & Haute & Playwright API \\
+\hline
+T17 & Paiement & Calcul montant total & Unitaire & Haute & JUnit 5 \\
+\hline
+
+% Partenaire
+T18 & Partenaire & Ajout produit au menu & E2E & Haute & Playwright \\
+\hline
+T19 & Partenaire & Modification prix produit & E2E & Moyenne & Playwright \\
+\hline
+T20 & Partenaire & Désactivation produit & API & Moyenne & Playwright API \\
+\hline
+T21 & Partenaire & Gestion catégories & E2E & Moyenne & Playwright \\
+\hline
+
+% Livreur
+T22 & Livreur & Tracking GPS temps réel & API & Haute & Playwright API \\
+\hline
+T23 & Livreur & Calcul temps de livraison & Unitaire & Moyenne & JUnit 5 \\
+\hline
+T24 & Livreur & Affectation automatique & API & Haute & Playwright API \\
+\hline
+
+% Utilisateurs
+T25 & Utilisateurs & Création compte admin & E2E & Haute & Playwright \\
+\hline
+T26 & Utilisateurs & Modification rôle & API & Moyenne & Playwright API \\
+\hline
+T27 & Utilisateurs & Désactivation compte & API & Moyenne & Playwright API \\
+\hline
+
+% Promotions
+T28 & Promotions & Création code promo & E2E & Moyenne & Playwright \\
+\hline
+T29 & Promotions & Application code promo & API & Haute & Playwright API \\
+\hline
+T30 & Promotions & Expiration code promo & Unitaire & Moyenne & JUnit 5 \\
+\hline
+
+% Avis
+T31 & Avis & Soumission avis client & API & Basse & Playwright API \\
+\hline
+T32 & Avis & Affichage moyenne avis & E2E & Basse & Playwright \\
+\hline
+
+% Support
+T33 & Support & Création ticket support & API & Moyenne & Playwright API \\
+\hline
+T34 & Support & Réponse ticket & E2E & Basse & Playwright \\
+\hline
+
+% Performance
+T35 & Performance & Charge 100 utilisateurs & Perf & Haute & k6 \\
+\hline
+T36 & Performance & Charge 500 utilisateurs & Perf & Moyenne & k6 \\
+\hline
+T37 & Performance & Temps réponse API $< 200$ms & Perf & Haute & k6 \\
+\hline
+
+% Sécurité
+T38 & Sécurité & Injection SQL sur login & API & Haute & Playwright API \\
+\hline
+T39 & Sécurité & XSS sur champs texte & E2E & Haute & Playwright \\
+\hline
+T40 & Sécurité & Accès non autorisé API & API & Haute & Playwright API \\
+\hline
+
+% Mobile
+T41 & Mobile & Connexion app client & E2E & Haute & Patrol \\
+\hline
+T42 & Mobile & Passage commande mobile & E2E & Haute & Patrol \\
+\hline
+T43 & Mobile & Tracking livreur mobile & E2E & Haute & Patrol \\
+\hline
+
+\end{longtable}
+
+\paragraph{Répartition des tests.}
+La figure~\ref{fig:repartition-tests} montre la répartition des scénarios de test par type et par catégorie.
+
+\begin{table}[H]
+\centering
+\caption{Répartition des scénarios par type de test}
+\label{fig:repartition-tests}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|l|c|c|}
+\hline
+\rowcolor{speedlineBlue!15}
+\textbf{Type de test} & \textbf{Nombre de scénarios} & \textbf{Pourcentage} \\
+\hline
+Tests unitaires & 3 & 7\% \\
+\hline
+Tests API & 18 & 42\% \\
+\hline
+Tests E2E & 16 & 37\% \\
+\hline
+Tests de performance & 3 & 7\% \\
+\hline
+Tests mobiles (E2E) & 3 & 7\% \\
+\hline
+\textbf{Total} & \textbf{43} & \textbf{100\%} \\
+\hline
+\end{tabular}
+\end{table}
+
+\textit{Note} : Les tests unitaires sont sous-représentés dans ce tableau car ils sont déjà présents dans les projets existants. Le robot de tests se concentre principalement sur les couches API, E2E et performance qui étaient absentes avant notre intervention.
+
+% =============================================================================
+\section{Choix techniques}
+\label{sec:choix-techniques}
+
+Le choix des outils de test est une décision stratégique qui impacte directement la productivité de l'équipe, la maintenabilité de la suite de tests et la qualité du feedback fourni. Nous justifions dans cette section chacun de nos choix en les confrontant aux alternatives existantes.
+
+% -----------------------------------------------------------------------------
+\subsection{Playwright vs Cypress}
+\label{subsec:playwright-vs-cypress}
+
+Pour l'automatisation des tests web (interfaces Angular), nous avons comparé les deux frameworks leaders du marché : Playwright et Cypress. Le tableau~\ref{tab:playwright-vs-cypress} présente une comparaison détaillée.
+
+\begin{table}[H]
+\centering
+\caption{Comparaison Playwright vs Cypress}
+\label{tab:playwright-vs-cypress}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{|l|X|X|}
+\hline
+\rowcolor{speedlineBlue!15}
+\textbf{Critère} & \textbf{Playwright} & \textbf{Cypress} \\
+\hline
+Multi-navigateur & Chromium, Firefox, WebKit & Chromium, Firefox (partiel), pas de WebKit \\
+\hline
+Tests API intégrés & Oui, natif (\texttt{request} context) & Oui, via \texttt{cy.request} \\
+\hline
+Parallélisation & Natif, gratuit & Payant (Cypress Dashboard) \\
+\hline
+Multi-onglets & Supporté nativement & Non supporté \\
+\hline
+Langages & TypeScript, JavaScript, Python, Java, C\# & JavaScript, TypeScript uniquement \\
+\hline
+Vitesse d'exécution & Rapide (protocole CDP) & Moyenne (exécution dans le navigateur) \\
+\hline
+Intégration CI/CD & Excellente, images Docker officielles & Bonne, nécessite configuration \\
+\hline
+Auto-wait & Intelligent, configurable & Automatique, moins flexible \\
+\hline
+Communauté & Croissance rapide (Microsoft) & Large, mature \\
+\hline
+Licence & Apache 2.0 (entièrement gratuit) & Freemium (fonctions avancées payantes) \\
+\hline
+\end{tabularx}
+\end{table}
+
+\paragraph{Justification du choix.}
+Nous avons retenu \textbf{Playwright} pour les raisons suivantes :
+\begin{enumerate}[nosep]
+    \item \textbf{Support multi-navigateur complet} : la possibilité de tester sur Chromium, Firefox et WebKit assure une couverture maximale des navigateurs utilisés par les clients Speed Line.
+    \item \textbf{Tests API natifs} : Playwright permet de combiner tests UI et tests API dans un même framework, réduisant la complexité de la pile technologique.
+    \item \textbf{Parallélisation gratuite} : contrairement à Cypress qui nécessite un abonnement payant pour la parallélisation, Playwright offre cette fonctionnalité nativement.
+    \item \textbf{Performance supérieure} : Playwright communique avec le navigateur via le protocole Chrome DevTools Protocol (CDP), ce qui est plus rapide que l'approche de Cypress qui s'exécute à l'intérieur du navigateur.
+    \item \textbf{Intégration CI/CD excellente} : les images Docker officielles Playwright simplifient considérablement la configuration dans GitLab CI.
+\end{enumerate}
+
+% -----------------------------------------------------------------------------
+\subsection{Patrol vs Appium}
+\label{subsec:patrol-vs-appium}
+
+Pour les tests de l'application mobile Flutter, nous avons comparé Patrol (avec \texttt{integration\_test}) et Appium. Le tableau~\ref{tab:patrol-vs-appium} résume cette comparaison.
+
+\begin{table}[H]
+\centering
+\caption{Comparaison Patrol vs Appium}
+\label{tab:patrol-vs-appium}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{|l|X|X|}
+\hline
+\rowcolor{speedlineBlue!15}
+\textbf{Critère} & \textbf{Patrol} & \textbf{Appium} \\
+\hline
+Spécifique Flutter & Oui, conçu pour Flutter & Non, générique (iOS, Android, Web) \\
+\hline
+Pont (\textit{bridge}) & Aucun, exécution native & WebDriver bridge (latence) \\
+\hline
+Dialogues natifs & Gestion native (permissions, alertes) & Nécessite configuration complexe \\
+\hline
+Langage de test & Dart (même que l'application) & Java, Python, JavaScript, etc. \\
+\hline
+Vitesse & Très rapide (pas de sérialisation) & Lent (communication via pont) \\
+\hline
+Configuration & Minimale, intégré à Flutter & Complexe (serveur Appium, drivers) \\
+\hline
+Accès aux widgets & Direct, via \texttt{find.byType} & Via sélecteurs d'accessibilité \\
+\hline
+Communauté & En croissance & Très large, mature \\
+\hline
+Maintenance & Faible, lié au projet Flutter & Élevée, mises à jour fréquentes \\
+\hline
+\end{tabularx}
+\end{table}
+
+\paragraph{Justification du choix.}
+Nous avons retenu \textbf{Patrol} pour les raisons suivantes :
+\begin{enumerate}[nosep]
+    \item \textbf{Natif Flutter} : Patrol est conçu spécifiquement pour Flutter, ce qui élimine le surcoût du pont de communication (\textit{bridge overhead}) d'Appium.
+    \item \textbf{Gestion des dialogues natifs} : Patrol gère nativement les dialogues système (permissions de géolocalisation, notifications), ce qui est critique pour l'application livreur qui utilise le GPS.
+    \item \textbf{Même langage} : les tests sont écrits en Dart, le même langage que l'application, ce qui facilite la collaboration entre développeurs et testeurs.
+    \item \textbf{Performance} : l'absence de sérialisation entre le test et l'application rend l'exécution significativement plus rapide.
+    \item \textbf{Simplicité de configuration} : pas besoin d'installer et de configurer un serveur Appium séparé.
+\end{enumerate}
+
+% -----------------------------------------------------------------------------
+\subsection{k6 vs JMeter vs Gatling}
+\label{subsec:k6-vs-jmeter}
+
+Pour les tests de performance, nous avons évalué trois outils populaires : k6, Apache JMeter et Gatling. Le tableau~\ref{tab:k6-vs-jmeter} présente la comparaison.
+
+\begin{table}[H]
+\centering
+\caption{Comparaison k6 vs JMeter vs Gatling}
+\label{tab:k6-vs-jmeter}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{|l|X|X|X|}
+\hline
+\rowcolor{speedlineBlue!15}
+\textbf{Critère} & \textbf{k6} & \textbf{JMeter} & \textbf{Gatling} \\
+\hline
+Langage & JavaScript/TypeScript & XML (GUI) & Scala/Java \\
+\hline
+Interface & CLI (code-first) & GUI lourde & CLI + DSL \\
+\hline
+Empreinte mémoire & Faible (Go runtime) & Élevée (JVM) & Moyenne (JVM) \\
+\hline
+Intégration CI/CD & Excellente (CLI natif) & Complexe (GUI) & Bonne \\
+\hline
+Courbe d'apprentissage & Douce (JavaScript) & Moyenne & Raide (Scala) \\
+\hline
+Protocoles & HTTP, WebSocket, gRPC & HTTP, JDBC, FTP, JMS, etc. & HTTP, WebSocket \\
+\hline
+Rapports & Intégrés + export & Intégrés & HTML élégant \\
+\hline
+Conteneurisation & Image Docker légère & Image Docker lourde & Image Docker moyenne \\
+\hline
+Licence & AGPL v3 (gratuit) & Apache 2.0 & Apache 2.0 \\
+\hline
+\end{tabularx}
+\end{table}
+
+\paragraph{Justification du choix.}
+Nous avons retenu \textbf{k6} pour les raisons suivantes :
+\begin{enumerate}[nosep]
+    \item \textbf{Approche code-first en JavaScript} : les scripts de test sont écrits en JavaScript, un langage déjà maîtrisé par l'équipe, contrairement au Scala de Gatling ou à l'interface XML de JMeter.
+    \item \textbf{Légèreté} : k6 est compilé en Go et consomme très peu de mémoire, ce qui permet de l'exécuter dans un conteneur CI/CD sans surcoût.
+    \item \textbf{Intégration CI/CD native} : k6 est conçu dès le départ pour fonctionner en ligne de commande, ce qui facilite son intégration dans GitLab CI.
+    \item \textbf{Résultats exploitables} : k6 produit des métriques standardisées (temps de réponse, débit, taux d'erreur) exportables vers des outils de visualisation comme Grafana.
+\end{enumerate}
+
+% -----------------------------------------------------------------------------
+\subsection{Allure vs HTML Reporter}
+\label{subsec:allure-vs-html}
+
+Pour la génération de rapports de test, nous avons comparé Allure Report et le HTML Reporter natif de Playwright. Le tableau~\ref{tab:allure-vs-html} présente cette comparaison.
+
+\begin{table}[H]
+\centering
+\caption{Comparaison Allure Report vs HTML Reporter}
+\label{tab:allure-vs-html}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{|l|X|X|}
+\hline
+\rowcolor{speedlineBlue!15}
+\textbf{Critère} & \textbf{Allure Report} & \textbf{HTML Reporter} \\
+\hline
+Interface & Riche, interactive, navigation par catégorie & Simple, liste plate des tests \\
+\hline
+Historique & Oui, tendances sur plusieurs exécutions & Non, exécution courante uniquement \\
+\hline
+Captures d'écran & Intégrées avec navigation & Intégrées, moins ergonomiques \\
+\hline
+Traces réseau & Oui, avec détail des requêtes & Oui (trace viewer) \\
+\hline
+Catégorisation & Par fonctionnalité, sévérité, durée & Par fichier de test uniquement \\
+\hline
+Intégration multi-outils & JUnit, Playwright, k6, Flutter & Playwright uniquement \\
+\hline
+Personnalisation & Thèmes, plugins, environnements & Limitée \\
+\hline
+Hébergement & GitLab Pages, S3, serveur statique & Fichier local uniquement \\
+\hline
+\end{tabularx}
+\end{table}
+
+\paragraph{Justification du choix.}
+Nous avons retenu \textbf{Allure Report} pour les raisons suivantes :
+\begin{enumerate}[nosep]
+    \item \textbf{Rapport consolidé multi-outils} : Allure peut agréger les résultats de JUnit 5, Playwright, k6 et Flutter dans un rapport unique et cohérent.
+    \item \textbf{Historique et tendances} : la fonctionnalité d'historique permet de suivre l'évolution de la qualité au fil du temps, identifiant les régressions et les améliorations.
+    \item \textbf{Interface riche} : l'interface web interactive facilite l'analyse des résultats par les membres non techniques de l'équipe (chefs de projet, \textit{product owners}).
+    \item \textbf{Intégration GitLab Pages} : le rapport peut être automatiquement publié sur GitLab Pages à chaque exécution du pipeline, rendant les résultats accessibles à toute l'équipe.
+\end{enumerate}
+
+% =============================================================================
+\section{Architecture du robot de test}
+\label{sec:architecture-robot}
+
+L'architecture du robot de test a été conçue pour être modulaire, maintenable et extensible. Elle suit une organisation en répertoires thématiques, chaque répertoire regroupant les tests et les ressources d'un même type.
+
+\subsection{Structure des répertoires}
+\label{subsec:structure-repertoires}
+
+La structure globale du projet de tests est présentée ci-dessous :
+
+\begin{lstlisting}[language={}, caption={Structure des répertoires du robot de tests}, label={lst:structure-dirs}]
+tests/
+|-- playwright/          # Tests web UI + API
+|   |-- pages/          # Page Object Model
+|   |   |-- admin/      # Pages admin (Angular)
+|   |   |-- partner/    # Pages partenaire (Angular)
+|   |   |-- client/     # Pages client (Angular)
+|   |-- api/            # Tests API REST
+|   |-- e2e/            # Tests E2E navigateur
+|   |-- security/       # Tests de securite
+|   |-- fixtures/       # Donnees de test
+|   |-- utils/          # Utilitaires partages
+|   |-- playwright.config.ts
+|-- mobile/              # Tests Flutter
+|   |-- client_app/     # Tests app client
+|   |   |-- integration_test/
+|   |   |-- test/       # Tests unitaires
+|   |-- driver_app/     # Tests app livreur
+|   |   |-- integration_test/
+|   |   |-- test/       # Tests unitaires
+|-- performance/         # Scripts k6
+|   |-- scenarios/      # Scenarios de charge
+|   |-- thresholds/     # Seuils de performance
+|   |-- utils/          # Utilitaires k6
+|-- seed/                # Script d'initialisation DB
+|   |-- data/           # Donnees de seed
+|   |-- scripts/        # Scripts SQL/API
+|-- ci/                  # Configuration GitLab CI
+|   |-- .gitlab-ci.yml  # Pipeline principal
+|   |-- jobs/           # Jobs specifiques
+|-- docs/                # Documentation
+    |-- test-plan.md    # Plan de test detaille
+    |-- manual/         # Scenarios manuels
+\end{lstlisting}
+
+\subsection{Architecture logique}
+\label{subsec:architecture-logique}
+
+La figure~\ref{fig:architecture-logique} présente l'architecture logique du robot de tests, montrant les interactions entre les différents modules.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    module/.style={
+        rectangle, draw=#1, fill=white,
+        minimum width=3cm, minimum height=1cm,
+        font=\footnotesize\bfseries, align=center,
+        rounded corners=3pt
+    },
+    arrow/.style={->, thick, >=stealth, #1},
+    group/.style={
+        rectangle, draw=#1!60, dashed, thick,
+        rounded corners=5pt, inner sep=8pt
+    }
+]
+
+% CI/CD orchestration layer
+\node[module=speedlineBlue] (ci) at (0, 6) {GitLab CI Pipeline};
+
+% Test execution layer
+\node[module=speedlineGreen] (unit) at (-5, 4) {Tests Unitaires};
+\node[module=speedlineGreen] (api) at (-1.5, 4) {Tests API};
+\node[module=speedlineGreen] (e2e) at (2, 4) {Tests E2E};
+\node[module=speedlineGreen] (perf) at (5.5, 4) {Tests Performance};
+
+% Framework layer
+\node[module=speedlineOrange] (junit) at (-5, 2) {JUnit 5\\Jasmine};
+\node[module=speedlineOrange] (pwapi) at (-1.5, 2) {Playwright\\API Context};
+\node[module=speedlineOrange] (pwui) at (2, 2) {Playwright UI\\Patrol};
+\node[module=speedlineOrange] (k6) at (5.5, 2) {k6};
+
+% Support layer
+\node[module=red!70] (seed) at (-3, 0) {Seed Script};
+\node[module=red!70] (config) at (0.5, 0) {Test Config};
+\node[module=red!70] (report) at (4, 0) {Allure Report};
+
+% Target applications
+\node[module=gray] (backend) at (-3, -2) {Backend\\Spring Boot};
+\node[module=gray] (frontend) at (1, -2) {Frontend\\Angular};
+\node[module=gray] (mobile) at (5, -2) {Mobile\\Flutter};
+
+% Groups
+\node[group=speedlineBlue, fit=(ci), label={[font=\scriptsize\bfseries, text=speedlineBlue]above:Orchestration}] {};
+\node[group=speedlineGreen, fit=(unit)(api)(e2e)(perf), label={[font=\scriptsize\bfseries, text=speedlineGreen]above:Couche de Tests}] {};
+\node[group=speedlineOrange, fit=(junit)(pwapi)(pwui)(k6), label={[font=\scriptsize\bfseries, text=speedlineOrange]above:Frameworks}] {};
+\node[group=gray, fit=(backend)(frontend)(mobile), label={[font=\scriptsize\bfseries, text=gray]below:Applications Cibles}] {};
+
+% Arrows
+\draw[arrow=speedlineBlue] (ci) -- (unit);
+\draw[arrow=speedlineBlue] (ci) -- (api);
+\draw[arrow=speedlineBlue] (ci) -- (e2e);
+\draw[arrow=speedlineBlue] (ci) -- (perf);
+
+\draw[arrow=speedlineGreen] (unit) -- (junit);
+\draw[arrow=speedlineGreen] (api) -- (pwapi);
+\draw[arrow=speedlineGreen] (e2e) -- (pwui);
+\draw[arrow=speedlineGreen] (perf) -- (k6);
+
+\draw[arrow=speedlineOrange] (junit) -- (backend);
+\draw[arrow=speedlineOrange] (pwapi) -- (backend);
+\draw[arrow=speedlineOrange] (pwui) -- (frontend);
+\draw[arrow=speedlineOrange] (k6) -- (backend);
+\draw[arrow=speedlineOrange] (pwui) -- (mobile);
+
+\draw[arrow=red!70, dashed] (seed) -- (backend);
+\draw[arrow=red!70, dashed] (config) -- (pwapi);
+\draw[arrow=red!70, dashed] (config) -- (pwui);
+\draw[arrow=red!70, dashed] (report.north) -- ++(0, 0.5) -| (ci);
+
+\end{tikzpicture}
+\caption{Architecture logique du robot de tests}
+\label{fig:architecture-logique}
+\end{figure}
+
+\subsection{Description des modules}
+\label{subsec:description-modules}
+
+\paragraph{Module Playwright (tests web et API).}
+Ce module constitue le c\oe{}ur du robot de tests. Il est organisé selon le patron \textit{Page Object Model}, avec une séparation claire entre :
+\begin{itemize}[nosep]
+    \item Les \textbf{pages} (\texttt{pages/}) : classes décrivant les éléments et les actions de chaque page web.
+    \item Les \textbf{tests API} (\texttt{api/}) : scénarios vérifiant les endpoints REST de l'API Spring Boot.
+    \item Les \textbf{tests E2E} (\texttt{e2e/}) : scénarios simulant le parcours utilisateur complet sur les interfaces Angular.
+    \item Les \textbf{tests de sécurité} (\texttt{security/}) : vérifications des vulnérabilités courantes (injection SQL, XSS).
+\end{itemize}
+
+\paragraph{Module Mobile (tests Flutter).}
+Ce module contient les tests pour les deux applications mobiles Flutter :
+\begin{itemize}[nosep]
+    \item L'application \textbf{client} : tests du parcours de commande, du tracking et du paiement.
+    \item L'application \textbf{livreur} : tests de la réception des commandes, du tracking GPS et de la confirmation de livraison.
+\end{itemize}
+
+Les tests utilisent le framework \texttt{integration\_test} de Flutter, complété par Patrol pour la gestion des dialogues natifs (permissions de géolocalisation, notifications push).
+
+\paragraph{Module Performance (scripts k6).}
+Ce module contient les scénarios de test de charge écrits en JavaScript pour k6 :
+\begin{itemize}[nosep]
+    \item Simulation de \textbf{charge normale} : 100 utilisateurs simultanés pendant 5 minutes.
+    \item Simulation de \textbf{pic de charge} : montée progressive de 0 à 500 utilisateurs.
+    \item Test d'\textbf{endurance} : 50 utilisateurs constants pendant 30 minutes.
+\end{itemize}
+
+\paragraph{Module Seed (initialisation de la base de données).}
+Le script de \textit{seed} garantit un état initial reproductible de la base de données avant chaque exécution de tests. Il crée :
+\begin{itemize}[nosep]
+    \item Des comptes de test pour chaque rôle (admin, client, partenaire, livreur).
+    \item Des partenaires avec leurs menus et catégories de produits.
+    \item Des commandes dans différents états pour tester les transitions.
+    \item Des codes promotionnels actifs et expirés.
+\end{itemize}
+
+\paragraph{Module CI (configuration GitLab CI).}
+La configuration du pipeline GitLab CI orchestre l'exécution séquentielle des étapes :
+\begin{enumerate}[nosep]
+    \item \textbf{Stage seed} : initialisation de la base de données.
+    \item \textbf{Stage unit} : exécution des tests unitaires (JUnit 5, Jasmine, Flutter test).
+    \item \textbf{Stage api} : exécution des tests API Playwright.
+    \item \textbf{Stage e2e} : exécution des tests E2E Playwright et Patrol.
+    \item \textbf{Stage perf} : exécution des tests de performance k6.
+    \item \textbf{Stage report} : génération et publication du rapport Allure.
+\end{enumerate}
+
+% =============================================================================
+\section*{Conclusion}
+
+Dans ce chapitre, nous avons mené une analyse approfondie des besoins fonctionnels et non fonctionnels du robot de tests automatisés. La modélisation UML nous a permis de visualiser les interactions entre les acteurs, le flux d'exécution des tests, l'architecture logicielle et l'infrastructure de déploiement.
+
+Nous avons justifié nos choix techniques (Playwright, Patrol, k6, Allure) en les confrontant aux alternatives du marché, en nous appuyant sur des critères objectifs de performance, de maintenabilité et d'intégration CI/CD.
+
+La conception de la pyramide de tests à quatre couches, complétée par des tests de sécurité transversaux, assure une couverture optimale tout en maîtrisant le temps d'exécution. Le plan de test global, avec ses 43 scénarios répartis sur toutes les catégories métier, constitue la feuille de route pour la phase de réalisation que nous abordons dans le chapitre suivant.

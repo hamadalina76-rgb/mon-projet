@@ -1,0 +1,188 @@
+# ============================================================================
+# API GATEWAY — Docker test environment
+# Routes match actual controller @RequestMapping paths per service
+# ============================================================================
+server:
+  port: 8080
+  address: 0.0.0.0
+
+spring:
+  application:
+    name: api-gateway
+  main:
+    lazy-initialization: false
+  data:
+    redis:
+      host: redis
+      port: 6379
+  cloud:
+    config:
+      enabled: false
+    bootstrap:
+      enabled: false
+    gateway:
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+      routes:
+        # AUTH SERVICE - uses /api/v1/auth
+        - id: auth-service
+          uri: http://auth-service:8080
+          predicates:
+            - Path=/api/v1/auth/**
+
+        # USER SERVICE - controllers use /users, /customers, /couriers, /admins, /addresses
+        - id: user-service-v1
+          uri: http://user-service:8080
+          predicates:
+            - Path=/api/v1/users/**
+          filters:
+            - StripPrefix=2
+        - id: user-service-customers
+          uri: http://user-service:8080
+          predicates:
+            - Path=/api/v1/customers/**
+          filters:
+            - StripPrefix=2
+        - id: user-service-couriers
+          uri: http://user-service:8080
+          predicates:
+            - Path=/api/v1/couriers/**
+          filters:
+            - StripPrefix=2
+        - id: user-service-admins
+          uri: http://user-service:8080
+          predicates:
+            - Path=/api/v1/admins/**
+          filters:
+            - StripPrefix=2
+
+        # PARTNER SERVICE - controllers use /partners, /products, /v1/categories
+        - id: partner-service
+          uri: http://partner-service:8080
+          predicates:
+            - Path=/api/v1/partners/**
+          filters:
+            - StripPrefix=2
+        - id: partner-service-categories
+          uri: http://partner-service:8080
+          predicates:
+            - Path=/api/v1/categories/**
+          filters:
+            - StripPrefix=2
+
+        # ORDER SERVICE - controllers use /orders, /cart
+        - id: order-service
+          uri: http://order-service:8080
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - StripPrefix=2
+        - id: order-service-cart
+          uri: http://order-service:8080
+          predicates:
+            - Path=/api/v1/cart/**
+          filters:
+            - StripPrefix=2
+
+        # DELIVERY SERVICE - controllers use /api/v1/deliveries AND /deliveries, /dispatch
+        - id: delivery-service-api
+          uri: http://delivery-service:8080
+          predicates:
+            - Path=/api/v1/deliveries/**,/api/v1/tracking/**
+        - id: delivery-service-dispatch
+          uri: http://delivery-service:8080
+          predicates:
+            - Path=/api/v1/dispatch/**
+          filters:
+            - StripPrefix=2
+
+        # PAYMENT SERVICE - controllers use /payments, /wallets
+        - id: payment-service
+          uri: http://payment-service:8080
+          predicates:
+            - Path=/api/v1/payments/**
+          filters:
+            - StripPrefix=2
+        - id: payment-service-wallets
+          uri: http://payment-service:8080
+          predicates:
+            - Path=/api/v1/wallets/**
+          filters:
+            - StripPrefix=2
+
+        # LOCATION SERVICE - controllers use /zones, /locations
+        - id: location-service-zones
+          uri: http://location-service:8080
+          predicates:
+            - Path=/api/v1/zones/**
+          filters:
+            - StripPrefix=2
+        - id: location-service-locations
+          uri: http://location-service:8080
+          predicates:
+            - Path=/api/v1/location/**
+          filters:
+            - RewritePath=/api/v1/location/(?<segment>.*), /locations/${segment}
+
+        # PROMOTION SERVICE - controllers use /promotions
+        - id: promotion-service
+          uri: http://promotion-service:8080
+          predicates:
+            - Path=/api/v1/promotions/**
+          filters:
+            - StripPrefix=2
+
+        # NOTIFICATION SERVICE - controllers use /notifications
+        - id: notification-service
+          uri: http://notification-service:8080
+          predicates:
+            - Path=/api/v1/notifications/**
+          filters:
+            - StripPrefix=2
+
+        # REVIEW SERVICE - controllers use /reviews
+        - id: review-service
+          uri: http://review-service:8080
+          predicates:
+            - Path=/api/v1/reviews/**,/api/v1/ratings/**
+          filters:
+            - StripPrefix=2
+
+        # SUPPORT SERVICE - controllers use /tickets
+        - id: support-service
+          uri: http://support-service:8080
+          predicates:
+            - Path=/api/v1/support/tickets/**
+          filters:
+            - RewritePath=/api/v1/support/(?<segment>.*), /${segment}
+
+        # ANALYTICS SERVICE - controllers use /analytics, /reports
+        - id: analytics-service
+          uri: http://analytics-service:8080
+          predicates:
+            - Path=/api/v1/analytics/**,/api/v1/reports/**
+          filters:
+            - StripPrefix=2
+
+eureka:
+  client:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: DEBUG

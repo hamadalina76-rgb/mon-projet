@@ -1,0 +1,99 @@
+% ==============================================================================
+% Page de Garde - Rapport PFE - ISET Nabeul
+% ==============================================================================
+
+\thispagestyle{empty}
+
+\begin{tikzpicture}[remember picture, overlay]
+  % --- Bordure exterieure ---
+  \draw[line width=2pt, color=black!80]
+    ([shift={(1.5cm,-1.5cm)}]current page.north west)
+    rectangle
+    ([shift={(-1.5cm,1.5cm)}]current page.south east);
+
+  % --- Bordure interieure ---
+  \draw[line width=0.5pt, color=black!60]
+    ([shift={(1.7cm,-1.7cm)}]current page.north west)
+    rectangle
+    ([shift={(-1.7cm,1.7cm)}]current page.south east);
+
+  % --- Filets decoratifs aux coins ---
+  \foreach \corner/\xshift/\yshift in {
+    north west/2cm/-2cm,
+    north east/-2cm/-2cm,
+    south west/2cm/2cm,
+    south east/-2cm/2cm
+  } {
+    \draw[line width=1.5pt, color=black!70]
+      ([shift={(\xshift,\yshift)}]current page.\corner)
+      -- ++(0.8cm,0) ([shift={(\xshift,\yshift)}]current page.\corner) -- ++(0,0.8cm);
+  }
+
+  % --- Ligne decorative horizontale en haut ---
+  \draw[line width=1pt, color=black!50]
+    ([shift={(3cm,-5.5cm)}]current page.north west)
+    -- ([shift={(-3cm,-5.5cm)}]current page.north east);
+
+  % --- Ligne decorative horizontale en bas ---
+  \draw[line width=1pt, color=black!50]
+    ([shift={(3cm,3.5cm)}]current page.south west)
+    -- ([shift={(-3cm,3.5cm)}]current page.south east);
+\end{tikzpicture}
+
+\begin{center}
+
+  % --- En-tete institutionnel ---
+  \vspace*{0.5cm}
+
+  {\large \textbf{R\'{e}publique Tunisienne}}\\[4pt]
+  {\large Minist\`{e}re de l'Enseignement Sup\'{e}rieur\\
+  et de la Recherche Scientifique}\\[0.8cm]
+
+  % --- Logo ISET (placeholder) ---
+  % \includegraphics[height=2.5cm]{images/logo-iset-nabeul.png}\\[0.5cm]
+  {\Large \textsc{ISET}}\\[0.3cm]
+
+  {\LARGE \textbf{Institut Sup\'{e}rieur des \'{E}tudes\\[4pt]
+  Technologiques de Nabeul}}\\[0.4cm]
+
+  {\large D\'{e}partement Technologies de l'Informatique}\\[0.8cm]
+
+  % --- Ligne de separation ---
+  \rule{0.6\textwidth}{0.8pt}\\[0.8cm]
+
+  % --- Type de document ---
+  {\Large \textsc{Rapport de Projet de Fin d'\'{E}tudes}}\\[0.4cm]
+
+  {\large Pour l'obtention du dipl\^{o}me de}\\[0.2cm]
+  {\Large \textbf{Licence Appliqu\'{e}e en Technologies de l'Informatique}}\\[0.8cm]
+
+  % --- Ligne de separation ---
+  \rule{0.6\textwidth}{0.8pt}\\[0.8cm]
+
+  % --- Titre du projet ---
+  {\huge \textbf{Mise en place d'un Robot de Tests\\[6pt]
+  Automatis\'{e}s pour les Projets\\[6pt]
+  Speed Line \& Delivery App}}\\[1.2cm]
+
+  % --- Ligne de separation ---
+  \rule{0.4\textwidth}{0.5pt}\\[1cm]
+
+  % --- Informations pratiques ---
+  \begin{tabular}{r @{\hspace{0.5cm}:\hspace{0.5cm}} l}
+    \textbf{R\'{e}alis\'{e} par}        & [Nom Stagiaire 1] \\[4pt]
+                                         & [Nom Stagiaire 2] \\[10pt]
+    \textbf{Encadrant entreprise}        & M. Mahmoud Slama \\[4pt]
+    \textbf{Encadrant acad\'{e}mique}    & [Nom Encadrant ISET] \\[10pt]
+    \textbf{Entreprise d'accueil}        & DevWise -- Nabeul, Tunisie \\[4pt]
+  \end{tabular}
+
+  \vfill
+
+  % --- Annee universitaire ---
+  {\large \textbf{Ann\'{e}e universitaire 2025 -- 2026}}
+
+  \vspace*{1cm}
+
+\end{center}
+
+\newpage

@@ -1,0 +1,256 @@
+% =============================================================================
+% Annexe A : Extraits de Code
+% =============================================================================
+\chapter{Extraits de Code}
+\label{annexe:code}
+
+\section{Configuration Playwright}
+
+\begin{lstlisting}[language=Java, caption={playwright.config.ts --- Configuration principale}, label={lst:playwright-config}]
+import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+import path from 'path';
+
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+
+export default defineConfig({
+  testDir: '.',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 2 : undefined,
+  timeout: 60_000,
+
+  reporter: [
+    ['html', { open: 'never' }],
+    ['allure-playwright'],
+    ['list'],
+  ],
+
+  use: {
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'on-first-retry',
+  },
+
+  projects: [
+    {
+      name: 'admin-auth-setup',
+      testDir: './fixtures',
+      testMatch: 'admin-auth.setup.ts',
+    },
+    {
+      name: 'admin-panel',
+      testDir: './e2e/admin-panel',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: process.env.ADMIN_BASE_URL,
+        storageState: 'fixtures/.auth/admin.json',
+      },
+      dependencies: ['admin-auth-setup'],
+    },
+    {
+      name: 'api-tests',
+      testDir: './api',
+      use: {
+        baseURL: process.env.API_GATEWAY_URL,
+      },
+    },
+  ],
+});
+\end{lstlisting}
+
+\section{Client API réutilisable}
+
+\begin{lstlisting}[language=Java, caption={api-client.ts --- Client HTTP authentifié}, label={lst:api-client}]
+import { APIRequestContext, request } from '@playwright/test';
+
+export class ApiClient {
+  private baseUrl: string;
+  private token: string | null = null;
+
+  constructor(baseUrl?: string) {
+    this.baseUrl = baseUrl
+      || process.env.API_GATEWAY_URL
+      || 'http://localhost:8080';
+  }
+
+  async login(email: string, password: string): Promise<string> {
+    const ctx = await request.newContext({
+      baseURL: this.baseUrl
+    });
+    const response = await ctx.post('/api/auth/login', {
+      data: { email, password },
+    });
+    const body = await response.json();
+    this.token = body.accessToken || body.token;
+    await ctx.dispose();
+    return this.token!;
+  }
+
+  async get(path: string) {
+    const ctx = await this.authenticatedContext();
+    const res = await ctx.get(path);
+    await ctx.dispose();
+    return res;
+  }
+
+  async post(path: string, data: unknown) {
+    const ctx = await this.authenticatedContext();
+    const res = await ctx.post(path, { data });
+    await ctx.dispose();
+    return res;
+  }
+}
+\end{lstlisting}
+
+\section{Test unitaire backend --- AuthServiceImpl}
+
+\begin{lstlisting}[language=Java, caption={AuthServiceImplTest.java --- Test de connexion}, label={lst:auth-test}]
+@ExtendWith(MockitoExtension.class)
+class AuthServiceImplTest {
+
+    @Mock private UserRepository userRepository;
+    @Mock private JwtTokenProvider jwtTokenProvider;
+    @Mock private PasswordEncoder passwordEncoder;
+    @InjectMocks private AuthServiceImpl authService;
+
+    @Nested
+    @DisplayName("login()")
+    class LoginTests {
+
+        @Test
+        @DisplayName("Should return AuthResponse for active user")
+        void login_activeUser_returnsAuthResponse() {
+            User user = new User();
+            user.setEmail("test@example.com");
+            user.setPassword("hashed");
+            user.setStatus(UserStatus.ACTIVE);
+            user.setIsEmailVerified(true);
+
+            when(userRepository.findByEmail("test@example.com"))
+                .thenReturn(Optional.of(user));
+            when(passwordEncoder.matches("raw", "hashed"))
+                .thenReturn(true);
+            when(jwtTokenProvider.generateToken(user))
+                .thenReturn("jwt-token");
+
+            Object result = authService.login(
+                "test@example.com", "raw");
+
+            assertThat(result)
+                .isInstanceOf(AuthResponse.class);
+            verify(jwtTokenProvider).generateToken(user);
+        }
+    }
+}
+\end{lstlisting}
+
+\section{Test E2E --- Page Object Model}
+
+\begin{lstlisting}[language=Java, caption={AdminLoginPage --- Pattern Page Object}, label={lst:page-object}]
+import { Page, Locator, expect } from '@playwright/test';
+
+export class AdminLoginPage {
+  readonly page: Page;
+  readonly emailInput: Locator;
+  readonly passwordInput: Locator;
+  readonly loginButton: Locator;
+  readonly errorMessage: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.emailInput = page.getByLabel(/email/i);
+    this.passwordInput = page.getByLabel(/password/i);
+    this.loginButton = page.getByRole('button',
+      { name: /sign in|login/i });
+    this.errorMessage = page.locator(
+      '[class*="error"], mat-error');
+  }
+
+  async goto() {
+    await this.page.goto('/auth/login');
+  }
+
+  async login(email: string, password: string) {
+    await this.emailInput.fill(email);
+    await this.passwordInput.fill(password);
+    await this.loginButton.click();
+  }
+
+  async expectDashboardRedirect() {
+    await this.page.waitForURL('**/dashboard');
+    await expect(this.page).toHaveURL(/dashboard/);
+  }
+}
+\end{lstlisting}
+
+\section{Test de performance k6}
+
+\begin{lstlisting}[language=Java, caption={k6-load-test.js --- Test de charge}, label={lst:k6-load}]
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+import { Rate, Trend } from 'k6/metrics';
+
+const loginDuration = new Trend('login_duration');
+const errorRate = new Rate('errors');
+
+export const options = {
+  stages: [
+    { duration: '30s', target: 10 },
+    { duration: '1m',  target: 25 },
+    { duration: '2m',  target: 25 },
+    { duration: '1m',  target: 50 },
+    { duration: '1m',  target: 50 },
+    { duration: '30s', target: 0 },
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<3000'],
+    http_req_failed: ['rate<0.05'],
+    login_duration: ['p(95)<2000'],
+  },
+};
+
+export default function () {
+  const res = http.post(BASE_URL + '/api/auth/login',
+    JSON.stringify({
+      email: 'admin@speedline-test.com',
+      password: 'TestAdmin123!'
+    }),
+    { headers: {
+      'Content-Type': 'application/json' } }
+  );
+  loginDuration.add(res.timings.duration);
+  check(res, {
+    'login 200': (r) => r.status === 200,
+  });
+  sleep(1);
+}
+\end{lstlisting}
+
+\section{Test de sécurité --- Injection SQL}
+
+\begin{lstlisting}[language=Java, caption={security.api.spec.ts --- Test d'injection SQL}, label={lst:security}]
+test('should handle SQL injection in search', async () => {
+  const response = await adminApi.get(
+    "/api/orders?search=' OR '1'='1"
+  );
+  expect([200, 400]).toContain(response.status());
+  if (response.status() === 200) {
+    const body = await response.json();
+    const items = body.content || body;
+    expect(Array.isArray(items)).toBeTruthy();
+  }
+});
+
+test('should handle SQL injection in POST', async ({request}) => {
+  const loginRes = await request.post(
+    API_BASE + '/api/auth/login', {
+    data: {
+      email: "admin' OR '1'='1",
+      password: "' OR '1'='1",
+    },
+  });
+  expect(loginRes.status()).toBeGreaterThanOrEqual(400);
+});
+\end{lstlisting}

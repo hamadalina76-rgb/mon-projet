@@ -1,0 +1,140 @@
+% =============================================================================
+% RAPPORT PFE - ISET Nabeul
+% Mise en place d'un Robot de Tests Automatisés
+% Projets : Speed Line & Delivery App
+% =============================================================================
+\documentclass[a4paper,12pt,oneside]{report}
+
+% --- Encodage et langue ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+
+% --- Mise en page ---
+\usepackage[top=2.5cm, bottom=2.5cm, left=3cm, right=2.5cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{parskip}
+
+% --- Graphiques et figures ---
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+
+% --- Tableaux ---
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{colortbl}
+
+% --- Code source ---
+\usepackage{listings}
+\usepackage{xcolor}
+
+% --- Liens et références ---
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+
+% --- Divers ---
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{pifont}
+\usepackage{tikz}
+\usetikzlibrary{shapes,shapes.geometric,arrows,arrows.meta,positioning,fit,calc,shadows,decorations.pathreplacing}
+
+% --- Couleurs personnalisées ---
+\definecolor{speedlineBlue}{RGB}{33,97,140}
+\definecolor{speedlineGreen}{RGB}{39,174,96}
+\definecolor{speedlineOrange}{RGB}{243,156,18}
+\definecolor{codeBackground}{RGB}{248,248,248}
+\definecolor{codeComment}{RGB}{106,153,85}
+\definecolor{codeKeyword}{RGB}{86,156,214}
+\definecolor{codeString}{RGB}{206,145,120}
+
+% --- Style des en-têtes ---
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+
+% --- Style des titres ---
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries\color{speedlineBlue}}
+  {\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{-20pt}{40pt}
+
+% --- Style du code ---
+\lstdefinestyle{codestyle}{
+  backgroundcolor=\color{codeBackground},
+  commentstyle=\color{codeComment},
+  keywordstyle=\color{codeKeyword}\bfseries,
+  stringstyle=\color{codeString},
+  basicstyle=\ttfamily\footnotesize,
+  breakatwhitespace=false,
+  breaklines=true,
+  captionpos=b,
+  keepspaces=true,
+  numbers=left,
+  numbersep=5pt,
+  numberstyle=\tiny\color{gray},
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  tabsize=2,
+  frame=single,
+  rulecolor=\color{gray!30},
+  xleftmargin=1cm,
+}
+\lstset{style=codestyle}
+
+% --- Métadonnées ---
+\title{Mise en place d'un Robot de Tests Automatisés\\
+\large Projets : Speed Line \& Delivery App}
+\author{Stagiaires PFE -- ISET Nabeul}
+\date{Année universitaire 2025--2026}
+
+% =============================================================================
+\begin{document}
+
+% --- Page de garde ---
+\input{chapters/00-page-de-garde}
+
+% --- Pages préliminaires ---
+\pagenumbering{roman}
+\input{chapters/00-dedicaces}
+\input{chapters/00-remerciements}
+
+% --- Sommaire ---
+\tableofcontents
+\newpage
+\listoffigures
+\newpage
+\listoftables
+\newpage
+
+% --- Corps du rapport ---
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\input{chapters/00-introduction-generale}
+\input{chapters/01-presentation-etude-existant}
+\input{chapters/02-analyse-conception}
+\input{chapters/03-realisation}
+\input{chapters/04-tests-validation}
+\input{chapters/05-conclusion-generale}
+
+% --- Bibliographie ---
+\input{chapters/06-bibliographie}
+
+% --- Annexes ---
+\appendix
+\input{annexes/annexe-a-code}
+\input{annexes/annexe-b-configurations}
+
+\end{document}
