@@ -24,7 +24,7 @@ x-service-defaults: &service-defaults
 
 x-env-defaults: &env-defaults
   PORT: 8080
-  SPRING_PROFILES_ACTIVE: dev
+  SPRING_PROFILES_ACTIVE: local
   SPRING_MAIN_LAZY_INITIALIZATION: "false"
   SPRING_DATASOURCE_USERNAME: postgres
   SPRING_DATASOURCE_PASSWORD: postgres123
@@ -241,6 +241,78 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+
+  notification-service:
+    <<: *service-defaults
+    build:
+      context: ../backend
+      dockerfile: ../tests/Dockerfile.service
+      args:
+        SERVICE_NAME: notification-service
+    container_name: sl-test-notification
+    environment:
+      <<: *env-defaults
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/speedline_notifications
+      MONGODB_URI: mongodb://mongodb:27017/speedline_notifications
+      MONGO_URI: mongodb://mongodb:27017/speedline_notifications
+      GCP_CREDENTIALS_ENABLED: "false"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ==================== MONGODB (notification-service) ====================
+
+  mongodb:
+    image: mongo:7
+    container_name: sl-test-mongo
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ==================== FRONTENDS ====================
+
+  admin-panel:
+    build:
+      context: ../frontend/admin-panel
+    container_name: sl-test-admin
+    ports:
+      - "4200:8080"
+    environment:
+      PORT: 8080
+      ENV: test
+      API_BASE_URL: http://localhost:8080
+      API_URL: http://localhost:8080/api/v1
+      UPLOADS_BASE_URL: http://localhost:8080
+      NOTIFICATIONS_API_URL: http://localhost:8080/api
+      WS_URL: ws://localhost:8080
+    networks:
+      - test-network
+    depends_on:
+      api-gateway:
+        condition: service_started
+
+  partner-dashboard:
+    build:
+      context: ../frontend/partner-dashboard
+    container_name: sl-test-partner-ui
+    ports:
+      - "4201:8080"
+    environment:
+      PORT: 8080
+      ENV: test
+      API_BASE_URL: http://localhost:8080
+      WS_URL: ws://localhost:8080
+    networks:
+      - test-network
+    depends_on:
+      api-gateway:
+        condition: service_started
 
 networks:
   test-network:
