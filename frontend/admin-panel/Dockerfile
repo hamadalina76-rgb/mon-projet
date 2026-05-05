@@ -3,19 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN cat > src/environments/environment.ts << 'ENVEOF'
-export const environment = {
-  production: false,
-  apiUrl: 'http://localhost:8080/api/v1',
-  apiBaseUrl: 'http://localhost:8080',
-  uploadsBaseUrl: 'http://localhost:8080',
-  notificationsApiUrl: 'http://localhost:8080/api',
-  wsUrl: 'ws://localhost:8080',
-  mapboxToken: 'pk.test-placeholder',
-  defaultLanguage: 'fr',
-  supportedLanguages: ['fr', 'en', 'ar'],
-};
-ENVEOF
+RUN mkdir -p src/environments && printf 'export const environment = {\n  production: false,\n  apiUrl: "http://localhost:8080/api/v1",\n  apiBaseUrl: "http://localhost:8080",\n  uploadsBaseUrl: "http://localhost:8080",\n  notificationsApiUrl: "http://localhost:8080/api",\n  wsUrl: "ws://localhost:8080",\n  mapboxToken: "pk.test-placeholder",\n  defaultLanguage: "fr",\n  supportedLanguages: ["fr", "en", "ar"],\n};\n' > src/environments/environment.ts
 RUN npm run build -- --configuration local
 
 FROM caddy:2-alpine
