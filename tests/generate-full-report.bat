@@ -46,16 +46,24 @@ if not errorlevel 1 (
 echo   Services not running. Starting Docker environment...
 docker compose -f docker-compose.test.yml down -v --remove-orphans 2>nul
 docker compose -f docker-compose.test.yml up -d --build
-echo   Waiting for services to start (60 seconds)...
-timeout /t 60 /nobreak >nul
+echo   Waiting for services to start (120 seconds for first boot)...
+timeout /t 120 /nobreak >nul
 
+set GW_RETRIES=0
 :WAIT_GW
 curl -sf http://localhost:8080/actuator/health >nul 2>&1
-if errorlevel 1 (
-    echo   Gateway not ready, retrying in 5s...
-    timeout /t 5 /nobreak >nul
-    goto WAIT_GW
+if not errorlevel 1 goto GW_UP
+set /a GW_RETRIES+=1
+if %GW_RETRIES% GEQ 60 (
+    echo   ERROR: Gateway failed to start after 5 minutes. Check Docker logs.
+    echo   Run: docker logs sl-test-gateway
+    pause
+    exit /b 1
 )
+echo   Gateway not ready, retrying in 5s... (%GW_RETRIES%/60)
+timeout /t 5 /nobreak >nul
+goto WAIT_GW
+:GW_UP
 echo   API Gateway is UP!
 
 REM Seed test data
