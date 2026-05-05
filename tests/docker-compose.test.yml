@@ -24,20 +24,27 @@ x-service-defaults: &service-defaults
 
 x-env-defaults: &env-defaults
   PORT: 8080
-  SPRING_PROFILES_ACTIVE: local
+  SPRING_PROFILES_ACTIVE: dev
   SPRING_MAIN_LAZY_INITIALIZATION: "false"
   SPRING_DATASOURCE_USERNAME: postgres
   SPRING_DATASOURCE_PASSWORD: postgres123
   SPRING_DATA_REDIS_HOST: redis
   REDIS_HOST: redis
   FILE_GCS_BUCKET: test-bucket
+  # JWT config (must match gateway for token validation)
   JWT_SECRET: speedline-super-secret-key-for-jwt-token-generation-minimum-256-bits
+  JWT_EXPIRATION: "3600000"
+  JWT_REFRESH_EXPIRATION: "604800000"
+  # GCP: disable real credentials, use emulator
   SPRING_CLOUD_GCP_PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
   PUBSUB_EMULATOR_HOST: pubsub-emulator:8085
   SPRING_CLOUD_GCP_PROJECT_ID: speedline-test
+  SPRING_CLOUD_GCP_CREDENTIALS_ENABLED: "false"
+  GCP_CREDENTIALS_ENABLED: "false"
   GOOGLE_APPLICATION_CREDENTIALS: ""
   MAPBOX_ACCESS_TOKEN: pk.test-placeholder-token
   MAPBOX_ACCESS-TOKEN: pk.test-placeholder-token
+  # Inter-service URLs (Docker internal)
   AUTH_SERVICE_URL: http://auth-service:8080
   USER_SERVICE_URL: http://user-service:8080
   PARTNER_SERVICE_URL: http://partner-service:8080
@@ -47,6 +54,13 @@ x-env-defaults: &env-defaults
   NOTIFICATION_SERVICE_URL: http://notification-service:8080
   LOCATION_SERVICE_URL: http://location-service:8080
   PROMOTION_SERVICE_URL: http://promotion-service:8080
+  # Eureka disabled in Docker
+  EUREKA_ENABLED: "false"
+  # OAuth placeholders
+  GOOGLE_CLIENT_ID: dev-placeholder
+  GOOGLE_CLIENT_SECRET: dev-placeholder
+  FACEBOOK_APP_ID: dev-placeholder
+  FACEBOOK_APP_SECRET: dev-placeholder
 
 services:
   # ==================== INFRASTRUCTURE ====================
@@ -255,7 +269,6 @@ services:
       SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/speedline_notifications
       MONGODB_URI: mongodb://mongodb:27017/speedline_notifications
       MONGO_URI: mongodb://mongodb:27017/speedline_notifications
-      GCP_CREDENTIALS_ENABLED: "false"
     depends_on:
       mongodb:
         condition: service_healthy

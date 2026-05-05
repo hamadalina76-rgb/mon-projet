@@ -7,9 +7,9 @@ const authFile = path.join(__dirname, '.auth', 'admin.json');
 setup('authenticate as admin', async ({ page }) => {
   await page.goto('/auth/login');
 
-  await page.getByLabel(/email/i).fill(TEST_ACCOUNTS.admin.email);
-  await page.getByLabel(/password/i).fill(TEST_ACCOUNTS.admin.password);
-  await page.getByRole('button', { name: /sign in|login|connexion/i }).click();
+  await page.locator('input[type="email"], input[formcontrolname="email"], input[name="email"]').first().fill(TEST_ACCOUNTS.admin.email);
+  await page.locator('input[type="password"], input[formcontrolname="password"], input[name="password"]').first().fill(TEST_ACCOUNTS.admin.password);
+  await page.getByRole('button', { name: /sign in|login|connexion|se connecter/i }).click();
 
   // Wait for redirect to dashboard
   await page.waitForURL('**/dashboard', { timeout: 15_000 });

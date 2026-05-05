@@ -39,11 +39,19 @@ export default defineConfig({
       name: 'admin-auth-setup',
       testDir: './fixtures',
       testMatch: 'admin-auth.setup.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: ADMIN_BASE_URL,
+      },
     },
     {
       name: 'partner-auth-setup',
       testDir: './fixtures',
       testMatch: 'partner-auth.setup.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: PARTNER_BASE_URL,
+      },
     },
 
     // --- Admin Panel E2E Tests ---
